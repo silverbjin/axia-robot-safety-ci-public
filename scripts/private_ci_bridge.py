@@ -14,7 +14,7 @@ import sys
 import tempfile
 import xml.etree.ElementTree as ET
 
-PIN = '1b913cf0ea691bf08269f80fb6d01708bf0734c4'
+PIN = 'f25177f5089131715dd678a185a2739f4810c4fb'
 UNIT_FILES = (
     'tests/unit/test_p1_fsm.py', 'tests/unit/test_p1_watchdog.py',
     'tests/unit/test_p1_t08_scan_full_circle.py',
@@ -316,12 +316,19 @@ def private_evidence_diagnostics(root, count):
             'LOCALIZATION_SERVICE_RESPONSE_TIMEOUT',
             'LOCALIZATION_SERVICE_REPORTED_FAILURE',
             'LOCALIZATION_SERVICE_EXCEPTION',
+            'LOCALIZATION_PREPAUSE_SERVICE_RESPONSE_TIMEOUT',
+            'LOCALIZATION_PREPAUSE_SERVICE_REPORTED_FAILURE',
+            'LOCALIZATION_PREPAUSE_SERVICE_EXCEPTION',
+            'PREPAUSE_NOT_AUTHORIZED',
             'SHUTDOWN_EXCEPTION', 'SIMULATION_MARKERS_MISSING',
             'ROS_JAZZY_REQUIRED', 'INVALID_TIMEOUT',
         )
         record['shutdown_control_reason'] = (
             control.get('reason') if control.get('reason') in reasons
             else 'UNRECOGNIZED')
+        requested = control.get('prepause_requested')
+        record['prepause_requested'] = (
+            requested if type(requested) is bool else 'UNAVAILABLE')
         managers = control.get('managers')
         managers = managers if isinstance(managers,dict) else {}
         for key in ('navigation', 'localization'):
@@ -336,6 +343,25 @@ def private_evidence_diagnostics(root, count):
                 record[key + '_' + private_key] = (
                     round(value, 3) if type(value) in (int,float)
                     and 0 <= value <= 300 else 'UNAVAILABLE')
+        localization = managers.get('localization')
+        localization = localization if isinstance(localization,dict) else {}
+        previous = localization.get('prepause')
+        previous = previous if isinstance(previous,dict) else {}
+        ack = previous.get('success')
+        record['localization_prepause_ack'] = (
+            ack if type(ack) is bool else 'UNAVAILABLE')
+        ready = localization.get('service_ready_after_timeout')
+        record['localization_service_ready_after_timeout'] = (
+            ready if type(ready) is bool else 'UNAVAILABLE')
+        states = localization.get('managed_nodes_after_timeout')
+        states = states if isinstance(states,dict) else {}
+        allowed_states = (
+            'UNCONFIGURED','INACTIVE','ACTIVE','FINALIZED',
+            'UNKNOWN','SERVICE_UNAVAILABLE','NO_RESPONSE','SERVICE_ERROR')
+        for name in ('amcl', 'map_server'):
+            value = states.get(name)
+            record[name + '_state_after_timeout'] = (
+                value if value in allowed_states else 'UNAVAILABLE')
         shutdown = _private_json(folder / 'shutdown_verdict.json')
         ack = shutdown.get('lifecycle_shutdown_acknowledged')
         record['shutdown_ack'] = ack if type(ack) is bool else 'UNAVAILABLE'
@@ -444,7 +470,7 @@ def preloc_settings(gate):
     if gate == 'gazebo3-prepause':
         return 3, True
     if gate == 'gazebo10':
-        return 10, True
+        return 10, False
     raise GateBlocked('UNSUPPORTED_GATE')
 
 
