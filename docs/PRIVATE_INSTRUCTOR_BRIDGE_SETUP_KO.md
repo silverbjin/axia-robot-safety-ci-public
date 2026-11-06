@@ -51,3 +51,12 @@ Environment Secret, Required Reviewer, SHA 고정, 최소 권한, raw 출력/Art
 - 분석: 기존 브리지가 `PYTHONPATH` 전체를 덮어써 `pytest.importorskip("rclpy")`가 전부 skip. 수정: private 패키지 경로에 **기존 Jazzy PYTHONPATH를 보존**해 추가한다.
 - 부가 수정: `ros2 run`을 포함한 미들웨어 종료 테스트에 앞서 private Supervisor/Fault Injector ament_python 패키지를 임시 디렉터리에 colcon 빌드하고 `install/setup.bash`를 source 한다.
 - 새 회귀 테스트는 ROS 경로 보존, overlay argv 구성, build 결손 시 fail-closed 검사를 포함. ROS/Gazebo 실제 PASS는 새 Runner 결과가 나오기 전까지 표시하지 않는다.
+
+## 다음 단계 (SHA 고정, 공개 Runner에서 원본 강사 코드 실행)
+
+- 이전 Run #42179543953에서 UNIT 75/75, Jazzy 6/6, private colcon build 전부 실제 PASS.
+- 현재 보호된 단일 Job 순서: UNIT + Jazzy → fake ROS Goal/Cancel/Fault → Gazebo 3회 read-only → Gazebo 10회 read-only.
+- Gazebo 3/10은 **강사용 실제 패키지**를 포함한 기동/종료/scan/RTF/RTM 사전 검증으로, real Goal·Fault·odom-stop 최종 통합을 수행하지 않는다.
+- 어느 한 단계라도 실패하면 뒤 단계는 실행하지 않고 전체 BLOCKED (fail-closed). 공개 로그에는 stage 상태·합계만 출력하며 민감한 JUnit·rosbag2 원문은 업로드하지 않는다.
+- Environment Required Reviewer는 각 Workflow Push 실행에 재승인이 필요하다. 사용자 승인 전 작업 시작 불가.
+- 최종 로컬 인수는 G00 Goal, G02/G03/G04 fault 및 Nav2 Cancel·odom 근거에 대한 실제 Cloud E2E 검증 이후에만 승인 대상이 된다.

@@ -106,3 +106,44 @@ class ProtectedBridgeTests(TestCase):
                 with self.assertRaisesRegex(bridge.GateBlocked, 'COLCON_SETUP_MISSING'):
                     bridge.ros_workspace_build(Path(root), env, Path(root))
             self.assertEqual(calls, ['ROS_RUNTIME_IMPORT', 'COLCON_BUILD'])
+
+    def test_no_motion_gazebo_threefold_cannot_promote_final_gate(self):
+        with tempfile.TemporaryDirectory() as folder:
+            source = Path(folder) / 'prelocal_report.json'
+            source.write_text(json.dumps({
+                'status': 'P1_PRELOCAL_PARTIAL_3X', 'passed_runs': 3,
+                'gate_accepted': False,
+                'g03_g04_gazebo_fault_acceptance': 'NOT_RUN'
+            }), encoding='utf-8')
+            with contextlib.redirect_stdout(io.StringIO()) as buffer:
+                bridge.verify_gazebo_report(folder, 3)
+            self.assertIn('READONLY_READY_ONLY', buffer.getvalue())
+            self.assertIn('"goal_sent": false', buffer.getvalue())
+            self.assertIn('"gate_accepted": false', buffer.getvalue())
+
+    def test_tenfold_requires_full_count_and_no_fault_acceptance(self):
+        with tempfile.TemporaryDirectory() as folder:
+            source = Path(folder) / 'prelocal_report.json'
+            source.write_text(json.dumps({
+                'status': 'P1_PRELOCAL_STABILITY_10X_READY', 'passed_runs': 9,
+                'gate_accepted': False,
+                'g03_g04_gazebo_fault_acceptance': 'NOT_RUN'
+            }), encoding='utf-8')
+            with self.assertRaisesRegex(bridge.GateBlocked, 'PRIVATE_REPORT_GATE_BLOCKED'):
+                bridge.verify_gazebo_report(folder, 10)
+            source.write_text(json.dumps({
+                'status': 'P1_PRELOCAL_STABILITY_10X_READY', 'passed_runs': 10,
+                'gate_accepted': False,
+                'g03_g04_gazebo_fault_acceptance': 'ACCEPTED'
+            }), encoding='utf-8')
+            with self.assertRaisesRegex(bridge.GateBlocked, 'PRIVATE_REPORT_GATE_BLOCKED'):
+                bridge.verify_gazebo_report(folder, 10)
+
+    def test_real_ros_fault_files_target_pinned_private_repo(self):
+        self.assertEqual(len(bridge.FAKE_FAULT_FILES), 3)
+        self.assertIn('tests/ros_integration/test_p1_t06_faults.py',
+                      bridge.FAKE_FAULT_FILES)
+        self.assertIn('tests/ros_integration/test_p1_t04_action.py',
+                      bridge.FAKE_FAULT_FILES)
+        self.assertIn('tests/ros_integration/test_p1_t05_launch.py',
+                      bridge.FAKE_FAULT_FILES)

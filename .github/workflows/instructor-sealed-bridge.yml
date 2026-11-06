@@ -25,11 +25,11 @@ jobs:
           set -euo pipefail
           python3 -m unittest discover -s tests -p test_private_ci_bridge.py -v
 
-  instructor-pinned-unit-middleware:
+  instructor-pinned-integration-prelocal:
     needs: public-fail-closed-contracts
     if: github.repository == 'silverbjin/axia-robot-safety-ci-public' && github.actor == 'silverbjin' && github.ref == 'refs/heads/feat/secure-instructor-cloud-bridge' && github.event_name == 'push'
     runs-on: ubuntu-24.04
-    timeout-minutes: 50
+    timeout-minutes: 210
     container:
       image: ros:jazzy-ros-base-noble
     environment:
@@ -58,13 +58,18 @@ jobs:
           persist-credentials: false
           fetch-depth: 1
           path: _instructor_private
-      - name: Install minimal Jazzy middleware test dependencies
+      - name: Install pinned private Jazzy integration and official Harmonic dependencies
         shell: bash
         run: |
           set -euo pipefail
           apt-get update -qq
           DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
-            python3-pytest python3-colcon-common-extensions \
+            git build-essential cmake procps python3-yaml python3-pytest \
+            python3-colcon-common-extensions \
+            ros-jazzy-navigation2 ros-jazzy-nav2-bringup \
+            ros-jazzy-nav2-minimal-tb3-sim ros-jazzy-ros-gz \
+            ros-jazzy-rosbag2 ros-jazzy-rosbag2-storage-default-plugins \
+            ros-jazzy-rosgraph-msgs ros-jazzy-tf2-ros \
             ros-jazzy-nav2-msgs ros-jazzy-rclpy ros-jazzy-action-msgs \
             ros-jazzy-nav-msgs ros-jazzy-sensor-msgs ros-jazzy-std-msgs \
             ros-jazzy-std-srvs ros-jazzy-geometry-msgs ros-jazzy-lifecycle-msgs
@@ -75,6 +80,31 @@ jobs:
           source /opt/ros/jazzy/setup.bash
           set -u
           python3 scripts/private_ci_bridge.py --private-root _instructor_private --gate unit-middleware
+      - name: Real Jazzy private Goal Cancel and controlled fake fault gates (no Gazebo)
+        shell: bash
+        run: |
+          set -eo pipefail
+          source /opt/ros/jazzy/setup.bash
+          set -u
+          python3 scripts/private_ci_bridge.py --private-root _instructor_private --gate fake-faults
+      - name: Actual official Gazebo with PRIVATE Supervisor 3x read-only prelocal
+        shell: bash
+        run: |
+          set -eo pipefail
+          source /opt/ros/jazzy/setup.bash
+          set -u
+          python3 scripts/private_ci_bridge.py --private-root _instructor_private --gate gazebo3
+      - name: Actual official Gazebo with PRIVATE Supervisor 10x read-only stability
+        shell: bash
+        run: |
+          set -eo pipefail
+          source /opt/ros/jazzy/setup.bash
+          set -u
+          python3 scripts/private_ci_bridge.py --private-root _instructor_private --gate gazebo10
+      - name: Enforce prelocal scope before exiting
+        shell: bash
+        run: |
+          printf '%s\n' 'AXIA_PRIVATE_PRELOCAL_SCOPE=READ_ONLY_NO_REAL_GOAL_NO_REAL_FAULT; gate_accepted=false; certified_estop=false'
       - name: Remove private checkout before runner cleanup
         if: always()
         shell: bash
