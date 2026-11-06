@@ -1,4 +1,4 @@
-"""Static scope checks, not a replacement for an independent security review."""
+"""Static publication scope checks, not a complete secret/security audit."""
 from pathlib import Path
 import ast
 
@@ -15,7 +15,9 @@ def test_gazebo_script_has_no_goal_or_fault_api_invocations():
 
 
 def test_public_repo_has_no_private_code_directory():
-    for bad in ('ros2_ws/src/axia_safety_supervisor', 'hidden_tests', '.git'):
+    # A normal actions/checkout intentionally includes a .git directory.
+    # Therefore check for PRIVATE source locations, not .git itself.
+    for bad in ('ros2_ws/src/axia_safety_supervisor', 'hidden_tests'):
         assert not (ROOT / bad).exists()
 
 
