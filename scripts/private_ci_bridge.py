@@ -13,7 +13,7 @@ import sys
 import tempfile
 import xml.etree.ElementTree as ET
 
-PIN = 'bdcad391bf3012353d222cc04628d2113d0d0b87'
+PIN = 'ef948de0298fdf057a34601c5e5cbc310f5517f5'
 UNIT_FILES = (
     'tests/unit/test_p1_fsm.py', 'tests/unit/test_p1_watchdog.py',
     'tests/unit/test_p1_t08_scan_full_circle.py',
@@ -179,12 +179,40 @@ def _private_json(path):
         return {}
 
 
+SAFE_RTM_BLOCKERS = {
+    'MISSING_RUN_DIRECTORY', 'SOURCE_COMMIT_MISMATCH',
+    'P1_STARTUP_NOT_VERIFIED', 'P0_PREGOAL_G01_NOT_READY',
+    'SUPERVISOR_PRESTART_NOT_STABLE', 'NAV2_SHUTDOWN_NOT_CLEAN',
+    'SCAN_TIMING_UNCALIBRATED', 'UNAUTHORIZED_GOAL_OR_FAULT_EVIDENCE',
+    'SHA_MANIFEST_MISSING', 'SHA_MANIFEST_EMPTY', 'SHA_LINE_INVALID',
+    'SHA_DIGEST_INVALID', 'SHA_ENTRY_INVALID', 'SHA_PATH_INVALID',
+    'SHA_FILESET_MISMATCH', 'SUPERVISOR_SCAN_CALLBACK_TIMING_MISSING',
+    'SUPERVISOR_SCAN_CALLBACK_OVERRUN', 'RTF_OBSERVATION_MISSING',
+}
+
+
+def redact_rtm_failure(value):
+    if isinstance(value, str) and value in SAFE_RTM_BLOCKERS:
+        return value
+    if isinstance(value, str) and value.startswith('SHA_MISMATCH:'):
+        return 'SHA_MISMATCH'
+    return 'UNRECOGNIZED'
+
+
 def private_evidence_diagnostics(root, count):
     """Only enums/integers from private ephemeral evidence may reach public logs."""
+    report = _private_json(Path(root) / 'prelocal_report.json')
+    rows = report.get('runs')
+    rows = rows if isinstance(rows, list) else []
     out = []
     for i in range(1, count + 1):
         folder = Path(root) / f'run_{i}'
         record = {'run': i, 'gate_accepted': False}
+        row = rows[i - 1] if len(rows) >= i and isinstance(rows[i - 1], dict) else {}
+        failures = row.get('failures')
+        record['rtm_blockers'] = (
+            [redact_rtm_failure(x) for x in failures[:30]]
+            if isinstance(failures, list) else ['REPORT_MISSING'])
         for filename, (label, key, choices) in SAFE_EVIDENCE_FIELDS.items():
             path = folder / filename
             obj = _private_json(path)

@@ -221,3 +221,21 @@ class ProtectedBridgeTests(TestCase):
             self.assertEqual(rows[0]['rtf'], 0.8)
             self.assertEqual(rows[0]['shutdown_fatal_count'], 1)
             self.assertEqual(rows[0]['shutdown'], 'SHUTDOWN_INCONCLUSIVE')
+
+    def test_private_rtm_failure_allowlist_never_prints_private_filenames(self):
+        with tempfile.TemporaryDirectory() as root:
+            folder = Path(root) / 'run_1'
+            folder.mkdir()
+            secret = 'INSTRUCTOR_PRIVATE_FILE_NAME_OR_PATH'
+            (Path(root) / 'prelocal_report.json').write_text(json.dumps({
+                'runs': [{'run_id': 1, 'status': 'BLOCKED',
+                          'failures': ['SUPERVISOR_SCAN_CALLBACK_OVERRUN',
+                                       'SHA_MISMATCH:' + secret, secret]}]
+            }), encoding='utf-8')
+            capture = io.StringIO()
+            with contextlib.redirect_stdout(capture):
+                rows = bridge.private_evidence_diagnostics(root, 1)
+            self.assertEqual(rows[0]['rtm_blockers'],
+                ['SUPERVISOR_SCAN_CALLBACK_OVERRUN', 'SHA_MISMATCH',
+                 'UNRECOGNIZED'])
+            self.assertNotIn(secret, capture.getvalue())
