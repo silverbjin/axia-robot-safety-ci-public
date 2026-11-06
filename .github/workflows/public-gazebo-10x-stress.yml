@@ -1,0 +1,41 @@
+name: AXIA public Gazebo 10x stability stress (PR gate, READ ONLY)
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/public-gazebo-10x-stress.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: axia-public-gazebo-10x
+  cancel-in-progress: true
+jobs:
+  gazebo-readonly-10x:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    container:
+      image: ros:jazzy-ros-base-noble
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install official ROS 2 Jazzy Nav2 Waffle simulation Gazebo Harmonic
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            procps python3 ros-jazzy-nav2-bringup ros-jazzy-nav2-minimal-tb3-sim \
+            ros-jazzy-ros-gz ros-jazzy-ros2cli ros-jazzy-rosbag2
+      - name: Ten independent official Gazebo no-goal read-only cold starts
+        shell: bash
+        run: |
+          set -eo pipefail
+          source /opt/ros/jazzy/setup.bash
+          set -u
+          python3 scripts/gazebo_readonly_baseline.py --runs 10 --output results/public-gazebo-10x
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: official-nav2-gazebo-readonly-10x-evidence
+          path: results/public-gazebo-10x/
+          retention-days: 30
+          if-no-files-found: warn

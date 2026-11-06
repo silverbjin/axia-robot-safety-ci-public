@@ -1,0 +1,17 @@
+name: AXIA public runner canary
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  canary:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Basic shell run without checkout or package install
+        run: |
+          set -euo pipefail
+          echo AXIA_PUBLIC_RUNNER_CANARY_OK
+          uname -a
+          python3 --version

@@ -1,0 +1,53 @@
+name: AXIA official Nav2 Waffle Gazebo public baseline (READ ONLY)
+on:
+  pull_request:
+    paths:
+      - 'scripts/gazebo_readonly_baseline.py'
+      - '.github/workflows/public-gazebo-readonly.yml'
+  workflow_dispatch:
+    inputs:
+      rounds:
+        description: '3 or 10 independent read-only cold starts; no goal or fault'
+        required: true
+        type: choice
+        default: '3'
+        options: ['3', '10']
+permissions:
+  contents: read
+concurrency:
+  group: axia-public-gazebo
+  cancel-in-progress: true
+jobs:
+  gazebo-readonly:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    container:
+      image: ros:jazzy-ros-base-noble
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install official ROS 2 Jazzy Nav2 Waffle simulation and Gazebo Harmonic
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            procps python3 ros-jazzy-nav2-bringup ros-jazzy-nav2-minimal-tb3-sim \
+            ros-jazzy-ros-gz ros-jazzy-ros2cli ros-jazzy-rosbag2
+      - name: Official simulator READ ONLY startup and shutdown
+        shell: bash
+        run: |
+          set -eo pipefail
+          source /opt/ros/jazzy/setup.bash
+          set -u
+          rounds=3
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            rounds=$(python3 -c 'import json,os; print(json.load(open(os.environ["GITHUB_EVENT_PATH"]))["inputs"]["rounds"])')
+          fi
+          python3 scripts/gazebo_readonly_baseline.py --runs "$rounds" --output results/public-gazebo
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: official-nav2-gazebo-readonly-evidence
+          path: results/public-gazebo/
+          retention-days: 30
+          if-no-files-found: warn

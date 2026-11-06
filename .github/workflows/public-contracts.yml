@@ -1,0 +1,37 @@
+name: AXIA public python contracts
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'axia_public_contracts/**'
+      - 'tests/**'
+      - '.github/workflows/public-contracts.yml'
+  pull_request:
+    paths:
+      - 'axia_public_contracts/**'
+      - 'tests/**'
+      - '.github/workflows/public-contracts.yml'
+permissions:
+  contents: read
+jobs:
+  public-unit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test isolated public contracts (not AXIA acceptance)
+        run: |
+          set -euo pipefail
+          python -m pip install pytest==8.3.5
+          mkdir -p results
+          python -m pytest -q -ra tests --junitxml=results/junit-public.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: public-contract-junit
+          path: results/
+          if-no-files-found: warn

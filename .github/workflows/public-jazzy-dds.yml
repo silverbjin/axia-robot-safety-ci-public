@@ -1,0 +1,39 @@
+name: AXIA official Jazzy DDS synthetic input
+on:
+  pull_request:
+    paths:
+      - 'scripts/dds_echo_smoke.py'
+      - '.github/workflows/public-jazzy-dds.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  public-jazzy-dds:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    container:
+      image: ros:jazzy-ros-base-noble
+    env:
+      ROS_DOMAIN_ID: '167'
+      ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install ROS test dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends ros-jazzy-std-msgs
+      - name: Run actual Jazzy middleware synthetic loopback (not Gazebo)
+        shell: bash
+        run: |
+          set -eo pipefail
+          source /opt/ros/jazzy/setup.bash
+          set -u
+          python3 scripts/dds_echo_smoke.py | tee jazzy-dds-output.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: public-jazzy-dds-output
+          path: jazzy-dds-output.log
+          if-no-files-found: warn
