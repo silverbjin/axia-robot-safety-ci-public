@@ -1,0 +1,127 @@
+name: AXIA P1-T06 isolated stale-stamp DDS regression (FAKE ROS ONLY)
+on:
+  push:
+    branches: [feat/secure-instructor-cloud-bridge]
+    paths:
+      - '.github/workflows/p1-t06-stamp-targeted.yml'
+      - 'scripts/private_junit_oracle.py'
+      - 'tests/test_private_t06_overlap.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: axia-t06-targeted-private
+  cancel-in-progress: false
+jobs:
+  public-diagnostic-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Public redaction policy tests
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p test_private_t06_overlap.py -v
+
+  fake-stale-stamp-threefold:
+    needs: public-diagnostic-contract
+    if: github.repository == 'silverbjin/axia-robot-safety-ci-public' && github.actor == 'silverbjin' && github.ref == 'refs/heads/feat/secure-instructor-cloud-bridge' && github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    container:
+      image: ros:jazzy-ros-base-noble
+    environment:
+      name: axia-instructor-sealed
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Verify private token without disclosure
+        shell: bash
+        env:
+          PRIVATE_READ_TOKEN: ${{ secrets.AXIA_CLOUD_CI }}
+        run: |
+          set -euo pipefail
+          test -n "$PRIVATE_READ_TOKEN"
+          echo AXIA_TARGETED_AUTH_PRESENT
+      - name: Checkout exact instructor T06 test fix into ephemeral workspace
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 701849b7fd4669f7307e46a71f21cb5a641ceee1
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+          fetch-depth: 1
+          path: _instructor_private
+      - name: Install pinned Jazzy fake ROS test dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+            git build-essential cmake procps python3-yaml python3-pytest \
+            python3-colcon-common-extensions \
+            ros-jazzy-navigation2 ros-jazzy-nav2-bringup \
+            ros-jazzy-nav2-minimal-tb3-sim ros-jazzy-ros-gz \
+            ros-jazzy-rosbag2 ros-jazzy-rosbag2-storage-default-plugins \
+            ros-jazzy-rosgraph-msgs ros-jazzy-tf2-ros \
+            ros-jazzy-nav2-msgs ros-jazzy-rclpy ros-jazzy-action-msgs \
+            ros-jazzy-nav-msgs ros-jazzy-sensor-msgs ros-jazzy-std-msgs \
+            ros-jazzy-std-srvs ros-jazzy-geometry-msgs ros-jazzy-lifecycle-msgs
+      - name: Run 3 isolated fake DDS cases with redacted results only
+        shell: bash
+        run: |
+          set -eo pipefail
+          source /opt/ros/jazzy/setup.bash
+          set -u
+          python3 - <<'PY'
+          import json, os, subprocess, sys, tempfile
+          from pathlib import Path
+          sys.path.insert(0, 'scripts')
+          import private_ci_bridge as b
+          from private_junit_oracle import assess_fault_overlap
+          expected = '701849b7fd4669f7307e46a71f21cb5a641ceee1'
+          root = Path('_instructor_private').resolve()
+          verified = subprocess.run(['git','rev-parse','HEAD'],cwd=root,
+                                    capture_output=True,text=True,timeout=10)
+          if verified.returncode or verified.stdout.strip() != expected:
+              print('AXIA_T06_TARGETED=BLOCKED reason=PRIVATE_PIN_MISMATCH gate_accepted=false')
+              sys.exit(3)
+          env = b.private_runtime_env(root, os.environ)
+          env['GITHUB_SHA'] = expected
+          blocked = 0
+          try:
+              with tempfile.TemporaryDirectory(prefix='axia_t06_fake_private_') as folder:
+                  tmp = Path(folder)
+                  setup = b.ros_workspace_build(root,env,tmp)
+                  for i in (1,2,3):
+                      stage = f'T06_STALE_STAMP_R{i}'
+                      junit = tmp / f'{stage}.xml'
+                      cmd = b.bash_with_ros_overlay(setup,[
+                          'python3','-m','pytest','-q',
+                          'tests/ros_integration/test_p1_t06_faults.py::test_t06_repeated_old_stamp_protective_stop_and_cancel',
+                          f'--junitxml={junit}'])
+                      try:
+                          b.scrubbed_run(stage,cmd,root,dict(env,ROS_DOMAIN_ID=str(205+i)),
+                                        tmp,180,junit)
+                      except b.GateBlocked:
+                          blocked += 1
+                          print('AXIA_T06_SANITIZED '+json.dumps({
+                              'repeat':i, **assess_fault_overlap(junit)
+                          }, sort_keys=True),flush=True)
+          except Exception:
+              print('AXIA_T06_TARGETED=BLOCKED reason=PRIVATE_INFRA_OR_TEST gate_accepted=false')
+              sys.exit(3)
+          print('AXIA_T06_TARGETED=' + ('PASS' if blocked==0 else 'BLOCKED') +
+                ' repetitions=3 failures='+str(blocked)+
+                ' fake_only=true goal_sent_to_gazebo=false gate_accepted=false',flush=True)
+          sys.exit(3 if blocked else 0)
+          PY
+      - name: Clean ephemeral private source
+        shell: bash
+        if: always()
+        run: |
+          rm -rf _instructor_private
+          echo AXIA_T06_TARGETED_EPHEMERAL_CLEANUP
