@@ -36,7 +36,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 063d1788043b313ac9ec3b6ed91a6f972de3d965
+          ref: d181cbfe4a27a2e6b29cf2a99b0a1d20ea3670fa
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
           fetch-depth: 1
@@ -54,8 +54,8 @@ jobs:
           ) > "$LOG" 2>&1
           RC=$?
           set -e
-          if [[ "$RC" -eq 0 ]] && grep -Eq "^Ran 13 tests in " "$LOG" && grep -qx "OK" "$LOG"; then
-            echo "AXIA_PRIVATE_CI07_UNIT=PASS tests=13 gate_accepted=false certified_estop=false"
+          if [[ "$RC" -eq 0 ]] && grep -Eq "^Ran 15 tests in " "$LOG" && grep -qx "OK" "$LOG"; then
+            echo "AXIA_PRIVATE_CI07_UNIT=PASS tests=15 gate_accepted=false certified_estop=false"
           else
             echo "AXIA_PRIVATE_CI07_UNIT=BLOCKED reason=UNIT_CONTRACT_FAILED gate_accepted=false certified_estop=false"
             exit 2
