@@ -11,7 +11,7 @@ class IsolatedUnitAuditSecurityTests(unittest.TestCase):
 
     def test_source_and_identity_are_statically_pinned(self):
         x = WF.read_text(encoding="utf-8")
-        self.assertIn("ref: 063d1788043b313ac9ec3b6ed91a6f972de3d965", x)
+        self.assertIn("ref: d181cbfe4a27a2e6b29cf2a99b0a1d20ea3670fa", x)
         self.assertIn("ref: 516e86d2cb12c72251f1a16a2c9201afde757a58", x)
         self.assertIn("github.repository == 'silverbjin/axia-robot-safety-ci-public'", x)
         self.assertIn("github.actor == 'silverbjin'", x)
