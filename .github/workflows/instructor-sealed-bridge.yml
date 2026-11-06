@@ -1,0 +1,83 @@
+name: AXIA sealed instructor source Cloud CI (explicitly approved)
+on:
+  push:
+    branches: [feat/secure-instructor-cloud-bridge]
+    paths:
+      - '.github/workflows/instructor-sealed-bridge.yml'
+      - 'scripts/private_ci_bridge.py'
+      - 'tests/test_private_ci_bridge.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: axia-private-bridge
+  cancel-in-progress: true
+jobs:
+  public-fail-closed-contracts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Public-only bridge security tests
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p test_private_ci_bridge.py -v
+
+  instructor-pinned-unit-middleware:
+    needs: public-fail-closed-contracts
+    if: github.repository == 'silverbjin/axia-robot-safety-ci-public' && github.actor == 'silverbjin' && github.ref == 'refs/heads/feat/secure-instructor-cloud-bridge' && github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    container:
+      image: ros:jazzy-ros-base-noble
+    environment:
+      name: axia-instructor-sealed
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Credential exists - no data printed
+        env:
+          PRIVATE_READ_TOKEN: ${{ secrets.AXIA_INSTRUCTOR_READ_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "$PRIVATE_READ_TOKEN" ]; then
+            echo 'AXIA_PRIVATE_BRIDGE_AUTH_REQUIRED: configure approved environment secret in GitHub UI'
+            exit 4
+          fi
+          echo 'AXIA_PRIVATE_BRIDGE_AUTH_PRESENT'
+      - name: Checkout exact private instructor PR head - temporary only
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 72596eff4ad801054f27a3cae1cc60f305a1e6bf
+          token: ${{ secrets.AXIA_INSTRUCTOR_READ_TOKEN }}
+          persist-credentials: false
+          fetch-depth: 1
+          path: _instructor_private
+      - name: Install minimal Jazzy middleware test dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+            python3-pytest python3-colcon-common-extensions \
+            ros-jazzy-nav2-msgs ros-jazzy-rclpy ros-jazzy-action-msgs \
+            ros-jazzy-nav-msgs ros-jazzy-sensor-msgs ros-jazzy-std-msgs \
+            ros-jazzy-std-srvs ros-jazzy-geometry-msgs ros-jazzy-lifecycle-msgs
+      - name: Execute pinned private S01-S04 unit and real Jazzy middleware WITHOUT public logs/artifacts
+        shell: bash
+        run: |
+          set -eo pipefail
+          source /opt/ros/jazzy/setup.bash
+          set -u
+          python3 scripts/private_ci_bridge.py --private-root _instructor_private --gate unit-middleware
+      - name: Remove private checkout before runner cleanup
+        if: always()
+        shell: bash
+        run: |
+          rm -rf _instructor_private
+          echo 'AXIA_PRIVATE_BRIDGE_EPHEMERAL_CLEANUP'
