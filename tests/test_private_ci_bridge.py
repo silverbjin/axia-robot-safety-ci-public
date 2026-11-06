@@ -247,3 +247,93 @@ class ProtectedBridgeTests(TestCase):
         self.assertEqual(len({s[2] for s in suites}), 3)
         self.assertEqual([s[1] for s in suites], list(bridge.FAKE_FAULT_FILES))
         self.assertTrue(all(0 < s[2] < 232 for s in suites))
+
+    def test_t06_collection_is_exact_and_private_case_names_not_logged(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / 'private_tests.py'
+            private_marker = 'hidden_secret_identifier'
+            path.write_text(''.join(
+                f'def test_{private_marker}_{index}(): pass\\n'
+                for index in range(7)), encoding='utf-8')
+            result = bridge.private_pytest_cases(path)
+            self.assertEqual(len(result), 7)
+            self.assertTrue(all(private_marker in x for x in result))
+            path.write_text('def test_only_one(): pass\\n', encoding='utf-8')
+            with self.assertRaisesRegex(bridge.GateBlocked, 'T06_COLLECTION_MISMATCH'):
+                bridge.private_pytest_cases(path)
+
+    def test_t06_failure_classifier_returns_only_published_enum(self):
+        with tempfile.TemporaryDirectory() as temp:
+            marker = 'HIDDEN_PRIVATE_TRACE_ABC'
+            junit = Path(temp) / 'run.xml'
+            junit.write_text(
+                '<testsuite tests="1" failures="1">'
+                '<testcase classname="hidden" name="hidden">'
+                '<failure message="Goal authorization missing; ' + marker + '">'
+                + marker + '</failure></testcase></testsuite>', encoding='utf-8')
+            capture = io.StringIO()
+            with contextlib.redirect_stdout(capture):
+                reason = bridge.classify_private_junit_failure(junit)
+            self.assertEqual(reason, 'GOAL_AUTHORIZATION')
+            self.assertNotIn(marker, capture.getvalue())
+
+    def test_t06_each_case_uses_unique_domain_and_subprocess(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            p = root / bridge.FAKE_FAULT_FILES[0]
+            p.parent.mkdir(parents=True)
+            p.write_text(''.join(f'def test_synthetic_{i}(): pass\\n'
+                                 for i in range(7)), encoding='utf-8')
+            calls = []
+            def fake_scrub(stage, cmd, cwd, env, tmpdir, duration, junit=None):
+                calls.append((stage, cmd, env.get('ROS_DOMAIN_ID')))
+            with mock.patch.object(bridge, 'scrubbed_run', side_effect=fake_scrub):
+                output = io.StringIO()
+                with contextlib.redirect_stdout(output):
+                    bridge.run_isolated_t06(root, {}, root, root / 'install/setup.bash')
+            self.assertEqual([x[0] for x in calls],
+                             [f'T06_CASE_{i:02d}' for i in range(1,8)])
+            self.assertEqual([x[2] for x in calls],
+                             [str(i) for i in range(181,188)])
+            self.assertIn('"blocked_cases": 0', output.getvalue())
+            self.assertNotIn('test_synthetic_', output.getvalue())
+
+    def test_t06_isolated_failures_never_publish_private_tracebacks(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            p = root / bridge.FAKE_FAULT_FILES[0]
+            p.parent.mkdir(parents=True)
+            p.write_text(''.join(f'def test_synthetic_{i}(): pass\\n'
+                                 for i in range(7)), encoding='utf-8')
+            marker = 'SECRET_JUNIT_TEST_BODY'
+            def fake_scrub(stage, cmd, cwd, env, tmpdir, duration, junit=None):
+                if stage in ('T06_CASE_02', 'T06_CASE_05'):
+                    Path(junit).write_text(
+                        '<testsuite tests="1" failures="1"><testcase>'
+                        '<failure message="initial health never ready"> '
+                        + marker + '</failure></testcase></testsuite>', encoding='utf-8')
+                    raise bridge.GateBlocked('PRIVATE_STAGE_BLOCKED')
+            output = io.StringIO()
+            with mock.patch.object(bridge, 'scrubbed_run', side_effect=fake_scrub):
+                with contextlib.redirect_stdout(output):
+                    with self.assertRaisesRegex(bridge.GateBlocked, 'T06_ISOLATED_CASES_BLOCKED'):
+                        bridge.run_isolated_t06(root, {}, root, root / 'install/setup.bash')
+            self.assertIn('"blocked_cases": 2', output.getvalue())
+            self.assertIn('"case": "T06-02"', output.getvalue())
+            self.assertIn('"case": "T06-05"', output.getvalue())
+            self.assertIn('"reason": "BOOT_HEALTH"', output.getvalue())
+            self.assertNotIn(marker, output.getvalue())
+            self.assertNotIn('test_synthetic_', output.getvalue())
+
+    def test_parallel_workflow_independent_core_gates_and_strict_aggregation(self):
+        text = (Path(__file__).resolve().parents[1] /
+                '.github/workflows/instructor-sealed-bridge.yml').read_text()
+        self.assertIn('fail-fast: false', text)
+        self.assertIn('unit-middleware', text)
+        self.assertIn('fake-faults', text)
+        self.assertIn('gazebo3', text)
+        self.assertIn('instructor-prelocal-aggregate:', text)
+        self.assertIn("needs.instructor-core.result", text)
+        self.assertIn('gate_accepted=false', text)
+        self.assertNotIn('pull_request_target:', text)
+        self.assertIn('persist-credentials: false', text)
