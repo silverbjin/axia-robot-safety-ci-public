@@ -253,12 +253,12 @@ class ProtectedBridgeTests(TestCase):
             path = Path(temp) / 'private_tests.py'
             private_marker = 'hidden_secret_identifier'
             path.write_text(''.join(
-                f'def test_{private_marker}_{index}(): pass\\n'
+                f'def test_{private_marker}_{index}(): pass\n'
                 for index in range(7)), encoding='utf-8')
             result = bridge.private_pytest_cases(path)
             self.assertEqual(len(result), 7)
             self.assertTrue(all(private_marker in x for x in result))
-            path.write_text('def test_only_one(): pass\\n', encoding='utf-8')
+            path.write_text('def test_only_one(): pass\n', encoding='utf-8')
             with self.assertRaisesRegex(bridge.GateBlocked, 'T06_COLLECTION_MISMATCH'):
                 bridge.private_pytest_cases(path)
 
@@ -282,7 +282,7 @@ class ProtectedBridgeTests(TestCase):
             root = Path(temp)
             p = root / bridge.FAKE_FAULT_FILES[0]
             p.parent.mkdir(parents=True)
-            p.write_text(''.join(f'def test_synthetic_{i}(): pass\\n'
+            p.write_text(''.join(f'def test_synthetic_{i}(): pass\n'
                                  for i in range(7)), encoding='utf-8')
             calls = []
             def fake_scrub(stage, cmd, cwd, env, tmpdir, duration, junit=None):
@@ -303,7 +303,7 @@ class ProtectedBridgeTests(TestCase):
             root = Path(temp)
             p = root / bridge.FAKE_FAULT_FILES[0]
             p.parent.mkdir(parents=True)
-            p.write_text(''.join(f'def test_synthetic_{i}(): pass\\n'
+            p.write_text(''.join(f'def test_synthetic_{i}(): pass\n'
                                  for i in range(7)), encoding='utf-8')
             marker = 'SECRET_JUNIT_TEST_BODY'
             def fake_scrub(stage, cmd, cwd, env, tmpdir, duration, junit=None):
