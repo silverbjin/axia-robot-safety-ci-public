@@ -53,7 +53,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: ef948de0298fdf057a34601c5e5cbc310f5517f5
+          ref: 430e04fd5ce47b4909f4011d74fc6ec1dd1c338f
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
           fetch-depth: 1

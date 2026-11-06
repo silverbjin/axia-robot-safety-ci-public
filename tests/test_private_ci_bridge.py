@@ -239,3 +239,11 @@ class ProtectedBridgeTests(TestCase):
                 ['SUPERVISOR_SCAN_CALLBACK_OVERRUN', 'SHA_MISMATCH',
                  'UNRECOGNIZED'])
             self.assertNotIn(secret, capture.getvalue())
+
+    def test_ros_fake_suite_isolation_has_unique_domain_and_process(self):
+        suites = bridge.isolated_fault_suites()
+        self.assertEqual(len(suites), 3)
+        self.assertEqual(len({s[0] for s in suites}), 3)
+        self.assertEqual(len({s[2] for s in suites}), 3)
+        self.assertEqual([s[1] for s in suites], list(bridge.FAKE_FAULT_FILES))
+        self.assertTrue(all(0 < s[2] < 232 for s in suites))

@@ -13,7 +13,7 @@ import sys
 import tempfile
 import xml.etree.ElementTree as ET
 
-PIN = 'ef948de0298fdf057a34601c5e5cbc310f5517f5'
+PIN = '430e04fd5ce47b4909f4011d74fc6ec1dd1c338f'
 UNIT_FILES = (
     'tests/unit/test_p1_fsm.py', 'tests/unit/test_p1_watchdog.py',
     'tests/unit/test_p1_t08_scan_full_circle.py',
@@ -279,6 +279,15 @@ def private_evidence_diagnostics(root, count):
     return out
 
 
+def isolated_fault_suites():
+    """Stable category labels only; no hidden test names or exception details."""
+    return (
+        ('T06_FAULT', FAKE_FAULT_FILES[0], 181),
+        ('T04_ACTION', FAKE_FAULT_FILES[1], 182),
+        ('T05_LAUNCH', FAKE_FAULT_FILES[2], 183),
+    )
+
+
 def run_gate(private_root, gate):
     root = validate_private_commit(private_root)
     env = private_runtime_env(root, os.environ)
@@ -294,14 +303,22 @@ def run_gate(private_root, gate):
                        *UNIT_FILES, f'--junitxml={junit}']
                 scrubbed_run('UNIT', cmd, root, env, tmpdir, 600, junit)
             setup_file = ros_workspace_build(root, env, tmpdir)
-            stage = 'JAZZY_MIDDLEWARE' if gate == 'unit-middleware' else 'JAZZY_FAKE_FAULTS'
-            files = DDS_FILES if gate == 'unit-middleware' else FAKE_FAULT_FILES
-            junit = tmpdir / (stage + '.xml')
-            cmd = bash_with_ros_overlay(
-                setup_file, ['python3', '-m', 'pytest', '-q',
-                             *files, f'--junitxml={junit}'])
-            scrubbed_run(stage, cmd, root, env, tmpdir,
-                         900 if gate == 'unit-middleware' else 1200, junit)
+            if gate == 'unit-middleware':
+                junit = tmpdir / 'JAZZY_MIDDLEWARE.xml'
+                cmd = bash_with_ros_overlay(
+                    setup_file, ['python3', '-m', 'pytest', '-q',
+                                 *DDS_FILES, f'--junitxml={junit}'])
+                scrubbed_run('JAZZY_MIDDLEWARE', cmd, root, env, tmpdir, 900, junit)
+            else:
+                # Separate ROS middleware lifetime/Domain per suite. One
+                # pytest process can leak ROS graph/executor state into the next.
+                for stage, path, domain in isolated_fault_suites():
+                    suite_env = dict(env, ROS_DOMAIN_ID=str(domain))
+                    junit = tmpdir / (stage + '.xml')
+                    cmd = bash_with_ros_overlay(
+                        setup_file, ['python3', '-m', 'pytest', '-q',
+                                     path, f'--junitxml={junit}'])
+                    scrubbed_run(stage, cmd, root, suite_env, tmpdir, 600, junit)
         elif gate in ('gazebo3', 'gazebo10'):
             count = 3 if gate == 'gazebo3' else 10
             overlay = tmpdir / 'official-nav2-overlay'
