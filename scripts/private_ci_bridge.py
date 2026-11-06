@@ -14,7 +14,7 @@ import sys
 import tempfile
 import xml.etree.ElementTree as ET
 
-PIN = '8c57dad5d4d03d132bbee99020e5e36fc7673c80'
+PIN = '9a9f1fd328f273542205b82ddbca902fc31bb986'
 UNIT_FILES = (
     'tests/unit/test_p1_fsm.py', 'tests/unit/test_p1_watchdog.py',
     'tests/unit/test_p1_t08_scan_full_circle.py',
@@ -24,6 +24,21 @@ UNIT_FILES = (
     'tests/unit/test_p1_s03_ros_observability.py',
     'tests/unit/test_p1_s04_s05_preacceptance.py',
 )
+# Exact HEAD R01-R08 test-only suite, executed *after* baseline UNIT; no ROS actuation.
+R01_R08_UNIT_FILES = (
+    'tests/unit/test_p1_t08_provenance.py',
+    'tests/unit/test_p1_t08_r01_binding.py',
+    'tests/unit/test_p1_t08_supervisor_receipt.py',
+    'tests/unit/test_p1_cloud_g00_admission.py',
+    'tests/unit/test_p1_cloud_g00_start_ack.py',
+    'tests/unit/test_p1_t08_r02_fake_goal.py',
+    'tests/unit/test_p1_t08_r03_no_motion.py',
+    'tests/unit/test_p1_t08_r04_custody.py',
+    'tests/unit/test_p1_t08_r06_triplicate.py',
+    'tests/unit/test_p1_t08_r07_fault_suite.py',
+    'tests/unit/test_p1_t08_r08_release.py',
+)
+
 DDS_FILES = (
     'tests/ros_integration/test_p1_s01_bootstrap_node.py',
     'tests/ros_integration/test_p1_t08_health_diag.py',
@@ -495,6 +510,10 @@ def run_gate(private_root, gate):
                 cmd = ['python3', '-m', 'pytest', '-q',
                        *UNIT_FILES, f'--junitxml={junit}']
                 scrubbed_run('UNIT', cmd, root, env, tmpdir, 600, junit)
+                extra_junit = tmpdir / 'R01_R08_UNIT.xml'
+                extra_cmd = ['python3', '-m', 'pytest', '-q',
+                             *R01_R08_UNIT_FILES, f'--junitxml={extra_junit}']
+                scrubbed_run('R01_R08_UNIT', extra_cmd, root, env, tmpdir, 600, extra_junit)
             setup_file = ros_workspace_build(root, env, tmpdir)
             if gate == 'unit-middleware':
                 junit = tmpdir / 'JAZZY_MIDDLEWARE.xml'

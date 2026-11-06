@@ -24,6 +24,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 -m unittest discover -s tests -p test_private_ci_bridge.py -v
+          python3 -m unittest discover -s tests -p test_p1_t08_exact_sha_bridge.py -v
 
   instructor-core:
     needs: public-fail-closed-contracts
@@ -58,7 +59,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 8c57dad5d4d03d132bbee99020e5e36fc7673c80
+          ref: 9a9f1fd328f273542205b82ddbca902fc31bb986
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
           fetch-depth: 1
@@ -122,7 +123,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 8c57dad5d4d03d132bbee99020e5e36fc7673c80
+          ref: 9a9f1fd328f273542205b82ddbca902fc31bb986
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
           fetch-depth: 1
