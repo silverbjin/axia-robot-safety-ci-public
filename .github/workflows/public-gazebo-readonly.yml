@@ -16,7 +16,7 @@ permissions:
   contents: read
 concurrency:
   group: axia-public-gazebo
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   gazebo-readonly:
     runs-on: ubuntu-24.04
