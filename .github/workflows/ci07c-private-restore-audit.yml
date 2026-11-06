@@ -42,6 +42,30 @@ jobs:
             echo 'AXIA_CI07C_RESTORE_UNIT=BLOCKED reason=UNIT_CONTRACT_FAILED remote_aws=false independent_audit_verified=false gate_accepted=false'
             exit 2
           fi
+      - name: Classify private synthetic case failures without filenames or tracebacks
+        if: failure()
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd _instructor_private
+          PYTHONPATH=.:tests/unit python3 - <<'PY'
+          import contextlib, io, unittest
+          suite = unittest.defaultTestLoader.discover(
+              "tests/unit", pattern="test_p1_s3_custody_restore.py")
+          def walk(group):
+              for item in group:
+                  if isinstance(item, unittest.TestSuite):
+                      yield from walk(item)
+                  else:
+                      yield item
+          for i, case in enumerate(walk(suite), 1):
+              result = unittest.TestResult()
+              with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                  case.run(result)
+              status = "PASS" if result.wasSuccessful() else (
+                  "ERROR" if result.errors else "FAIL")
+              print(f"AXIA_CI07C_CASE_{i}={status}")
+          PY
       - name: Cleanup private checkout
         if: always()
         shell: bash
