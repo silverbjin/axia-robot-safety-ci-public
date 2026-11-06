@@ -25,11 +25,16 @@ jobs:
           set -euo pipefail
           python3 -m unittest discover -s tests -p test_private_ci_bridge.py -v
 
-  instructor-pinned-integration-prelocal:
+  instructor-core:
     needs: public-fail-closed-contracts
     if: github.repository == 'silverbjin/axia-robot-safety-ci-public' && github.actor == 'silverbjin' && github.ref == 'refs/heads/feat/secure-instructor-cloud-bridge' && github.event_name == 'push'
+    strategy:
+      fail-fast: false
+      matrix:
+        gate: [unit-middleware, fake-faults, gazebo3]
+    name: instructor-core (${{ matrix.gate }})
     runs-on: ubuntu-24.04
-    timeout-minutes: 210
+    timeout-minutes: 100
     container:
       image: ros:jazzy-ros-base-noble
     environment:
@@ -73,41 +78,101 @@ jobs:
             ros-jazzy-nav2-msgs ros-jazzy-rclpy ros-jazzy-action-msgs \
             ros-jazzy-nav-msgs ros-jazzy-sensor-msgs ros-jazzy-std-msgs \
             ros-jazzy-std-srvs ros-jazzy-geometry-msgs ros-jazzy-lifecycle-msgs
-      - name: Execute pinned private S01-S04 unit and real Jazzy middleware WITHOUT public logs/artifacts
+      - name: Execute assigned isolated private gate (no public raw logs)
         shell: bash
+        env:
+          PRIVATE_GATE: ${{ matrix.gate }}
         run: |
           set -eo pipefail
           source /opt/ros/jazzy/setup.bash
           set -u
-          python3 scripts/private_ci_bridge.py --private-root _instructor_private --gate unit-middleware
-      - name: Real Jazzy private Goal Cancel and controlled fake fault gates (no Gazebo)
-        shell: bash
-        run: |
-          set -eo pipefail
-          source /opt/ros/jazzy/setup.bash
-          set -u
-          python3 scripts/private_ci_bridge.py --private-root _instructor_private --gate fake-faults
-      - name: Actual official Gazebo with PRIVATE Supervisor 3x read-only prelocal
-        shell: bash
-        run: |
-          set -eo pipefail
-          source /opt/ros/jazzy/setup.bash
-          set -u
-          python3 scripts/private_ci_bridge.py --private-root _instructor_private --gate gazebo3
-      - name: Actual official Gazebo with PRIVATE Supervisor 10x read-only stability
-        shell: bash
-        run: |
-          set -eo pipefail
-          source /opt/ros/jazzy/setup.bash
-          set -u
-          python3 scripts/private_ci_bridge.py --private-root _instructor_private --gate gazebo10
-      - name: Enforce prelocal scope before exiting
-        shell: bash
-        run: |
-          printf '%s\n' 'AXIA_PRIVATE_PRELOCAL_SCOPE=READ_ONLY_NO_REAL_GOAL_NO_REAL_FAULT; gate_accepted=false; certified_estop=false'
+          python3 scripts/private_ci_bridge.py --private-root _instructor_private --gate "$PRIVATE_GATE"
       - name: Remove private checkout before runner cleanup
         if: always()
         shell: bash
         run: |
           rm -rf _instructor_private
           echo 'AXIA_PRIVATE_BRIDGE_EPHEMERAL_CLEANUP'
+
+  instructor-gazebo10:
+    needs: [public-fail-closed-contracts, instructor-core]
+    if: github.repository == 'silverbjin/axia-robot-safety-ci-public' && github.actor == 'silverbjin' && github.ref == 'refs/heads/feat/secure-instructor-cloud-bridge' && github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    container:
+      image: ros:jazzy-ros-base-noble
+    environment:
+      name: axia-instructor-sealed
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Credential exists - no data printed
+        env:
+          PRIVATE_READ_TOKEN: ${{ secrets.AXIA_CLOUD_CI }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "$PRIVATE_READ_TOKEN" ]; then
+            echo 'AXIA_PRIVATE_BRIDGE_AUTH_REQUIRED: configure approved environment secret in GitHub UI'
+            exit 4
+          fi
+          echo 'AXIA_PRIVATE_BRIDGE_AUTH_PRESENT'
+      - name: Checkout exact private instructor PR head - temporary only
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 57f83360eed6d36a35e382e323941c3a5b75377f
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+          fetch-depth: 1
+          path: _instructor_private
+      - name: Install pinned private Jazzy integration and official Harmonic dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+            git build-essential cmake procps python3-yaml python3-pytest \
+            python3-colcon-common-extensions \
+            ros-jazzy-navigation2 ros-jazzy-nav2-bringup \
+            ros-jazzy-nav2-minimal-tb3-sim ros-jazzy-ros-gz \
+            ros-jazzy-rosbag2 ros-jazzy-rosbag2-storage-default-plugins \
+            ros-jazzy-rosgraph-msgs ros-jazzy-tf2-ros \
+            ros-jazzy-nav2-msgs ros-jazzy-rclpy ros-jazzy-action-msgs \
+            ros-jazzy-nav-msgs ros-jazzy-sensor-msgs ros-jazzy-std-msgs \
+            ros-jazzy-std-srvs ros-jazzy-geometry-msgs ros-jazzy-lifecycle-msgs
+      - name: Execute private Gazebo 10x READ-ONLY stability if all core gates passed
+        shell: bash
+        run: |
+          set -eo pipefail
+          source /opt/ros/jazzy/setup.bash
+          set -u
+          python3 scripts/private_ci_bridge.py --private-root _instructor_private --gate gazebo10
+      - name: Remove private checkout before runner cleanup
+        if: always()
+        shell: bash
+        run: |
+          rm -rf _instructor_private
+          echo 'AXIA_PRIVATE_BRIDGE_EPHEMERAL_CLEANUP'
+
+  instructor-prelocal-aggregate:
+    if: always()
+    needs: [public-fail-closed-contracts, instructor-core, instructor-gazebo10]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Mandatory independent gates must ALL be green
+        env:
+          PUBLIC: ${{ needs.public-fail-closed-contracts.result }}
+          CORE: ${{ needs.instructor-core.result }}
+          GAZEBO10: ${{ needs.instructor-gazebo10.result }}
+        run: |
+          set -euo pipefail
+          echo "PUBLIC=$PUBLIC CORE=$CORE GAZEBO10=$GAZEBO10"
+          echo "AXIA_PRELOCAL_CANDIDATE_ONLY gate_accepted=false certified_estop=false"
+          echo "G00_REAL_GOAL=NOT_RUN G03_G04_REAL_GAZEBO_FAULT=NOT_RUN"
+          if [[ "$PUBLIC" != success || "$CORE" != success || "$GAZEBO10" != success ]]; then
+            echo "P1_PRELOCAL_BLOCKED"
+            exit 3
+          fi
+          echo "PRELOCAL_READY_FOR_INDEPENDENT_REVIEW_ONLY; main=NOT_AUTHORIZED"
