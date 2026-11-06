@@ -7,7 +7,7 @@
 - 공개 실행 저장소: silverbjin/axia-robot-safety-ci-public
 - 별도 개발 브랜치: feat/secure-instructor-cloud-bridge (스택 PR, main 아님)
 - 비공개 코드: silverbjin/axia-robot-safety-instructor
-- 비공개 목표 HEAD: 2cb7900f61524e51662a03dc457c589d5fb6e600 (PR #38)
+- 비공개 목표 HEAD: bdcad391bf3012353d222cc04628d2113d0d0b87 (PR #38)
 - workflow_dispatch는 Workflow가 default branch에 존재해야 가능하므로, main 병합 전에는 **위 고정 개발 브랜치의 push 이벤트**를 사용한다.
 - pull_request, pull_request_target, workflow_run 이벤트로 비공개 토큰을 전달하지 않는다.
 - GITHUB_TOKEN: 공개 저장소 contents:read. 별도 PAT는 PRIVATE Checkout step에만 주입.
@@ -70,4 +70,8 @@ Environment Secret, Required Reviewer, SHA 고정, 최소 권한, raw 출력/Art
 ## Cold-start Clock 실측 결함 대응 (고정 비공개 SHA)
 
 기존 #42182765806: 1/3 STARTUP/CLOCK_READY BLOCKED, 2/3 startup+Supervisor+shutdown OK이나 /scan rosbag 0.5초 gap 2건, 3/3 startup+Supervisor+shutdown+scan contract OK. 이 샘플은 전체 READY가 아니다.
-비공개 강사용 PR #38 수정 SHA `2cb7900f61524e51662a03dc457c589d5fb6e600`으로 pin 갱신. 초기 Clock phase 최장 45초와 runtime 0.5초 Scan watchdog 분리, 실제 ROS clock progress 2회 전진 조건 불변. clock_diagnostics.json reason은 공개 허용 고정 enum만 출력한다.
+비공개 강사용 PR #38 수정 SHA `bdcad391bf3012353d222cc04628d2113d0d0b87`으로 pin 갱신. 초기 Clock phase 최장 45초와 runtime 0.5초 Scan watchdog 분리, 실제 ROS clock progress 2회 전진 조건 불변. clock_diagnostics.json reason은 공개 허용 고정 enum만 출력한다.
+
+## S02/S03 상대 시간계측 — 민감정보 없는 공개 진단
+
+강사 고정 SHA `bdcad391bf3012353d222cc04628d2113d0d0b87`: 기존 rosbag2 receive gap 외에 Supervisor 실제 `time.monotonic()` Scan 콜백 간격 통계와 독립 `/clock` RTF를 읽기 전용 prestart에서 수집. 공개 브리지는 callback 횟수/0.5s 초과 수/최대값·RTF 범위만 allowlist로 출력. 비공개 State JSON, 스택·로그·raw rosbag 절대 출력/Artifact 업로드 금지. S05 성공 임계값은 아직 원래 정책 유지하고, callback/RTF 측정만 추가한 것이며 합격 주장 금지.

@@ -13,7 +13,7 @@ import sys
 import tempfile
 import xml.etree.ElementTree as ET
 
-PIN = '2cb7900f61524e51662a03dc457c589d5fb6e600'
+PIN = 'bdcad391bf3012353d222cc04628d2113d0d0b87'
 UNIT_FILES = (
     'tests/unit/test_p1_fsm.py', 'tests/unit/test_p1_watchdog.py',
     'tests/unit/test_p1_t08_scan_full_circle.py',
@@ -160,7 +160,7 @@ SAFE_EVIDENCE_FIELDS = {
     'startup_verdict.json': ('startup', 'status', ('SMOKE_READY', 'BLOCKED', 'ERROR')),
     'pre_goal_gate.json': ('pre_goal', 'status', ('PRE_GOAL_READY', 'BLOCKED', 'PRE_GOAL_BLOCKED')),
     'supervisor_prestart.json': ('supervisor', 'status', ('SUPERVISOR_PRESTART_READY', 'SUPERVISOR_PRESTART_BLOCKED')),
-    'shutdown_verdict.json': ('shutdown', 'status', ('SHUTDOWN_CLEAN', 'BLOCKED', 'SHUTDOWN_BLOCKED')),
+    'shutdown_verdict.json': ('shutdown', 'status', ('SHUTDOWN_CLEAN', 'SHUTDOWN_FAILED', 'SHUTDOWN_INCONCLUSIVE', 'BLOCKED', 'SHUTDOWN_BLOCKED')),
     'scan_timing.json': ('scan_timing', 'status', ('SCAN_TIMING_OBSERVED_ONLY',
                                                 'SCAN_TIMING_REQUIRES_CALIBRATION', 'SCAN_TIMING_INVALID')),
 }
@@ -212,6 +212,39 @@ def private_evidence_diagnostics(root, count):
         record['clock_probe_reason'] = ('MISSING'
             if not (folder / 'clock_diagnostics.json').is_file() else
             reason if reason in safe_clock_reasons else 'UNRECOGNIZED')
+        prestart = _private_json(folder / 'supervisor_prestart.json')
+        last_message = prestart.get('last_message')
+        health = last_message.get('health_diagnostics') if isinstance(last_message, dict) else None
+        health = health if isinstance(health, dict) else {}
+        for source_field, public_field in (
+            ('scan_callback_intervals', 'callback_intervals'),
+            ('scan_callback_gaps_over_timeout', 'callback_gaps_over_0_5s'),
+            ('scan_callback_invalid_intervals', 'callback_invalid_intervals'),
+        ):
+            value = health.get(source_field)
+            record[public_field] = (value if type(value) is int
+                and 0 <= value <= 1000000 else 'UNAVAILABLE')
+        max_gap = health.get('scan_callback_max_gap_sec')
+        record['callback_max_gap_sec'] = (round(max_gap, 4)
+            if type(max_gap) in (float, int) and 0 <= max_gap <= 100
+            else 'UNAVAILABLE')
+        rtf = prestart.get('clock_rtf')
+        rtf = rtf if isinstance(rtf, dict) else {}
+        record['rtf_status'] = (
+            rtf.get('status') if rtf.get('status') in
+            ('RTF_OBSERVED', 'RTF_INSUFFICIENT', 'RTF_CLOCK_REGRESSION')
+            else 'UNAVAILABLE')
+        value = rtf.get('rtf')
+        record['rtf'] = (round(value, 3)
+            if type(value) in (int, float) and 0 <= value <= 100
+            else 'UNAVAILABLE')
+        shutdown = _private_json(folder / 'shutdown_verdict.json')
+        ack = shutdown.get('lifecycle_shutdown_acknowledged')
+        record['shutdown_ack'] = ack if type(ack) is bool else 'UNAVAILABLE'
+        fatals = shutdown.get('fatal_signatures')
+        record['shutdown_fatal_count'] = (
+            len(fatals) if isinstance(fatals, list) and len(fatals) < 1000
+            else 'UNAVAILABLE')
         out.append(record)
         print('AXIA_PRIVATE_DIAGNOSTIC ' + json.dumps(record, sort_keys=True),
               flush=True)

@@ -192,3 +192,32 @@ class ProtectedBridgeTests(TestCase):
                 rows = bridge.private_evidence_diagnostics(root, 1)
             self.assertEqual(rows[0]['clock_probe_reason'], 'UNRECOGNIZED')
             self.assertNotIn(secret, capture.getvalue())
+
+    def test_redacted_supervisor_callback_rtf_and_shutdown_cannot_print_private_values(self):
+        with tempfile.TemporaryDirectory() as root:
+            folder = Path(root) / 'run_1'
+            folder.mkdir()
+            secret = 'PRIVATE_SUPERVISOR_STACKTRACE_NO_PUBLISH'
+            (folder / 'supervisor_prestart.json').write_text(json.dumps({
+                'last_message': {'health_diagnostics': {
+                    'scan_callback_intervals': 50,
+                    'scan_callback_gaps_over_timeout': 2,
+                    'scan_callback_invalid_intervals': 0,
+                    'scan_callback_max_gap_sec': 0.62,
+                    'raw_trace': secret}},
+                'clock_rtf': {'status': 'RTF_OBSERVED', 'rtf': 0.8, 'trace': secret}
+            }))
+            (folder / 'shutdown_verdict.json').write_text(json.dumps({
+                'status': 'SHUTDOWN_INCONCLUSIVE',
+                'lifecycle_shutdown_acknowledged': False,
+                'fatal_signatures': [secret]
+            }))
+            capture = io.StringIO()
+            with contextlib.redirect_stdout(capture):
+                rows = bridge.private_evidence_diagnostics(root, 1)
+            self.assertNotIn(secret, capture.getvalue())
+            self.assertEqual(rows[0]['callback_intervals'], 50)
+            self.assertEqual(rows[0]['callback_gaps_over_0_5s'], 2)
+            self.assertEqual(rows[0]['rtf'], 0.8)
+            self.assertEqual(rows[0]['shutdown_fatal_count'], 1)
+            self.assertEqual(rows[0]['shutdown'], 'SHUTDOWN_INCONCLUSIVE')
