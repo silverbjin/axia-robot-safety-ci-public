@@ -5,6 +5,7 @@ No private stdout/stderr, JUnit XML, rosbag, source or credentials may be publis
 All evidence here is EPHEMERAL. This is NOT the final acceptance runner.
 """
 import argparse
+import ast
 import json
 import os
 from pathlib import Path
@@ -279,6 +280,81 @@ def private_evidence_diagnostics(root, count):
     return out
 
 
+def private_pytest_cases(path, expected_count=7):
+    """Discover top-level private test functions without publishing test names."""
+    tree = ast.parse(Path(path).read_text(encoding='utf-8'))
+    cases = [node.name for node in tree.body
+             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+             and node.name.startswith('test_')]
+    if (len(cases) != expected_count or len(set(cases)) != expected_count
+            or any(not name.isidentifier() for name in cases)):
+        raise GateBlocked('T06_COLLECTION_MISMATCH')
+    return cases
+
+
+def classify_private_junit_failure(path):
+    """Strict enum-based diagnosis; never serialize private traceback or test ID."""
+    if not Path(path).is_file():
+        return 'JUNIT_MISSING'
+    try:
+        root = ET.parse(path).getroot()
+    except (ET.ParseError, OSError):
+        return 'JUNIT_INVALID'
+    failures = [x for x in root.iter() if x.tag in ('failure', 'error')]
+    if not failures:
+        return 'NONZERO_WITHOUT_JUNIT_FAILURE'
+    text = ' '.join((str(x.get('message', '')) + ' ' + str(x.text or ''))
+                    for x in failures).lower()
+    rules = (
+        ('initial health never ready', 'BOOT_HEALTH'),
+        ('goal authorization missing', 'GOAL_AUTHORIZATION'),
+        ('authorized goal did not produce nonzero', 'MOTION_COMMAND_SETUP'),
+        ('unexpected stop cause', 'TRIP_REASON_RACE'),
+        ('missing navigatetopose cancellation', 'ACTION_CANCEL_MISSING'),
+        ('goal cancellation must reach terminal', 'CANCEL_NOT_TERMINAL'),
+        ('test service not ready', 'SERVICE_DISCOVERY'),
+        ('ros service response timeout', 'SERVICE_RESPONSE_TIMEOUT'),
+        ('not in', 'ASSERTION_FAILED'),
+    )
+    for needle, code in rules:
+        if needle in text:
+            return code
+    return 'OTHER_ASSERTION_OR_FIXTURE'
+
+
+def run_isolated_t06(root, env, tmpdir, setup):
+    """Each test has a fresh process+DDS Domain and sealed private JUnit."""
+    path = FAKE_FAULT_FILES[0]
+    cases = private_pytest_cases(root / path)
+    problems = []
+    for index, name in enumerate(cases, start=1):
+        stage = f'T06_CASE_{index:02d}'
+        domain = 180 + index
+        junit = tmpdir / (stage + '.xml')
+        cmd = bash_with_ros_overlay(
+            setup, ['python3', '-m', 'pytest', '-q',
+                    f'{path}::{name}', f'--junitxml={junit}'])
+        try:
+            scrubbed_run(stage, cmd, root, dict(env, ROS_DOMAIN_ID=str(domain)),
+                         tmpdir, 135, junit)
+        except GateBlocked:
+            problems.append(index)
+            print('AXIA_PRIVATE_T06_DIAGNOSTIC ' + json.dumps({
+                'case': f'T06-{index:02d}',
+                'status': 'BLOCKED',
+                'reason': classify_private_junit_failure(junit),
+                'private_log_uploaded': False,
+                'gate_accepted': False
+            }, sort_keys=True), flush=True)
+    print('AXIA_PRIVATE_T06_SUMMARY ' + json.dumps({
+        'cases': len(cases), 'blocked_cases': len(problems),
+        'status': 'PASS' if not problems else 'BLOCKED',
+        'gate_accepted': False
+    }, sort_keys=True), flush=True)
+    if problems:
+        raise GateBlocked('T06_ISOLATED_CASES_BLOCKED')
+
+
 def isolated_fault_suites():
     """Stable category labels only; no hidden test names or exception details."""
     return (
@@ -310,9 +386,11 @@ def run_gate(private_root, gate):
                                  *DDS_FILES, f'--junitxml={junit}'])
                 scrubbed_run('JAZZY_MIDDLEWARE', cmd, root, env, tmpdir, 900, junit)
             else:
-                # Separate ROS middleware lifetime/Domain per suite. One
-                # pytest process can leak ROS graph/executor state into the next.
-                for stage, path, domain in isolated_fault_suites():
+                # T06: seven case-level isolated ROS contexts (not one shared
+                # module process). Each case's private traceback is ephemeral.
+                run_isolated_t06(root, env, tmpdir, setup_file)
+                # T04/T05 maintain independent process and DDS domain.
+                for stage, path, domain in isolated_fault_suites()[1:]:
                     suite_env = dict(env, ROS_DOMAIN_ID=str(domain))
                     junit = tmpdir / (stage + '.xml')
                     cmd = bash_with_ros_overlay(
