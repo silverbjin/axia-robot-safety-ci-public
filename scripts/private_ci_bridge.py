@@ -14,7 +14,7 @@ import sys
 import tempfile
 import xml.etree.ElementTree as ET
 
-PIN = 'f25177f5089131715dd678a185a2739f4810c4fb'
+PIN = '8c57dad5d4d03d132bbee99020e5e36fc7673c80'
 UNIT_FILES = (
     'tests/unit/test_p1_fsm.py', 'tests/unit/test_p1_watchdog.py',
     'tests/unit/test_p1_t08_scan_full_circle.py',
@@ -353,6 +353,13 @@ def private_evidence_diagnostics(root, count):
         ready = localization.get('service_ready_after_timeout')
         record['localization_service_ready_after_timeout'] = (
             ready if type(ready) is bool else 'UNAVAILABLE')
+        manager_active = localization.get('manager_active_after_timeout')
+        manager_states = (
+            'ACTIVE','INACTIVE','NO_RESPONSE','SERVICE_UNAVAILABLE',
+            'SERVICE_ERROR','INVALID_RESPONSE')
+        record['localization_manager_active_after_timeout'] = (
+            manager_active if type(manager_active) is str
+            and manager_active in manager_states else 'UNAVAILABLE')
         states = localization.get('managed_nodes_after_timeout')
         states = states if isinstance(states,dict) else {}
         allowed_states = (
