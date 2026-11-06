@@ -14,7 +14,7 @@ import sys
 import tempfile
 import xml.etree.ElementTree as ET
 
-PIN = '0d921ec872c51f22d087cf4de9a2d8a9c06597ec'
+PIN = '1b913cf0ea691bf08269f80fb6d01708bf0734c4'
 UNIT_FILES = (
     'tests/unit/test_p1_fsm.py', 'tests/unit/test_p1_watchdog.py',
     'tests/unit/test_p1_t08_scan_full_circle.py',
@@ -437,6 +437,17 @@ def isolated_fault_suites():
     )
 
 
+def preloc_settings(gate):
+    """Exact flags for no-motion comparison, not final G00/G03/G04."""
+    if gate == 'gazebo3':
+        return 3, False
+    if gate == 'gazebo3-prepause':
+        return 3, True
+    if gate == 'gazebo10':
+        return 10, True
+    raise GateBlocked('UNSUPPORTED_GATE')
+
+
 def run_gate(private_root, gate):
     root = validate_private_commit(private_root)
     env = private_runtime_env(root, os.environ)
@@ -470,8 +481,12 @@ def run_gate(private_root, gate):
                         setup_file, ['python3', '-m', 'pytest', '-q',
                                      path, f'--junitxml={junit}'])
                     scrubbed_run(stage, cmd, root, suite_env, tmpdir, 600, junit)
-        elif gate in ('gazebo3', 'gazebo10'):
-            count = 3 if gate == 'gazebo3' else 10
+        elif gate in ('gazebo3', 'gazebo3-prepause', 'gazebo10'):
+            count, prepause = preloc_settings(gate)
+            if prepause:
+                # No-goal only: the private shutdown tool separately refuses
+                # this opt-in outside AXIA_T08_PRE_GOAL_NO_GOAL_CI.
+                env['AXIA_P1_SHUTDOWN_LOCALIZATION_PREPAUSE'] = 'YES'
             overlay = tmpdir / 'official-nav2-overlay'
             scrubbed_run('UPSTREAM_OVERLAY',
                          ['bash', 'scripts/build_official_nav2_lifecycle_overlay.sh', str(overlay)],
@@ -497,7 +512,7 @@ def run_gate(private_root, gate):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--private-root', required=True)
-    parser.add_argument('--gate', choices=('unit-middleware', 'fake-faults', 'gazebo3', 'gazebo10'), required=True)
+    parser.add_argument('--gate', choices=('unit-middleware', 'fake-faults', 'gazebo3', 'gazebo3-prepause', 'gazebo10'), required=True)
     args = parser.parse_args()
     try:
         run_gate(args.private_root, args.gate)
