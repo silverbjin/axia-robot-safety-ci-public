@@ -486,3 +486,31 @@ class ProtectedBridgeTests(TestCase):
                   '.github/workflows/instructor-sealed-bridge.yml').read_text()
         self.assertEqual(workflow.count('ref: '+bridge.PIN),2)
         self.assertNotIn('pull_request_target:',workflow)
+
+    def test_readonly_localization_phase_diagnostic_is_only_safe_enum(self):
+        with tempfile.TemporaryDirectory() as temp:
+            folder=Path(temp)/'run_1'
+            folder.mkdir()
+            secret="PRIVATE_LOG_LOCATION_NOT_PUBLIC"
+            (folder/'shutdown_control.json').write_text(json.dumps({
+                'status':'SHUTDOWN_BLOCKED',
+                'reason':'LOCALIZATION_SERVICE_RESPONSE_TIMEOUT',
+                'managers':{'localization':{
+                    'success':False,
+                    'manager_active_after_timeout':'NO_RESPONSE',
+                    'launch_phase_after_timeout':'AMCL_DEACTIVATE_REQUESTED',
+                    'raw_log_content':secret}}
+            }),encoding='utf-8')
+            with contextlib.redirect_stdout(io.StringIO()) as output:
+                row=bridge.private_evidence_diagnostics(temp,1)[0]
+            self.assertEqual(row['localization_launch_phase_after_timeout'],
+                             'AMCL_DEACTIVATE_REQUESTED')
+            self.assertNotIn(secret,output.getvalue())
+            (folder/'shutdown_control.json').write_text(json.dumps({
+                'status':'SHUTDOWN_BLOCKED',
+                'managers':{'localization':{
+                    'launch_phase_after_timeout':secret}}}),encoding='utf-8')
+            with contextlib.redirect_stdout(io.StringIO()):
+                row=bridge.private_evidence_diagnostics(temp,1)[0]
+            self.assertEqual(row['localization_launch_phase_after_timeout'],
+                             'UNAVAILABLE')

@@ -14,7 +14,7 @@ import sys
 import tempfile
 import xml.etree.ElementTree as ET
 
-PIN = '8c57dad5d4d03d132bbee99020e5e36fc7673c80'
+PIN = 'bb24794f611872c87eeef3d73e1cd6f56f46bc82'
 UNIT_FILES = (
     'tests/unit/test_p1_fsm.py', 'tests/unit/test_p1_watchdog.py',
     'tests/unit/test_p1_t08_scan_full_circle.py',
@@ -360,6 +360,16 @@ def private_evidence_diagnostics(root, count):
         record['localization_manager_active_after_timeout'] = (
             manager_active if type(manager_active) is str
             and manager_active in manager_states else 'UNAVAILABLE')
+        phase=localization.get('launch_phase_after_timeout')
+        allowed_phases=(
+            'NO_LOCALIZATION_PHASE','MANAGER_SHUTDOWN_ENTERED',
+            'AMCL_DEACTIVATE_REQUESTED','MAP_DEACTIVATE_REQUESTED',
+            'AMCL_CLEANUP_REQUESTED','MAP_CLEANUP_REQUESTED',
+            'AMCL_FINALIZE_REQUESTED','MAP_FINALIZE_REQUESTED',
+            'LOG_WINDOW_TOO_LARGE','LAUNCH_LOG_UNAVAILABLE')
+        record['localization_launch_phase_after_timeout']=(
+            phase if type(phase) is str and phase in allowed_phases
+            else 'UNAVAILABLE')
         states = localization.get('managed_nodes_after_timeout')
         states = states if isinstance(states,dict) else {}
         allowed_states = (
