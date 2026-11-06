@@ -390,7 +390,8 @@ class ProtectedBridgeTests(TestCase):
     def test_readonly_localization_prepause_is_explicit_and_never_a_motion_gate(self):
         self.assertEqual(bridge.preloc_settings('gazebo3'), (3, False))
         self.assertEqual(bridge.preloc_settings('gazebo3-prepause'), (3, True))
-        self.assertEqual(bridge.preloc_settings('gazebo10'), (10, True))
+        # Failed PAUSE trial cannot silently turn 10x release into an experiment.
+        self.assertEqual(bridge.preloc_settings('gazebo10'), (10, False))
         for invalid in ('fake-faults', 'unit-middleware', 'gazebo0', 'gazebo5'):
             with self.assertRaisesRegex(bridge.GateBlocked, 'UNSUPPORTED_GATE'):
                 bridge.preloc_settings(invalid)
@@ -398,6 +399,54 @@ class ProtectedBridgeTests(TestCase):
     def test_protected_workflow_uses_experimental_gazebo3_and_exact_private_pin(self):
         workflow=(Path(__file__).resolve().parents[1] /
                   '.github/workflows/instructor-sealed-bridge.yml').read_text()
-        self.assertIn('gazebo3-prepause', workflow)
+        self.assertIn('gate: [unit-middleware, fake-faults, gazebo3]',workflow)
+        self.assertNotIn('gate: [unit-middleware, fake-faults, gazebo3-prepause]',workflow)
         self.assertIn('ref: ' + bridge.PIN, workflow)
         self.assertIn('fail-fast: false',workflow)
+
+    def test_localization_timeout_diagnostic_never_logs_arbitrary_private_data(self):
+        with tempfile.TemporaryDirectory() as temp:
+            folder=Path(temp)/'run_1'
+            folder.mkdir()
+            marker='PRIVATE_LOC_STACK_TRACE_DO_NOT_EXPOSE'
+            (folder/'shutdown_control.json').write_text(json.dumps({
+                'status':'SHUTDOWN_BLOCKED',
+                'reason':'LOCALIZATION_SERVICE_RESPONSE_TIMEOUT',
+                'prepause_requested':False,
+                'managers':{
+                    'localization':{
+                        'success':False,
+                        'service_ready_after_timeout':True,
+                        'managed_nodes_after_timeout':{
+                            'amcl':'ACTIVE', 'map_server':marker},
+                        'prepause':{'success':False,'reason':marker}
+                    }}
+            }),encoding='utf-8')
+            captured=io.StringIO()
+            with contextlib.redirect_stdout(captured):
+                rows=bridge.private_evidence_diagnostics(temp,1)
+            result=rows[0]
+            self.assertNotIn(marker,captured.getvalue())
+            self.assertIs(result['localization_service_ready_after_timeout'],True)
+            self.assertEqual(result['amcl_state_after_timeout'],'ACTIVE')
+            self.assertEqual(result['map_server_state_after_timeout'],'UNAVAILABLE')
+            self.assertIs(result['prepause_requested'],False)
+            self.assertEqual(result['shutdown_control_reason'],
+                             'LOCALIZATION_SERVICE_RESPONSE_TIMEOUT')
+
+    def test_prepause_timeout_reason_is_enum_not_private_message(self):
+        with tempfile.TemporaryDirectory() as temp:
+            folder=Path(temp)/'run_1'
+            folder.mkdir()
+            (folder/'shutdown_control.json').write_text(json.dumps({
+                'status':'SHUTDOWN_BLOCKED',
+                'reason':'LOCALIZATION_PREPAUSE_SERVICE_RESPONSE_TIMEOUT',
+                'prepause_requested':True,
+                'managers':{'localization':{'prepause':{'success':False}}}
+            }),encoding='utf-8')
+            captured=io.StringIO()
+            with contextlib.redirect_stdout(captured):
+                row=bridge.private_evidence_diagnostics(temp,1)[0]
+            self.assertEqual(row['shutdown_control_reason'],
+                             'LOCALIZATION_PREPAUSE_SERVICE_RESPONSE_TIMEOUT')
+            self.assertIs(row['localization_prepause_ack'],False)
