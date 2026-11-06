@@ -28,15 +28,36 @@ def _digest(path):
 def build_manifest(root, filenames):
     manifest = {}
     for filename in filenames:
+        if filename in manifest:
+            raise ValueError('duplicate manifest source filename')
         path = _safe_file(root, filename)
         if not path.is_file():
             raise ValueError('manifest source file is missing: ' + filename)
         manifest[filename] = _digest(path)
+    if not manifest:
+        raise ValueError('empty manifest source list')
     return manifest
 
 
-def verify_manifest(root, manifest):
+def verify_manifest(root, manifest, *, required_files=()):
+    """Check integrity and optionally require a full named evidence set.
+
+    A non-empty manifest is mandatory. Digest verification does not authorize
+    scenario acceptance, even when all digests match.
+    """
+    if not isinstance(manifest, dict):
+        return ['INVALID_MANIFEST']
+    if not manifest:
+        return ['EMPTY_MANIFEST']
     failures = []
+    for filename in sorted(set(required_files)):
+        try:
+            _safe_file(root, filename)
+        except (ValueError, TypeError):
+            failures.append('UNSAFE_REQUIRED_ENTRY:' + str(filename))
+            continue
+        if filename not in manifest:
+            failures.append('MISSING_MANIFEST_ENTRY:' + filename)
     for filename, expected in sorted(manifest.items()):
         try:
             path = _safe_file(root, filename)
