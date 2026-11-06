@@ -14,7 +14,7 @@ import sys
 import tempfile
 import xml.etree.ElementTree as ET
 
-PIN = '701849b7fd4669f7307e46a71f21cb5a641ceee1'
+PIN = '59805dc98ef27a3eb1efee8095406bb3fc93bd3a'
 UNIT_FILES = (
     'tests/unit/test_p1_fsm.py', 'tests/unit/test_p1_watchdog.py',
     'tests/unit/test_p1_t08_scan_full_circle.py',

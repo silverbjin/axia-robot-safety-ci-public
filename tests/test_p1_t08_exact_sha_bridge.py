@@ -7,7 +7,7 @@ import private_ci_bridge as bridge
 
 class P1T08PinnedGateTests(TestCase):
     def test_exact_private_sha_is_pinned(self):
-        self.assertEqual(bridge.PIN,'701849b7fd4669f7307e46a71f21cb5a641ceee1')
+        self.assertEqual(bridge.PIN,'59805dc98ef27a3eb1efee8095406bb3fc93bd3a')
     def test_new_gate_contains_complete_approved_python_contract_tests(self):
         suite=set(bridge.R01_R08_UNIT_FILES)
         self.assertEqual(len(suite),11)
