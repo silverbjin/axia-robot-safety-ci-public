@@ -21,7 +21,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 0a95fcfefdbd6514686ecade489f524999178065
+          ref: 1746d2f83cf0306e9b28b19664c309b81713cd43
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
           fetch-depth: 1
@@ -46,6 +46,16 @@ jobs:
               exit 2
             fi
           }
+          PYTHONPATH=.:tests/unit python3 -m py_compile \
+            tools/p1_private_evidence_custody.py \
+            tools/p1_preacceptance_gate.py \
+            tools/p1_s3_custody.py tools/p1_s3_custody_restore.py \
+            scripts/p1_ci07_s3_pipeline.py > "$LOG" 2>&1 || {
+              echo 'AXIA_CI07D_BYTECOMPILE=BLOCKED'; exit 2; }
+          echo 'AXIA_CI07D_BYTECOMPILE=PASS'
+          one_test 'test_p1_private_evidence_custody.py' 16 STAGE
+          one_test 'test_p1_s3_custody.py' 13 BUNDLE
+          one_test 'test_p1_s3_custody_restore.py' 4 RESTORE
           one_test 'test_p1_s3_custody_cli.py' 3 CLI
       - name: Remove private source
         if: always()
