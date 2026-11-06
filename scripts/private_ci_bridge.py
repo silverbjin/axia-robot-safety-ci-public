@@ -189,6 +189,7 @@ SAFE_RTM_BLOCKERS = {
     'SHA_DIGEST_INVALID', 'SHA_ENTRY_INVALID', 'SHA_PATH_INVALID',
     'SHA_FILESET_MISMATCH', 'SUPERVISOR_SCAN_CALLBACK_TIMING_MISSING',
     'SUPERVISOR_SCAN_CALLBACK_OVERRUN', 'RTF_OBSERVATION_MISSING',
+    'SCAN_STABLE_WINDOW_MISSING_OR_BAD',
 }
 
 
@@ -267,6 +268,74 @@ def private_evidence_diagnostics(root, count):
         record['rtf'] = (round(value, 3)
             if type(value) in (int, float) and 0 <= value <= 100
             else 'UNAVAILABLE')
+        for private_field, public_field in (
+            ('observer_scan_intervals', 'observer_scan_intervals'),
+            ('observer_scan_gaps_over_0p5s', 'observer_scan_gaps_over_0_5s'),
+            ('observer_scan_invalid_intervals', 'observer_scan_invalid_intervals'),
+            ('clock_samples', 'clock_samples'),
+        ):
+            value = prestart.get(private_field)
+            if private_field == 'clock_samples':
+                value = rtf.get('clock_samples')
+            record[public_field] = (value if type(value) is int and
+                0 <= value <= 1000000 else 'UNAVAILABLE')
+        observer_max = prestart.get('observer_scan_max_gap_sec')
+        record['observer_scan_max_gap_sec'] = (
+            round(observer_max, 4) if type(observer_max) in (int,float)
+            and 0 <= observer_max <= 100 else 'UNAVAILABLE')
+        window = prestart.get('scan_stable_window')
+        window = window if isinstance(window, dict) else {}
+        record['scan_window_status'] = (
+            window.get('status') if window.get('status') in
+            ('WINDOW_VERIFIED', 'WINDOW_OVERRUN', 'WINDOW_INVALID',
+             'WINDOW_INSUFFICIENT') else 'UNAVAILABLE')
+        for attr in ('intervals', 'over_0p5s', 'invalid'):
+            value = window.get(attr)
+            record['scan_window_' + attr] = (
+                value if type(value) is int and 0 <= value <= 1000000
+                else 'UNAVAILABLE')
+        allowed_warnings = ('ROSBAG_RX_GAP_NOT_SUPERVISOR_DEADLINE',
+                            'BOOT_CALLBACK_OVERRUN_BEFORE_STABLE_WINDOW')
+        original_warnings = report.get('observation_warnings')
+        original_warnings = (original_warnings if isinstance(original_warnings,list)
+                             else [])
+        record['observation_warnings'] = [
+            suffix for suffix in allowed_warnings
+            if f'run_{i}:{suffix}' in original_warnings]
+        control = _private_json(folder / 'shutdown_control.json')
+        record['shutdown_control_status'] = (
+            control.get('status') if control.get('status') in
+            ('SHUTDOWN_CONFIRMED','SHUTDOWN_BLOCKED') else 'UNAVAILABLE')
+        reasons = (
+            'BOTH_MANAGERS_ACKNOWLEDGED_SHUTDOWN',
+            'NAVIGATION_SERVICE_UNAVAILABLE',
+            'NAVIGATION_SERVICE_RESPONSE_TIMEOUT',
+            'NAVIGATION_SERVICE_REPORTED_FAILURE',
+            'NAVIGATION_SERVICE_EXCEPTION',
+            'LOCALIZATION_SERVICE_UNAVAILABLE',
+            'LOCALIZATION_SERVICE_RESPONSE_TIMEOUT',
+            'LOCALIZATION_SERVICE_REPORTED_FAILURE',
+            'LOCALIZATION_SERVICE_EXCEPTION',
+            'SHUTDOWN_EXCEPTION', 'SIMULATION_MARKERS_MISSING',
+            'ROS_JAZZY_REQUIRED', 'INVALID_TIMEOUT',
+        )
+        record['shutdown_control_reason'] = (
+            control.get('reason') if control.get('reason') in reasons
+            else 'UNRECOGNIZED')
+        managers = control.get('managers')
+        managers = managers if isinstance(managers,dict) else {}
+        for key in ('navigation', 'localization'):
+            entry = managers.get(key)
+            entry = entry if isinstance(entry,dict) else {}
+            success = entry.get('success')
+            record[key + '_shutdown_ack'] = (
+                success if type(success) is bool else 'UNAVAILABLE')
+            for private_key in ('discovery_wall_sec','response_wall_sec',
+                                'elapsed_wall_sec'):
+                value = entry.get(private_key)
+                record[key + '_' + private_key] = (
+                    round(value, 3) if type(value) in (int,float)
+                    and 0 <= value <= 300 else 'UNAVAILABLE')
         shutdown = _private_json(folder / 'shutdown_verdict.json')
         ack = shutdown.get('lifecycle_shutdown_acknowledged')
         record['shutdown_ack'] = ack if type(ack) is bool else 'UNAVAILABLE'
