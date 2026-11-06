@@ -31,7 +31,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        gate: [unit-middleware, fake-faults, gazebo3-prepause]
+        gate: [unit-middleware, fake-faults, gazebo3]
     name: instructor-core (${{ matrix.gate }})
     runs-on: ubuntu-24.04
     timeout-minutes: 100
@@ -58,7 +58,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 1b913cf0ea691bf08269f80fb6d01708bf0734c4
+          ref: f25177f5089131715dd678a185a2739f4810c4fb
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
           fetch-depth: 1
@@ -122,7 +122,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 1b913cf0ea691bf08269f80fb6d01708bf0734c4
+          ref: f25177f5089131715dd678a185a2739f4810c4fb
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
           fetch-depth: 1
