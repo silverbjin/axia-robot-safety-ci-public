@@ -386,3 +386,18 @@ class ProtectedBridgeTests(TestCase):
         workflow = (Path(__file__).resolve().parents[1] /
                     '.github/workflows/instructor-sealed-bridge.yml').read_text()
         self.assertIn('ref: ' + bridge.PIN, workflow)
+
+    def test_readonly_localization_prepause_is_explicit_and_never_a_motion_gate(self):
+        self.assertEqual(bridge.preloc_settings('gazebo3'), (3, False))
+        self.assertEqual(bridge.preloc_settings('gazebo3-prepause'), (3, True))
+        self.assertEqual(bridge.preloc_settings('gazebo10'), (10, True))
+        for invalid in ('fake-faults', 'unit-middleware', 'gazebo0', 'gazebo5'):
+            with self.assertRaisesRegex(bridge.GateBlocked, 'UNSUPPORTED_GATE'):
+                bridge.preloc_settings(invalid)
+
+    def test_protected_workflow_uses_experimental_gazebo3_and_exact_private_pin(self):
+        workflow=(Path(__file__).resolve().parents[1] /
+                  '.github/workflows/instructor-sealed-bridge.yml').read_text()
+        self.assertIn('gazebo3-prepause', workflow)
+        self.assertIn('ref: ' + bridge.PIN, workflow)
+        self.assertIn('fail-fast: false',workflow)
