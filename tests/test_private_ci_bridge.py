@@ -62,3 +62,13 @@ class ProtectedBridgeTests(TestCase):
                 'gate_accepted': True}))
             with self.assertRaisesRegex(bridge.GateBlocked, 'PRIVATE_REPORT_GATE_BLOCKED'):
                 bridge.verify_gazebo_report(root, 3)
+    def test_skipped_tests_fail_closed(self):
+        with tempfile.TemporaryDirectory() as folder:
+            xml = Path(folder) / 'skipped.xml'
+            xml.write_text('<testsuites><testsuite tests="2" failures="0" errors="0" skipped="1"/></testsuites>')
+            with mock.patch.object(bridge.subprocess, 'run', return_value=mock.Mock(returncode=0)):
+                capture = io.StringIO()
+                with contextlib.redirect_stdout(capture):
+                    with self.assertRaisesRegex(bridge.GateBlocked, 'PRIVATE_STAGE_BLOCKED'):
+                        bridge.scrubbed_run('UNIT', ['ignored'], folder, {}, folder, 3, xml)
+                self.assertIn('"status": "BLOCKED"', capture.getvalue())

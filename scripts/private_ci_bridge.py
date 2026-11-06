@@ -84,7 +84,7 @@ def scrubbed_run(stage, command, workdir, env, tmpdir, timeout_sec, junit=None):
         try:
             counts = parse_junit(junit)
             result.update(counts)
-            if counts['tests'] < 1 or counts['failures'] or counts['errors']:
+            if counts['tests'] < 1 or counts['failures'] or counts['errors'] or counts['skipped']:
                 result['status'] = 'BLOCKED'
         except (GateBlocked, ET.ParseError, ValueError):
             result['status'] = 'BLOCKED'
@@ -107,7 +107,7 @@ def verify_gazebo_report(root, count):
         raise GateBlocked('PRIVATE_REPORT_GATE_BLOCKED')
     print('AXIA_PRIVATE_BRIDGE ' + json.dumps({
         'stage': f'GAZEBO_{count}X', 'status': 'READONLY_READY_ONLY',
-        'passed_runs': count, 'supervisor_source_tested': True,
+        'passed_runs': count, 'private_prelocal_readonly_executed': True,
         'goal_sent': False, 'fault_injected': False, 'gate_accepted': False
     }, sort_keys=True), flush=True)
 

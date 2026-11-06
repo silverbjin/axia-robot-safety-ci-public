@@ -40,7 +40,7 @@ jobs:
           persist-credentials: false
       - name: Credential exists - no data printed
         env:
-          PRIVATE_READ_TOKEN: ${{ secrets.AXIA_INSTRUCTOR_READ_TOKEN }}
+          PRIVATE_READ_TOKEN: ${{ secrets.AXIA_CLOUD_CI }}
         shell: bash
         run: |
           set -euo pipefail
@@ -54,7 +54,7 @@ jobs:
         with:
           repository: silverbjin/axia-robot-safety-instructor
           ref: 72596eff4ad801054f27a3cae1cc60f305a1e6bf
-          token: ${{ secrets.AXIA_INSTRUCTOR_READ_TOKEN }}
+          token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
           fetch-depth: 1
           path: _instructor_private

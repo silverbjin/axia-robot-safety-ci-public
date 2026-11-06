@@ -16,7 +16,7 @@
 
 1. GitHub Settings → Developer settings → Personal access tokens → Fine-grained tokens에서 7일 이내 만료 토큰 생성. **Only select repositories**로 **silverbjin/axia-robot-safety-instructor** 하나만 선택, Contents: Read-only만 부여한다. Metadata 자동 권한 외 별도 권한을 추가하지 않는다.
 2. 공개 CI 저장소 Settings → Environments → axia-instructor-sealed 생성(Workflow 최초 시도 시 자동 생성되었을 수도 있음). Required reviewers에 silverbjin 추가, 단독 관리자이면 Prevent self-reviews OFF. Deployment branch 제한을 **feat/secure-instructor-cloud-bridge**로 설정한다.
-3. 위 Environment의 **Environment secrets → Add secret** 이름 **AXIA_INSTRUCTOR_READ_TOKEN**, 값은 fine-grained PAT. Repository secret이 아니라 Environment secret으로 지정한다.
+3. 위 Environment의 **Environment secrets → Add secret** 이름 **AXIA_CLOUD_CI**, 값은 fine-grained PAT. Repository secret이 아니라 Environment secret으로 지정한다.
 4. 설정 완료만 알려준다. PAT 문자열을 이 대화에 올리지 않는다. 승인 대기 시 GitHub의 Review deployments에서 지정한 Job을 승인한다. 연결된 GitHub 도구로 실패 Job 재실행이 가능할 때는 별도 반복 명령을 요구하지 않는다.
 5. 종료 시 GitHub Fine-grained PAT revoke, 해당 Environment secret 삭제.
 
