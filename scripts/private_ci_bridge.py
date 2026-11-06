@@ -323,31 +323,35 @@ def classify_private_junit_failure(path):
 
 
 def run_isolated_t06(root, env, tmpdir, setup):
-    """Each test has a fresh process+DDS Domain and sealed private JUnit."""
+    """Seven private cases x three fresh ROS contexts, all mandatory."""
     path = FAKE_FAULT_FILES[0]
     cases = private_pytest_cases(root / path)
     problems = []
-    for index, name in enumerate(cases, start=1):
-        stage = f'T06_CASE_{index:02d}'
-        domain = 180 + index
-        junit = tmpdir / (stage + '.xml')
-        cmd = bash_with_ros_overlay(
-            setup, ['python3', '-m', 'pytest', '-q',
-                    f'{path}::{name}', f'--junitxml={junit}'])
-        try:
-            scrubbed_run(stage, cmd, root, dict(env, ROS_DOMAIN_ID=str(domain)),
-                         tmpdir, 135, junit)
-        except GateBlocked:
-            problems.append(index)
-            print('AXIA_PRIVATE_T06_DIAGNOSTIC ' + json.dumps({
-                'case': f'T06-{index:02d}',
-                'status': 'BLOCKED',
-                'reason': classify_private_junit_failure(junit),
-                'private_log_uploaded': False,
-                'gate_accepted': False
-            }, sort_keys=True), flush=True)
+    for repetition in range(1, 4):
+        for index, name in enumerate(cases, start=1):
+            stage = f'T06_R{repetition}_CASE_{index:02d}'
+            domain = 180 + (repetition - 1) * len(cases) + index
+            junit = tmpdir / (stage + '.xml')
+            cmd = bash_with_ros_overlay(
+                setup, ['python3', '-m', 'pytest', '-q',
+                        f'{path}::{name}', f'--junitxml={junit}'])
+            try:
+                scrubbed_run(stage, cmd, root, dict(env, ROS_DOMAIN_ID=str(domain)),
+                             tmpdir, 135, junit)
+            except GateBlocked:
+                problems.append((repetition, index))
+                print('AXIA_PRIVATE_T06_DIAGNOSTIC ' + json.dumps({
+                    'repeat': repetition,
+                    'case': f'T06-{index:02d}',
+                    'status': 'BLOCKED',
+                    'reason': classify_private_junit_failure(junit),
+                    'private_log_uploaded': False,
+                    'gate_accepted': False
+                }, sort_keys=True), flush=True)
     print('AXIA_PRIVATE_T06_SUMMARY ' + json.dumps({
-        'cases': len(cases), 'blocked_cases': len(problems),
+        'cases': len(cases), 'repetitions': 3,
+        'executions': len(cases) * 3,
+        'blocked_cases': len(problems),
         'status': 'PASS' if not problems else 'BLOCKED',
         'gate_accepted': False
     }, sort_keys=True), flush=True)
