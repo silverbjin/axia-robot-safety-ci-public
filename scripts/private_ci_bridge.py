@@ -13,7 +13,7 @@ import sys
 import tempfile
 import xml.etree.ElementTree as ET
 
-PIN = '72596eff4ad801054f27a3cae1cc60f305a1e6bf'
+PIN = '2cb7900f61524e51662a03dc457c589d5fb6e600'
 UNIT_FILES = (
     'tests/unit/test_p1_fsm.py', 'tests/unit/test_p1_watchdog.py',
     'tests/unit/test_p1_t08_scan_full_circle.py',
@@ -204,6 +204,14 @@ def private_evidence_diagnostics(root, count):
                 gaps = obj.get('gaps_over_timeout_total')
                 record['scan_gaps_over_0_5s'] = (gaps if type(gaps) is int
                     and 0 <= gaps <= 1000000 else 'UNAVAILABLE')
+        clock = _private_json(folder / 'clock_diagnostics.json')
+        safe_clock_reasons = ('CLOCK_READY', 'CLOCK_MISSING', 'CLOCK_STALLED',
+                              'CLOCK_REGRESSION', 'NODE_SIM_TIME_UNSYNCHRONIZED',
+                              'PROBE_EXCEPTION', 'SIMULATION_MARKERS_MISSING')
+        reason = clock.get('reason')
+        record['clock_probe_reason'] = ('MISSING'
+            if not (folder / 'clock_diagnostics.json').is_file() else
+            reason if reason in safe_clock_reasons else 'UNRECOGNIZED')
         out.append(record)
         print('AXIA_PRIVATE_DIAGNOSTIC ' + json.dumps(record, sort_keys=True),
               flush=True)

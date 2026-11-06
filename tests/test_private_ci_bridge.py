@@ -178,3 +178,17 @@ class ProtectedBridgeTests(TestCase):
             self.assertEqual(len(records), 3)
             self.assertTrue(all(not x['gate_accepted'] for x in records))
             self.assertTrue(all(x['startup'] == 'MISSING' for x in records))
+
+    def test_clock_reason_must_be_allowlisted_without_raw_private_diagnostic(self):
+        with tempfile.TemporaryDirectory() as root:
+            folder = Path(root) / 'run_1'
+            folder.mkdir()
+            secret = 'DO_NOT_PRINT_A_HIDDEN_STACKTRACE'
+            (folder / 'clock_diagnostics.json').write_text(json.dumps({
+                'status': 'BLOCKED', 'reason': secret, 'exception': secret
+            }), encoding='utf-8')
+            capture = io.StringIO()
+            with contextlib.redirect_stdout(capture):
+                rows = bridge.private_evidence_diagnostics(root, 1)
+            self.assertEqual(rows[0]['clock_probe_reason'], 'UNRECOGNIZED')
+            self.assertNotIn(secret, capture.getvalue())

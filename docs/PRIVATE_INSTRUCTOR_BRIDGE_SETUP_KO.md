@@ -7,7 +7,7 @@
 - 공개 실행 저장소: silverbjin/axia-robot-safety-ci-public
 - 별도 개발 브랜치: feat/secure-instructor-cloud-bridge (스택 PR, main 아님)
 - 비공개 코드: silverbjin/axia-robot-safety-instructor
-- 비공개 목표 HEAD: 72596eff4ad801054f27a3cae1cc60f305a1e6bf (PR #38)
+- 비공개 목표 HEAD: 2cb7900f61524e51662a03dc457c589d5fb6e600 (PR #38)
 - workflow_dispatch는 Workflow가 default branch에 존재해야 가능하므로, main 병합 전에는 **위 고정 개발 브랜치의 push 이벤트**를 사용한다.
 - pull_request, pull_request_target, workflow_run 이벤트로 비공개 토큰을 전달하지 않는다.
 - GITHUB_TOKEN: 공개 저장소 contents:read. 별도 PAT는 PRIVATE Checkout step에만 주입.
@@ -66,3 +66,8 @@ Environment Secret, Required Reviewer, SHA 고정, 최소 권한, raw 출력/Art
 - Private real Gazebo read-only 3x `GAZEBO_READONLY` 종료코드 2 — BLOCKED. 10x 미실행. 공개 원본 로그 노출 방지 때문에 실패한 세부 게이트의 원본은 일시 디렉터리 종료 시 파기됨.
 - 공개 브리지가 enum allowlist 및 인원/초과간격 카운트만 출력하는 `private_evidence_diagnostics`를 추가해 재시험. 제안된 Scan watchdog 0.5s를 자동 완화하지 않으며, rosbag receive gap은 Supervisor callback gap을 대체하지 않음.
 - 검증 실패를 PASS로 승격하지 않음. Raw rosbag/Hidden Tests/JUnit/Private logs 공개 upload 없음.
+
+## Cold-start Clock 실측 결함 대응 (고정 비공개 SHA)
+
+기존 #42182765806: 1/3 STARTUP/CLOCK_READY BLOCKED, 2/3 startup+Supervisor+shutdown OK이나 /scan rosbag 0.5초 gap 2건, 3/3 startup+Supervisor+shutdown+scan contract OK. 이 샘플은 전체 READY가 아니다.
+비공개 강사용 PR #38 수정 SHA `2cb7900f61524e51662a03dc457c589d5fb6e600`으로 pin 갱신. 초기 Clock phase 최장 45초와 runtime 0.5초 Scan watchdog 분리, 실제 ROS clock progress 2회 전진 조건 불변. clock_diagnostics.json reason은 공개 허용 고정 enum만 출력한다.
