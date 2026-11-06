@@ -22,16 +22,46 @@ def sha256_file(path):
 
 
 def inspect_topic(topic, env, seconds):
-    try:
+    """Wait for a typed message, not just the first CLI discovery attempt.
+
+    A not-yet-advertised topic is retried only until the existing bounded
+    readiness deadline; unknown CLI errors remain an immediate failure.
+    """
+    deadline = time.monotonic() + seconds
+    attempts = 0
+    last_stdout = ''
+    last_stderr = ''
+    while True:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return {'received': False, 'error': 'READINESS_TIMEOUT',
+                    'attempts': attempts, 'output_excerpt': last_stdout[:400],
+                    'error_excerpt': last_stderr[:400]}
         cmd = ['ros2', 'topic', 'echo', topic, '--once']
-        result = subprocess.run(cmd, env=env, text=True, capture_output=True,
-                                timeout=seconds, check=False)
-        return {'received': result.returncode == 0,
-                'return_code': result.returncode,
-                'output_excerpt': result.stdout[:400],
-                'error_excerpt': result.stderr[:400]}
-    except subprocess.TimeoutExpired:
-        return {'received': False, 'error': 'timeout'}
+        attempts += 1
+        try:
+            result = subprocess.run(cmd, env=env, text=True, capture_output=True,
+                                    timeout=min(remaining, 10.0), check=False)
+        except subprocess.TimeoutExpired:
+            last_stderr = 'ros2 topic echo attempt timed out'
+        else:
+            last_stdout, last_stderr = result.stdout, result.stderr
+            if result.returncode == 0:
+                return {'received': True, 'attempts': attempts,
+                        'return_code': result.returncode,
+                        'output_excerpt': result.stdout[:400],
+                        'error_excerpt': result.stderr[:400]}
+            waiting_for_publisher = (
+                'does not appear to be published yet' in result.stdout
+                or 'Could not determine the type for the passed topic' in result.stderr)
+            if not waiting_for_publisher:
+                return {'received': False, 'error': 'ROS_CLI_ERROR',
+                        'attempts': attempts, 'return_code': result.returncode,
+                        'output_excerpt': result.stdout[:400],
+                        'error_excerpt': result.stderr[:400]}
+        remaining = deadline - time.monotonic()
+        if remaining > 0:
+            time.sleep(min(0.25, remaining))
 
 
 def live_group_members(pgid):
