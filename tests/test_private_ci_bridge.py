@@ -450,3 +450,39 @@ class ProtectedBridgeTests(TestCase):
             self.assertEqual(row['shutdown_control_reason'],
                              'LOCALIZATION_PREPAUSE_SERVICE_RESPONSE_TIMEOUT')
             self.assertIs(row['localization_prepause_ack'],False)
+
+    def test_manager_liveness_probe_is_allowlisted_and_private_strings_hidden(self):
+        with tempfile.TemporaryDirectory() as temp:
+            folder=Path(temp)/'run_1'
+            folder.mkdir()
+            secret='PRIVATE_NAV2_STACK_DONT_PUBLISH'
+            (folder/'shutdown_control.json').write_text(json.dumps({
+                'status':'SHUTDOWN_BLOCKED',
+                'reason':'LOCALIZATION_SERVICE_RESPONSE_TIMEOUT',
+                'managers':{'localization':{
+                    'success':False, 'manager_active_after_timeout':'NO_RESPONSE',
+                    'managed_nodes_after_timeout':{'amcl':'ACTIVE',
+                                                  'map_server':'ACTIVE'},
+                    'secret':secret}}}),encoding='utf-8')
+            output=io.StringIO()
+            with contextlib.redirect_stdout(output):
+                result=bridge.private_evidence_diagnostics(temp,1)[0]
+            self.assertEqual(result['localization_manager_active_after_timeout'],
+                             'NO_RESPONSE')
+            self.assertNotIn(secret,output.getvalue())
+            (folder/'shutdown_control.json').write_text(json.dumps({
+                'status':'SHUTDOWN_BLOCKED',
+                'reason':'LOCALIZATION_SERVICE_RESPONSE_TIMEOUT',
+                'managers':{'localization':{
+                    'success':False,
+                    'manager_active_after_timeout':secret}}}),encoding='utf-8')
+            with contextlib.redirect_stdout(io.StringIO()):
+                result=bridge.private_evidence_diagnostics(temp,1)[0]
+            self.assertEqual(result['localization_manager_active_after_timeout'],
+                             'UNAVAILABLE')
+
+    def test_private_checkout_sha_is_same_across_script_and_both_workflow_jobs(self):
+        workflow=(Path(__file__).resolve().parents[1] /
+                  '.github/workflows/instructor-sealed-bridge.yml').read_text()
+        self.assertEqual(workflow.count('ref: '+bridge.PIN),2)
+        self.assertNotIn('pull_request_target:',workflow)
