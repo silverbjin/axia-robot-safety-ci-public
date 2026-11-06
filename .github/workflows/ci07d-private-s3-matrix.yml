@@ -1,0 +1,55 @@
+name: AXIA CI07D pinned S3 custody contract matrix (NO AWS)
+on:
+  push:
+    branches: [feat/secure-instructor-cloud-bridge]
+    paths:
+      - '.github/workflows/ci07d-private-s3-matrix.yml'
+permissions:
+  contents: read
+concurrency:
+  group: axia-ci07d-guarded-units
+  cancel-in-progress: false
+jobs:
+  private-ci07d-python:
+    if: github.repository == 'silverbjin/axia-robot-safety-ci-public' && github.actor == 'silverbjin' && github.ref == 'refs/heads/feat/secure-instructor-cloud-bridge' && github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment:
+      name: axia-instructor-sealed
+    steps:
+      - name: Fetch pinned private unit-contract code - temporary only
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 0a95fcfefdbd6514686ecade489f524999178065
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+          fetch-depth: 1
+          path: _instructor_private
+      - name: Synthetic private custody tests, never print raw results
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd _instructor_private
+          LOG="$(mktemp)"
+          trap 'rm -f "$LOG"' EXIT
+          one_test() {
+            local file="$1" expected="$2" label="$3"
+            set +e
+            PYTHONPATH=.:tests/unit python3 -m unittest discover -s tests/unit -p "$file" -v > "$LOG" 2>&1
+            local rc=$?
+            set -e
+            if [[ "$rc" == 0 ]] && grep -Eq "^Ran $expected tests in " "$LOG" && grep -qx 'OK' "$LOG"; then
+              echo "AXIA_CI07D_${label}=PASS tests=$expected gate_accepted=false"
+            else
+              echo "AXIA_CI07D_${label}=BLOCKED reason=CONTRACT_FAIL gate_accepted=false"
+              exit 2
+            fi
+          }
+          one_test 'test_p1_s3_custody_cli.py' 3 CLI
+      - name: Remove private source
+        if: always()
+        shell: bash
+        run: |
+          rm -rf _instructor_private
+          echo AXIA_PRIVATE_TEMP_CLEANUP_DONE
