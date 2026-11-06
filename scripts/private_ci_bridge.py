@@ -155,6 +155,61 @@ def bash_with_ros_overlay(install_setup, command):
             'axia-public-ci-bridge', str(install_setup), *command]
 
 
+# Explicit, finite allowlists: never echo source-controlled text or exception strings.
+SAFE_EVIDENCE_FIELDS = {
+    'startup_verdict.json': ('startup', 'status', ('SMOKE_READY', 'BLOCKED', 'ERROR')),
+    'pre_goal_gate.json': ('pre_goal', 'status', ('PRE_GOAL_READY', 'BLOCKED', 'PRE_GOAL_BLOCKED')),
+    'supervisor_prestart.json': ('supervisor', 'status', ('SUPERVISOR_PRESTART_READY', 'SUPERVISOR_PRESTART_BLOCKED')),
+    'shutdown_verdict.json': ('shutdown', 'status', ('SHUTDOWN_CLEAN', 'BLOCKED', 'SHUTDOWN_BLOCKED')),
+    'scan_timing.json': ('scan_timing', 'status', ('SCAN_TIMING_OBSERVED_ONLY',
+                                                'SCAN_TIMING_REQUIRES_CALIBRATION', 'SCAN_TIMING_INVALID')),
+}
+SAFE_STARTUP_GATES = (
+    'CLOCK_READY', 'NAVIGATION_NOT_ACTIVE', 'LOCALIZATION_START',
+    'MAP_AMCL_ACTIVE', 'INITIALPOSE_MAP_CHECKED', 'AMCL_TF_READY',
+    'NAVIGATION_START', 'CM_ACTIVE', 'GRAPH_READY', 'NAV2_ACTION_READY',
+)
+
+
+def _private_json(path):
+    try:
+        record = json.loads(Path(path).read_text(encoding='utf-8'))
+        return record if isinstance(record, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def private_evidence_diagnostics(root, count):
+    """Only enums/integers from private ephemeral evidence may reach public logs."""
+    out = []
+    for i in range(1, count + 1):
+        folder = Path(root) / f'run_{i}'
+        record = {'run': i, 'gate_accepted': False}
+        for filename, (label, key, choices) in SAFE_EVIDENCE_FIELDS.items():
+            path = folder / filename
+            obj = _private_json(path)
+            record[label] = 'MISSING' if not path.is_file() else (
+                obj.get(key) if obj.get(key) in choices else 'UNRECOGNIZED')
+            if filename == 'startup_verdict.json':
+                failed_gate = obj.get('failed_gate')
+                record['startup_failed_gate'] = (failed_gate
+                    if failed_gate in SAFE_STARTUP_GATES else
+                    'NOT_REPORTED' if failed_gate is None else 'UNRECOGNIZED')
+                stages = obj.get('stages')
+                record['startup_stages_passed'] = (
+                    sum(x.get('status') == 'PASS' for x in stages
+                        if isinstance(x, dict))
+                    if isinstance(stages, list) and len(stages) <= 100 else 0)
+            if filename == 'scan_timing.json':
+                gaps = obj.get('gaps_over_timeout_total')
+                record['scan_gaps_over_0_5s'] = (gaps if type(gaps) is int
+                    and 0 <= gaps <= 1000000 else 'UNAVAILABLE')
+        out.append(record)
+        print('AXIA_PRIVATE_DIAGNOSTIC ' + json.dumps(record, sort_keys=True),
+              flush=True)
+    return out
+
+
 def run_gate(private_root, gate):
     root = validate_private_commit(private_root)
     env = private_runtime_env(root, os.environ)
@@ -189,9 +244,14 @@ def run_gate(private_root, gate):
             env['AXIA_P1_PRELOCAL_RUNS'] = str(count)
             dest = tmpdir / ('private-prelocal-' + str(count))
             env['AXIA_P1_PRELOCAL_ROOT'] = str(dest)
-            scrubbed_run('GAZEBO_READONLY',
-                         ['bash', 'scripts/run_p1_preacceptance_stability.sh'],
-                         root, env, tmpdir, 5400 if count == 10 else 3000)
+            try:
+                scrubbed_run('GAZEBO_READONLY',
+                             ['bash', 'scripts/run_p1_preacceptance_stability.sh'],
+                             root, env, tmpdir, 5400 if count == 10 else 3000)
+            finally:
+                # Test failures must be visible as predeclared status codes only.
+                # Never print private logs, arbitrary exception text, or raw JSON.
+                private_evidence_diagnostics(dest, count)
             verify_gazebo_report(dest, count)
         else:
             raise GateBlocked('UNSUPPORTED_GATE')

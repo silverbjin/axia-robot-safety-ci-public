@@ -60,3 +60,9 @@ Environment Secret, Required Reviewer, SHA 고정, 최소 권한, raw 출력/Art
 - 어느 한 단계라도 실패하면 뒤 단계는 실행하지 않고 전체 BLOCKED (fail-closed). 공개 로그에는 stage 상태·합계만 출력하며 민감한 JUnit·rosbag2 원문은 업로드하지 않는다.
 - Environment Required Reviewer는 각 Workflow Push 실행에 재승인이 필요하다. 사용자 승인 전 작업 시작 불가.
 - 최종 로컬 인수는 G00 Goal, G02/G03/G04 fault 및 Nav2 Cancel·odom 근거에 대한 실제 Cloud E2E 검증 이후에만 승인 대상이 된다.
+
+## 2026-11-06 Gazebo 3회 Cloud 사전 인수 현황
+- Run #42180837685: private Unit 75 PASS, Jazzy middleware 6 PASS, ROS synthetic Goal/Cancel/Fault **18 PASS**. Official patched Nav2 overlay PASS.
+- Private real Gazebo read-only 3x `GAZEBO_READONLY` 종료코드 2 — BLOCKED. 10x 미실행. 공개 원본 로그 노출 방지 때문에 실패한 세부 게이트의 원본은 일시 디렉터리 종료 시 파기됨.
+- 공개 브리지가 enum allowlist 및 인원/초과간격 카운트만 출력하는 `private_evidence_diagnostics`를 추가해 재시험. 제안된 Scan watchdog 0.5s를 자동 완화하지 않으며, rosbag receive gap은 Supervisor callback gap을 대체하지 않음.
+- 검증 실패를 PASS로 승격하지 않음. Raw rosbag/Hidden Tests/JUnit/Private logs 공개 upload 없음.

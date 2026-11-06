@@ -147,3 +147,34 @@ class ProtectedBridgeTests(TestCase):
                       bridge.FAKE_FAULT_FILES)
         self.assertIn('tests/ros_integration/test_p1_t05_launch.py',
                       bridge.FAKE_FAULT_FILES)
+
+    def test_private_evidence_diagnostics_redacts_arbitrary_source_strings(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            record = root / 'run_1'
+            record.mkdir()
+            secret = 'PRIVATE_INSTRUCTOR_SOURCE_OR_TOKEN_SHOULD_NEVER_LOG'
+            (record / 'startup_verdict.json').write_text(json.dumps({
+                'status': secret, 'failed_gate': secret,
+                'stages': [{'status': 'PASS', 'detail': secret}]
+            }))
+            (record / 'scan_timing.json').write_text(json.dumps({
+                'status': 'SCAN_TIMING_REQUIRES_CALIBRATION',
+                'gaps_over_timeout_total': 7, 'reason': secret,
+            }))
+            capture = io.StringIO()
+            with contextlib.redirect_stdout(capture):
+                records = bridge.private_evidence_diagnostics(root, 1)
+            self.assertNotIn(secret, capture.getvalue())
+            self.assertIn('"startup": "UNRECOGNIZED"', capture.getvalue())
+            self.assertIn('"startup_failed_gate": "UNRECOGNIZED"', capture.getvalue())
+            self.assertEqual(records[0]['scan_gaps_over_0_5s'], 7)
+
+    def test_private_evidence_diagnostics_missing_cannot_pass(self):
+        with tempfile.TemporaryDirectory() as folder:
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                records = bridge.private_evidence_diagnostics(folder, 3)
+            self.assertEqual(len(records), 3)
+            self.assertTrue(all(not x['gate_accepted'] for x in records))
+            self.assertTrue(all(x['startup'] == 'MISSING' for x in records))
