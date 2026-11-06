@@ -21,7 +21,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 2ef139b12d2a2bf7d79717e5cd881c65cdf79b63
+          ref: 2b1e705ebb73bb826f146405f785019073b62994
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
           fetch-depth: 1
@@ -42,30 +42,6 @@ jobs:
             echo 'AXIA_CI07C_RESTORE_UNIT=BLOCKED reason=UNIT_CONTRACT_FAILED remote_aws=false independent_audit_verified=false gate_accepted=false'
             exit 2
           fi
-      - name: Classify private synthetic case failures without filenames or tracebacks
-        if: failure()
-        shell: bash
-        run: |
-          set -euo pipefail
-          cd _instructor_private
-          PYTHONPATH=.:tests/unit python3 - <<'PY'
-          import contextlib, io, unittest
-          suite = unittest.defaultTestLoader.discover(
-              "tests/unit", pattern="test_p1_s3_custody_restore.py")
-          def walk(group):
-              for item in group:
-                  if isinstance(item, unittest.TestSuite):
-                      yield from walk(item)
-                  else:
-                      yield item
-          for i, case in enumerate(walk(suite), 1):
-              result = unittest.TestResult()
-              with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
-                  case.run(result)
-              status = "PASS" if result.wasSuccessful() else (
-                  "ERROR" if result.errors else "FAIL")
-              print(f"AXIA_CI07C_CASE_{i}={status}")
-          PY
       - name: Cleanup private checkout
         if: always()
         shell: bash
