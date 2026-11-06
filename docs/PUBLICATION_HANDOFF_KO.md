@@ -10,7 +10,7 @@
 1. Canary: GitHub-hosted Ubuntu Runner가 실재하고 실제 echo 출력이 있는지 확인한다.
 2. Python Unit: `pytest -q -ra tests` 와 JUnit, Scan gap·SHA256 계약을 확인한다.
 3. 실제 Jazzy DDS: `scripts/dds_echo_smoke.py`의 합성 메시지 pub/sub 결과를 Job 로그로 확인한다.
-4. 공식 Gazebo: PR 이벤트에서 3회 **no-goal/read-only**. `workflow_dispatch` 10회는 Workflow가 default branch에 등록된 후 가능. 사용자 승인 전 `main`에 병합 금지.
+4. 공식 Gazebo: PR 이벤트에서 3회 **no-goal/read-only**. 별도 `public-gazebo-10x-stress.yml` PR 게이트에서 10회 read-only 반복 실행. 추후 `workflow_dispatch`는 Workflow의 default branch 등록 후 가능. 사용자 승인 전 `main`에 병합 금지.
 5. 각 결과를 Head SHA·Job ID·JUnit/원본 stdout·evidence SHA256와 함께 보고한다.
 
 ## 제한

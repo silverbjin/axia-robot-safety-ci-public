@@ -7,7 +7,7 @@ This is a standalone **public** CI reference and diagnostic environment. It is N
 1. **Canary**: `AXIA_PUBLIC_RUNNER_CANARY_OK` must appear in actual GitHub Actions job output.
 2. **Python contracts**: Synthetic receiver-wall-time `/scan` interval metrics and SHA256 manifest integrity. Tests do not measure actual Supervisor callback latency.
 3. **Jazzy DDS**: Real ROS 2 Jazzy `rclpy` middleware loopback with synthetic `std_msgs/String`; the instructor Supervisor is **not run**.
-4. **Official Gazebo**: Official `nav2_bringup` TurtleBot3 **Waffle** headless launch; read-only `/clock`, `/scan`, `/odom` checks and process group shutdown. On this Draft PR, the Gazebo workflow automatically attempts **3** no-motion runs. The **10** run option is restricted to a later workflow dispatch after the workflow exists on the default branch (which requires separate user approval). These checks are not AXIA S01–S05 or G00/G03/G04 acceptance.
+4. **Official Gazebo**: Official `nav2_bringup` TurtleBot3 **Waffle** headless launch; read-only `/clock`, `/scan`, `/odom` checks and process group shutdown. On this Draft PR, the Gazebo workflow automatically attempts **3** no-motion runs. The separate PR-only `public-gazebo-10x-stress.yml` executes 10 read-only starts without merging to main; later workflow_dispatch additionally becomes available after separate user-approved merge. These checks are not AXIA S01–S05 or G00/G03/G04 acceptance.
 
 All workflows use standard GitHub-hosted `ubuntu-24.04` and require only read access to repository contents. We never clone the instructor private repository or use secrets.
 
