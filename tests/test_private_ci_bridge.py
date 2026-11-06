@@ -292,10 +292,12 @@ class ProtectedBridgeTests(TestCase):
                 with contextlib.redirect_stdout(output):
                     bridge.run_isolated_t06(root, {}, root, root / 'install/setup.bash')
             self.assertEqual([x[0] for x in calls],
-                             [f'T06_CASE_{i:02d}' for i in range(1,8)])
+                             [f'T06_R{repeat}_CASE_{i:02d}'
+                              for repeat in range(1,4) for i in range(1,8)])
             self.assertEqual([x[2] for x in calls],
-                             [str(i) for i in range(181,188)])
+                             [str(i) for i in range(181,202)])
             self.assertIn('"blocked_cases": 0', output.getvalue())
+            self.assertIn('"repetitions": 3', output.getvalue())
             self.assertNotIn('test_synthetic_', output.getvalue())
 
     def test_t06_isolated_failures_never_publish_private_tracebacks(self):
@@ -307,7 +309,7 @@ class ProtectedBridgeTests(TestCase):
                                  for i in range(7)), encoding='utf-8')
             marker = 'SECRET_JUNIT_TEST_BODY'
             def fake_scrub(stage, cmd, cwd, env, tmpdir, duration, junit=None):
-                if stage in ('T06_CASE_02', 'T06_CASE_05'):
+                if stage in ('T06_R2_CASE_02', 'T06_R3_CASE_05'):
                     Path(junit).write_text(
                         '<testsuite tests="1" failures="1"><testcase>'
                         '<failure message="initial health never ready"> '
@@ -320,7 +322,9 @@ class ProtectedBridgeTests(TestCase):
                         bridge.run_isolated_t06(root, {}, root, root / 'install/setup.bash')
             self.assertIn('"blocked_cases": 2', output.getvalue())
             self.assertIn('"case": "T06-02"', output.getvalue())
+            self.assertIn('"repeat": 2', output.getvalue())
             self.assertIn('"case": "T06-05"', output.getvalue())
+            self.assertIn('"repeat": 3', output.getvalue())
             self.assertIn('"reason": "BOOT_HEALTH"', output.getvalue())
             self.assertNotIn(marker, output.getvalue())
             self.assertNotIn('test_synthetic_', output.getvalue())
