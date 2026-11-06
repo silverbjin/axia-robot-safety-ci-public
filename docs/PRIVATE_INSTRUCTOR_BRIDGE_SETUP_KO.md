@@ -42,3 +42,12 @@ python3 scripts/private_ci_bridge.py --private-root _instructor_private --gate u
 ## 공개 Runner 보호 한계
 
 Environment Secret, Required Reviewer, SHA 고정, 최소 권한, raw 출력/Artifact 금지는 유출 가능성을 줄이지만 완전히 없애지 못한다. 실행 승인 전 공개 Workflow diff를 점검한다.
+
+
+## 2026-11-06 16:05 승인 후 첫 실측과 수정
+
+- Environment 승인 성공; `AXIA_CLOUD_CI` 토큰 인증 및 고정 비공개 SHA Checkout 성공.
+- 원본 Run #42178521795: UNIT **75/75 PASS**, Jazzy 3 skipped / rc=5, 테스트 0 실행. 전체 FAIL(차단).
+- 분석: 기존 브리지가 `PYTHONPATH` 전체를 덮어써 `pytest.importorskip("rclpy")`가 전부 skip. 수정: private 패키지 경로에 **기존 Jazzy PYTHONPATH를 보존**해 추가한다.
+- 부가 수정: `ros2 run`을 포함한 미들웨어 종료 테스트에 앞서 private Supervisor/Fault Injector ament_python 패키지를 임시 디렉터리에 colcon 빌드하고 `install/setup.bash`를 source 한다.
+- 새 회귀 테스트는 ROS 경로 보존, overlay argv 구성, build 결손 시 fail-closed 검사를 포함. ROS/Gazebo 실제 PASS는 새 Runner 결과가 나오기 전까지 표시하지 않는다.

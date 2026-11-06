@@ -72,3 +72,37 @@ class ProtectedBridgeTests(TestCase):
                     with self.assertRaisesRegex(bridge.GateBlocked, 'PRIVATE_STAGE_BLOCKED'):
                         bridge.scrubbed_run('UNIT', ['ignored'], folder, {}, folder, 3, xml)
                 self.assertIn('"status": "BLOCKED"', capture.getvalue())
+
+    def test_ros_pythonpath_is_preserved_with_private_paths(self):
+        """Regression: old bridge replaced Jazzy site-packages -> all ROS tests skipped."""
+        with tempfile.TemporaryDirectory() as root:
+            base = {'PYTHONPATH': '/opt/ros/jazzy/lib/python3.12/site-packages',
+                    'ROS_DOMAIN_ID': '0'}
+            env = bridge.private_runtime_env(root, base)
+            self.assertIn('/opt/ros/jazzy/lib/python3.12/site-packages',
+                          env['PYTHONPATH'].split(':'))
+            self.assertEqual(env['PYTHONPATH'].split(':')[0],
+                             str(Path(root) / 'ros2_ws/src/axia_safety_supervisor'))
+            self.assertEqual(env['ROS_DOMAIN_ID'], '167')
+            self.assertEqual(env['GITHUB_SHA'], bridge.PIN)
+            self.assertEqual(base['ROS_DOMAIN_ID'], '0')
+
+    def test_ros_overlay_sources_setup_before_pytest_without_shell_injection(self):
+        with tempfile.TemporaryDirectory() as root:
+            path = Path(root) / 'install' / 'setup.bash'
+            cmd = bridge.bash_with_ros_overlay(path, ['python3', '-m', 'pytest', '-q'])
+            self.assertEqual(cmd[0:2], ['bash', '-c'])
+            self.assertEqual(cmd[4], str(path))
+            self.assertEqual(cmd[5:], ['python3', '-m', 'pytest', '-q'])
+            self.assertIn('source "$1"', cmd[2])
+
+    def test_build_fails_closed_when_package_not_installed(self):
+        with tempfile.TemporaryDirectory() as root:
+            env = {}
+            calls = []
+            def fake_scrubbed(stage, command, workdir, env, tmpdir, limit):
+                calls.append(stage)
+            with mock.patch.object(bridge, 'scrubbed_run', side_effect=fake_scrubbed):
+                with self.assertRaisesRegex(bridge.GateBlocked, 'COLCON_SETUP_MISSING'):
+                    bridge.ros_workspace_build(Path(root), env, Path(root))
+            self.assertEqual(calls, ['ROS_RUNTIME_IMPORT', 'COLCON_BUILD'])

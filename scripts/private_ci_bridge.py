@@ -112,15 +112,52 @@ def verify_gazebo_report(root, count):
     }, sort_keys=True), flush=True)
 
 
-def run_gate(private_root, gate):
-    root = validate_private_commit(private_root)
-    env = os.environ.copy()
-    env['PYTHONPATH'] = ':'.join(str(root / rel) for rel in (
+def private_runtime_env(root, inherited_env):
+    """Add private Python source without erasing sourced Jazzy PYTHONPATH."""
+    env = dict(inherited_env)
+    paths = [str(Path(root) / rel) for rel in (
         'ros2_ws/src/axia_safety_supervisor',
         'ros2_ws/src/axia_fault_injector',
-        'ros2_ws/src/axia_scenario_verifier', 'tools'))
+        'ros2_ws/src/axia_scenario_verifier', 'tools')]
+    if env.get('PYTHONPATH'):
+        paths.append(env['PYTHONPATH'])
+    env['PYTHONPATH'] = os.pathsep.join(paths)
     env['ROS_DOMAIN_ID'] = '167'
     env['ROS_AUTOMATIC_DISCOVERY_RANGE'] = 'LOCALHOST'
+    env['GITHUB_SHA'] = PIN
+    return env
+
+
+def ros_workspace_build(root, env, tmpdir):
+    """Build private nodes so ros2 run can resolve them; no build logs public."""
+    scrubbed_run('ROS_RUNTIME_IMPORT',
+                 ['python3', '-c',
+                  'import rclpy; import std_srvs.srv; import nav2_msgs.action; '
+                  'import lifecycle_msgs.srv; import geometry_msgs.msg'],
+                 root, env, tmpdir, 45)
+    install = tmpdir / 'install'
+    scrubbed_run('COLCON_BUILD',
+                 ['colcon', '--log-base', str(tmpdir / 'colcon_log'), 'build',
+                  '--base-paths', 'ros2_ws/src',
+                  '--packages-select', 'axia_safety_supervisor', 'axia_fault_injector',
+                  '--build-base', str(tmpdir / 'build'),
+                  '--install-base', str(install), '--merge-install'],
+                 root, env, tmpdir, 600)
+    if not (install / 'setup.bash').is_file():
+        raise GateBlocked('COLCON_SETUP_MISSING')
+    return install / 'setup.bash'
+
+
+def bash_with_ros_overlay(install_setup, command):
+    """Use argv for the sourced file and executable; never interpolate private paths."""
+    return ['bash', '-c',
+            'set -eo pipefail; source "$1"; shift; exec "$@"',
+            'axia-public-ci-bridge', str(install_setup), *command]
+
+
+def run_gate(private_root, gate):
+    root = validate_private_commit(private_root)
+    env = private_runtime_env(root, os.environ)
     # Ensure private evidence (if created by original scripts) identifies PRIVATE commit.
     env['GITHUB_SHA'] = PIN
     with tempfile.TemporaryDirectory(prefix='axia_private_bridge_',
@@ -128,13 +165,19 @@ def run_gate(private_root, gate):
         tmpdir = Path(tmp)
         if gate in ('unit-middleware', 'fake-faults'):
             if gate == 'unit-middleware':
-                batches = [('UNIT', UNIT_FILES, 600), ('JAZZY_MIDDLEWARE', DDS_FILES, 900)]
-            else:
-                batches = [('JAZZY_FAKE_FAULTS', FAKE_FAULT_FILES, 1200)]
-            for stage, files, limit in batches:
-                junit = tmpdir / (stage + '.xml')
-                cmd = ['python3', '-m', 'pytest', '-q', *files, f'--junitxml={junit}']
-                scrubbed_run(stage, cmd, root, env, tmpdir, limit, junit)
+                junit = tmpdir / 'UNIT.xml'
+                cmd = ['python3', '-m', 'pytest', '-q',
+                       *UNIT_FILES, f'--junitxml={junit}']
+                scrubbed_run('UNIT', cmd, root, env, tmpdir, 600, junit)
+            setup_file = ros_workspace_build(root, env, tmpdir)
+            stage = 'JAZZY_MIDDLEWARE' if gate == 'unit-middleware' else 'JAZZY_FAKE_FAULTS'
+            files = DDS_FILES if gate == 'unit-middleware' else FAKE_FAULT_FILES
+            junit = tmpdir / (stage + '.xml')
+            cmd = bash_with_ros_overlay(
+                setup_file, ['python3', '-m', 'pytest', '-q',
+                             *files, f'--junitxml={junit}'])
+            scrubbed_run(stage, cmd, root, env, tmpdir,
+                         900 if gate == 'unit-middleware' else 1200, junit)
         elif gate in ('gazebo3', 'gazebo10'):
             count = 3 if gate == 'gazebo3' else 10
             overlay = tmpdir / 'official-nav2-overlay'
