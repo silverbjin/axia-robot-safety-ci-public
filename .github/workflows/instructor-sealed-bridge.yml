@@ -32,7 +32,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        gate: [unit-middleware]
+        gate: [unit-middleware, fake-faults, gazebo3]
     name: instructor-core (${{ matrix.gate }})
     runs-on: ubuntu-24.04
     timeout-minutes: 100
@@ -97,7 +97,7 @@ jobs:
 
   instructor-gazebo10:
     needs: [public-fail-closed-contracts, instructor-core]
-    if: github.repository == 'silverbjin/axia-robot-safety-ci-public' && github.actor == 'silverbjin' && github.ref == 'refs/heads/feat/p1-t08-exact-sha-prelocal-20261107' && github.event_name == 'push' && false # staged off until unit and middleware pass
+    if: github.repository == 'silverbjin/axia-robot-safety-ci-public' && github.actor == 'silverbjin' && github.ref == 'refs/heads/feat/p1-t08-exact-sha-prelocal-20261107' && github.event_name == 'push'
     runs-on: ubuntu-24.04
     timeout-minutes: 180
     container:
@@ -172,15 +172,7 @@ jobs:
           echo "PUBLIC=$PUBLIC CORE=$CORE GAZEBO10=$GAZEBO10"
           echo "AXIA_PRELOCAL_CANDIDATE_ONLY gate_accepted=false certified_estop=false"
           echo "G00_REAL_GOAL=NOT_RUN G03_G04_REAL_GAZEBO_FAULT=NOT_RUN"
-          if [[ "$PUBLIC" != success || "$CORE" != success ]]; then
-            echo "P1_UNIT_MIDDLEWARE_BLOCKED"
-            exit 3
-          fi
-          if [[ "$GAZEBO10" == skipped ]]; then
-            echo "P1_UNIT_MIDDLEWARE_STAGE_A_PASS_ONLY; GOAL=NOT_RUN GAZEBO=NOT_RUN"
-            exit 0
-          fi
-          if [[ "$GAZEBO10" != success ]]; then
+          if [[ "$PUBLIC" != success || "$CORE" != success || "$GAZEBO10" != success ]]; then
             echo "P1_PRELOCAL_BLOCKED"
             exit 3
           fi
