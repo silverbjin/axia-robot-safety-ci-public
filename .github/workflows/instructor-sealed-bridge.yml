@@ -6,6 +6,7 @@ on:
       - '.github/workflows/instructor-sealed-bridge.yml'
       - 'scripts/private_ci_bridge.py'
       - 'tests/test_private_ci_bridge.py'
+      - 'tests/test_p1_t08_exact_sha_bridge.py'
   workflow_dispatch:
 permissions:
   contents: read
