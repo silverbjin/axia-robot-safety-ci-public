@@ -341,3 +341,48 @@ class ProtectedBridgeTests(TestCase):
         self.assertIn('gate_accepted=false', text)
         self.assertNotIn('pull_request_target:', text)
         self.assertIn('persist-credentials: false', text)
+
+    def test_private_diagnostic_window_teardown_is_allowlisted_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            run = root / 'run_1'
+            run.mkdir()
+            secret = 'PRIVATE_SUPERVISOR_TRACE_NEVER_IN_PUBLIC_LOG'
+            (root / 'prelocal_report.json').write_text(json.dumps({
+                'observation_warnings': [
+                    'run_1:BOOT_CALLBACK_OVERRUN_BEFORE_STABLE_WINDOW',
+                    'run_1:' + secret]}), encoding='utf-8')
+            (run / 'supervisor_prestart.json').write_text(json.dumps({
+                'observer_scan_intervals': 21,
+                'observer_scan_gaps_over_0p5s': 1,
+                'observer_scan_max_gap_sec': 0.55,
+                'scan_stable_window': {'status': 'WINDOW_VERIFIED',
+                    'intervals': 15, 'over_0p5s': 0, 'invalid': 0},
+                'clock_rtf': {'status': 'RTF_OBSERVED', 'rtf': 1.0,
+                              'clock_samples': 34, 'secret': secret}
+            }), encoding='utf-8')
+            (run / 'shutdown_control.json').write_text(json.dumps({
+                'status': 'SHUTDOWN_BLOCKED', 'reason': secret,
+                'managers': {
+                    'navigation': {'success': False,
+                                   'discovery_wall_sec': 0.61,
+                                   'response_wall_sec': 45.1,
+                                   'secret': secret}}
+            }), encoding='utf-8')
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                rows = bridge.private_evidence_diagnostics(root, 1)
+            self.assertNotIn(secret, output.getvalue())
+            self.assertEqual(rows[0]['observer_scan_gaps_over_0_5s'], 1)
+            self.assertEqual(rows[0]['scan_window_status'], 'WINDOW_VERIFIED')
+            self.assertEqual(rows[0]['clock_samples'], 34)
+            self.assertEqual(rows[0]['shutdown_control_reason'], 'UNRECOGNIZED')
+            self.assertEqual(rows[0]['navigation_shutdown_ack'], False)
+            self.assertEqual(rows[0]['navigation_response_wall_sec'], 45.1)
+            self.assertEqual(rows[0]['observation_warnings'],
+                             ['BOOT_CALLBACK_OVERRUN_BEFORE_STABLE_WINDOW'])
+
+    def test_private_pin_matches_exact_workflow_checkout_sha(self):
+        workflow = (Path(__file__).resolve().parents[1] /
+                    '.github/workflows/instructor-sealed-bridge.yml').read_text()
+        self.assertIn('ref: ' + bridge.PIN, workflow)
