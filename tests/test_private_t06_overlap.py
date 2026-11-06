@@ -54,3 +54,25 @@ class TestSanitizedFaultDiagnostic(TestCase):
 
     def test_missing_file_fails_closed(self):
         self.assertEqual(assess_fault_overlap('/nonexistent/file.xml')['diagnosis'],'NOT_AVAILABLE')
+
+
+    def test_boot_health_flags_are_allowlisted_and_private_text_hidden(self):
+        from private_junit_oracle import assess_boot_health
+        with TemporaryDirectory() as d:
+            path = Path(d)/'junit.xml'
+            secret = 'HIDDEN_INSTRUCTOR_PRIVATE_STACKTRACE_TOKEN_1234'
+            path.write_text(
+                '<testsuite><testcase><failure>initial health never ready; '
+                'state=BOOT_SAFE clock_ok=True scan_ok=False graph_ok=None '
+                'cm_ok=False action_ready=None scan_fault=SCAN_TIMEOUT '
+                'scan_callback_gap=0.62 '+secret+'</failure></testcase></testsuite>')
+            result = assess_boot_health(path)
+            self.assertEqual(result['boot_diagnosis'], 'BOOT_HEALTH_OBSERVED')
+            self.assertEqual(result['boot_state'], 'BOOT_SAFE')
+            self.assertEqual(result['clock_ok'], 'True')
+            self.assertEqual(result['scan_ok'], 'False')
+            self.assertEqual(result['scan_fault'], 'SCAN_TIMEOUT')
+            self.assertEqual(result['scan_callback_gap'], 'OVER_0P5')
+            self.assertFalse(any(secret in str(v) for v in result.values()))
+            self.assertEqual(assess_boot_health('/file-not-found')['boot_diagnosis'],
+                             'NOT_AVAILABLE')

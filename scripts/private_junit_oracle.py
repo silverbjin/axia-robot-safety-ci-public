@@ -61,3 +61,44 @@ def assess_fault_overlap(path):
         'callback_deadline': deadline,
         'gate_accepted': False,
     }
+
+
+def assess_boot_health(path):
+    """Whitelist boot readiness flags, never output ROS/private diagnostic text."""
+    base = {'boot_diagnosis': 'NOT_AVAILABLE', 'boot_state': 'UNAVAILABLE',
+            'clock_ok': 'UNAVAILABLE', 'scan_ok': 'UNAVAILABLE',
+            'graph_ok': 'UNAVAILABLE', 'cm_ok': 'UNAVAILABLE',
+            'action_ready': 'UNAVAILABLE', 'scan_fault': 'UNAVAILABLE',
+            'scan_callback_gap': 'UNAVAILABLE'}
+    try:
+        root = ET.parse(Path(path)).getroot()
+    except (OSError, ET.ParseError, ValueError, TypeError):
+        return base
+    failures = []
+    for x in root.iter():
+        if x.tag in ('failure', 'error'):
+            failures.append((x.get('message') or '')[:100_000])
+            failures.append((x.text or '')[:100_000])
+    raw = '\n'.join(failures)
+    if 'initial health never ready' not in raw:
+        return base
+    record = {**base, 'boot_diagnosis': 'BOOT_HEALTH_OBSERVED'}
+    for key in ('clock_ok', 'scan_ok', 'graph_ok', 'cm_ok', 'action_ready'):
+        match = re.search(r'\b' + key + r'=(True|False|None)\b', raw)
+        if match:
+            record[key] = match.group(1)
+    state = re.search(r'\bstate=(BOOT_SAFE|NORMAL|LIMITED|PROTECTIVE_STOP|SW_STOP_LATCHED)\b',raw)
+    if state:
+        record['boot_state'] = state.group(1)
+    fault = re.search(r'\bscan_fault=([A-Z_]+)\b',raw)
+    if fault:
+        record['scan_fault'] = fault.group(1) if fault.group(1) in _SCAN else 'UNKNOWN'
+    gap = re.search(r'\bscan_callback_gap=(\d+(?:\.\d+)?)\b',raw)
+    if gap:
+        try:
+            n = float(gap.group(1)[:20])
+            record['scan_callback_gap'] = (
+                'OVER_0P5' if n > 0.5 else 'NOT_OVER_0P5')
+        except (ValueError, OverflowError):
+            pass
+    return record

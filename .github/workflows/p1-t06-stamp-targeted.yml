@@ -1,4 +1,4 @@
-name: AXIA P1-T06 isolated stale-stamp DDS regression (FAKE ROS ONLY)
+name: AXIA P1-T06 isolated stale-stamp and boot readiness (FAKE ROS ONLY)
 on:
   push:
     branches: [feat/secure-instructor-cloud-bridge]
@@ -25,7 +25,7 @@ jobs:
           set -euo pipefail
           python3 -m unittest discover -s tests -p test_private_t06_overlap.py -v
 
-  fake-stale-stamp-threefold:
+  fake-stamp-and-boot-threefold:
     needs: public-diagnostic-contract
     if: github.repository == 'silverbjin/axia-robot-safety-ci-public' && github.actor == 'silverbjin' && github.ref == 'refs/heads/feat/secure-instructor-cloud-bridge' && github.event_name == 'push'
     runs-on: ubuntu-24.04
@@ -50,7 +50,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 701849b7fd4669f7307e46a71f21cb5a641ceee1
+          ref: 59805dc98ef27a3eb1efee8095406bb3fc93bd3a
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
           fetch-depth: 1
@@ -70,7 +70,7 @@ jobs:
             ros-jazzy-nav2-msgs ros-jazzy-rclpy ros-jazzy-action-msgs \
             ros-jazzy-nav-msgs ros-jazzy-sensor-msgs ros-jazzy-std-msgs \
             ros-jazzy-std-srvs ros-jazzy-geometry-msgs ros-jazzy-lifecycle-msgs
-      - name: Run 3 isolated fake DDS cases with redacted results only
+      - name: Run 2 isolated fake DDS cases x 3 with redacted results only
         shell: bash
         run: |
           set -eo pipefail
@@ -81,8 +81,8 @@ jobs:
           from pathlib import Path
           sys.path.insert(0, 'scripts')
           import private_ci_bridge as b
-          from private_junit_oracle import assess_fault_overlap
-          expected = '701849b7fd4669f7307e46a71f21cb5a641ceee1'
+          from private_junit_oracle import assess_fault_overlap, assess_boot_health
+          expected = '59805dc98ef27a3eb1efee8095406bb3fc93bd3a'
           root = Path('_instructor_private').resolve()
           verified = subprocess.run(['git','rev-parse','HEAD'],cwd=root,
                                     capture_output=True,text=True,timeout=10)
@@ -96,26 +96,35 @@ jobs:
               with tempfile.TemporaryDirectory(prefix='axia_t06_fake_private_') as folder:
                   tmp = Path(folder)
                   setup = b.ros_workspace_build(root,env,tmp)
-                  for i in (1,2,3):
-                      stage = f'T06_STALE_STAMP_R{i}'
-                      junit = tmp / f'{stage}.xml'
-                      cmd = b.bash_with_ros_overlay(setup,[
-                          'python3','-m','pytest','-q',
-                          'tests/ros_integration/test_p1_t06_faults.py::test_t06_repeated_old_stamp_protective_stop_and_cancel',
-                          f'--junitxml={junit}'])
-                      try:
-                          b.scrubbed_run(stage,cmd,root,dict(env,ROS_DOMAIN_ID=str(205+i)),
-                                        tmp,180,junit)
-                      except b.GateBlocked:
-                          blocked += 1
-                          print('AXIA_T06_SANITIZED '+json.dumps({
-                              'repeat':i, **assess_fault_overlap(junit)
-                          }, sort_keys=True),flush=True)
+                  case_file = 'tests/ros_integration/test_p1_t06_faults.py'
+                  cases = b.private_pytest_cases(root / case_file)
+                  for case_number in (2, 5):
+                      for i in (1,2,3):
+                          stage = f'T06_C{case_number:02d}_R{i}'
+                          junit = tmp / f'{stage}.xml'
+                          cmd = b.bash_with_ros_overlay(setup,[
+                              'python3','-m','pytest','-q',
+                              f'{case_file}::{cases[case_number-1]}',
+                              f'--junitxml={junit}'])
+                          try:
+                              b.scrubbed_run(
+                                  stage,cmd,root,
+                                  dict(env,ROS_DOMAIN_ID=str(170+3*case_number+i)),
+                                  tmp,180,junit)
+                          except b.GateBlocked:
+                              blocked += 1
+                              sanitized = {
+                                  'case': f'T06-{case_number:02d}', 'repeat': i,
+                                  **assess_fault_overlap(junit)}
+                              if case_number == 5:
+                                  sanitized.update(assess_boot_health(junit))
+                              print('AXIA_T06_SANITIZED '+json.dumps(
+                                  sanitized, sort_keys=True),flush=True)
           except Exception:
               print('AXIA_T06_TARGETED=BLOCKED reason=PRIVATE_INFRA_OR_TEST gate_accepted=false')
               sys.exit(3)
           print('AXIA_T06_TARGETED=' + ('PASS' if blocked==0 else 'BLOCKED') +
-                ' repetitions=3 failures='+str(blocked)+
+                ' cases=2 repetitions_per_case=3 total=6 failures='+str(blocked)+
                 ' fake_only=true goal_sent_to_gazebo=false gate_accepted=false',flush=True)
           sys.exit(3 if blocked else 0)
           PY
