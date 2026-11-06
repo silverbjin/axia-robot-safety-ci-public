@@ -36,8 +36,9 @@ jobs:
       - name: Official simulator READ ONLY startup and shutdown
         shell: bash
         run: |
-          set -euo pipefail
+          set -eo pipefail
           source /opt/ros/jazzy/setup.bash
+          set -u
           rounds=3
           if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
             rounds=$(python3 -c 'import json,os; print(json.load(open(os.environ["GITHUB_EVENT_PATH"]))["inputs"]["rounds"])')
