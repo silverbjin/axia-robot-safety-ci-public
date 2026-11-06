@@ -1,0 +1,111 @@
+name: AXIA isolated sealed instructor Python CI07 CI08 audit
+on:
+  push:
+    branches: [fix/ci07-ci08-private-unit-audit-20261106]
+    paths:
+      - '.github/workflows/ci07-ci08-private-unit-audit.yml'
+      - 'tests/test_ci07_ci08_unit_audit_security.py'
+permissions:
+  contents: read
+concurrency:
+  group: axia-ci07-ci08-unit-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  public-unit-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Public-only scope and secret-boundary tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p test_ci07_ci08_unit_audit_security.py -v
+
+  private-ci07-unit:
+    needs: public-unit-contract
+    if: github.repository == 'silverbjin/axia-robot-safety-ci-public' && github.actor == 'silverbjin' && github.ref == 'refs/heads/fix/ci07-ci08-private-unit-audit-20261106' && github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    environment:
+      name: axia-instructor-sealed
+    steps:
+      - name: Checkout pinned instructor CI07 evidence code - private temp only
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 063d1788043b313ac9ec3b6ed91a6f972de3d965
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+          fetch-depth: 1
+          path: _instructor_private
+      - name: Execute Python-only synthetic custody contracts without public raw logs
+        shell: bash
+        run: |
+          set -euo pipefail
+          LOG="$(mktemp)"
+          trap 'rm -f "$LOG"' EXIT
+          set +e
+          (
+            cd _instructor_private
+            PYTHONPATH=. python3 -m unittest discover -s tests/unit -p test_p1_private_evidence_custody.py -v
+          ) > "$LOG" 2>&1
+          RC=$?
+          set -e
+          if [[ "$RC" -eq 0 ]] && grep -Eq "^Ran 13 tests in " "$LOG" && grep -qx "OK" "$LOG"; then
+            echo "AXIA_PRIVATE_CI07_UNIT=PASS tests=13 gate_accepted=false certified_estop=false"
+          else
+            echo "AXIA_PRIVATE_CI07_UNIT=BLOCKED reason=UNIT_CONTRACT_FAILED gate_accepted=false certified_estop=false"
+            exit 2
+          fi
+      - name: Remove ephemeral instructor checkout and private evidence
+        if: always()
+        shell: bash
+        run: |
+          rm -rf _instructor_private
+          echo AXIA_PRIVATE_TEMP_CLEANUP_DONE
+
+  private-ci08-unit:
+    needs: public-unit-contract
+    if: github.repository == 'silverbjin/axia-robot-safety-ci-public' && github.actor == 'silverbjin' && github.ref == 'refs/heads/fix/ci07-ci08-private-unit-audit-20261106' && github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    environment:
+      name: axia-instructor-sealed
+    steps:
+      - name: Checkout pinned instructor CI08 admission code - private temp only
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 516e86d2cb12c72251f1a16a2c9201afde757a58
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+          fetch-depth: 1
+          path: _instructor_private
+      - name: Execute Python-only guarded Goal admission contracts without public raw logs
+        shell: bash
+        run: |
+          set -euo pipefail
+          LOG="$(mktemp)"
+          trap 'rm -f "$LOG"' EXIT
+          set +e
+          (
+            cd _instructor_private
+            PYTHONPATH=. python3 -m unittest discover -s tests/unit -p test_p1_cloud_g00_admission.py -v
+          ) > "$LOG" 2>&1
+          RC=$?
+          set -e
+          if [[ "$RC" -eq 0 ]] && grep -Eq "^Ran 12 tests in " "$LOG" && grep -qx "OK" "$LOG"; then
+            echo "AXIA_PRIVATE_CI08_UNIT=PASS tests=12 goal_sent=false gate_accepted=false certified_estop=false"
+          else
+            echo "AXIA_PRIVATE_CI08_UNIT=BLOCKED reason=UNIT_CONTRACT_FAILED goal_sent=false gate_accepted=false certified_estop=false"
+            exit 2
+          fi
+      - name: Remove ephemeral instructor checkout and private evidence
+        if: always()
+        shell: bash
+        run: |
+          rm -rf _instructor_private
+          echo AXIA_PRIVATE_TEMP_CLEANUP_DONE
