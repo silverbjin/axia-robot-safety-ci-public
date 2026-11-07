@@ -13,6 +13,7 @@ from pathlib import Path
 import tempfile
 import time
 
+PRIVATE_PIN = 'd86ee9860de8924f6a5b2c5828d493fb7ef7f9eb'
 RECEIPTS = ('corridor', 'pre_goal_gate', 'graph', 'supervisor_prestart')
 FORBIDDEN = ('start_ack.json', 'nav2_goal.log', 'fault.log', 'live_trace.jsonl')
 
@@ -105,6 +106,9 @@ def verify_receipts(root: Path, *, expected_sha: str, rounds: int, now_ns: int) 
 
 def run(private_root: Path) -> int:
     import private_ci_bridge as b
+    # This R01-only workflow validates its new exact SHA without altering the
+    # previously successful baseline bridge pinned to its historical source.
+    b.PIN = PRIVATE_PIN
     try:
         root = b.validate_private_commit(private_root)
         env = b.private_runtime_env(root, os.environ)
@@ -113,6 +117,11 @@ def run(private_root: Path) -> int:
         with tempfile.TemporaryDirectory(prefix='axia_p1_r01_private_',
                                          dir=os.environ.get('RUNNER_TEMP') or None) as temp:
             tmp = Path(temp)
+            junit = tmp / 'R01_BOOTSTRAP_ORDER.xml'
+            b.scrubbed_run('R01_BOOTSTRAP_ORDER',
+                          ['python3','-m','pytest','-q',
+                           'tests/unit/test_p1_t08_r01_capture_order.py',
+                           f'--junitxml={junit}'], root,env,tmp,60,junit)
             overlay = tmp / 'official-nav2-overlay'
             b.scrubbed_run('UPSTREAM_OVERLAY',
                           ['bash','scripts/build_official_nav2_lifecycle_overlay.sh',str(overlay)],

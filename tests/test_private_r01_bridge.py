@@ -8,7 +8,7 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
 from private_r01_bridge import ReceiptBlocked, verify_receipts
 
-PIN = '59805dc98ef27a3eb1efee8095406bb3fc93bd3a'
+PIN = 'd86ee9860de8924f6a5b2c5828d493fb7ef7f9eb'
 NAMES = ('corridor', 'pre_goal_gate', 'graph', 'supervisor_prestart')
 
 def make_case(root, *, rounds=3):
@@ -113,3 +113,7 @@ class TestReadOnlyR01(unittest.TestCase):
             (p/'run_2/start_ack.json').write_text('{}')
             with self.assertRaisesRegex(ReceiptBlocked,'R01_FORBIDDEN_MUTATION_EVIDENCE'):
                 verify_receipts(p,expected_sha=PIN,rounds=3,now_ns=2_000_000_000)
+
+    def test_isolated_r01_pin_matches_exact_private_checkout(self):
+        from private_r01_bridge import PRIVATE_PIN
+        self.assertEqual(PRIVATE_PIN, PIN)
