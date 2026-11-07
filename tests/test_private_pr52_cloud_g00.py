@@ -34,6 +34,13 @@ class RealG00CloudPolicy(unittest.TestCase):
         self.assertNotIn("create_publisher(",S)
         self.assertNotIn("ros2 topic pub",S)
         self.assertNotIn("call_async(",S)
+    def test_private_console_is_never_printed_as_raw_error(self):
+        self.assertIn("def _blocked_phase(log_file):",S)
+        self.assertIn('"CLOUD_CONTEXT_DENIED"',S)
+        self.assertIn('"PREFLIGHT_FAKE_ROS_FAILED"',S)
+        self.assertIn('"PRE_GAZEBO_UNCLASSIFIED"',S)
+        self.assertIn('"block_phase":_blocked_phase(log)',S)
+        self.assertNotIn("print(content)",S)
     def test_protected_environment_is_real_and_no_e_stop(self):
         self.assertIn('CI="true"',S)
         self.assertIn('AXIA_T08_CLOUD_G00_OPT_IN="YES_SIM_ONLY"',S)

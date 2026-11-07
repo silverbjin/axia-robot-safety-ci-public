@@ -33,6 +33,32 @@ def _status(path, field="status"):
         return "MISSING"
 
 
+def _blocked_phase(log_file):
+    """Only constant status enums from ephemeral private console; no raw data."""
+    try:
+        content=log_file.read_text(encoding="utf-8",errors="replace")[-100_000:]
+    except OSError:
+        return "PRIVATE_CONSOLE_MISSING"
+    rules=(
+        ("CLOUD_CI_G00_ONLY", "CLOUD_CONTEXT_DENIED"),
+        ("fake ROS regressions failed", "PREFLIGHT_FAKE_ROS_FAILED"),
+        ("official pinned Nav2 overlay verification failed", "NAV2_OVERLAY_POLICY_FAILED"),
+        ("build failed", "COLCON_BUILD_FAILED"),
+        ("Baseline hash mismatch", "BASELINE_MISMATCH"),
+        ("missing ROS package", "ROS_PACKAGES_MISSING"),
+        ("R07_FAULT_REQUIRES_INDEPENDENT_REVIEW", "FAULT_BOUNDARY_BLOCKED"),
+        ("SUPERVISOR_START_NOT_ACKNOWLEDGED", "START_OR_PRE_SEND_BOUNDARY_BLOCKED"),
+        ("PRE_GOAL_BLOCKED", "PRE_GOAL_BLOCKED"),
+        ("READINESS_OR_P1_GRAPH_NOT_VERIFIED", "NAV2_READINESS_OR_GRAPH_BLOCKED"),
+        ("SUPERVISOR_PRESTART_BLOCKED", "SUPERVISOR_PRESTART_BLOCKED"),
+        ("Final field collection complete", "FINAL_FIELD_COLLECTION_RECORDED"),
+    )
+    for marker,code in rules:
+        if marker in content:
+            return code
+    return "PRE_GAZEBO_UNCLASSIFIED"
+
+
 def run(private_root):
     report={"status":"CLOUD_G00_BLOCKED","private_sha_verified":False,
             "gazebo_executed":False,"real_goal_verified":False,
@@ -91,6 +117,7 @@ def run(private_root):
                             code=124
                 child=run/"cold_run_01"
                 row={"run":i,"exit":code if code in (0,2,3,124,130,143) else 127,
+                     "block_phase":_blocked_phase(log),
                      "startup":_status(child/"startup_verdict.json"),
                      "start_ack":_status(child/"start_ack.json"),
                      "field_gate":_status(child/"r05_bound_pre_send.json"),
