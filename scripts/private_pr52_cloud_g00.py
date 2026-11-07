@@ -266,9 +266,25 @@ def _action_status_gate_diagnostic(child):
     ))
     status=record.get("status")
     reason=record.get("reason")
+    allowed_role=frozenset(("RECORDER","OBSERVER"))
+    allowed_check=frozenset(("OK","WARNING","ERROR","UNKNOWN"))
+    reliable=frozenset(("RELIABLE","BEST_EFFORT","SYSTEM_DEFAULT","UNKNOWN"))
+    durable=frozenset(("TRANSIENT_LOCAL","VOLATILE","SYSTEM_DEFAULT","UNKNOWN"))
+    def safe_qos(name):
+        profile=record.get(name)
+        profile=profile if isinstance(profile,dict) else {}
+        a=profile.get("reliability")
+        b=profile.get("durability")
+        return {"reliability":a if a in reliable else "UNKNOWN",
+                "durability":b if b in durable else "UNKNOWN"}
     return {
         "status":status if status in allowed_status else "INVALID",
         "reason":reason if reason in allowed_reasons else "UNCLASSIFIED",
+        "qos_role":record.get("qos_role") if record.get("qos_role") in allowed_role else "UNKNOWN",
+        "qos_check":record.get("qos_check") if record.get("qos_check") in allowed_check else "UNKNOWN",
+        "publisher_qos":safe_qos("publisher_qos"),
+        "recorder_qos":safe_qos("recorder_qos"),
+        "observer_qos":safe_qos("observer_qos"),
     }
 
 
