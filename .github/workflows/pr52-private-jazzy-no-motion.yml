@@ -1,0 +1,78 @@
+name: AXIA PR52 substitute Jazzy P0 and ROS fake input (exact private SHA)
+on:
+  push:
+    branches: [feat/secure-instructor-cloud-bridge]
+    paths:
+      - '.github/workflows/pr52-private-jazzy-no-motion.yml'
+      - 'scripts/private_pr52_jazzy_ci.py'
+      - 'tests/test_private_pr52_jazzy_ci.py'
+permissions:
+  contents: read
+concurrency:
+  group: axia-pr52-jazzy-safe
+  cancel-in-progress: false
+jobs:
+  public-jazzy-privacy-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Validate safe no-motion scope
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p test_private_pr52_jazzy_ci.py -v
+          python3 -m compileall -q scripts/private_pr52_jazzy_ci.py
+  protected-private-jazzy-no-motion:
+    needs: public-jazzy-privacy-contract
+    if: github.repository == 'silverbjin/axia-robot-safety-ci-public' && github.actor == 'silverbjin' && github.ref == 'refs/heads/feat/secure-instructor-cloud-bridge' && github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    container:
+      image: ros:jazzy-ros-base-noble
+    environment:
+      name: axia-instructor-sealed
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Require approved private secret without disclosure
+        shell: bash
+        env:
+          PRIVATE_READ_TOKEN: ${{ secrets.AXIA_CLOUD_CI }}
+        run: |
+          set -euo pipefail
+          test -n "$PRIVATE_READ_TOKEN"
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 6bc579814c6037d40d644ce8d9f5046fa4a7d4c6
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          fetch-depth: 1
+          persist-credentials: false
+          path: _instructor_private
+      - name: Install official Jazzy non-Gazebo test dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+            git build-essential cmake procps python3-yaml python3-pytest \
+            python3-colcon-common-extensions ros-jazzy-navigation2 \
+            ros-jazzy-nav2-bringup ros-jazzy-nav2-minimal-tb3-sim \
+            ros-jazzy-ros-gz ros-jazzy-tf2-ros ros-jazzy-nav2-msgs \
+            ros-jazzy-rclpy ros-jazzy-action-msgs ros-jazzy-nav-msgs \
+            ros-jazzy-sensor-msgs ros-jazzy-std-msgs ros-jazzy-std-srvs \
+            ros-jazzy-geometry-msgs ros-jazzy-lifecycle-msgs \
+            ros-jazzy-rosgraph-msgs
+      - name: Run sealed real Jazzy Middleware + synthetic ROS inputs, NO Gazebo
+        shell: bash
+        run: |
+          set -eo pipefail
+          source /opt/ros/jazzy/setup.bash
+          set -u
+          python3 scripts/private_pr52_jazzy_ci.py --private-root _instructor_private
+      - name: Remove private checkout and ephemeral outputs
+        if: always()
+        run: rm -rf _instructor_private
