@@ -7,7 +7,7 @@ FILE=ROOT/'scripts/private_pr52_jazzy_ci.py'
 class TestPr52JazzyNoSimContract(unittest.TestCase):
     def test_exact_sha_pin_and_unmodified_shared_bridge(self):
         t=FILE.read_text()
-        self.assertIn("PIN = 'e2eb300c8e4967372daaf52944ec67fbe0c8f6b1'",t)
+        self.assertIn("PIN = '349f9c7416457080fab540338e2b47431734ef99'",t)
         self.assertIn("bridge.validate_private_commit(root)",t)
         self.assertIn("env['GITHUB_SHA']=PIN",t)
     def test_selected_jazzy_suite_has_no_real_fault_or_goal(self):
