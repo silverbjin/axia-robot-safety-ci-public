@@ -153,6 +153,42 @@ def _fake_preflight_diagnostic(run):
         report["blocked_code"]="ROS_SETUP_MISSING"
     elif isinstance(blocked,str) and blocked.startswith("ROS_ACTION_DEPENDENCY_MISSING:"):
         report["blocked_code"]="ROS_ACTION_DEPENDENCY_MISSING"
+    # Reuse the existing sanitized L1 reader. Never export private log text,
+    # test names, paths, topic identities or raw ROS/JUnit attachments.
+    allowed_reasons=frozenset((
+        "ROS_DIAGNOSTIC_UNAVAILABLE","PYTHON_MODULE_MISSING","IMPORT_FAILED",
+        "ROS_SERVICE_RESPONSE_TIMEOUT","ROS_HEALTH_NOT_READY",
+        "HEALTH_ASSERTION_FAILED","ROS_HEALTH_ASSERTION_FAILED",
+        "ROS_MIDDLEWARE_EXCEPTION","ROS_PROCESS_CRASH",
+        "PYTHON_EXCEPTION","ASSERTION_FAILED","OTHER_OR_MISSING_DIAGNOSTIC",
+        "MISSING_DIAGNOSTIC",
+    ))
+    allowed_flags=frozenset(("clock_ok","scan_ok","graph_ok","cm_ok","action_ready"))
+    cases=[]
+    try:
+        from pr52_l1_fake_ros import _evidence
+        detailed,_=_evidence(summary_dir)
+        for stage in detailed.get("stages",[])[:30]:
+            name=stage.get("stage")
+            repeat=stage.get("repeat")
+            if name not in allowed_stages or type(repeat) is not int or not 1<=repeat<=3:
+                continue
+            for item in stage.get("case_failures",[])[:20]:
+                number=item.get("case_number")
+                if type(number) is not int or not 0<=number<=30:
+                    continue
+                reason=item.get("reason")
+                flags=item.get("health_flags")
+                flags=flags if isinstance(flags,dict) else {}
+                clean_flags={key:value for key,value in flags.items()
+                             if key in allowed_flags and value in ("True","False","None")}
+                cases.append({"stage":name,"repeat":repeat,"case_number":number,
+                              "reason":reason if reason in allowed_reasons
+                              else "OTHER_OR_MISSING_DIAGNOSTIC",
+                              "health_flags":clean_flags})
+    except Exception:
+        cases=[]
+    report["case_failures"]=cases[:30]
     return report
 
 
