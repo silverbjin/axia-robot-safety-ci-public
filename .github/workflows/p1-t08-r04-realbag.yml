@@ -1,0 +1,86 @@
+name: AXIA P1-T08 R04 real no-goal rosbag2 ephemeral private custody
+on:
+  push:
+    branches: [feat/secure-instructor-cloud-bridge]
+    paths:
+      - '.github/workflows/p1-t08-r04-realbag.yml'
+      - 'scripts/private_r04_real_bag_bridge.py'
+      - 'tests/test_private_r04_real_bag.py'
+permissions:
+  contents: read
+concurrency:
+  group: axia-p1-t08-r04-realbag
+  cancel-in-progress: false
+jobs:
+  public-r04-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Verify fail-closed R04 SQLite and no-goal contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p test_private_r04_real_bag.py -v
+          python3 -m compileall -q scripts/private_r04_real_bag_bridge.py
+  private-realbag-custody:
+    needs: public-r04-contract
+    if: github.repository == 'silverbjin/axia-robot-safety-ci-public' && github.actor == 'silverbjin' && github.ref == 'refs/heads/feat/secure-instructor-cloud-bridge' && github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    container:
+      image: ros:jazzy-ros-base-noble
+    environment:
+      name: axia-instructor-sealed
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Check isolated private access without printing secrets
+        shell: bash
+        env:
+          PRIVATE_READ_TOKEN: ${{ secrets.AXIA_CLOUD_CI }}
+        run: |
+          set -euo pipefail
+          test -n "$PRIVATE_READ_TOKEN"
+          echo AXIA_R04_PRIVATE_ACCESS_PRESENT
+      - name: Checkout pinned instructor sources into ephemeral runner
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: d86ee9860de8924f6a5b2c5828d493fb7ef7f9eb
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+          fetch-depth: 1
+          path: _instructor_private
+      - name: Install official ROS Jazzy Harmonic and rosbag2 SQLite dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+            git build-essential cmake procps python3-yaml python3-pytest \
+            python3-colcon-common-extensions \
+            ros-jazzy-navigation2 ros-jazzy-nav2-bringup \
+            ros-jazzy-nav2-minimal-tb3-sim ros-jazzy-ros-gz \
+            ros-jazzy-rosbag2 ros-jazzy-rosbag2-storage-default-plugins \
+            ros-jazzy-rosgraph-msgs ros-jazzy-tf2-ros \
+            ros-jazzy-nav2-msgs ros-jazzy-rclpy ros-jazzy-action-msgs \
+            ros-jazzy-nav-msgs ros-jazzy-sensor-msgs ros-jazzy-std-msgs \
+            ros-jazzy-std-srvs ros-jazzy-geometry-msgs ros-jazzy-lifecycle-msgs
+      - name: Real Gazebo single no-goal bag; seal, restore, inspect SQLite
+        shell: bash
+        run: |
+          set -eo pipefail
+          source /opt/ros/jazzy/setup.bash
+          set -u
+          echo R04_NO_GOAL_EPHEMERAL_ONLY
+          python3 scripts/private_r04_real_bag_bridge.py --private-root _instructor_private
+      - name: Delete raw private source and all temporary evidence
+        if: always()
+        shell: bash
+        run: |
+          rm -rf _instructor_private
+          echo AXIA_R04_PRIVATE_CHECKOUT_CLEANED
