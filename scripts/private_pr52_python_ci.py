@@ -17,7 +17,7 @@ import sys
 import tempfile
 import xml.etree.ElementTree as ET
 
-PIN = 'fdf54edf3286d40c1c6338ec0068cf7f9accfefd'
+PIN = '6bc579814c6037d40d644ce8d9f5046fa4a7d4c6'
 SCOPES = ('python',)
 _SUITES = (
  ('P0_UNIT', [sys.executable,'-m','unittest','discover','-s','tests/p0','-v'],120),
@@ -78,6 +78,9 @@ def run(private_root: Path):
             raise ValueError('CHECKOUT_SHA_MISMATCH')
         summary['pin_checked']=True
         env=dict(os.environ)
+        # Public workflow GITHUB_SHA identifies its own CI code, not the
+        # sealed private checkout. Preserve strict private provenance.
+        env['GITHUB_SHA']=PIN
         env['PYTHONPATH']=os.pathsep.join(str(root / x) for x in (
             'ros2_ws/src/axia_safety_supervisor','ros2_ws/src/axia_fault_injector',
             'ros2_ws/src/axia_scenario_verifier','tools',))

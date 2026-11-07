@@ -10,7 +10,7 @@ m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
 
 class TestPrivatePr52PythonCI(unittest.TestCase):
     def test_exact_source_sha_is_hardcoded(self):
-        self.assertEqual(m.PIN,'fdf54edf3286d40c1c6338ec0068cf7f9accfefd')
+        self.assertEqual(m.PIN,'6bc579814c6037d40d644ce8d9f5046fa4a7d4c6')
     def test_three_scoped_stages_include_p0_and_full_unit(self):
         self.assertEqual([x[0] for x in m._SUITES],['P0_UNIT','P0_COMPILE','P1_UNIT_ALL'])
         self.assertIn('tests/unit',m._SUITES[2][1])
@@ -40,6 +40,11 @@ class TestPrivatePr52PythonCI(unittest.TestCase):
     def test_missing_xml_is_blocked_not_pass(self):
         with tempfile.TemporaryDirectory() as d:
             self.assertFalse(m.junit_failure_fingerprints(Path(d)/'absent.xml')['junit_valid'])
+    def test_private_git_sha_expected_in_child_processes(self):
+        t=FILE.read_text()
+        self.assertIn("env['GITHUB_SHA']=PIN",t)
+        self.assertIn("sha != PIN",t)
+
     def test_no_goal_fault_or_private_artifact_upload_in_code(self):
         t=FILE.read_text()
         for forbidden in ('ros2 action send_goal','/axia/safety/start',
