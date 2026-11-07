@@ -155,6 +155,68 @@ def _fake_preflight_diagnostic(run):
     return report
 
 
+
+def _shutdown_failure_diagnostic(child):
+    """Map private lifecycle shutdown receipts to a fixed safe status vocabulary."""
+    result={"reason_code":"DIAGNOSTIC_UNAVAILABLE",
+            "manager_ack_navigation":False,
+            "manager_ack_localization":False,
+            "manager_active_after_timeout":"UNKNOWN",
+            "amcl_state":"UNKNOWN","map_server_state":"UNKNOWN",
+            "lifecycle_acknowledged":False,
+            "fatal_detected":False}
+    try:
+        ctrl=Path(child)/"shutdown_control.json"
+        verdict=Path(child)/"shutdown_verdict.json"
+        if (not ctrl.is_file() or ctrl.is_symlink()
+                or not verdict.is_file() or verdict.is_symlink()):
+            return result
+        control=json.loads(ctrl.read_text(encoding="utf-8"))
+        stop=json.loads(verdict.read_text(encoding="utf-8"))
+        if not isinstance(control,dict) or not isinstance(stop,dict):
+            return result
+        allowed_reasons={
+            "SIMULATION_MARKERS_MISSING","ROS_JAZZY_REQUIRED",
+            "INVALID_TIMEOUT","PREPAUSE_NOT_AUTHORIZED",
+            "NAVIGATION_SERVICE_UNAVAILABLE","LOCALIZATION_SERVICE_UNAVAILABLE",
+            "NAVIGATION_SERVICE_RESPONSE_TIMEOUT","LOCALIZATION_SERVICE_RESPONSE_TIMEOUT",
+            "NAVIGATION_SERVICE_EXCEPTION","LOCALIZATION_SERVICE_EXCEPTION",
+            "NAVIGATION_SERVICE_REPORTED_FAILURE","LOCALIZATION_SERVICE_REPORTED_FAILURE",
+            "NAVIGATION_PREPAUSE_SERVICE_RESPONSE_TIMEOUT",
+            "LOCALIZATION_PREPAUSE_SERVICE_RESPONSE_TIMEOUT",
+            "SHUTDOWN_EXCEPTION","BOTH_MANAGERS_ACKNOWLEDGED_SHUTDOWN",
+        }
+        val=control.get("reason")
+        result["reason_code"]=val if val in allowed_reasons else "UNCLASSIFIED_SHUTDOWN_BLOCK"
+        managers=control.get("managers")
+        managers=managers if isinstance(managers,dict) else {}
+        for key in ("navigation","localization"):
+            entry=managers.get(key)
+            result["manager_ack_"+key]=(isinstance(entry,dict)
+                                         and entry.get("success") is True)
+        loc=managers.get("localization")
+        loc=loc if isinstance(loc,dict) else {}
+        allowed_probe={"ACTIVE","INACTIVE","NO_RESPONSE","SERVICE_UNAVAILABLE",
+                       "SERVICE_ERROR","INVALID_RESPONSE","UNKNOWN"}
+        observed=loc.get("manager_active_after_timeout")
+        if observed in allowed_probe:
+            result["manager_active_after_timeout"]=observed
+        states=loc.get("managed_nodes_after_timeout")
+        states=states if isinstance(states,dict) else {}
+        allowed_states={"UNCONFIGURED","INACTIVE","ACTIVE","FINALIZED",
+                        "SERVICE_UNAVAILABLE","NO_RESPONSE","SERVICE_ERROR","UNKNOWN"}
+        for key in ("amcl","map_server"):
+            state=states.get(key)
+            if state in allowed_states:
+                result[key+"_state"]=state
+        result["lifecycle_acknowledged"]=(stop.get("lifecycle_shutdown_acknowledged") is True)
+        fatal=stop.get("fatal_signatures")
+        result["fatal_detected"]=isinstance(fatal,list) and bool(fatal)
+    except (OSError,ValueError,UnicodeError,TypeError):
+        return {"reason_code":"DIAGNOSTIC_UNAVAILABLE"}
+    return result
+
+
 def _raw_bag_blocker(run, source_sha):
     part=Path(run)/'cold_run_01'
     bag=part/'rosbag2'
@@ -307,6 +369,8 @@ def run(private_root):
                     row["evidence_classification"]="BLOCKED"
                 if row["block_phase"]=="PREFLIGHT_FAKE_ROS_FAILED":
                     row["preflight_diagnostic"]=_fake_preflight_diagnostic(run)
+                if row["shutdown"]!="SHUTDOWN_CLEAN":
+                    row["shutdown_diagnostic"]=_shutdown_failure_diagnostic(child)
                 report["runs"].append(row)
                 print("AXIA_PR52_REAL_G00_RUN "+json.dumps(row,sort_keys=True),flush=True)
                 if not row["candidate"]:break
