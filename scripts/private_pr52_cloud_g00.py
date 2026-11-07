@@ -110,6 +110,51 @@ _EXPECTED_BAG_TOPICS=('/clock','/odom','/cmd_vel','/axia/safety/state',
                       '/navigate_to_pose/_action/status')
 
 
+
+def _fake_preflight_diagnostic(run):
+    """Only public stage enums/counts, never private stdout, tests or paths."""
+    summary_dir=Path(run)/"partial"
+    if not summary_dir.is_dir() or summary_dir.is_symlink():
+        return {"status":"PREFLIGHT_SUMMARY_MISSING"}
+    files=list(summary_dir.glob("p1-*/summary.json"))
+    if len(files)!=1 or files[0].is_symlink():
+        return {"status":"PREFLIGHT_SUMMARY_MISSING"}
+    try:
+        summary=json.loads(files[0].read_text(encoding="utf-8"))
+    except (OSError,ValueError,UnicodeError):
+        return {"status":"PREFLIGHT_SUMMARY_INVALID"}
+    if not isinstance(summary,dict) or not isinstance(summary.get("stage_results"),list):
+        return {"status":"PREFLIGHT_SUMMARY_INVALID"}
+    allowed_stages=frozenset(("G02_UNIT","G04_UNIT","G03_ROS_FAKE","G04_ROS_FAKE"))
+    allowed_status=frozenset(("PASS","FAIL","ERROR","BLOCKED","INCONCLUSIVE","NOT_RUN"))
+    report={"status":"PREFLIGHT_STAGE_DIAGNOSTIC_ONLY",
+            "first_nonpassing_stage":"NONE","first_nonpassing_status":"NONE",
+            "failed_case_count":0,"stage_counts":{}}
+    for item in summary["stage_results"][:30]:
+        if not isinstance(item,dict):
+            continue
+        stage=item.get("stage_id")
+        status=item.get("status")
+        if stage not in allowed_stages or status not in allowed_status:
+            continue
+        count=report["stage_counts"].setdefault(stage,{"passes":0,"nonpasses":0})
+        count["passes" if status=="PASS" else "nonpasses"]+=1
+        fails=item.get("failures",0)
+        if type(fails) is int and 0<=fails<=1000:
+            report["failed_case_count"]+=fails
+        if status!="PASS" and report["first_nonpassing_stage"]=="NONE":
+            report["first_nonpassing_stage"]=stage
+            report["first_nonpassing_status"]=status
+    blocked=summary.get("blocked_reason")
+    if blocked=="SOURCE_COMMIT_MISSING_OR_CI_MISMATCH":
+        report["blocked_code"]="SOURCE_PIN_MISMATCH"
+    elif blocked=="ROS_JAZZY_NOT_SOURCED":
+        report["blocked_code"]="ROS_SETUP_MISSING"
+    elif isinstance(blocked,str) and blocked.startswith("ROS_ACTION_DEPENDENCY_MISSING:"):
+        report["blocked_code"]="ROS_ACTION_DEPENDENCY_MISSING"
+    return report
+
+
 def _raw_bag_blocker(run, source_sha):
     part=Path(run)/'cold_run_01'
     bag=part/'rosbag2'
@@ -260,6 +305,8 @@ def run(private_root):
                 except Exception:
                     row["candidate"]=False
                     row["evidence_classification"]="BLOCKED"
+                if row["block_phase"]=="PREFLIGHT_FAKE_ROS_FAILED":
+                    row["preflight_diagnostic"]=_fake_preflight_diagnostic(run)
                 report["runs"].append(row)
                 print("AXIA_PR52_REAL_G00_RUN "+json.dumps(row,sort_keys=True),flush=True)
                 if not row["candidate"]:break
