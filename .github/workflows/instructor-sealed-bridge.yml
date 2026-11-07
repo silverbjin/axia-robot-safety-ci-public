@@ -29,6 +29,9 @@ jobs:
           python3 -m unittest discover -s tests -p test_private_ci_bridge.py -v
           python3 -m unittest discover -s tests -p test_p1_t08_exact_sha_bridge.py -v
           python3 -m unittest discover -s tests -p test_nav2_phase_oracle.py -v
+          python3 -m unittest discover -s tests -p test_nav2_phase_oracle_v2.py -v
+          python3 -m unittest discover -s tests -p test_nav2_phase_smoke1.py -v
+          python3 -m unittest discover -s tests -p test_nav2_phase_bridge_integration.py -v
 
   instructor-core:
     needs: public-fail-closed-contracts

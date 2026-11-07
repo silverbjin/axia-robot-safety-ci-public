@@ -392,17 +392,13 @@ def private_evidence_diagnostics(root, count):
         record['shutdown_fatal_count'] = (
             len(fatals) if isinstance(fatals, list) and len(fatals) < 1000
             else 'UNAVAILABLE')
-        # Classify the final official Nav2 lifecycle transition using
-        # allowlisted labels only. Private launch.log is NEVER emitted.
-        from private_nav2_phase_oracle import classify_nav2_shutdown_phase
-        try:
-            logfile = folder / 'launch.log'
-            raw_log = (logfile.read_text(encoding='utf-8',errors='replace')
-                       if logfile.is_file() and logfile.stat().st_size <= 18_000_000
-                       else '')
-            phases = classify_nav2_shutdown_phase(raw_log)
-        except (OSError, ValueError, UnicodeError):
-            phases = classify_nav2_shutdown_phase('')
+        # v2 handles namespaced/ANSI ROS loggers and bounded large-file tail.
+        # No raw private ROS log content may be printed or uploaded.
+        from private_nav2_phase_oracle_v2 import classify_nav2_shutdown_phase
+        from private_nav2_phase_smoke1 import tail_private_log
+        raw_log, read_mode = tail_private_log(folder / 'launch.log')
+        phases = classify_nav2_shutdown_phase(raw_log)
+        record['nav2_log_read'] = read_mode
         for manager in ('navigation', 'localization'):
             observed = phases[manager]
             record[manager + '_last_phase'] = observed['last_phase']
