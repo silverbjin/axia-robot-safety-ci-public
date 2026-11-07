@@ -12,7 +12,7 @@ import sys
 RED = '13391a9fa8b053c2c9cfcf0d2c023a9c909cd1d9'
 STAGES = {
     'red': {'pin': RED, 'patterns': ('test_p1_t08_r05_typed_field_gate.py',), 'expect_red': True},
-    'r05': {'pin': '133f3eca2f1004a89beebbdca8f080f3eb073374', 'patterns': ('test_p1_t08_r05_typed_field_gate.py',), 'expect_red': False},
+    'r05': {'pin': 'dad93a1307e2d66e538becc8de9f333bcb050250', 'patterns': ('test_p1_t08_r05_typed_field_gate.py',), 'expect_red': False},
 }
 def main():
     ap=argparse.ArgumentParser()
