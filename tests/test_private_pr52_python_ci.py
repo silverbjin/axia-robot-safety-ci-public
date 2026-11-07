@@ -10,7 +10,7 @@ m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
 
 class TestPrivatePr52PythonCI(unittest.TestCase):
     def test_exact_source_sha_is_hardcoded(self):
-        self.assertEqual(m.PIN,'5a458a0ca8533b77e548dbb500b00fbe70d61942')
+        self.assertEqual(m.PIN,'d0929aaed786e5dd5c80c3553f999adf5b963f82')
     def test_three_scoped_stages_include_p0_and_full_unit(self):
         self.assertEqual([x[0] for x in m._SUITES],['P0_UNIT','P0_COMPILE','P1_UNIT_ALL','FIELD_BASH_SYNTAX'])
         self.assertIn('tests/unit',m._SUITES[2][1])
