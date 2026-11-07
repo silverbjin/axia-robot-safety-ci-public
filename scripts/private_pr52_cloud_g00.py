@@ -55,12 +55,11 @@ def _blocked_phase(log_file):
     )
     # A successful CLOUD_CI_G00_ONLY status log must NEVER be treated as
     # a denial. Only actual [BLOCKED] lines provide a matching phase.
-    if "CLOUD_CI_G00_ONLY" in content and "[BLOCKED]" not in content:
-        return "NO_RECORDED_BLOCKED_LINE"
-    if "[BLOCKED]" not in content:
+    blocked_lines=[line for line in content.splitlines() if "[BLOCKED]" in line]
+    if not blocked_lines:
         return "NO_RECORDED_BLOCKED_LINE"
     for marker,code in rules:
-        if marker in content:
+        if any(marker in line for line in blocked_lines):
             return code
     return "BLOCKED_UNCLASSIFIED"
 

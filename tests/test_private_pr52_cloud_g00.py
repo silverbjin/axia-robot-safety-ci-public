@@ -45,7 +45,7 @@ class RealG00CloudPolicy(unittest.TestCase):
         self.assertIn("def _private_r05_codes(child, private, source_sha):",S)
         self.assertIn('"SUPERVISOR_RECEIPT_TOO_OLD"',S)
         self.assertIn('"r05_reason_codes"',S)
-        self.assertIn('if "[BLOCKED]" not in content:',S)
+        self.assertIn('blocked_lines=[line for line in content.splitlines() if "[BLOCKED]" in line]',S)
         self.assertIn('"NO_RECORDED_BLOCKED_LINE"',S)
     def test_protected_environment_is_real_and_no_e_stop(self):
         self.assertIn('CI="true"',S)
