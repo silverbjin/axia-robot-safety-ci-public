@@ -35,7 +35,12 @@ def diagnosis(text):
         if p:flags[key]=p.group(1)
     reason=next((code for marker,code in CAUSE.items() if marker in text),
                 "ASSERTION_FAILED_UNCLASSIFIED")
-    return {"reason":reason,"flags":flags}
+    # Pytest frames are cited as test_file.py:LINE on failures. Emit only
+    # allowlisted test line numbers, never the private assertion text.
+    source_lines=re.findall(r"test_p1_t0[46]_[a-z_]+\\.py:(\\d+):",text)
+    line=int(source_lines[-1]) if source_lines else None
+    return {"reason":reason,"flags":flags,
+            "assert_line":line if line is not None and 1 <= line <= 600 else None}
 
 
 def main():

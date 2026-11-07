@@ -14,6 +14,10 @@ class FocusTests(unittest.TestCase):
                          "SUPERVISOR_BOOT_HEALTH_TIMEOUT")
         self.assertEqual(M.diagnosis("initial health never ready clock_ok=False scan_ok=True")["flags"],
                          {"clock_ok":"False","scan_ok":"True"})
+    def test_assertion_location_is_only_numeric_and_allowlisted(self):
+        item=M.diagnosis("failed at tests/ros_integration/test_p1_t04_action.py:262: AssertionError")
+        self.assertEqual(item["assert_line"],262)
+
     def test_no_gazebo_in_minimal_3x_probe(self):
         self.assertIn("workflow_dispatch",W)
         self.assertIn("axia-instructor-sealed",W)
