@@ -119,4 +119,48 @@ class RealG00CloudPolicy(unittest.TestCase):
             self.assertEqual(mod._fake_preflight_diagnostic(root/'missing')['status'],
                              'PREFLIGHT_SUMMARY_MISSING')
 
+
+    def test_shutdown_blocker_diagnostic_is_redacted(self):
+        import importlib.util
+        import json
+        import sys
+        import tempfile
+        from pathlib import Path
+        sys.path.insert(0,str(ROOT/'scripts'))
+        spec=importlib.util.spec_from_file_location(
+            'g00_shutdown_diag',ROOT/'scripts/private_pr52_cloud_g00.py')
+        mod=importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        with tempfile.TemporaryDirectory() as tmp:
+            child=Path(tmp)
+            (child/'shutdown_control.json').write_text(json.dumps({
+                'status':'SHUTDOWN_BLOCKED',
+                'reason':'LOCALIZATION_SERVICE_RESPONSE_TIMEOUT',
+                'managers':{
+                    'navigation':{'success':True},
+                    'localization':{'success':False,
+                        'manager_active_after_timeout':'NO_RESPONSE',
+                        'managed_nodes_after_timeout':{
+                            'amcl':'ACTIVE','map_server':'INACTIVE'}}},
+                'secret':'MUST_NOT_LEAK'
+            }))
+            (child/'shutdown_verdict.json').write_text(json.dumps({
+                'status':'SHUTDOWN_INCONCLUSIVE',
+                'lifecycle_shutdown_acknowledged':False,
+                'fatal_signatures':[],
+                'private_trace':'MUST_NOT_LEAK'
+            }))
+            report=mod._shutdown_failure_diagnostic(child)
+            self.assertEqual(report['reason_code'],'LOCALIZATION_SERVICE_RESPONSE_TIMEOUT')
+            self.assertEqual(report['manager_ack_navigation'],True)
+            self.assertEqual(report['manager_ack_localization'],False)
+            self.assertEqual(report['manager_active_after_timeout'],'NO_RESPONSE')
+            self.assertEqual(report['amcl_state'],'ACTIVE')
+            self.assertEqual(report['map_server_state'],'INACTIVE')
+            self.assertNotIn('MUST_NOT_LEAK',json.dumps(report))
+            self.assertNotIn(tmp,json.dumps(report))
+            (child/'shutdown_control.json').write_text('{bad-json')
+            self.assertEqual(mod._shutdown_failure_diagnostic(child)['reason_code'],
+                             'DIAGNOSTIC_UNAVAILABLE')
+
 if __name__=="__main__":unittest.main()
