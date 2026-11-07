@@ -43,7 +43,7 @@ class L1PolicyTests(unittest.TestCase):
         self.assertNotIn("ros-jazzy-ros-gz",workflow)
         self.assertNotIn("upload-artifact",workflow)
         self.assertIn("rm -rf _instructor_private",workflow)
-        self.assertIn("13ddf2719d6e9c7ca98148783a06083e6975d8ce",workflow)
+        self.assertIn("5103335c783f19927733ca4b0fb3fcd3bccee68d",workflow)
         self.assertIn("13ddf2719d6e9c7ca98148783a06083e6975d8ce",(ROOT/"scripts/pr52_l1_fake_ros.py").read_text())
 
     def test_workflow_scripts_use_bash_not_posix_sh(self):
