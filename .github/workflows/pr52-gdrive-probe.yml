@@ -1,0 +1,48 @@
+name: AXIA P1 protected Google Drive canary (no ROS)
+on:
+  push:
+    branches: [feat/secure-instructor-cloud-bridge]
+    paths:
+      - '.github/workflows/pr52-gdrive-probe.yml'
+      - 'scripts/pr52_gdrive_custody.py'
+      - 'tests/test_pr52_gdrive_custody.py'
+  workflow_dispatch: {}
+permissions:
+  contents: read
+jobs:
+  l0-policy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with: {persist-credentials: false}
+      - shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p test_pr52_gdrive_custody.py -v
+          python3 -m compileall -q scripts/pr52_gdrive_custody.py
+  protected-canary:
+    needs: l0-policy
+    if: github.repository == 'silverbjin/axia-robot-safety-ci-public' && github.actor == 'silverbjin' && github.ref == 'refs/heads/feat/secure-instructor-cloud-bridge'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment:
+      name: axia-instructor-sealed
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with: {persist-credentials: false}
+      - name: Install only rclone and age (NO ROS/Nav2/Gazebo)
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq rclone age
+      - name: Protected Drive and recipient readiness probe
+        shell: bash
+        env:
+          CI: 'true'
+          AXIA_GDRIVE_RCLONE_CONFIG_B64: ${{ secrets.AXIA_GDRIVE_RCLONE_CONFIG_B64 }}
+          AXIA_GDRIVE_AGE_RECIPIENT: ${{ vars.AXIA_GDRIVE_AGE_RECIPIENT }}
+        run: |
+          set -euo pipefail
+          python3 scripts/pr52_gdrive_custody.py --mode probe
