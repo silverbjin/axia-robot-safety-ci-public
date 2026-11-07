@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 import private_ci_bridge as bridge
 
-PIN = "f60ccc9e9da4f1f787df8bc2f66ebc8554250928"
+PIN = "b75d971b3d6655105ad9055bcbbcb043ac2feaa8"
 _BASE = "d86ee9860de8924f6a5b2c5828d493fb7ef7f9eb"
 
 

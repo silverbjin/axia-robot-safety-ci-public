@@ -10,7 +10,7 @@ W=(ROOT/".github/workflows/pr52-gazebo3-current-sha.yml").read_text()
 
 class Contract(unittest.TestCase):
     def test_exact_private_pin_and_protected_workflow(self):
-        pin="f60ccc9e9da4f1f787df8bc2f66ebc8554250928"
+        pin="b75d971b3d6655105ad9055bcbbcb043ac2feaa8"
         self.assertIn(pin,S)
         self.assertIn(pin,W)
         self.assertIn("axia-instructor-sealed",W)

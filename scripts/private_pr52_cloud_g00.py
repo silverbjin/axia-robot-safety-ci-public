@@ -15,9 +15,10 @@ import tempfile
 import time
 import private_ci_bridge as bridge
 
-PIN = "a03ed9303ed0278aa76875dece0df23972e3b7e3"
+PIN = "b75d971b3d6655105ad9055bcbbcb043ac2feaa8"
 BASE = "d86ee9860de8924f6a5b2c5828d493fb7ef7f9eb"
-ALLOWED = {"START_ACK_VERIFIED","START_ACK_BLOCKED","SHUTDOWN_CLEAN",
+ALLOWED = {"START_ACK_VERIFIED","START_ACK_BLOCKED","R05_TYPED_ACK_BLOCKED",
+    "R05_BOUND_TYPED_PRE_SEND_CANDIDATE","SHUTDOWN_CLEAN",
     "SHUTDOWN_FAILED","SHUTDOWN_INCONCLUSIVE","SMOKE_READY",
     "R06_G00_EVIDENCE_CANDIDATE","BLOCKED","INCONCLUSIVE","PASS",
     "SHUTDOWN_CONFIRMED","SHUTDOWN_BLOCKED","MISSING"}
@@ -92,6 +93,8 @@ def run(private_root):
                 row={"run":i,"exit":code if code in (0,2,3,124,130,143) else 127,
                      "startup":_status(child/"startup_verdict.json"),
                      "start_ack":_status(child/"start_ack.json"),
+                     "field_gate":_status(child/"r05_bound_pre_send.json"),
+                     "shutdown_control":_status(child/"shutdown_control.json"),
                      "goal_trace":_status(child/"live_result.json"),
                      "shutdown":_status(child/"shutdown_verdict.json"),
                      "timeout":timed_out}

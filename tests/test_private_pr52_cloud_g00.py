@@ -7,7 +7,7 @@ W=(ROOT/".github/workflows/pr52-cloud-g00-real.yml").read_text()
 
 class RealG00CloudPolicy(unittest.TestCase):
     def test_exact_sha_and_github_protection(self):
-        pin="a03ed9303ed0278aa76875dece0df23972e3b7e3"
+        pin="b75d971b3d6655105ad9055bcbbcb043ac2feaa8"
         self.assertIn(pin,S)
         self.assertIn(pin,W)
         self.assertIn("axia-instructor-sealed",W)
@@ -22,6 +22,7 @@ class RealG00CloudPolicy(unittest.TestCase):
     def test_true_goal_and_raw_custody_no_claimed_acceptance(self):
         self.assertIn("classify_g00_evidence",S)
         self.assertIn("assess_raw_g00",S)
+        self.assertIn("r05_bound_pre_send.json",S)
         self.assertIn('"start_ack"]=="START_ACK_VERIFIED"',S)
         self.assertIn('"shutdown"]=="SHUTDOWN_CLEAN"',S)
         self.assertIn('"gate_accepted":False',S)
