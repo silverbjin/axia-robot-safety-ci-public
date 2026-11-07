@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 import private_ci_bridge as bridge
 
-PIN = "b7eed78b9855ab1bd8eb96285abbe30c4379af72"
+PIN = "f60ccc9e9da4f1f787df8bc2f66ebc8554250928"
 _BASE = "d86ee9860de8924f6a5b2c5828d493fb7ef7f9eb"
 
 
@@ -24,8 +24,8 @@ def run(root):
         return 3
     bridge.PIN=PIN
     try:
-        bridge.run_gate(Path(root),"gazebo3-prepause")
-        result["status"]="GAZEBO3_READONLY_PASS"
+        bridge.run_gate(Path(root),"gazebo3")
+        result["status"]="GAZEBO3_NO_PREPAUSE_READONLY_PASS"
         result["private_sha_verified"]=True
     except bridge.GateBlocked:
         result["reason"]="PRIVATE_GAZEBO3_GATE_BLOCKED"

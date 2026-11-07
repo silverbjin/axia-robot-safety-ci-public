@@ -10,13 +10,13 @@ W=(ROOT/".github/workflows/pr52-gazebo3-current-sha.yml").read_text()
 
 class Contract(unittest.TestCase):
     def test_exact_private_pin_and_protected_workflow(self):
-        pin="b7eed78b9855ab1bd8eb96285abbe30c4379af72"
+        pin="f60ccc9e9da4f1f787df8bc2f66ebc8554250928"
         self.assertIn(pin,S)
         self.assertIn(pin,W)
         self.assertIn("axia-instructor-sealed",W)
         self.assertIn("secrets.AXIA_CLOUD_CI",W)
     def test_existing_official_gazebo_runner_reused(self):
-        self.assertIn('bridge.run_gate(Path(root),"gazebo3-prepause")',S)
+        self.assertIn('bridge.run_gate(Path(root),"gazebo3")',S)
         self.assertIn("ros-jazzy-nav2-minimal-tb3-sim",W)
         self.assertIn("ros-jazzy-ros-gz",W)
     def test_no_goal_or_fault_admission_in_this_workflow(self):

@@ -1,4 +1,4 @@
-name: AXIA P1 PR52 exact-SHA official Gazebo 3x prelocal (no Goal)
+name: AXIA P1 PR52 exact-SHA official Gazebo 3x no-prepause prelocal (no Goal)
 on:
   push:
     branches: [feat/secure-instructor-cloud-bridge]
@@ -47,7 +47,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: b7eed78b9855ab1bd8eb96285abbe30c4379af72
+          ref: f60ccc9e9da4f1f787df8bc2f66ebc8554250928
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
           fetch-depth: 1
