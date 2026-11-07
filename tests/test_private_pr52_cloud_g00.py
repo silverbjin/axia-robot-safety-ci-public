@@ -41,6 +41,12 @@ class RealG00CloudPolicy(unittest.TestCase):
         self.assertIn('"PRE_GAZEBO_UNCLASSIFIED"',S)
         self.assertIn('"block_phase":_blocked_phase(log)',S)
         self.assertNotIn("print(content)",S)
+    def test_r05_diagnostic_is_allowlisted_and_real_block_line_only(self):
+        self.assertIn("def _private_r05_codes(child, private, source_sha):",S)
+        self.assertIn('"SUPERVISOR_RECEIPT_TOO_OLD"',S)
+        self.assertIn('"r05_reason_codes"',S)
+        self.assertIn('if "[BLOCKED]" not in content:',S)
+        self.assertIn('"NO_RECORDED_BLOCKED_LINE"',S)
     def test_protected_environment_is_real_and_no_e_stop(self):
         self.assertIn('CI="true"',S)
         self.assertIn('AXIA_T08_CLOUD_G00_OPT_IN="YES_SIM_ONLY"',S)

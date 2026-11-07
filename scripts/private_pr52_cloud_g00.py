@@ -53,10 +53,53 @@ def _blocked_phase(log_file):
         ("SUPERVISOR_PRESTART_BLOCKED", "SUPERVISOR_PRESTART_BLOCKED"),
         ("Final field collection complete", "FINAL_FIELD_COLLECTION_RECORDED"),
     )
+    # A successful CLOUD_CI_G00_ONLY status log must NEVER be treated as
+    # a denial. Only actual [BLOCKED] lines provide a matching phase.
+    if "CLOUD_CI_G00_ONLY" in content and "[BLOCKED]" not in content:
+        return "NO_RECORDED_BLOCKED_LINE"
+    if "[BLOCKED]" not in content:
+        return "NO_RECORDED_BLOCKED_LINE"
     for marker,code in rules:
         if marker in content:
             return code
-    return "PRE_GAZEBO_UNCLASSIFIED"
+    return "BLOCKED_UNCLASSIFIED"
+
+
+_SAFE_R05 = frozenset((
+    "RUN_SESSION_INVALID","SOURCE_SHA_MISMATCH","SIMULATION_CONTEXT_INVALID",
+    "MONOTONIC_CLOCK_INVALID","SUPERVISOR_RECEIPT_TOO_OLD",
+    "START_ACK_INVALID","ACK_BEFORE_PREFLIGHT","LEGACY_PRECHECK_BLOCKED",
+    "LEGACY_PRECHECK_ERROR",
+    *(f"PROVENANCE_MISMATCH:{n}" for n in
+      ("pre_goal_gate","corridor","graph","supervisor_prestart","start_ack")),
+    *(f"EVIDENCE_TIME_INVALID:{n}" for n in
+      ("pre_goal_gate","corridor","graph","supervisor_prestart","start_ack"))
+))
+
+
+def _private_r05_codes(child, private, source_sha):
+    """Return allowlisted reason codes without publishing private state or bag."""
+    try:
+        from tools.p1_t08_r01_binding import assess_bound_candidate
+        names=("corridor","graph","pre_goal_gate","supervisor_prestart","start_ack")
+        evidence={k:json.loads((child/(k+".json")).read_text()) for k in names}
+        ack=evidence["start_ack"]
+        att=ack.get("provenance",{})
+        env={"ROS_DISTRO":"jazzy","AXIA_P0_SIM_ONLY":"1",
+             "ROS_DOMAIN_ID":att.get("ros_domain_id"),
+             "GZ_PARTITION":att.get("gz_partition"),
+             "AXIA_P1_CLOUD_G00_OPT_IN":"YES",
+             "AXIA_P1_CLOUD_G00_START_APPROVED":"YES",
+             "AXIA_P1_CLOUD_G00_SCENARIO":"g00",
+             "AXIA_T08_FAULT_APPROVED":"NO"}
+        now=ack.get("received_monotonic_ns")
+        result=assess_bound_candidate(evidence,expected_sha=source_sha,
+            actual_sha=source_sha,env=env,run_id=ack.get("run_id"),
+            session_id=att.get("session_id"),now_monotonic_ns=now)
+        codes=result.get("reasons") or []
+        return [c if c in _SAFE_R05 else "UNRECOGNIZED" for c in codes][:12]
+    except (OSError,ValueError,TypeError,KeyError,ImportError):
+        return ["R05_DIAGNOSTIC_UNAVAILABLE"]
 
 
 def run(private_root):
@@ -129,6 +172,7 @@ def run(private_root):
                     sys.path.insert(0,str(private))
                     from tools.p1_t08_local_batch import classify_g00_evidence
                     from tools.p1_t08_raw_custody import assess_raw_g00
+                    row["r05_reason_codes"]=_private_r05_codes(child,private,PIN)
                     candidate=classify_g00_evidence(run,expected_sha=PIN)
                     raw=assess_raw_g00(run,source_sha=PIN)
                     row["sealed_goal"]=candidate.get("status")=="R06_G00_EVIDENCE_CANDIDATE"
