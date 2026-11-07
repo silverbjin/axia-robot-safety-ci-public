@@ -232,4 +232,42 @@ class RealG00CloudPolicy(unittest.TestCase):
         self.assertIn('AXIA_T08_PREFLIGHT_PROOF',S)
         self.assertIn('env.pop("AXIA_T08_PREFLIGHT_PROOF",None)',S)
 
+
+    def test_g00_action_status_gate_diagnostic_redacts_private_evidence(self):
+        import importlib.util
+        import json
+        import sys
+        import tempfile
+        from pathlib import Path
+        sys.path.insert(0,str(ROOT/'scripts'))
+        spec=importlib.util.spec_from_file_location(
+            'g00_status_diag',ROOT/'scripts/private_pr52_cloud_g00.py')
+        mod=importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        with tempfile.TemporaryDirectory() as tmp:
+            child=Path(tmp)
+            self.assertEqual(
+                mod._action_status_gate_diagnostic(child)['status'],'MISSING')
+            (child/'action_status_ready.json').write_text(json.dumps({
+                'status':'STATUS_EVIDENCE_BLOCKED',
+                'reason':'STATUS_QOS_NOT_COMPATIBLE',
+                'goal_sent':False, 'private_endpoint':'MUST_NOT_LEAK',
+                'secret':'MUST_NOT_LEAK'
+            }))
+            report=mod._action_status_gate_diagnostic(child)
+            self.assertEqual(report['status'],'STATUS_EVIDENCE_BLOCKED')
+            self.assertEqual(report['reason'],'STATUS_QOS_NOT_COMPATIBLE')
+            self.assertNotIn('MUST_NOT_LEAK',json.dumps(report))
+            self.assertNotIn(tmp,json.dumps(report))
+            (child/'action_status_ready.json').write_text(json.dumps({
+                'status':'STATUS_EVIDENCE_BLOCKED',
+                'reason':'SECRET_UNLISTED',
+                'secret':'MUST_NOT_LEAK'}))
+            self.assertEqual(mod._action_status_gate_diagnostic(child)['reason'],
+                             'UNCLASSIFIED')
+        self.assertEqual(
+            mod._blocked_phase.__doc__ is not None,True)
+        self.assertIn('STATUS_EVIDENCE_NOT_CONNECTED',
+                      (ROOT/'scripts/private_pr52_cloud_g00.py').read_text())
+
 if __name__=="__main__":unittest.main()
