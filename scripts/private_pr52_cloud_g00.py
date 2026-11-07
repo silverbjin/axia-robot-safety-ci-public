@@ -5,8 +5,10 @@ observes sealed rosbag2 and real Goal UUID/terminal, prints only allowlisted
 status. No private source, logs, rosbag or stdout is uploaded to public CI.
 """
 import argparse
+import hashlib
 import json
 import os
+import sqlite3
 from pathlib import Path
 import signal
 import subprocess
@@ -94,11 +96,75 @@ def _private_r05_codes(child, private, source_sha):
         now=ack.get("received_monotonic_ns")
         result=assess_bound_candidate(evidence,expected_sha=source_sha,
             actual_sha=source_sha,env=env,run_id=ack.get("run_id"),
-            session_id=att.get("session_id"),now_monotonic_ns=now)
+            session_id=att.get("session_id"),now_monotonic_ns=now,
+            require_live_start_boundary=True)
         codes=result.get("reasons") or []
         return [c if c in _SAFE_R05 else "UNRECOGNIZED" for c in codes][:12]
     except (OSError,ValueError,TypeError,KeyError,ImportError):
         return ["R05_DIAGNOSTIC_UNAVAILABLE"]
+
+
+# Read-only, allowlisted diagnostic ONLY. The private R06 custody validator
+# remains the sole admission gate and all required topics stay unchanged.
+_EXPECTED_BAG_TOPICS=('/clock','/odom','/cmd_vel','/axia/safety/state',
+                      '/navigate_to_pose/_action/status')
+
+
+def _raw_bag_blocker(run, source_sha):
+    part=Path(run)/'cold_run_01'
+    bag=part/'rosbag2'
+    manifest=part/'checksums.sha256'
+    source=Path(run)/'source_commit.txt'
+    if not source.is_file() or source.is_symlink() or source.read_text().strip()!=source_sha:
+        return {'status':'SOURCE_MARKER_INVALID'}
+    if not manifest.is_file() or manifest.is_symlink():
+        return {'status':'CHECKSUM_MANIFEST_MISSING'}
+    if not bag.is_dir() or bag.is_symlink():
+        return {'status':'ROS_BAG_DIRECTORY_MISSING'}
+    meta=bag/'metadata.yaml'
+    dbs=sorted(bag.glob('*.db3'))
+    if not meta.is_file() or meta.is_symlink():
+        return {'status':'ROS_BAG_METADATA_MISSING'}
+    if not dbs:
+        return {'status':'ROS_BAG_SQLITE_MISSING'}
+    try:
+        if 'sqlite3' not in meta.read_text(encoding='utf-8'):
+            return {'status':'ROS_BAG_STORAGE_ID_INVALID'}
+        sealed={}
+        for entry in manifest.read_text(encoding='utf-8').splitlines():
+            parts=entry.split('  ',1)
+            if len(parts)!=2:
+                return {'status':'CHECKSUM_MANIFEST_INVALID'}
+            digest,relative=parts
+            if (len(digest)!=64 or any(ch not in '0123456789abcdef' for ch in digest)
+                or relative in sealed or relative.startswith('/')
+                or any(x in ('','.','..') for x in relative.split('/'))):
+                return {'status':'CHECKSUM_MANIFEST_INVALID'}
+            sealed[relative]=digest
+        for f in [meta]+dbs:
+            key=f.relative_to(part).as_posix()
+            if (f.is_symlink() or key not in sealed
+                    or hashlib.sha256(f.read_bytes()).hexdigest()!=sealed[key]):
+                return {'status':'BAG_CHECKSUM_OR_MANIFEST_MISMATCH'}
+        counts=dict.fromkeys(_EXPECTED_BAG_TOPICS,0)
+        for db in dbs:
+            with sqlite3.connect(db.resolve().as_uri()+'?mode=ro',uri=True) as con:
+                con.execute('PRAGMA query_only = ON')
+                if con.execute('PRAGMA quick_check').fetchone()[0]!='ok':
+                    return {'status':'SQLITE_INTEGRITY_INVALID'}
+                for topic, count in con.execute(
+                    'SELECT topics.name, COUNT(messages.id) FROM topics '
+                    'JOIN messages ON messages.topic_id=topics.id '
+                    'GROUP BY topics.name'):
+                    if topic in counts:
+                        counts[topic]+=count
+        missing=[t for t in _EXPECTED_BAG_TOPICS if counts[t]<1]
+        if missing:
+            return {'status':'REQUIRED_TOPICS_NOT_RECORDED',
+                    'missing_expected_topics':missing}
+        return {'status':'R06_POLICY_REJECTION_NOT_CLASSIFIED'}
+    except (OSError,UnicodeError,ValueError,IndexError,sqlite3.DatabaseError):
+        return {'status':'ROS_BAG_READ_ERROR'}
 
 
 def run(private_root):
@@ -176,6 +242,9 @@ def run(private_root):
                     raw=assess_raw_g00(run,source_sha=PIN)
                     row["sealed_goal"]=candidate.get("status")=="R06_G00_EVIDENCE_CANDIDATE"
                     row["sealed_raw_bag"]=raw.get("status")=="R06_RAW_CUSTODY_REVIEW_PENDING"
+                    row["raw_bag_blocker"]=(
+                        {'status':'NONE'} if row["sealed_raw_bag"]
+                        else _raw_bag_blocker(run,PIN))
                     if (code==3 and row["startup"]=="SMOKE_READY"
                             and row["start_ack"]=="START_ACK_VERIFIED"
                             and row["goal_trace"]=="PASS"

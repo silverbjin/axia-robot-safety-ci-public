@@ -47,6 +47,35 @@ class RealG00CloudPolicy(unittest.TestCase):
         self.assertIn('"r05_reason_codes"',S)
         self.assertIn('blocked_lines=[line for line in content.splitlines() if "[BLOCKED]" in line]',S)
         self.assertIn('"NO_RECORDED_BLOCKED_LINE"',S)
+    def test_raw_bag_classifier_returns_only_allowlisted_conditions(self):
+        import importlib.util
+        import sys
+        import tempfile
+        from pathlib import Path
+        sys.path.insert(0,str(ROOT/'scripts'))
+        spec=importlib.util.spec_from_file_location('live_raw_diagnostic',
+            ROOT/'scripts/private_pr52_cloud_g00.py')
+        mod=importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        with tempfile.TemporaryDirectory() as d:
+            run=Path(d)
+            source_sha=mod.PIN
+            self.assertEqual(mod._raw_bag_blocker(run,source_sha)['status'],
+                             'SOURCE_MARKER_INVALID')
+            (run/'source_commit.txt').write_text(source_sha+'\\n')
+            self.assertEqual(mod._raw_bag_blocker(run,source_sha)['status'],
+                             'CHECKSUM_MANIFEST_MISSING')
+            child=run/'cold_run_01';child.mkdir()
+            (child/'checksums.sha256').write_text('')
+            self.assertEqual(mod._raw_bag_blocker(run,source_sha)['status'],
+                             'ROS_BAG_DIRECTORY_MISSING')
+            (child/'rosbag2').mkdir()
+            self.assertEqual(mod._raw_bag_blocker(run,source_sha)['status'],
+                             'ROS_BAG_METADATA_MISSING')
+        self.assertIn('raw_bag_blocker',S)
+        self.assertIn('require_live_start_boundary=True',S)
+        self.assertNotIn('print(meta.read_text',S)
+
     def test_protected_environment_is_real_and_no_e_stop(self):
         self.assertIn('CI="true"',S)
         self.assertIn('AXIA_T08_CLOUD_G00_OPT_IN="YES_SIM_ONLY"',S)
