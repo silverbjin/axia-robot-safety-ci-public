@@ -38,12 +38,13 @@ class L1PolicyTests(unittest.TestCase):
         self.assertIn("workflow_dispatch:",workflow)
         self.assertIn("pr52-l1-fake-ros.request",workflow)
         self.assertIn("axia-instructor-sealed",workflow)
+        self.assertIn("AXIA_P1_L0_PRIVATE_SAFE_DOMAIN_PASS",workflow)
         self.assertIn("secrets.AXIA_CLOUD_CI",workflow)
         self.assertNotIn("ros-jazzy-ros-gz",workflow)
         self.assertNotIn("upload-artifact",workflow)
         self.assertIn("rm -rf _instructor_private",workflow)
-        self.assertIn("b75d971b3d6655105ad9055bcbbcb043ac2feaa8",workflow)
-        self.assertIn("b75d971b3d6655105ad9055bcbbcb043ac2feaa8",(ROOT/"scripts/pr52_l1_fake_ros.py").read_text())
+        self.assertIn("f646762edccb5a626caa7e66a488b5a3f721a6b7",workflow)
+        self.assertIn("f646762edccb5a626caa7e66a488b5a3f721a6b7",(ROOT/"scripts/pr52_l1_fake_ros.py").read_text())
 
     def test_workflow_scripts_use_bash_not_posix_sh(self):
         # Container defaults to /bin/sh and rejects 'set -o pipefail'.

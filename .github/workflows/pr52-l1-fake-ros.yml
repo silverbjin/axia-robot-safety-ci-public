@@ -45,7 +45,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: b75d971b3d6655105ad9055bcbbcb043ac2feaa8
+          ref: f646762edccb5a626caa7e66a488b5a3f721a6b7
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
           fetch-depth: 1
@@ -60,6 +60,17 @@ jobs:
             ros-jazzy-std-msgs ros-jazzy-geometry-msgs ros-jazzy-nav-msgs \
             ros-jazzy-action-msgs ros-jazzy-sensor-msgs ros-jazzy-rosgraph-msgs \
             ros-jazzy-lifecycle-msgs ros-jazzy-tf2-ros
+      - name: Targeted L0 private DDS domain regression (no ROS nodes)
+        shell: bash
+        run: |
+          set -euo pipefail
+          if python3 -m pytest -q _instructor_private/tests/unit/test_p1_ros_isolation_safe_domains.py \
+              > /tmp/axia_p1_l0_private.log 2>&1; then
+            echo AXIA_P1_L0_PRIVATE_SAFE_DOMAIN_PASS
+          else
+            echo AXIA_P1_L0_PRIVATE_SAFE_DOMAIN_BLOCKED
+            exit 2
+          fi
       - name: Run independent P1 Fake ROS x1 in isolated DDS domains
         run: |
           set -eo pipefail
