@@ -1,0 +1,85 @@
+name: AXIA P1-T08 no-goal lifecycle prepause experiment (3x)
+on:
+  push:
+    branches: [feat/secure-instructor-cloud-bridge]
+    paths:
+      - '.github/workflows/p1-t08-gazebo3-prepause.yml'
+      - 'tests/test_gazebo_prepause_policy.py'
+permissions:
+  contents: read
+concurrency:
+  group: axia-p1-t08-readonly-prepause
+  cancel-in-progress: false
+jobs:
+  public-policy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Check exact SHA and no-goal policy (public synthetic test)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p test_gazebo_prepause_policy.py -v
+  gazebo3-prepause-experimental:
+    needs: public-policy
+    if: github.repository == 'silverbjin/axia-robot-safety-ci-public' && github.actor == 'silverbjin' && github.ref == 'refs/heads/feat/secure-instructor-cloud-bridge' && github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    container:
+      image: ros:jazzy-ros-base-noble
+    environment:
+      name: axia-instructor-sealed
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Require protected instructor access without printing secrets
+        env:
+          PRIVATE_READ_TOKEN: ${{ secrets.AXIA_CLOUD_CI }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$PRIVATE_READ_TOKEN"
+          echo AXIA_PREPAUSE_AUTH_PRESENT
+      - name: Checkout pinned private instructor code only in ephemeral workspace
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 59805dc98ef27a3eb1efee8095406bb3fc93bd3a
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+          fetch-depth: 1
+          path: _instructor_private
+      - name: Install official ROS2 Jazzy Harmonic dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+            git build-essential cmake procps python3-yaml python3-pytest \
+            python3-colcon-common-extensions \
+            ros-jazzy-navigation2 ros-jazzy-nav2-bringup \
+            ros-jazzy-nav2-minimal-tb3-sim ros-jazzy-ros-gz \
+            ros-jazzy-rosbag2 ros-jazzy-rosbag2-storage-default-plugins \
+            ros-jazzy-rosgraph-msgs ros-jazzy-tf2-ros \
+            ros-jazzy-nav2-msgs ros-jazzy-rclpy ros-jazzy-action-msgs \
+            ros-jazzy-nav-msgs ros-jazzy-sensor-msgs ros-jazzy-std-msgs \
+            ros-jazzy-std-srvs ros-jazzy-geometry-msgs ros-jazzy-lifecycle-msgs
+      - name: Run official Nav2 no-motion prepause experiment 3x
+        shell: bash
+        run: |
+          set -eo pipefail
+          source /opt/ros/jazzy/setup.bash
+          set -u
+          echo PREPAUSE_EXPERIMENT_ONLY; echo 'G00/G03/G04 REAL ACCEPTANCE=NOT_RUN'
+          python3 scripts/private_ci_bridge.py \
+            --private-root _instructor_private --gate gazebo3-prepause
+      - name: Delete ephemeral instructor source on success or failure
+        if: always()
+        shell: bash
+        run: |
+          rm -rf _instructor_private
+          echo AXIA_PREPAUSE_PRIVATE_SOURCE_CLEANUP
