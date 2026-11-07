@@ -20,6 +20,14 @@ class L1PolicyTests(unittest.TestCase):
         self.assertEqual(mod.classify("health_diagnostics={}"),"HEALTH_ASSERTION_FAILED")
         self.assertEqual(mod.classify("PRIVATE_RANDOM_STRING"),"OTHER_OR_MISSING_DIAGNOSTIC")
 
+    def test_health_fields_are_allowlisted_and_tristate_only(self):
+        raw="PRIVATE_PATH=/home/internal clock_ok=True scan_ok=False graph_ok=None cm_ok=False action_ready=True SECRET=password"
+        out=mod.extract_health_flags(raw)
+        self.assertEqual(out,{"clock_ok":"True","scan_ok":"False","graph_ok":"None",
+                              "cm_ok":"False","action_ready":"True"})
+        self.assertNotIn("PRIVATE_PATH",repr(out))
+        self.assertNotIn("SECRET",repr(out))
+
     def test_failclosed_missing_evidence(self):
         with tempfile.TemporaryDirectory() as d:
             rec, ok=mod._evidence(Path(d))

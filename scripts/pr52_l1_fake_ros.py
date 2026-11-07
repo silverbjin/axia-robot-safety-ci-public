@@ -40,6 +40,19 @@ def classify(text):
     return "OTHER_OR_MISSING_DIAGNOSTIC"
 
 
+_HEALTH_KEYS=("clock_ok","scan_ok","graph_ok","cm_ok","action_ready")
+def extract_health_flags(content):
+    """Expose only bounded known tri-state health fields; never private text."""
+    out={}
+    if not isinstance(content,str):
+        return out
+    for key in _HEALTH_KEYS:
+        match=re.search(r"\b"+key+r"=(True|False|None)\b",content)
+        if match:
+            out[key]=match.group(1)
+    return out
+
+
 def _read(path):
     try:
         return Path(path).read_text(encoding="utf-8", errors="replace")[-40000:]
@@ -75,7 +88,8 @@ def _evidence(results):
                 diagnostic=(_read(p/"stdout.log")+"\n"+_read(p/"stderr.log"))
                 failures.append({"case_number":i,
                                  "returncode":case.get("returncode") if type(case.get("returncode")) is int else -1,
-                                 "reason":classify(diagnostic)})
+                                 "reason":classify(diagnostic),
+                                 "health_flags":extract_health_flags(diagnostic)})
             if not failures:
                 failures.append({"case_number":0,
                                  "returncode":stage.get("returncode",-1),
