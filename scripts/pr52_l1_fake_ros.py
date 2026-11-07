@@ -12,7 +12,7 @@ import subprocess
 import tempfile
 import private_ci_bridge as bridge
 
-PIN = "13ddf2719d6e9c7ca98148783a06083e6975d8ce"
+PIN = "5103335c783f19927733ca4b0fb3fcd3bccee68d"
 BRIDGE_PIN = "d86ee9860de8924f6a5b2c5828d493fb7ef7f9eb"
 SAFE_STAGES = {"G02_UNIT", "G04_UNIT", "G03_ROS_FAKE", "G04_ROS_FAKE"}
 SAFE_REASONS = (
