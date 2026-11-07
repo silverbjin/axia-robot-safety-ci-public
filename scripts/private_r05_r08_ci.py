@@ -5,6 +5,7 @@ No ROS 2, Goal, Fault or sim side effects; only unittest on exact private SHA.
 """
 import argparse
 import json
+import re
 from pathlib import Path
 import subprocess
 import sys
@@ -17,7 +18,8 @@ STAGES = {
         'test_p1_t08_r05_typed_field_gate.py',
         'test_p1_t08_r06_entry.py',
         'test_p1_t08_r07_entry.py',
-        'test_p1_t08_r08_stage_report.py'), 'expect_red': False},
+        'test_p1_t08_r08_stage_report.py'), 'expect_red': False,
+               'expected_counts': (8,6,7,5)},
 }
 def main():
     ap=argparse.ArgumentParser()
@@ -45,10 +47,15 @@ def main():
             if check.returncode!=0:
                 raise ValueError('GREEN_FAILED')
         outcomes=[]
-        for pattern in expected['patterns']:
+        for index,pattern in enumerate(expected['patterns']):
             x=subprocess.run([sys.executable,'-m','unittest','discover','-s','tests/unit','-p',pattern,'-v'],
                               cwd=p,capture_output=True,text=True,timeout=80)
             outcome = x.returncode != 0
+            if not expected['expect_red']:
+                match=re.search(r'Ran (\d+) tests? in ',x.stderr)
+                expected_n=expected['expected_counts'][index]
+                if not match or int(match.group(1))!=expected_n:
+                    raise ValueError('GREEN_FAILED')
             if expected['expect_red']:
                 if not outcome or ('ModuleNotFoundError' not in x.stderr
                                    and 'AssertionError' not in x.stderr):
@@ -58,7 +65,10 @@ def main():
                 if outcome:
                     raise ValueError('GREEN_FAILED')
                 status='PASS'
-            outcomes.append({'stage':pattern.split('.')[0].replace('test_p1_t08_',''), 'status':status})
+            outcomes.append({'stage':pattern.split('.')[0].replace('test_p1_t08_',''),
+                             'status':status,
+                             'tests':(expected['expected_counts'][index]
+                                      if not expected['expect_red'] else 0)})
         print('AXIA_R05_R08_TDD '+json.dumps({'status':'RED_REPRODUCED' if expected['expect_red'] else 'GREEN',
                                              'stages':outcomes,'gate_accepted':False},sort_keys=True),flush=True)
         return 0
