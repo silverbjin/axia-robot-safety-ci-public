@@ -251,12 +251,19 @@ class RealG00CloudPolicy(unittest.TestCase):
             (child/'action_status_ready.json').write_text(json.dumps({
                 'status':'STATUS_EVIDENCE_BLOCKED',
                 'reason':'STATUS_QOS_NOT_COMPATIBLE',
+                'qos_role':'RECORDER','qos_check':'WARNING',
+                'publisher_qos':{'reliability':'RELIABLE','durability':'TRANSIENT_LOCAL'},
+                'recorder_qos':{'reliability':'RELIABLE','durability':'TRANSIENT_LOCAL'},
+                'observer_qos':{'reliability':'RELIABLE','durability':'TRANSIENT_LOCAL'},
                 'goal_sent':False, 'private_endpoint':'MUST_NOT_LEAK',
                 'secret':'MUST_NOT_LEAK'
             }))
             report=mod._action_status_gate_diagnostic(child)
             self.assertEqual(report['status'],'STATUS_EVIDENCE_BLOCKED')
             self.assertEqual(report['reason'],'STATUS_QOS_NOT_COMPATIBLE')
+            self.assertEqual(report['qos_role'],'RECORDER')
+            self.assertEqual(report['qos_check'],'WARNING')
+            self.assertEqual(report['publisher_qos']['durability'],'TRANSIENT_LOCAL')
             self.assertNotIn('MUST_NOT_LEAK',json.dumps(report))
             self.assertNotIn(tmp,json.dumps(report))
             (child/'action_status_ready.json').write_text(json.dumps({
