@@ -188,4 +188,48 @@ class RealG00CloudPolicy(unittest.TestCase):
         self.assertNotIn('private_stdout',data)
         self.assertNotIn('access_token',data)
 
+
+    def test_same_job_preflight_proof_reuse_is_bound_and_fail_closed(self):
+        import importlib.util
+        import sys
+        import tempfile
+        from pathlib import Path
+        sys.path.insert(0,str(ROOT/'scripts'))
+        spec=importlib.util.spec_from_file_location(
+            'g00_proof_reuse', ROOT/'scripts/private_pr52_cloud_g00.py')
+        mod=importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            run=root/'one_successful_g00';run.mkdir()
+            src=root/'private';src.mkdir()
+            expected=mod.PIN
+            def okay(*,proof,repo):
+                self.assertEqual(repo,src)
+                return {'source_commit':expected,'stage_count':12,
+                        'gate_accepted':False,'preflight':'VERIFIED_REUSED'}
+            self.assertIsNone(mod._verified_shared_preflight_proof(
+                src,run,expected,verifier=okay))
+            proof=run/'preflight_proof.json'
+            proof.write_text('{}')
+            self.assertEqual(mod._verified_shared_preflight_proof(
+                src,run,expected,verifier=okay),str(proof))
+            self.assertIsNone(mod._verified_shared_preflight_proof(
+                src,run,'f'*40,verifier=okay))
+            self.assertIsNone(mod._verified_shared_preflight_proof(
+                src,run,expected,verifier=lambda **k:
+                {'source_commit':expected,'stage_count':1,'gate_accepted':False,
+                 'preflight':'VERIFIED_REUSED'}))
+            self.assertIsNone(mod._verified_shared_preflight_proof(
+                src,run,expected,verifier=lambda **k:
+                {'source_commit':expected,'stage_count':12,'gate_accepted':True,
+                 'preflight':'VERIFIED_REUSED'}))
+            proof.unlink()
+            proof.symlink_to('/etc/passwd')
+            self.assertIsNone(mod._verified_shared_preflight_proof(
+                src,run,expected,verifier=okay))
+        self.assertIn('if row["candidate"] and i<3:',S)
+        self.assertIn('AXIA_T08_PREFLIGHT_PROOF',S)
+        self.assertIn('env.pop("AXIA_T08_PREFLIGHT_PROOF",None)',S)
+
 if __name__=="__main__":unittest.main()
