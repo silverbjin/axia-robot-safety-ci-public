@@ -16,7 +16,7 @@ import tempfile
 import private_ci_bridge as bridge
 from private_pr52_python_ci import junit_failure_fingerprints
 
-PIN = '349f9c7416457080fab540338e2b47431734ef99'
+PIN = 'b7eed78b9855ab1bd8eb96285abbe30c4379af72'
 _ORIGINAL_BRIDGE_PIN = 'd86ee9860de8924f6a5b2c5828d493fb7ef7f9eb'
 _FILES = {
     'P0_JAZZY_SAFE_LAUNCH': ['tests/p0/test_safe_launch_ros.py'],
