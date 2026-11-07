@@ -17,7 +17,7 @@ import sys
 import tempfile
 import xml.etree.ElementTree as ET
 
-PIN = 'a2f5ab6c31bea5a48dbc202a2aaba9bfe5150210'
+PIN = '124fa3893a8266e3da230ed5c614fac5d8d60624'
 SCOPES = ('python',)
 _SUITES = (
  ('P0_UNIT', [sys.executable,'-m','unittest','discover','-s','tests/p0','-v'],120),
