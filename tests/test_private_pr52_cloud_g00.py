@@ -163,4 +163,29 @@ class RealG00CloudPolicy(unittest.TestCase):
             self.assertEqual(mod._shutdown_failure_diagnostic(child)['reason_code'],
                              'DIAGNOSTIC_UNAVAILABLE')
 
+
+    def test_lkg_ledger_never_promotes_previous_sha(self):
+        import json
+        source=ROOT/'.github/axia/evidence/g00_lkg_20261107.json'
+        data=json.loads(source.read_text(encoding='utf-8'))
+        self.assertEqual(data['schema'],'axia-p1-g00-lkg-v1')
+        self.assertEqual(data['private_source_sha'],
+                         'df09426c67536fc2ebabaa2c2ef30453ce169ef7')
+        self.assertEqual(data['public_run_id'],42371053889)
+        self.assertEqual(data['public_workflow_sha'],
+                         'c4d11ab27c926ab8ca554300b76d241df1cf6202')
+        self.assertEqual(data['record_scope'],'L2_G00_THREE_CANDIDATE_ONLY')
+        self.assertEqual([x['shutdown'] for x in data['runs']],
+                         ['SHUTDOWN_CLEAN']*3)
+        self.assertTrue(all(x['goal_trace']=='PASS' and
+                            x['sealed_raw_bag'] is True and
+                            x['candidate'] is True for x in data['runs']))
+        self.assertFalse(data['gate_accepted'])
+        self.assertFalse(data['off_runner_original_custody_verified'])
+        self.assertFalse(data['independent_plaintext_restore_verified'])
+        self.assertNotEqual(data['private_source_sha'],
+                            '5a458a0ca8533b77e548dbb500b00fbe70d61942')
+        self.assertNotIn('private_stdout',data)
+        self.assertNotIn('access_token',data)
+
 if __name__=="__main__":unittest.main()
