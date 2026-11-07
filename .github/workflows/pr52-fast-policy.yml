@@ -1,0 +1,28 @@
+name: AXIA PR52 fast public policy - no ROS or Gazebo
+on:
+  push:
+    branches: [feat/secure-instructor-cloud-bridge]
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: axia-pr52-fast-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  policy-and-privacy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Strict public tests without private checkout, ROS or Gazebo
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p test_private_pr52_cloud_g00.py -v
+          python3 -m unittest discover -s tests -p test_pr52_ci_gates.py -v
+          python3 -m unittest discover -s tests -p test_pr52_block_classifier.py -v
+          python3 -m compileall -q scripts/private_pr52_cloud_g00.py scripts/private_ci_bridge.py

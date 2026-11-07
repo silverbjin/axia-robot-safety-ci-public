@@ -3,16 +3,15 @@ on:
   push:
     branches: [feat/secure-instructor-cloud-bridge]
     paths:
-      - '.github/workflows/pr52-cloud-g00-real.yml'
-      - 'scripts/private_pr52_cloud_g00.py'
-      - 'tests/test_private_pr52_cloud_g00.py'
+      - '.github/axia/pr52-g00-3x.request'
+  workflow_dispatch: {}
 permissions:
   contents: read
 concurrency:
   group: axia-pr52-cloud-real-g00
   cancel-in-progress: false
 jobs:
-  policy-and-privacy:
+  pr52-release-policy:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -24,8 +23,8 @@ jobs:
           python3 -m unittest discover -s tests -p test_private_pr52_cloud_g00.py -v
           python3 -m compileall -q scripts/private_pr52_cloud_g00.py
   protected-isolated-g00-real:
-    needs: policy-and-privacy
-    if: github.repository == 'silverbjin/axia-robot-safety-ci-public' && github.actor == 'silverbjin' && github.ref == 'refs/heads/feat/secure-instructor-cloud-bridge' && github.event_name == 'push'
+    needs: pr52-release-policy
+    if: github.repository == 'silverbjin/axia-robot-safety-ci-public' && github.actor == 'silverbjin' && github.ref == 'refs/heads/feat/secure-instructor-cloud-bridge' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     container:
