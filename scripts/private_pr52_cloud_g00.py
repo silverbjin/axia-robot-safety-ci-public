@@ -217,6 +217,32 @@ def _shutdown_failure_diagnostic(child):
     return result
 
 
+
+def _verified_shared_preflight_proof(private,run,expected_sha,*,verifier=None):
+    """Only a same-job, signed, source-bound ROS-fake proof can be reused.
+
+    This does not cache Gazebo/Map/TF/CM readiness, Goal permission or Shutdown.
+    Invalid proof safely falls back to the complete fresh ROS-fake preflight.
+    """
+    proof=Path(run)/"preflight_proof.json"
+    if proof.is_symlink() or not proof.is_file():
+        return None
+    try:
+        if verifier is None:
+            from tools.p1_t08_preflight import verify_proof as verifier
+        checked=verifier(proof=proof,repo=Path(private))
+        if (not isinstance(checked,dict)
+                or checked.get("source_commit")!=expected_sha
+                or checked.get("stage_count")!=12
+                or checked.get("gate_accepted") is not False
+                or checked.get("preflight")!="VERIFIED_REUSED"):
+            return None
+        return str(proof)
+    except Exception:
+        # A missing/corrupt/expired/mismatched proof is NOT a passing test.
+        return None
+
+
 def _raw_bag_blocker(run, source_sha):
     part=Path(run)/'cold_run_01'
     bag=part/'rosbag2'
@@ -308,6 +334,7 @@ def run(private_root):
                 ["bash","scripts/build_official_nav2_lifecycle_overlay.sh",str(overlay)],
                 private,env,tmp,1200)
             env["AXIA_NAV2_LIFECYCLE_OVERLAY_SETUP"]=str(overlay/"install/setup.bash")
+            env.pop("AXIA_T08_PREFLIGHT_PROOF",None)
             goals=set()
             approved_runs=[]
             for i in (1,2,3):
@@ -371,6 +398,18 @@ def run(private_root):
                     row["preflight_diagnostic"]=_fake_preflight_diagnostic(run)
                 if row["shutdown"]!="SHUTDOWN_CLEAN":
                     row["shutdown_diagnostic"]=_shutdown_failure_diagnostic(child)
+
+                if row["candidate"] and i<3:
+                    # Only after the preceding real G00 passed every original
+                    # Startup/Goal/Shutdown/raw-bag gate. The next script
+                    # verifies the HMAC, original stage JUnit, SHA and RMW.
+                    proof=_verified_shared_preflight_proof(private,run,PIN)
+                    if proof is None:
+                        env.pop("AXIA_T08_PREFLIGHT_PROOF",None)
+                        row["next_preflight"]="FRESH_ROS_FAKE_REQUIRED"
+                    else:
+                        env["AXIA_T08_PREFLIGHT_PROOF"]=proof
+                        row["next_preflight"]="SIGNED_SAME_RUNNER_PROOF_VERIFIED"
                 report["runs"].append(row)
                 print("AXIA_PR52_REAL_G00_RUN "+json.dumps(row,sort_keys=True),flush=True)
                 if not row["candidate"]:break
