@@ -86,10 +86,14 @@ def _evidence(results):
                     continue
                 p=folder/"cases"/("case_%02d" % i)
                 diagnostic=(_read(p/"stdout.log")+"\n"+_read(p/"stderr.log"))
+                # Reuse the existing focused reporter: only a bounded
+                # line number from an allowlisted private test basename.
+                from pr52_l1_health_focus import diagnosis
                 failures.append({"case_number":i,
                                  "returncode":case.get("returncode") if type(case.get("returncode")) is int else -1,
                                  "reason":classify(diagnostic),
-                                 "health_flags":extract_health_flags(diagnostic)})
+                                 "health_flags":extract_health_flags(diagnostic),
+                                 "assert_line":diagnosis(diagnostic).get("assert_line")})
             if not failures:
                 failures.append({"case_number":0,
                                  "returncode":stage.get("returncode",-1),
