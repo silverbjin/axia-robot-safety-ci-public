@@ -1,0 +1,62 @@
+name: AXIA PR52 substitute P0 and complete P1 Python tests (exact private SHA)
+on:
+  push:
+    branches: [feat/secure-instructor-cloud-bridge]
+    paths:
+      - '.github/workflows/pr52-private-p0-unit.yml'
+      - 'scripts/private_pr52_python_ci.py'
+      - 'tests/test_private_pr52_python_ci.py'
+permissions:
+  contents: read
+concurrency:
+  group: axia-pr52-p0-full-python
+  cancel-in-progress: false
+jobs:
+  public-sanitization-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - run: python3 -m unittest discover -s tests -p test_private_pr52_python_ci.py -v
+      - run: python3 -m compileall -q scripts/private_pr52_python_ci.py
+  protected-instructor-p0-python:
+    needs: public-sanitization-contract
+    if: github.repository == 'silverbjin/axia-robot-safety-ci-public' && github.actor == 'silverbjin' && github.ref == 'refs/heads/feat/secure-instructor-cloud-bridge' && github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment:
+      name: axia-instructor-sealed
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Check secret without disclosure
+        shell: bash
+        env:
+          PRIVATE_READ_TOKEN: ${{ secrets.AXIA_CLOUD_CI }}
+        run: |
+          set -euo pipefail
+          test -n "$PRIVATE_READ_TOKEN"
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: fdf54edf3286d40c1c6338ec0068cf7f9accfefd
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          fetch-depth: 1
+          persist-credentials: false
+          path: _instructor_private
+      - name: Install Python-only test dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq python3-pytest python3-yaml
+      - name: Sanitize and verify full private P0 plus all P1 Python (NO ROS or motion)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/private_pr52_python_ci.py --private-root _instructor_private --scope python
+      - name: Remove private source
+        if: always()
+        run: rm -rf _instructor_private
