@@ -19,6 +19,9 @@ class Contract(unittest.TestCase):
         self.assertIn('bridge.run_gate(Path(root),"gazebo3")',S)
         self.assertIn("ros-jazzy-nav2-minimal-tb3-sim",W)
         self.assertIn("ros-jazzy-ros-gz",W)
+    def test_success_status_matches_return_code(self):
+        self.assertIn('result["status"]="GAZEBO3_NO_PREPAUSE_READONLY_PASS"',S)
+        self.assertIn('return 0 if result["status"]=="GAZEBO3_NO_PREPAUSE_READONLY_PASS" else 3',S)
     def test_no_goal_or_fault_admission_in_this_workflow(self):
         self.assertIn('"goal_sent":False',S)
         self.assertIn('"fault_injected":False',S)

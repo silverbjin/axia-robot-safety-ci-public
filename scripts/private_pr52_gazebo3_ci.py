@@ -32,7 +32,7 @@ def run(root):
     except Exception:
         result["reason"]="PRIVATE_RUNNER_ERROR"
     print("AXIA_PR52_GAZEBO3 "+json.dumps(result,sort_keys=True),flush=True)
-    return 0 if result["status"]=="GAZEBO3_READONLY_PASS" else 3
+    return 0 if result["status"]=="GAZEBO3_NO_PREPAUSE_READONLY_PASS" else 3
 
 
 if __name__=="__main__":
