@@ -62,7 +62,7 @@ class RealG00CloudPolicy(unittest.TestCase):
             source_sha=mod.PIN
             self.assertEqual(mod._raw_bag_blocker(run,source_sha)['status'],
                              'SOURCE_MARKER_INVALID')
-            (run/'source_commit.txt').write_text(source_sha+'\\n')
+            (run/'source_commit.txt').write_text(source_sha+chr(10))
             self.assertEqual(mod._raw_bag_blocker(run,source_sha)['status'],
                              'CHECKSUM_MANIFEST_MISSING')
             child=run/'cold_run_01';child.mkdir()
