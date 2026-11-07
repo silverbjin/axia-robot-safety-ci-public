@@ -43,8 +43,8 @@ class L1PolicyTests(unittest.TestCase):
         self.assertNotIn("ros-jazzy-ros-gz",workflow)
         self.assertNotIn("upload-artifact",workflow)
         self.assertIn("rm -rf _instructor_private",workflow)
-        self.assertIn("5103335c783f19927733ca4b0fb3fcd3bccee68d",workflow)
-        self.assertIn("5103335c783f19927733ca4b0fb3fcd3bccee68d",(ROOT/"scripts/pr52_l1_fake_ros.py").read_text())
+        self.assertIn("124fa3893a8266e3da230ed5c614fac5d8d60624",workflow)
+        self.assertIn("124fa3893a8266e3da230ed5c614fac5d8d60624",(ROOT/"scripts/pr52_l1_fake_ros.py").read_text())
 
     def test_workflow_scripts_use_bash_not_posix_sh(self):
         # Container defaults to /bin/sh and rejects 'set -o pipefail'.
