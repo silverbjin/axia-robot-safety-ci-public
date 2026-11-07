@@ -1,0 +1,67 @@
+name: AXIA P1 L1 focused Supervisor health repro (no Gazebo)
+on:
+  push:
+    branches: [feat/secure-instructor-cloud-bridge]
+    paths: ['.github/axia/pr52-l1-health-focus.request']
+  workflow_dispatch: {}
+permissions:
+  contents: read
+jobs:
+  public-l0:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with: {persist-credentials: false}
+      - shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p test_pr52_l1_health_focus.py -v
+          python3 -m compileall -q scripts/pr52_l1_health_focus.py
+  protected-focused-ros:
+    needs: public-l0
+    if: github.repository == 'silverbjin/axia-robot-safety-ci-public' && github.actor == 'silverbjin' && github.ref == 'refs/heads/feat/secure-instructor-cloud-bridge'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    container:
+      image: ros:jazzy-ros-base-noble
+    environment:
+      name: axia-instructor-sealed
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with: {persist-credentials: false}
+      - name: Require protected instructor checkout
+        shell: bash
+        env:
+          PRIVATE_READ_TOKEN: ${{ secrets.AXIA_CLOUD_CI }}
+        run: test -n "$PRIVATE_READ_TOKEN"
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 5a458a0ca8533b77e548dbb500b00fbe70d61942
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+          fetch-depth: 1
+          path: _instructor_private
+      - name: Install minimal Jazzy fake ROS (no Gazebo)
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+            git python3-pytest python3-colcon-common-extensions \
+            ros-jazzy-rclpy ros-jazzy-nav2-msgs ros-jazzy-std-srvs \
+            ros-jazzy-std-msgs ros-jazzy-geometry-msgs ros-jazzy-nav-msgs \
+            ros-jazzy-action-msgs ros-jazzy-sensor-msgs ros-jazzy-rosgraph-msgs \
+            ros-jazzy-lifecycle-msgs ros-jazzy-tf2-ros
+      - name: Reproduce three affected real middleware cases x3
+        shell: bash
+        run: |
+          set -eo pipefail
+          source /opt/ros/jazzy/setup.bash
+          set -u
+          python3 scripts/pr52_l1_health_focus.py
+      - name: Delete private artifacts
+        if: always()
+        shell: bash
+        run: rm -rf _instructor_private
