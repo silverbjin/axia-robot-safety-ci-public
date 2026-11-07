@@ -96,7 +96,7 @@ def _evidence(results):
                                  "reason":classify(_read(folder/"stdout.log")+"\n"+_read(folder/"stderr.log"))})
             row["case_failures"]=failures[:20]
         stages.append(row)
-    passed=s.get("overall_status")=="PARTIAL_VERIFIED" and s.get("exit_code")==0 and len(stages)==12*0+4
+    passed=s.get("overall_status")=="PARTIAL_VERIFIED" and s.get("exit_code")==0 and len(stages)==12
     passed=passed and all(x["status"]=="PASS" for x in stages)
     return {"status":s.get("overall_status") if s.get("overall_status") in ("PARTIAL_VERIFIED","FAIL","ERROR","INCONCLUSIVE","BLOCKED") else "BLOCKED",
             "stages":stages,"gate_accepted":False,"gazebo_executed":False}, passed
@@ -120,7 +120,7 @@ def run(private_root):
             results=temp/"fake-result"
             cmd=bridge.bash_with_ros_overlay(setup,[
                 "python3","scripts/run_p1_evidence.py","--all","--profile","ros-fake",
-                "--repeat","1","--timeout-sec","120","--allow-partial-ci",
+                "--repeat","3","--timeout-sec","120","--allow-partial-ci",
                 "--results-root",str(results)])
             with (temp/"private-l1.log").open("wb") as f:
                 try:

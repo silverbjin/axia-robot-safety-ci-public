@@ -51,8 +51,9 @@ class L1PolicyTests(unittest.TestCase):
 
     def test_exact_fakeros_evidence_runner_without_goal(self):
         s=(ROOT/"scripts/pr52_l1_fake_ros.py").read_text()
-        self.assertIn('"--repeat","1"',s)
+        self.assertIn('"--repeat","3"',s)
         self.assertIn('"--profile","ros-fake"',s)
+        self.assertIn("len(stages)==12",s)
         self.assertIn("bridge.ros_workspace_build",s)
         self.assertNotIn("ros2 action send_goal",s)
         self.assertNotIn("ros2 topic pub",s)
