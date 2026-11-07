@@ -1,0 +1,69 @@
+name: AXIA P1 L1 real ROS fake regression (no Gazebo)
+on:
+  push:
+    branches: [feat/secure-instructor-cloud-bridge]
+    paths:
+      - '.github/axia/pr52-l1-fake-ros.request'
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: axia-p1-l1-fake-ros
+  cancel-in-progress: false
+jobs:
+  public-l0-policy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p test_pr52_l1_fake_ros.py -v
+          python3 -m compileall -q scripts/pr52_l1_fake_ros.py
+  protected-l1-isolated:
+    needs: public-l0-policy
+    if: github.repository == 'silverbjin/axia-robot-safety-ci-public' && github.actor == 'silverbjin' && github.ref == 'refs/heads/feat/secure-instructor-cloud-bridge'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    container:
+      image: ros:jazzy-ros-base-noble
+    environment:
+      name: axia-instructor-sealed
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Require protected private-source token
+        env:
+          PRIVATE_READ_TOKEN: ${{ secrets.AXIA_CLOUD_CI }}
+        run: test -n "$PRIVATE_READ_TOKEN"
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: b75d971b3d6655105ad9055bcbbcb043ac2feaa8
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+          fetch-depth: 1
+          path: _instructor_private
+      - name: Install only minimal Jazzy middleware for L1 (no Nav2/Gazebo simulator)
+        run: |
+          set -euo pipefail
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+            git python3-pytest python3-colcon-common-extensions \
+            ros-jazzy-rclpy ros-jazzy-nav2-msgs ros-jazzy-std-srvs \
+            ros-jazzy-std-msgs ros-jazzy-geometry-msgs ros-jazzy-nav-msgs \
+            ros-jazzy-action-msgs ros-jazzy-sensor-msgs ros-jazzy-rosgraph-msgs \
+            ros-jazzy-lifecycle-msgs ros-jazzy-tf2-ros
+      - name: Run independent P1 Fake ROS x1 in isolated DDS domains
+        run: |
+          set -eo pipefail
+          source /opt/ros/jazzy/setup.bash
+          python3 scripts/pr52_l1_fake_ros.py --private-root _instructor_private
+      - name: Remove private instructor checkout and ephemeral results
+        if: always()
+        run: |
+          rm -rf _instructor_private
+          echo AXIA_P1_L1_PRIVATE_CLEANUP_COMPLETE
