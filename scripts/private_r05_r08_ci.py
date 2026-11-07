@@ -13,6 +13,11 @@ RED = '13391a9fa8b053c2c9cfcf0d2c023a9c909cd1d9'
 STAGES = {
     'red': {'pin': RED, 'patterns': ('test_p1_t08_r05_typed_field_gate.py',), 'expect_red': True},
     'r05': {'pin': 'dad93a1307e2d66e538becc8de9f333bcb050250', 'patterns': ('test_p1_t08_r05_typed_field_gate.py',), 'expect_red': False},
+    'staged': {'pin': '6d8ace036afd3db1e03692d7dbdd6980d4265ac0', 'patterns': (
+        'test_p1_t08_r05_typed_field_gate.py',
+        'test_p1_t08_r06_entry.py',
+        'test_p1_t08_r07_entry.py',
+        'test_p1_t08_r08_stage_report.py'), 'expect_red': False},
 }
 def main():
     ap=argparse.ArgumentParser()
@@ -32,7 +37,10 @@ def main():
             if check.returncode!=0:
                 raise ValueError('GREEN_FAILED')
             check=subprocess.run([sys.executable,'-m','compileall','-q',
-                                  'tools/p1_t08_field_goal_gate.py'],
+                                  'tools/p1_t08_field_goal_gate.py',
+                                  'tools/p1_t08_r06_entry.py',
+                                  'tools/p1_t08_r07_entry.py',
+                                  'tools/p1_t08_r08_stage_report.py'],
                                  cwd=p,capture_output=True,text=True,timeout=12)
             if check.returncode!=0:
                 raise ValueError('GREEN_FAILED')
