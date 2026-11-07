@@ -10,8 +10,9 @@ class P1T08PinnedGateTests(TestCase):
         self.assertEqual(bridge.PIN,'d86ee9860de8924f6a5b2c5828d493fb7ef7f9eb')
     def test_new_gate_contains_complete_approved_python_contract_tests(self):
         suite=set(bridge.R01_R08_UNIT_FILES)
-        self.assertEqual(len(suite),11)
+        self.assertEqual(len(suite),12)
         for name in ('test_p1_t08_r01_binding.py','test_p1_t08_supervisor_receipt.py',
+                     'test_p1_t08_r01_capture_order.py',
                      'test_p1_t08_r02_fake_goal.py','test_p1_t08_r03_no_motion.py',
                      'test_p1_t08_r04_custody.py','test_p1_t08_r06_triplicate.py',
                      'test_p1_t08_r07_fault_suite.py','test_p1_t08_r08_release.py'):
