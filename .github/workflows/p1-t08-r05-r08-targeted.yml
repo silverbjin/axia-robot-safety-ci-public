@@ -1,0 +1,48 @@
+name: AXIA P1-T08 R05 targeted RED - no Goal or Fault
+on:
+  push:
+    branches: [feat/secure-instructor-cloud-bridge]
+    paths:
+      - '.github/workflows/p1-t08-r05-r08-targeted.yml'
+      - 'scripts/private_r05_r08_ci.py'
+permissions:
+  contents: read
+concurrency:
+  group: axia-p1-t08-red-green-contract
+  cancel-in-progress: false
+jobs:
+  protected-r05-red:
+    if: github.repository == 'silverbjin/axia-robot-safety-ci-public' && github.actor == 'silverbjin' && github.ref == 'refs/heads/feat/secure-instructor-cloud-bridge' && github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment:
+      name: axia-instructor-sealed
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Require sealed instructor token
+        env:
+          PRIVATE_READ_TOKEN: ${{ secrets.AXIA_CLOUD_CI }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$PRIVATE_READ_TOKEN"
+          echo AXIA_R05_RED_AUTH_PRESENT
+      - name: Exact instructor RED checkpoint checkout (no motion)
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 13391a9fa8b053c2c9cfcf0d2c023a9c909cd1d9
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          fetch-depth: 1
+          persist-credentials: false
+          path: _instructor_private
+      - name: Require expected RED failure without revealing instructor test text
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/private_r05_r08_ci.py --private-root _instructor_private --stage red
+      - name: Cleanup private checkout
+        if: always()
+        run: rm -rf _instructor_private
