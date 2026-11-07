@@ -5,7 +5,7 @@ import json, os, re, subprocess, sys, tempfile
 from pathlib import Path
 import private_ci_bridge as bridge
 
-PIN="5a458a0ca8533b77e548dbb500b00fbe70d61942"
+PIN="90e248d53e8cf0307562ce4ccdb810cce51790fe"
 BASE="d86ee9860de8924f6a5b2c5828d493fb7ef7f9eb"
 CASE_IDS={
     "G03_GOAL_CANCEL":"tests/ros_integration/test_p1_t04_action.py::test_supervisor_goal_stop_cancel_reset_rearm_has_no_auto_resume",
