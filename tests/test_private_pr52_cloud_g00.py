@@ -38,7 +38,7 @@ class RealG00CloudPolicy(unittest.TestCase):
         self.assertIn("def _blocked_phase(log_file):",S)
         self.assertIn('"CLOUD_CONTEXT_DENIED"',S)
         self.assertIn('"PREFLIGHT_FAKE_ROS_FAILED"',S)
-        self.assertIn('"PRE_GAZEBO_UNCLASSIFIED"',S)
+        self.assertIn('"BLOCKED_UNCLASSIFIED"',S)
         self.assertIn('"block_phase":_blocked_phase(log)',S)
         self.assertNotIn("print(content)",S)
     def test_r05_diagnostic_is_allowlisted_and_real_block_line_only(self):
