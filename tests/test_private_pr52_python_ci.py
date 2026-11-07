@@ -24,6 +24,19 @@ class TestPrivatePr52PythonCI(unittest.TestCase):
             self.assertEqual(result['failures'],1)
             self.assertNotIn('SECRET',str(result))
             self.assertEqual(result['failure_categories'][0]['type'],'AssertionError')
+            self.assertEqual(result['failure_categories'][0]['public_module_label'],
+                             'UNCLASSIFIED')
+    def test_only_static_sanitized_module_label_may_be_emitted(self):
+        with tempfile.TemporaryDirectory() as d:
+            p=Path(d)/'test.xml'
+            p.write_text('<testsuite><testcase classname="tests.unit.test_p1_t08_field_fixes"'
+                         ' name="sensitive_test_name"><failure type="ValueError">'
+                         'SECRET_PERSONAL_INFO</failure></testcase></testsuite>')
+            result=m.junit_failure_fingerprints(p)
+            self.assertEqual(result['failure_categories'][0]['public_module_label'],
+                             'test_p1_t08_field_fixes')
+            self.assertNotIn('sensitive',str(result))
+            self.assertNotIn('SECRET',str(result))
     def test_missing_xml_is_blocked_not_pass(self):
         with tempfile.TemporaryDirectory() as d:
             self.assertFalse(m.junit_failure_fingerprints(Path(d)/'absent.xml')['junit_valid'])

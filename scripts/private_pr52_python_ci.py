@@ -52,8 +52,14 @@ def junit_failure_fingerprints(path: Path):
                         label=rawtype if rawtype in _ALLOW_TYPES else 'OTHER'
                         name=(case.attrib.get('classname','')+'::'+case.attrib.get('name',''))
                         digest=hashlib.sha256(name.encode('utf-8')).hexdigest()[:12]
-                        states['failure_categories'].append({'kind':kind,'type':label,
-                                                               'case_fingerprint':digest})
+                        # Module *basename only* is permitted; reject any
+                        # unrecognized path or arbitrary Unicode/path text.
+                        file_text=case.attrib.get('file','')+' '+case.attrib.get('classname','')
+                        match=re.search(r'test_p1_[a-z0-9_]{1,80}',file_text)
+                        family=match.group(0) if match else 'UNCLASSIFIED'
+                        states['failure_categories'].append({
+                            'kind':kind,'type':label,'case_fingerprint':digest,
+                            'public_module_label':family})
         return states
     except (ET.ParseError,ValueError,OSError):
         return {'junit_valid':False,'cases':0,'failures':0,'errors':0,'skipped':0,
