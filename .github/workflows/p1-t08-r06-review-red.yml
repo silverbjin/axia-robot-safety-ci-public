@@ -1,0 +1,35 @@
+name: AXIA P1 T08 R06 review RED exact SHA (NO motion)
+on:
+  push:
+    branches: [feat/secure-instructor-cloud-bridge]
+    paths:
+      - '.github/workflows/p1-t08-r06-review-red.yml'
+      - 'scripts/private_r06_review_red.py'
+permissions:
+  contents: read
+jobs:
+  protected-expected-review-red:
+    if: github.repository == 'silverbjin/axia-robot-safety-ci-public' && github.actor == 'silverbjin' && github.ref == 'refs/heads/feat/secure-instructor-cloud-bridge'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    environment:
+      name: axia-instructor-sealed
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - env:
+          PRIVATE_READ_TOKEN: ${{ secrets.AXIA_CLOUD_CI }}
+        run: test -n "$PRIVATE_READ_TOKEN"
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 3978aa711afcb49953342bd3a4c00441e87255a3
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+          fetch-depth: 1
+          path: _instructor_private
+      - name: Verify 2 private regression RED cases (sanitized)
+        run: python3 scripts/private_r06_review_red.py
+      - if: always()
+        run: rm -rf _instructor_private
