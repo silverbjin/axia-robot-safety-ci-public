@@ -10,6 +10,8 @@ W=(R/".github/workflows/pr52-l1-health-focus.yml").read_text()
 class FocusTests(unittest.TestCase):
     def test_exact_sha_and_per_case_diagnostic(self):
         self.assertEqual(len(M.CASE_IDS),3)
+        self.assertEqual(M.PIN,"5a458a0ca8533b77e548dbb500b00fbe70d61942")
+        self.assertIn("ref: "+M.PIN,W)
         self.assertEqual(M.diagnosis("initial health never ready clock_ok=False scan_ok=True")["reason"],
                          "SUPERVISOR_BOOT_HEALTH_TIMEOUT")
         self.assertEqual(M.diagnosis("initial health never ready clock_ok=False scan_ok=True")["flags"],
