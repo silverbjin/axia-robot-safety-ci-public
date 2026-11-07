@@ -84,4 +84,39 @@ class RealG00CloudPolicy(unittest.TestCase):
         self.assertIn('"certified_estop_verified":False',S)
         self.assertIn('"fault_injected":False',S)
 
+
+    def test_failed_fake_ros_preflight_reports_only_allowlisted_status(self):
+        import importlib.util
+        import json
+        import sys
+        import tempfile
+        from pathlib import Path
+        sys.path.insert(0,str(ROOT/'scripts'))
+        spec=importlib.util.spec_from_file_location(
+            'g00_preflight_diag',ROOT/'scripts/private_pr52_cloud_g00.py')
+        mod=importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            private=root/'partial'/'p1-case'
+            private.mkdir(parents=True)
+            (private/'summary.json').write_text(json.dumps({
+                'overall_status':'FAIL','exit_code':1,
+                'blocked_reason':None,
+                'stage_results':[
+                    {'stage_id':'G02_UNIT','status':'PASS','repeat':1,'tests':4,'failures':0},
+                    {'stage_id':'G04_ROS_FAKE','status':'FAIL','repeat':1,
+                     'tests':7,'failures':1,'private_trace':'MUST_NOT_LEAK'},
+                ],
+                'secret':'MUST_NOT_LEAK',
+            }))
+            report=mod._fake_preflight_diagnostic(root)
+            self.assertEqual(report['first_nonpassing_stage'],'G04_ROS_FAKE')
+            self.assertEqual(report['first_nonpassing_status'],'FAIL')
+            self.assertEqual(report['failed_case_count'],1)
+            self.assertNotIn('MUST_NOT_LEAK',json.dumps(report))
+            self.assertNotIn(tmp,json.dumps(report))
+            self.assertEqual(mod._fake_preflight_diagnostic(root/'missing')['status'],
+                             'PREFLIGHT_SUMMARY_MISSING')
+
 if __name__=="__main__":unittest.main()
