@@ -277,4 +277,44 @@ class RealG00CloudPolicy(unittest.TestCase):
         self.assertIn('STATUS_EVIDENCE_NOT_CONNECTED',
                       (ROOT/'scripts/private_pr52_cloud_g00.py').read_text())
 
+
+    def test_preflight_reports_bounded_per_case_reason_without_private_leak(self):
+        import importlib.util
+        import json
+        import sys
+        import tempfile
+        from pathlib import Path
+        sys.path.insert(0,str(ROOT/'scripts'))
+        spec=importlib.util.spec_from_file_location(
+            'g00_preflight_case_diag',ROOT/'scripts/private_pr52_cloud_g00.py')
+        mod=importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        with tempfile.TemporaryDirectory() as t:
+            run=Path(t)
+            evidence=run/'partial'/'p1-mock'
+            folder=evidence/'G03'/'run_01'/'G03_ROS_FAKE'/'cases'/'case_01'
+            folder.mkdir(parents=True)
+            (folder/'stdout.log').write_text(
+                "initial health never ready clock_ok=False SECRET_TOKEN=MUST_NOT_LEAK")
+            (folder/'stderr.log').write_text("private_path="+t)
+            (evidence/'summary.json').write_text(json.dumps({
+                'overall_status':'FAIL','exit_code':1,
+                'stage_results':[{
+                    'stage_id':'G03_ROS_FAKE','status':'FAIL','gate':'G03',
+                    'repeat':1,'failures':1,
+                    'case_results':[{'status':'FAIL','returncode':1,
+                                     'test_id':'PRIVATE_MUST_NOT_LEAK'}]
+                }],
+                'private_fields':'MUST_NOT_LEAK',
+            }))
+            report=mod._fake_preflight_diagnostic(run)
+            self.assertEqual(report['first_nonpassing_stage'],'G03_ROS_FAKE')
+            self.assertEqual(report['case_failures'],[{
+                'stage':'G03_ROS_FAKE','repeat':1,
+                'case_number':1,'reason':'ROS_HEALTH_NOT_READY',
+                'health_flags':{'clock_ok':'False'},
+            }])
+            self.assertNotIn('MUST_NOT_LEAK',json.dumps(report))
+            self.assertNotIn(t,json.dumps(report))
+
 if __name__=="__main__":unittest.main()
