@@ -1,0 +1,37 @@
+name: AXIA P1 T08 local R06 batch RED (NO Goal/Fault)
+on:
+  push:
+    branches: [feat/secure-instructor-cloud-bridge]
+    paths:
+      - '.github/workflows/p1-t08-r06-local-red.yml'
+      - 'scripts/private_r06_local_red.py'
+permissions:
+  contents: read
+jobs:
+  sealed-expected-red:
+    if: github.repository == 'silverbjin/axia-robot-safety-ci-public' && github.actor == 'silverbjin' && github.ref == 'refs/heads/feat/secure-instructor-cloud-bridge'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    environment:
+      name: axia-instructor-sealed
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Require sealed token
+        env:
+          PRIVATE_READ_TOKEN: ${{ secrets.AXIA_CLOUD_CI }}
+        run: test -n "$PRIVATE_READ_TOKEN"
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 2f2df394f8ec04c196afb095ad2c53ea0e374670
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+          fetch-depth: 1
+          path: _instructor_private
+      - name: Assert expected RED on missing R06 local adapter only
+        run: python3 scripts/private_r06_local_red.py
+      - name: Delete private checkout
+        if: always()
+        run: rm -rf _instructor_private
