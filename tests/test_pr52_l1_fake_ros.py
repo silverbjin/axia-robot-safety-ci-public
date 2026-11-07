@@ -37,6 +37,10 @@ class L1PolicyTests(unittest.TestCase):
         self.assertIn("b75d971b3d6655105ad9055bcbbcb043ac2feaa8",workflow)
         self.assertIn("b75d971b3d6655105ad9055bcbbcb043ac2feaa8",(ROOT/"scripts/pr52_l1_fake_ros.py").read_text())
 
+    def test_workflow_scripts_use_bash_not_posix_sh(self):
+        # Container defaults to /bin/sh and rejects 'set -o pipefail'.
+        self.assertIn('defaults:\\n  run:\\n    shell: bash'.replace('\\n','\n'),workflow)
+
     def test_exact_fakeros_evidence_runner_without_goal(self):
         s=(ROOT/"scripts/pr52_l1_fake_ros.py").read_text()
         self.assertIn('"--repeat","1"',s)
