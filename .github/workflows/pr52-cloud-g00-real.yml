@@ -45,7 +45,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: df09426c67536fc2ebabaa2c2ef30453ce169ef7
+          ref: 5a458a0ca8533b77e548dbb500b00fbe70d61942
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
           fetch-depth: 1
@@ -64,9 +64,13 @@ jobs:
             ros-jazzy-rosgraph-msgs ros-jazzy-tf2-ros \
             ros-jazzy-nav2-msgs ros-jazzy-rclpy ros-jazzy-action-msgs \
             ros-jazzy-nav-msgs ros-jazzy-sensor-msgs ros-jazzy-std-msgs \
-            ros-jazzy-std-srvs ros-jazzy-geometry-msgs ros-jazzy-lifecycle-msgs
+            ros-jazzy-std-srvs ros-jazzy-geometry-msgs ros-jazzy-lifecycle-msgs \
+            rclone age
       - name: Controlled official Waffle Gazebo actual /start and one G00 Goal per cold start
         shell: bash
+        env:
+          AXIA_GDRIVE_RCLONE_CONFIG_B64: ${{ secrets.AXIA_GDRIVE_RCLONE_CONFIG_B64 }}
+          AXIA_GDRIVE_AGE_RECIPIENT: ${{ vars.AXIA_GDRIVE_AGE_RECIPIENT }}
         run: |
           set -eo pipefail
           source /opt/ros/jazzy/setup.bash
@@ -78,3 +82,30 @@ jobs:
         run: |
           rm -rf _instructor_private
           echo AXIA_CLOUD_G00_PRIVATE_CLEANUP_COMPLETE
+
+  protected-drive-independent-cipher-restore:
+    needs: protected-isolated-g00-real
+    if: needs.protected-isolated-g00-real.result == 'success' && github.repository == 'silverbjin/axia-robot-safety-ci-public' && github.actor == 'silverbjin' && github.ref == 'refs/heads/feat/secure-instructor-cloud-bridge'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    environment:
+      name: axia-instructor-sealed
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Install only rclone for off-runner ciphertext recovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq rclone
+      - name: Independently re-download the private age ciphertext and check SHA256
+        shell: bash
+        env:
+          CI: 'true'
+          AXIA_GDRIVE_RCLONE_CONFIG_B64: ${{ secrets.AXIA_GDRIVE_RCLONE_CONFIG_B64 }}
+          AXIA_GDRIVE_AGE_RECIPIENT: ${{ vars.AXIA_GDRIVE_AGE_RECIPIENT }}
+        run: |
+          set -euo pipefail
+          python3 scripts/pr52_gdrive_custody.py --mode restore --source-sha 5a458a0ca8533b77e548dbb500b00fbe70d61942

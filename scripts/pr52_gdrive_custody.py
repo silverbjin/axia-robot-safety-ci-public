@@ -207,7 +207,7 @@ def seal(private_root, runs, env=None):
         rclone(config,"copyto",str(sidecar),object_name+".sha256","--immutable",timeout=120)
         status={"status":"CUSTODY_AGE_CIPHER_UPLOADED",
             "original_g00_rechecked":True,"goal_ids_distinct":3,
-            "source_sha_verified":True,"remote_cip_sha256":digest,
+            "source_sha_verified":True,
             "raw_restored":False,"gate_accepted":False}
     return status
 

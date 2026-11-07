@@ -17,7 +17,7 @@ import tempfile
 import time
 import private_ci_bridge as bridge
 
-PIN = "df09426c67536fc2ebabaa2c2ef30453ce169ef7"
+PIN = "5a458a0ca8533b77e548dbb500b00fbe70d61942"
 BASE = "d86ee9860de8924f6a5b2c5828d493fb7ef7f9eb"
 ALLOWED = {"START_ACK_VERIFIED","START_ACK_BLOCKED","R05_TYPED_ACK_BLOCKED",
     "R05_BOUND_TYPED_PRE_SEND_CANDIDATE","SHUTDOWN_CLEAN",
@@ -202,6 +202,7 @@ def run(private_root):
                 private,env,tmp,1200)
             env["AXIA_NAV2_LIFECYCLE_OVERLAY_SETUP"]=str(overlay/"install/setup.bash")
             goals=set()
+            approved_runs=[]
             for i in (1,2,3):
                 run=private/"results"/("pr52-cloud-g00-"+str(i)+"-"+str(os.getpid()))
                 env["AXIA_T08_EXACT_RUN_DIR"]=str(run)
@@ -252,6 +253,7 @@ def run(private_root):
                             and row["sealed_goal"] and row["sealed_raw_bag"]
                             and candidate.get("goal_uuid") not in goals):
                         goals.add(candidate["goal_uuid"])
+                        approved_runs.append(run)
                         row["candidate"]=True
                     else:
                         row["candidate"]=False
@@ -265,13 +267,22 @@ def run(private_root):
             report["real_goal_verified"]=len(goals)==3
             report["gazebo_executed"]=any(r["startup"]=="SMOKE_READY" for r in report["runs"])
             if report["three_independent_runs"]:
-                report["status"]="CLOUD_G00_3X_CANDIDATE_REVIEW_PENDING"
+                # Fail closed if original 3x bag/Goal custody cannot be encrypted
+                # and uploaded. A later independent CI job checks remote cipher.
+                from pr52_gdrive_custody import CustodyBlocked, seal
+                try:
+                    upload=seal(private,approved_runs,os.environ)
+                    report["encrypted_drive_upload"]=upload["status"]
+                    report["status"]="CLOUD_G00_3X_AGE_CIPHER_UPLOADED"
+                except CustodyBlocked as fault:
+                    report["status"]="CLOUD_G00_3X_CUSTODY_BLOCKED"
+                    report["custody_reason"]=fault.code
     except bridge.GateBlocked:
         report["reason"]="PROTECTED_SOURCE_OR_OVERLAY_BLOCKED"
     except Exception:
         report["reason"]="PRIVATE_RUNTIME_ERROR"
     print("AXIA_PR52_REAL_G00 "+json.dumps(report,sort_keys=True),flush=True)
-    return 0 if report["status"]=="CLOUD_G00_3X_CANDIDATE_REVIEW_PENDING" else 3
+    return 0 if report["status"]=="CLOUD_G00_3X_AGE_CIPHER_UPLOADED" else 3
 
 
 if __name__=="__main__":

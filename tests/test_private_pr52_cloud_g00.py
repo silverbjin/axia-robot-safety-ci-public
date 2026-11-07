@@ -7,7 +7,7 @@ W=(ROOT/".github/workflows/pr52-cloud-g00-real.yml").read_text()
 
 class RealG00CloudPolicy(unittest.TestCase):
     def test_exact_sha_and_github_protection(self):
-        pin="df09426c67536fc2ebabaa2c2ef30453ce169ef7"
+        pin="5a458a0ca8533b77e548dbb500b00fbe70d61942"
         self.assertIn(pin,S)
         self.assertIn(pin,W)
         self.assertIn("axia-instructor-sealed",W)
@@ -26,7 +26,9 @@ class RealG00CloudPolicy(unittest.TestCase):
         self.assertIn('"start_ack"]=="START_ACK_VERIFIED"',S)
         self.assertIn('"shutdown"]=="SHUTDOWN_CLEAN"',S)
         self.assertIn('"gate_accepted":False',S)
-        self.assertIn("CLOUD_G00_3X_CANDIDATE_REVIEW_PENDING",S)
+        self.assertIn("CLOUD_G00_3X_AGE_CIPHER_UPLOADED",S)
+        self.assertIn("seal(private,approved_runs,os.environ)",S)
+        self.assertIn("CLOUD_G00_3X_CUSTODY_BLOCKED",S)
     def test_no_private_artifact_leak_or_direct_goal_bypass(self):
         self.assertNotIn("upload-artifact",W)
         self.assertNotIn("cat _instructor_private",W)
