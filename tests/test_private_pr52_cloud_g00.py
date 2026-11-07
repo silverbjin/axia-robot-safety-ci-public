@@ -7,7 +7,7 @@ W=(ROOT/".github/workflows/pr52-cloud-g00-real.yml").read_text()
 
 class RealG00CloudPolicy(unittest.TestCase):
     def test_exact_sha_and_github_protection(self):
-        pin="5a458a0ca8533b77e548dbb500b00fbe70d61942"
+        pin="13ddf2719d6e9c7ca98148783a06083e6975d8ce"
         self.assertIn(pin,S)
         self.assertIn(pin,W)
         self.assertIn("axia-instructor-sealed",W)
@@ -184,7 +184,7 @@ class RealG00CloudPolicy(unittest.TestCase):
         self.assertFalse(data['off_runner_original_custody_verified'])
         self.assertFalse(data['independent_plaintext_restore_verified'])
         self.assertNotEqual(data['private_source_sha'],
-                            '5a458a0ca8533b77e548dbb500b00fbe70d61942')
+                            '13ddf2719d6e9c7ca98148783a06083e6975d8ce')
         self.assertNotIn('private_stdout',data)
         self.assertNotIn('access_token',data)
 
