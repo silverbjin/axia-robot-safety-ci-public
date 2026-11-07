@@ -24,7 +24,7 @@ class PR52FastPolicyGate(unittest.TestCase):
         self.assertIn("github.ref == 'refs/heads/" + BRANCH + "'", HEAVY)
         self.assertIn("github.event_name == 'push'", HEAVY)
         self.assertIn('environment:\n      name: axia-instructor-sealed', HEAVY)
-        self.assertIn('ref: b75d971b3d6655105ad9055bcbbcb043ac2feaa8', HEAVY)
+        self.assertIn('ref: f646762edccb5a626caa7e66a488b5a3f721a6b7', HEAVY)
         self.assertIn('persist-credentials: false', HEAVY)
         self.assertNotIn('upload-artifact', HEAVY)
 

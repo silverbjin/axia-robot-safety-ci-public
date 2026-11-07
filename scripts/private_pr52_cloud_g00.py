@@ -15,7 +15,7 @@ import tempfile
 import time
 import private_ci_bridge as bridge
 
-PIN = "b75d971b3d6655105ad9055bcbbcb043ac2feaa8"
+PIN = "f646762edccb5a626caa7e66a488b5a3f721a6b7"
 BASE = "d86ee9860de8924f6a5b2c5828d493fb7ef7f9eb"
 ALLOWED = {"START_ACK_VERIFIED","START_ACK_BLOCKED","R05_TYPED_ACK_BLOCKED",
     "R05_BOUND_TYPED_PRE_SEND_CANDIDATE","SHUTDOWN_CLEAN",
