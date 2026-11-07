@@ -24,6 +24,7 @@ jobs:
           set -euo pipefail
           python3 -m unittest discover -s tests -p test_private_pr52_cloud_g00.py -v
           python3 -m unittest discover -s tests -p test_pr52_l1_health_focus.py -v
+          python3 -m unittest discover -s tests -p test_pr52_l1_fake_ros.py -v
           python3 -m unittest discover -s tests -p test_pr52_ci_gates.py -v
           python3 -m unittest discover -s tests -p test_pr52_block_classifier.py -v
           python3 -m compileall -q scripts/private_pr52_cloud_g00.py scripts/private_ci_bridge.py
