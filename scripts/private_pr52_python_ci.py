@@ -17,13 +17,14 @@ import sys
 import tempfile
 import xml.etree.ElementTree as ET
 
-PIN = '6bc579814c6037d40d644ce8d9f5046fa4a7d4c6'
+PIN = '1de6e8963a118842989e76c02f0d916afd63e97d'
 SCOPES = ('python',)
 _SUITES = (
  ('P0_UNIT', [sys.executable,'-m','unittest','discover','-s','tests/p0','-v'],120),
  ('P0_COMPILE',[sys.executable,'-m','compileall','-q','tools','tests',
               'ros2_ws/src/axia_safety_bringup'],45),
  ('P1_UNIT_ALL',[sys.executable,'-m','pytest','-q','tests/unit'],360),
+ ('FIELD_BASH_SYNTAX',['bash','-n','scripts/run_p1_t08_wsl2_field_capture.sh'],12),
 )
 _ALLOW_TYPES = {'AssertionError','ImportError','ModuleNotFoundError',
                 'AttributeError','TypeError','ValueError','KeyError',

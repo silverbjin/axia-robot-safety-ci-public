@@ -10,9 +10,9 @@ m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
 
 class TestPrivatePr52PythonCI(unittest.TestCase):
     def test_exact_source_sha_is_hardcoded(self):
-        self.assertEqual(m.PIN,'6bc579814c6037d40d644ce8d9f5046fa4a7d4c6')
+        self.assertEqual(m.PIN,'1de6e8963a118842989e76c02f0d916afd63e97d')
     def test_three_scoped_stages_include_p0_and_full_unit(self):
-        self.assertEqual([x[0] for x in m._SUITES],['P0_UNIT','P0_COMPILE','P1_UNIT_ALL'])
+        self.assertEqual([x[0] for x in m._SUITES],['P0_UNIT','P0_COMPILE','P1_UNIT_ALL','FIELD_BASH_SYNTAX'])
         self.assertIn('tests/unit',m._SUITES[2][1])
     def test_sanitized_failure_fingerprint_does_not_echo_identity(self):
         with tempfile.TemporaryDirectory() as d:
