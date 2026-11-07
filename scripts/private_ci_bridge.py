@@ -14,7 +14,7 @@ import sys
 import tempfile
 import xml.etree.ElementTree as ET
 
-PIN = '59805dc98ef27a3eb1efee8095406bb3fc93bd3a'
+PIN = 'd86ee9860de8924f6a5b2c5828d493fb7ef7f9eb'
 UNIT_FILES = (
     'tests/unit/test_p1_fsm.py', 'tests/unit/test_p1_watchdog.py',
     'tests/unit/test_p1_t08_scan_full_circle.py',
@@ -37,6 +37,7 @@ R01_R08_UNIT_FILES = (
     'tests/unit/test_p1_t08_r06_triplicate.py',
     'tests/unit/test_p1_t08_r07_fault_suite.py',
     'tests/unit/test_p1_t08_r08_release.py',
+    'tests/unit/test_p1_t08_r01_capture_order.py',
 )
 
 DDS_FILES = (
@@ -391,6 +392,23 @@ def private_evidence_diagnostics(root, count):
         record['shutdown_fatal_count'] = (
             len(fatals) if isinstance(fatals, list) and len(fatals) < 1000
             else 'UNAVAILABLE')
+        # Classify the final official Nav2 lifecycle transition using
+        # allowlisted labels only. Private launch.log is NEVER emitted.
+        from private_nav2_phase_oracle import classify_nav2_shutdown_phase
+        try:
+            logfile = folder / 'launch.log'
+            raw_log = (logfile.read_text(encoding='utf-8',errors='replace')
+                       if logfile.is_file() and logfile.stat().st_size <= 18_000_000
+                       else '')
+            phases = classify_nav2_shutdown_phase(raw_log)
+        except (OSError, ValueError, UnicodeError):
+            phases = classify_nav2_shutdown_phase('')
+        for manager in ('navigation', 'localization'):
+            observed = phases[manager]
+            record[manager + '_last_phase'] = observed['last_phase']
+            record[manager + '_last_node'] = observed['last_node']
+            record[manager + '_shutdown_log_complete'] = observed['shutdown_completed']
+            record[manager + '_transition_count'] = observed['transitions']
         out.append(record)
         print('AXIA_PRIVATE_DIAGNOSTIC ' + json.dumps(record, sort_keys=True),
               flush=True)
