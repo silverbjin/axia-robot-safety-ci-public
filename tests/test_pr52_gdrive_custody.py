@@ -62,6 +62,9 @@ class CustodySecurityTest(unittest.TestCase):
         self.assertIn("GITHUB_RUN_ATTEMPT",src)
         self.assertNotIn("print(secret)",src)
         self.assertNotIn("print(decoded)",src)
+        self.assertIn('encrypted=temp/"probe.txt.age"',src)
+        self.assertIn('"age_encrypted_canary_roundtrip":True',src)
+        self.assertNotIn('"copyto",str(data),key',src)
         self.assertNotIn("upload-artifact",src)
         self.assertNotIn("rclone sync",src)
 

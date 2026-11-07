@@ -244,18 +244,23 @@ def probe(env=None):
         # No original source or Evidence required. No token is written to logs.
         data=temp/"probe.txt"
         data.write_text(f"AXIA P1 drive protected canary {env['GITHUB_RUN_ID']}\n")
-        key=f"{REMOTE}/_probe/probe-{env['GITHUB_RUN_ID']}-{env['GITHUB_RUN_ATTEMPT']}.txt"
-        ensure_quota(config,1024)
-        rclone(config,"copyto",str(data),key,"--immutable",timeout=120)
+        encrypted=temp/"probe.txt.age"
+        invoke(["age","-r",recipient,"-o",str(encrypted),str(data)],timeout=30)
+        if encrypted.open("rb").read(len(HEADER))!=HEADER:
+            raise CustodyBlocked("PROTECTED_AGE_ENCRYPTION_INVALID")
+        key=f"{REMOTE}/_probe/probe-{env['GITHUB_RUN_ID']}-{env['GITHUB_RUN_ATTEMPT']}.txt.age"
+        ensure_quota(config,encrypted.stat().st_size)
+        rclone(config,"copyto",str(encrypted),key,"--immutable",timeout=120)
         try:
-            received=temp/"received.txt"
+            received=temp/"received.txt.age"
             rclone(config,"copyto",key,str(received),timeout=120)
-            if sha256(data)!=sha256(received):
+            if sha256(encrypted)!=sha256(received):
                 raise CustodyBlocked("PROTECTED_DRIVE_PROBE_SHA256_MISMATCH")
         finally:
             rclone(config,"deletefile",key,timeout=120)
         return {"status":"PROTECTED_DRIVE_CANARY_PASS",
                 "age_recipient_configured":bool(recipient),
+                "age_encrypted_canary_roundtrip":True,
                 "original_bag_uploaded":False,"gate_accepted":False}
 
 
