@@ -1,0 +1,61 @@
+{
+  "schema": "axia-p1-g00-lkg-v1",
+  "record_scope": "L2_G00_THREE_CANDIDATE_ONLY",
+  "private_source_sha": "df09426c67536fc2ebabaa2c2ef30453ce169ef7",
+  "public_workflow_sha": "c4d11ab27c926ab8ca554300b76d241df1cf6202",
+  "public_run_id": 42371053889,
+  "public_run_url": "https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/42371053889",
+  "evidence_source": "GitHub protected job 128399107104 allowlisted runtime summaries; no original rosbag2 published",
+  "runs": [
+    {
+      "run": 1,
+      "startup": "SMOKE_READY",
+      "start_ack": "START_ACK_VERIFIED",
+      "field_gate": "R05_BOUND_TYPED_PRE_SEND_CANDIDATE",
+      "goal_trace": "PASS",
+      "shutdown_control": "SHUTDOWN_CONFIRMED",
+      "shutdown": "SHUTDOWN_CLEAN",
+      "sealed_goal": true,
+      "sealed_raw_bag": true,
+      "candidate": true,
+      "raw_bag_blocker": "NONE"
+    },
+    {
+      "run": 2,
+      "startup": "SMOKE_READY",
+      "start_ack": "START_ACK_VERIFIED",
+      "field_gate": "R05_BOUND_TYPED_PRE_SEND_CANDIDATE",
+      "goal_trace": "PASS",
+      "shutdown_control": "SHUTDOWN_CONFIRMED",
+      "shutdown": "SHUTDOWN_CLEAN",
+      "sealed_goal": true,
+      "sealed_raw_bag": true,
+      "candidate": true,
+      "raw_bag_blocker": "NONE"
+    },
+    {
+      "run": 3,
+      "startup": "SMOKE_READY",
+      "start_ack": "START_ACK_VERIFIED",
+      "field_gate": "R05_BOUND_TYPED_PRE_SEND_CANDIDATE",
+      "goal_trace": "PASS",
+      "shutdown_control": "SHUTDOWN_CONFIRMED",
+      "shutdown": "SHUTDOWN_CLEAN",
+      "sealed_goal": true,
+      "sealed_raw_bag": true,
+      "candidate": true,
+      "raw_bag_blocker": "NONE"
+    }
+  ],
+  "three_independent_runs": true,
+  "real_goal_verified": true,
+  "raw_bag_verified_on_runner": true,
+  "off_runner_original_custody_verified": false,
+  "independent_plaintext_restore_verified": false,
+  "applicability": "EXACT_PRIVATE_SOURCE_SHA_ONLY",
+  "not_transferable_to_new_sha": true,
+  "g03_g04_live_faults_verified": false,
+  "ws_l2_final_accepted": false,
+  "gate_accepted": false,
+  "certified_estop_verified": false
+}
