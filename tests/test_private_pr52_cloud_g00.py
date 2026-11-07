@@ -7,7 +7,7 @@ W=(ROOT/".github/workflows/pr52-cloud-g00-real.yml").read_text()
 
 class RealG00CloudPolicy(unittest.TestCase):
     def test_exact_sha_and_github_protection(self):
-        pin="dd7dc7d0697933f60735ea3a3e900ed2fc2ad3b7"
+        pin="df09426c67536fc2ebabaa2c2ef30453ce169ef7"
         self.assertIn(pin,S)
         self.assertIn(pin,W)
         self.assertIn("axia-instructor-sealed",W)
