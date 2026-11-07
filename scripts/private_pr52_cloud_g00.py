@@ -49,6 +49,7 @@ def _blocked_phase(log_file):
         ("Baseline hash mismatch", "BASELINE_MISMATCH"),
         ("missing ROS package", "ROS_PACKAGES_MISSING"),
         ("R07_FAULT_REQUIRES_INDEPENDENT_REVIEW", "FAULT_BOUNDARY_BLOCKED"),
+        ("STATUS_EVIDENCE_NOT_CONNECTED", "STATUS_EVIDENCE_NOT_CONNECTED"),
         ("SUPERVISOR_START_NOT_ACKNOWLEDGED", "START_OR_PRE_SEND_BOUNDARY_BLOCKED"),
         ("PRE_GOAL_BLOCKED", "PRE_GOAL_BLOCKED"),
         ("READINESS_OR_P1_GRAPH_NOT_VERIFIED", "NAV2_READINESS_OR_GRAPH_BLOCKED"),
@@ -243,6 +244,34 @@ def _verified_shared_preflight_proof(private,run,expected_sha,*,verifier=None):
         return None
 
 
+
+def _action_status_gate_diagnostic(child):
+    """Return only fixed enum codes; never publicize DDS graph, paths or raw ROS."""
+    path=Path(child)/"action_status_ready.json"
+    if path.is_symlink() or not path.is_file():
+        return {"status":"MISSING","reason":"GATE_NOT_EXECUTED"}
+    try:
+        record=json.loads(path.read_text(encoding="utf-8"))
+    except (OSError,ValueError,UnicodeError):
+        return {"status":"INVALID","reason":"DIAGNOSTIC_INVALID"}
+    if not isinstance(record,dict):
+        return {"status":"INVALID","reason":"DIAGNOSTIC_INVALID"}
+    allowed_status=frozenset(("STATUS_EVIDENCE_READY","STATUS_EVIDENCE_BLOCKED"))
+    allowed_reasons=frozenset((
+        "PUBLISHER_MISSING_OR_MULTIPLE","STATUS_TYPE_MISMATCH",
+        "RECORDER_SUBSCRIPTION_MISSING","OBSERVER_SUBSCRIPTION_MISSING",
+        "STATUS_QOS_NOT_COMPATIBLE","ALL_ACTION_STATUS_ENDPOINTS_COMPATIBLE",
+        "STATUS_GRAPH_NOT_STABLE","STATUS_GRAPH_CHECK_ERROR",
+        "STATUS_DISCOVERY_TIMEOUT",
+    ))
+    status=record.get("status")
+    reason=record.get("reason")
+    return {
+        "status":status if status in allowed_status else "INVALID",
+        "reason":reason if reason in allowed_reasons else "UNCLASSIFIED",
+    }
+
+
 def _raw_bag_blocker(run, source_sha):
     part=Path(run)/'cold_run_01'
     bag=part/'rosbag2'
@@ -396,6 +425,7 @@ def run(private_root):
                     row["evidence_classification"]="BLOCKED"
                 if row["block_phase"]=="PREFLIGHT_FAKE_ROS_FAILED":
                     row["preflight_diagnostic"]=_fake_preflight_diagnostic(run)
+                row["status_evidence"]=_action_status_gate_diagnostic(child)
                 if row["shutdown"]!="SHUTDOWN_CLEAN":
                     row["shutdown_diagnostic"]=_shutdown_failure_diagnostic(child)
 
