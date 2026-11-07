@@ -12,6 +12,7 @@ import sys
 RED = '13391a9fa8b053c2c9cfcf0d2c023a9c909cd1d9'
 STAGES = {
     'red': {'pin': RED, 'patterns': ('test_p1_t08_r05_typed_field_gate.py',), 'expect_red': True},
+    'r05': {'pin': '133f3eca2f1004a89beebbdca8f080f3eb073374', 'patterns': ('test_p1_t08_r05_typed_field_gate.py',), 'expect_red': False},
 }
 def main():
     ap=argparse.ArgumentParser()
@@ -25,6 +26,16 @@ def main():
                            capture_output=True,text=True,timeout=8).stdout.strip()
         if sha!=expected['pin']:
             raise ValueError('CHECKOUT_SHA_MISMATCH')
+        if args.stage != 'red':
+            check=subprocess.run(['bash','-n','scripts/run_p1_t08_wsl2_field_capture.sh'],
+                                 cwd=p,capture_output=True,text=True,timeout=12)
+            if check.returncode!=0:
+                raise ValueError('GREEN_FAILED')
+            check=subprocess.run([sys.executable,'-m','compileall','-q',
+                                  'tools/p1_t08_field_goal_gate.py'],
+                                 cwd=p,capture_output=True,text=True,timeout=12)
+            if check.returncode!=0:
+                raise ValueError('GREEN_FAILED')
         outcomes=[]
         for pattern in expected['patterns']:
             x=subprocess.run([sys.executable,'-m','unittest','discover','-s','tests/unit','-p',pattern,'-v'],

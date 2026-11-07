@@ -1,4 +1,4 @@
-name: AXIA P1-T08 R05 targeted RED - no Goal or Fault
+name: AXIA P1-T08 R05 targeted GREEN - typed ACK, NO Goal or Fault
 on:
   push:
     branches: [feat/secure-instructor-cloud-bridge]
@@ -11,7 +11,7 @@ concurrency:
   group: axia-p1-t08-red-green-contract
   cancel-in-progress: false
 jobs:
-  protected-r05-red:
+  protected-r05-green:
     if: github.repository == 'silverbjin/axia-robot-safety-ci-public' && github.actor == 'silverbjin' && github.ref == 'refs/heads/feat/secure-instructor-cloud-bridge' && github.event_name == 'push'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -28,21 +28,21 @@ jobs:
         run: |
           set -euo pipefail
           test -n "$PRIVATE_READ_TOKEN"
-          echo AXIA_R05_RED_AUTH_PRESENT
-      - name: Exact instructor RED checkpoint checkout (no motion)
+          echo AXIA_R05_GREEN_AUTH_PRESENT
+      - name: Exact instructor R05 typed ACK GREEN checkout (no motion)
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 13391a9fa8b053c2c9cfcf0d2c023a9c909cd1d9
+          ref: 133f3eca2f1004a89beebbdca8f080f3eb073374
           token: ${{ secrets.AXIA_CLOUD_CI }}
           fetch-depth: 1
           persist-credentials: false
           path: _instructor_private
-      - name: Require expected RED failure without revealing instructor test text
+      - name: Require R05 new tests all GREEN without revealing instructor source
         shell: bash
         run: |
           set -euo pipefail
-          python3 scripts/private_r05_r08_ci.py --private-root _instructor_private --stage red
+          python3 scripts/private_r05_r08_ci.py --private-root _instructor_private --stage r05
       - name: Cleanup private checkout
         if: always()
         run: rm -rf _instructor_private
