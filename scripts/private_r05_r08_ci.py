@@ -14,12 +14,12 @@ RED = '13391a9fa8b053c2c9cfcf0d2c023a9c909cd1d9'
 STAGES = {
     'red': {'pin': RED, 'patterns': ('test_p1_t08_r05_typed_field_gate.py',), 'expect_red': True},
     'r05': {'pin': 'dad93a1307e2d66e538becc8de9f333bcb050250', 'patterns': ('test_p1_t08_r05_typed_field_gate.py',), 'expect_red': False},
-    'staged': {'pin': '6d8ace036afd3db1e03692d7dbdd6980d4265ac0', 'patterns': (
+    'staged': {'pin': 'fdf54edf3286d40c1c6338ec0068cf7f9accfefd', 'patterns': (
         'test_p1_t08_r05_typed_field_gate.py',
         'test_p1_t08_r06_entry.py',
         'test_p1_t08_r07_entry.py',
         'test_p1_t08_r08_stage_report.py'), 'expect_red': False,
-               'expected_counts': (8,6,7,5)},
+               'expected_counts': (9,6,7,5)},
 }
 def main():
     ap=argparse.ArgumentParser()
