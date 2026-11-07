@@ -60,5 +60,33 @@ class L1PolicyTests(unittest.TestCase):
         self.assertNotIn("ros2 topic pub",s)
         self.assertNotIn("upload-artifact",s)
 
+
+    def test_failure_assertion_line_allowlist_without_private_text(self):
+        import json
+        with tempfile.TemporaryDirectory() as t:
+            root=Path(t)
+            p=root/'p1-case'
+            case=p/'G03'/'run_02'/'G03_ROS_FAKE'/'cases'/'case_01'
+            case.mkdir(parents=True)
+            (case/'stdout.log').write_text(
+                'tests/ros_integration/test_p1_t04_action.py:262: AssertionError\\n'
+                'PRIVATE_SECRET=NEVER_ECHO',encoding='utf-8')
+            (case/'stderr.log').write_text('private-path='+t,encoding='utf-8')
+            (p/'summary.json').write_text(json.dumps({
+                'overall_status':'FAIL','exit_code':1,
+                'stage_results':[{
+                    'stage_id':'G03_ROS_FAKE','status':'FAIL','gate':'G03',
+                    'repeat':2,'case_results':[{'status':'FAIL','returncode':1}]
+                }]
+            }))
+            report,passed=mod._evidence(root)
+            self.assertFalse(passed)
+            case_report=report['stages'][0]['case_failures'][0]
+            self.assertEqual(case_report['case_number'],1)
+            self.assertEqual(case_report['assert_line'],262)
+            self.assertNotIn('NEVER_ECHO',json.dumps(report))
+            self.assertNotIn(t,json.dumps(report))
+
+
 if __name__=="__main__":
     unittest.main()
