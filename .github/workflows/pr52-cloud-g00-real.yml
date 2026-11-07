@@ -1,0 +1,81 @@
+name: AXIA P1 Cloud G00 actual Gazebo Start Goal Shutdown 3x (exact private SHA)
+on:
+  push:
+    branches: [feat/secure-instructor-cloud-bridge]
+    paths:
+      - '.github/workflows/pr52-cloud-g00-real.yml'
+      - 'scripts/private_pr52_cloud_g00.py'
+      - 'tests/test_private_pr52_cloud_g00.py'
+permissions:
+  contents: read
+concurrency:
+  group: axia-pr52-cloud-real-g00
+  cancel-in-progress: false
+jobs:
+  policy-and-privacy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p test_private_pr52_cloud_g00.py -v
+          python3 -m compileall -q scripts/private_pr52_cloud_g00.py
+  protected-isolated-g00-real:
+    needs: policy-and-privacy
+    if: github.repository == 'silverbjin/axia-robot-safety-ci-public' && github.actor == 'silverbjin' && github.ref == 'refs/heads/feat/secure-instructor-cloud-bridge' && github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    container:
+      image: ros:jazzy-ros-base-noble
+    environment:
+      name: axia-instructor-sealed
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Protected token requirement
+        shell: bash
+        env:
+          PRIVATE_READ_TOKEN: ${{ secrets.AXIA_CLOUD_CI }}
+        run: |
+          set -euo pipefail
+          test -n "$PRIVATE_READ_TOKEN"
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: a03ed9303ed0278aa76875dece0df23972e3b7e3
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+          fetch-depth: 1
+          path: _instructor_private
+      - name: Install ROS2 Jazzy official Nav2 Gazebo Harmonic and evidence tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+            git build-essential cmake procps python3-yaml python3-pytest \
+            python3-colcon-common-extensions \
+            ros-jazzy-navigation2 ros-jazzy-nav2-bringup \
+            ros-jazzy-nav2-minimal-tb3-sim ros-jazzy-ros-gz \
+            ros-jazzy-rosbag2 ros-jazzy-rosbag2-storage-default-plugins \
+            ros-jazzy-rosgraph-msgs ros-jazzy-tf2-ros \
+            ros-jazzy-nav2-msgs ros-jazzy-rclpy ros-jazzy-action-msgs \
+            ros-jazzy-nav-msgs ros-jazzy-sensor-msgs ros-jazzy-std-msgs \
+            ros-jazzy-std-srvs ros-jazzy-geometry-msgs ros-jazzy-lifecycle-msgs
+      - name: Controlled official Waffle Gazebo actual /start and one G00 Goal per cold start
+        shell: bash
+        run: |
+          set -eo pipefail
+          source /opt/ros/jazzy/setup.bash
+          set -u
+          python3 scripts/private_pr52_cloud_g00.py --private-root _instructor_private
+      - name: Destroy private source and real raw simulation evidence
+        if: always()
+        shell: bash
+        run: |
+          rm -rf _instructor_private
+          echo AXIA_CLOUD_G00_PRIVATE_CLEANUP_COMPLETE

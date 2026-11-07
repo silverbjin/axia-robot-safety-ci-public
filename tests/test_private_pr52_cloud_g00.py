@@ -1,0 +1,42 @@
+"""Privacy and simulation approval controls for protected real G00 CI."""
+import pathlib
+import unittest
+ROOT=pathlib.Path(__file__).resolve().parents[1]
+S=(ROOT/"scripts/private_pr52_cloud_g00.py").read_text()
+W=(ROOT/".github/workflows/pr52-cloud-g00-real.yml").read_text()
+
+class RealG00CloudPolicy(unittest.TestCase):
+    def test_exact_sha_and_github_protection(self):
+        pin="a03ed9303ed0278aa76875dece0df23972e3b7e3"
+        self.assertIn(pin,S)
+        self.assertIn(pin,W)
+        self.assertIn("axia-instructor-sealed",W)
+        self.assertIn("secrets.AXIA_CLOUD_CI",W)
+        self.assertIn('GITHUB_REPOSITORY',S)
+        self.assertIn('GITHUB_ACTOR',S)
+    def test_strict_one_goal_per_cold_start(self):
+        self.assertIn('for i in (1,2,3):',S)
+        self.assertIn('AXIA_T08_MAX_RUNS="1"',S)
+        self.assertIn('AXIA_T08_SCENARIO="g00"',S)
+        self.assertIn('AXIA_T08_FAULT_APPROVED="NO"',S)
+    def test_true_goal_and_raw_custody_no_claimed_acceptance(self):
+        self.assertIn("classify_g00_evidence",S)
+        self.assertIn("assess_raw_g00",S)
+        self.assertIn('"start_ack"]=="START_ACK_VERIFIED"',S)
+        self.assertIn('"shutdown"]=="SHUTDOWN_CLEAN"',S)
+        self.assertIn('"gate_accepted":False',S)
+        self.assertIn("CLOUD_G00_3X_CANDIDATE_REVIEW_PENDING",S)
+    def test_no_private_artifact_leak_or_direct_goal_bypass(self):
+        self.assertNotIn("upload-artifact",W)
+        self.assertNotIn("cat _instructor_private",W)
+        self.assertIn("rm -rf _instructor_private",W)
+        self.assertNotIn("create_publisher(",S)
+        self.assertNotIn("ros2 topic pub",S)
+        self.assertNotIn("call_async(",S)
+    def test_protected_environment_is_real_and_no_e_stop(self):
+        self.assertIn('CI="true"',S)
+        self.assertIn('AXIA_T08_CLOUD_G00_OPT_IN="YES_SIM_ONLY"',S)
+        self.assertIn('"certified_estop_verified":False',S)
+        self.assertIn('"fault_injected":False',S)
+
+if __name__=="__main__":unittest.main()
