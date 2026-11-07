@@ -11,8 +11,8 @@ def main():
         sha=subprocess.run(['git','rev-parse','HEAD'],cwd=p,check=True,
                     capture_output=True,text=True,timeout=10).stdout.strip()
         if sha!=PIN:raise ValueError('SHA_MISMATCH')
-        t=subprocess.run([sys.executable,'-m','pytest','-q',
-                         'tests/unit/test_p1_t08_local_r07_admission.py'],
+        t=subprocess.run([sys.executable,'-c',
+                         "exec(open('tests/unit/test_p1_t08_local_r07_admission.py', encoding='utf-8').read())"],
                          cwd=p,capture_output=True,text=True,timeout=50)
         status='EXPECTED_RED_REPRODUCED' if (
             t.returncode!=0 and 'ModuleNotFoundError' in t.stdout+t.stderr
