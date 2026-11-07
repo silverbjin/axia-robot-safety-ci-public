@@ -45,7 +45,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 13ddf2719d6e9c7ca98148783a06083e6975d8ce
+          ref: 5103335c783f19927733ca4b0fb3fcd3bccee68d
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
           fetch-depth: 1
@@ -108,4 +108,4 @@ jobs:
           AXIA_GDRIVE_AGE_RECIPIENT: ${{ vars.AXIA_GDRIVE_AGE_RECIPIENT }}
         run: |
           set -euo pipefail
-          python3 scripts/pr52_gdrive_custody.py --mode restore --source-sha 13ddf2719d6e9c7ca98148783a06083e6975d8ce
+          python3 scripts/pr52_gdrive_custody.py --mode restore --source-sha 5103335c783f19927733ca4b0fb3fcd3bccee68d
