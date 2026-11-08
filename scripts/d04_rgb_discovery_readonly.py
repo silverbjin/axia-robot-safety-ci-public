@@ -22,9 +22,10 @@ def choose_rgb_topic(topic_listing: str) -> str | None:
     for line in topic_listing.splitlines():
         name = line.strip()
         low = name.lower()
-        if not name.startswith("/") or not re.search(r"(image|rgb)", low):
-            continue
-        if any(x in low for x in ("depth", "info", "points", "compressed")):
+        leaf = low.rsplit("/", 1)[-1]
+        if not name.startswith("/") or leaf not in (
+            "image", "image_raw", "rgb", "rgb_image", "color_image"
+        ):
             continue
         candidates.append(name)
     return sorted(candidates, key=lambda x: (not x.endswith("/image"), len(x), x))[0] if candidates else None
@@ -130,6 +131,8 @@ def main():
             (out / "gz_topics.txt").write_text(listing, encoding="utf-8")
             topic = choose_rgb_topic(listing)
             record["gazebo_rgb_topic"] = topic
+            record["gazebo_topic_count"] = len(listing.splitlines())
+            record["camera_topic_candidates"] = [line for line in listing.splitlines() if ("camera" in line.lower() or "image" in line.lower())][:32]
             if topic:
                 info = _run(["gz", "topic", "-i", "-t", topic], env=env)
                 record["gazebo_topic_info"] = (info.stdout + info.stderr)[:1800]

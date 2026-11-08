@@ -43,3 +43,10 @@ def test_ros_domain_id_is_below_ephemeral_udp_threshold():
     src = SOURCE.read_text(encoding="utf-8")
     assert 'env["ROS_DOMAIN_ID"] = "40"' in src
     assert 7400 + 250 * 40 + 240 < 32768
+
+
+def test_rgb_under_depth_named_sensor_is_valid():
+    # Official Waffle SDF names its RGB-capable depth sensor this way.
+    rgb = "/world/default/model/turtlebot3_waffle/link/camera_link/sensor/intel_realsense_r200_depth/image"
+    depth = "/world/default/model/turtlebot3_waffle/link/camera_link/sensor/intel_realsense_r200_depth/depth_image"
+    assert module.choose_rgb_topic(depth + "\\n" + rgb) == rgb
