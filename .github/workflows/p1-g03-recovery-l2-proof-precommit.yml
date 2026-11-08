@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
-      EXACT_PRIVATE_SHA: 'ea2f342dfa322719ec27f913bc3c7e3a6f5d496e'
+      EXACT_PRIVATE_SHA: 'ee3a48689329f8316ed154f682156e4b6f2905ef'
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -36,7 +36,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 'ea2f342dfa322719ec27f913bc3c7e3a6f5d496e'
+          ref: 'ee3a48689329f8316ed154f682156e4b6f2905ef'
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
           fetch-depth: 1
@@ -68,6 +68,22 @@ jobs:
             echo R08_SCOPED_SYNTHETIC_BLOCKED
             exit 2
           fi
+      - name: Integration docs and main-approved conflict resolutions
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd _private
+          test "$(git hash-object docs/operations/P1_G03_L2_RECOVERY_ONE_SHOT_20261108_KO.md)" = "e0ff40c245bd6557adf19505d04ce97cc08366c7"
+          test "$(git hash-object docs/operations/P1_R08_SCOPED_FINAL_ONE_PASS_20261108_KO.md)" = "f49586321e879406a0d6ed42dd4005138b3a0380"
+          test "$(git hash-object docs/reports/P1_C4_SCAN_NINE_R08_READINESS_20261108_KO.md)" = "da7d5134a5f8cef8455d0229bf8c4e7e0b3da0b6"
+          test "$(git hash-object docs/reports/P1_R08_G03_RECOVERY_CMD_SILENCE_RCA_20261108_KO.md)" = "a52832df11c3554cbf3f112e20b6c9d5160c49bb"
+          test -f docs/reports/AXIA_P1_R08_FINAL_ACCEPTANCE_REPORT_20261108_KO.md
+          test -f docs/handovers/AXIA_P2_G05_G06_G07_DEVELOPMENT_HANDOVER_20261108_KO.md
+          grep -q P1_R08_ATTESTATION_METADATA_PENDING docs/reports/AXIA_P1_R08_FINAL_ACCEPTANCE_REPORT_20261108_KO.md
+          grep -q 'G05/G06/G07' docs/handovers/AXIA_P2_G05_G06_G07_DEVELOPMENT_HANDOVER_20261108_KO.md
+          test -f tools/p1_t08_r08_scoped_final.py
+          test -f tools/p1_t08_g03_recovery_sidecar.py
+          echo 'P1_INTEGRATION_DOCS_CONFLICT_RESOLUTIONS_PASS'
       - name: New G03 interlock tests and prior C3/C4 no-motion oracles
         shell: bash
         run: |
