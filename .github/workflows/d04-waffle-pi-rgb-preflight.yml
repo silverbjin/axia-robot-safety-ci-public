@@ -45,7 +45,8 @@ jobs:
           apt-get update
           DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
             procps ros-jazzy-turtlebot3-gazebo ros-jazzy-ros-gz \
-            ros-jazzy-rclpy ros-jazzy-sensor-msgs libgl1-mesa-dri libegl1
+            ros-jazzy-rclpy ros-jazzy-sensor-msgs libgl1-mesa-dri libegl1 \
+            xvfb xauth libglx-mesa0
       - name: Print exact ROS and Waffle Pi package versions
         shell: bash
         run: |
