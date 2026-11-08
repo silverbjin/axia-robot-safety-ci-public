@@ -6,7 +6,7 @@ class TestD3PublicManifest(unittest.TestCase):
         d=json.loads(p.read_text(encoding="utf-8"))
         self.assertEqual(d["schema"],"axia-d3-minimal-ci-v2")
         self.assertEqual(d["target_repo"],"silverbjin/axia-robot-safety-instructor")
-        self.assertEqual(d["target_sha"],"973430fa853f273f5b0e9a9f700e97e8cdad705b")
+        self.assertEqual(d["target_sha"],"41a67ca6558102a4e6c13389635d746c0f4c4b23")
         self.assertEqual(d["scope"],"python-unit-static-only")
         for name in ("goals","faults","gazebo","physical_estop_certified"):
             self.assertIs(d[name],False)

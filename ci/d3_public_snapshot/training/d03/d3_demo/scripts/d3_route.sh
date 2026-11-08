@@ -4,8 +4,10 @@ set -Eeuo pipefail
 [[ $# -eq 5 ]] || { echo 'Usage: bash d3_route.sh WORLD START_X START_Y END_X END_Y' >&2; exit 64; }
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)"
 [[ -f "$ROOT/install/setup.bash" ]] || { echo '[BLOCKED] Build+source D3 first' >&2; exit 2; }
+set +u
 source /opt/ros/jazzy/setup.bash
 source "$ROOT/install/setup.bash"
+set -u
 python3 - "$@" <<'PY'
 from axia_d3_demo.scenario import validate_path
 import sys

@@ -15,8 +15,10 @@ ROUTE="$HOME/axia_d3_classroom/d3_route.env"
 if [[ "$(git -C "$ROOT" branch --show-current)" != feat/d3-intrusion-scan-stop-demo-20261108 ]]; then
   echo '[BLOCKED] Checkout correct D3 instructor feature branch' >&2; exit 2
 fi
+set +u
 source /opt/ros/jazzy/setup.bash
 source "$ROOT/install/setup.bash"
+set -u
 for cmd in ros2 gz python3; do command -v "$cmd" >/dev/null || { echo "[BLOCKED] Missing $cmd" >&2; exit 2; }; done
 for pkg in axia_d3_demo axia_safety_supervisor axia_fault_injector; do
   ros2 pkg prefix "$pkg" >/dev/null || { echo "[BLOCKED] Missing $pkg" >&2; exit 2; }

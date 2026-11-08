@@ -17,7 +17,9 @@ for cmd in git gh python3 colcon; do
   command -v "$cmd" >/dev/null || { echo "[BLOCKED] Missing: $cmd" >&2; exit 2; }
 done
 [[ -f /opt/ros/jazzy/setup.bash ]] || { echo '[BLOCKED] ROS2 Jazzy missing' >&2; exit 2; }
+set +u
 source /opt/ros/jazzy/setup.bash
+set -u
 for cmd in ros2 gz; do
   command -v "$cmd" >/dev/null || { echo "[BLOCKED] Missing after Jazzy source: $cmd" >&2; exit 2; }
 done
@@ -40,7 +42,9 @@ done
 colcon build --base-paths ros2_ws/src --symlink-install \
   --packages-select axia_safety_supervisor axia_fault_injector \
   axia_scenario_verifier axia_d3_demo
+set +u
 source install/setup.bash
+set -u
 ros2 pkg prefix axia_d3_demo
 ros2 pkg executables axia_d3_demo
 bash training/d03/d3_demo/scripts/d3_session.sh --init

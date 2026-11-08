@@ -49,3 +49,23 @@ def test_one_shot_wsl2_preparation_never_forces_branch_or_goal():
 def test_wsl2_prepare_sources_ros_before_ros_cli_check():
     src=(ROOT / 'training/d03/d3_demo/scripts/d3_wsl2_prepare_once.sh').read_text()
     assert src.index('source /opt/ros/jazzy/setup.bash') < src.index('for cmd in ros2 gz;')
+
+
+def test_wsl2_scripts_source_ros_with_nounset_temporarily_disabled():
+    scripts = ROOT / 'training/d03/d3_demo/scripts'
+    for name in ('d3_route.sh', 'd3_wsl2_prepare_once.sh', 'run_d3_preview.sh', 'run_d3_live_scene.sh'):
+        src = (scripts / name).read_text()
+        assert 'set -Eeuo pipefail' in src, name
+        pos = src.index('source /opt/ros/jazzy/setup.bash')
+        assert 'set +u' in src[:pos], name
+        after = src[pos:]
+        assert 'set -u' in after, name
+
+
+def test_preview_model_removal_uses_documented_ros_parameters():
+    script = (ROOT / 'training/d03/d3_demo/scripts/run_d3_preview.sh').read_text()
+    doc = (ROOT / 'training/d03/d3_demo/docs/RUNBOOK_D3_V2_WSL2_KO.md').read_text()
+    for text in (script, doc):
+        assert 'ros2 run ros_gz_sim remove' in text
+        assert '-p entity_name:=' in text
+        assert '-entity d3_pedestrian_proxy' not in text

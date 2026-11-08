@@ -1,7 +1,7 @@
 {
   "schema": "axia-d3-minimal-ci-v2",
   "target_repo": "silverbjin/axia-robot-safety-instructor",
-  "target_sha": "973430fa853f273f5b0e9a9f700e97e8cdad705b",
+  "target_sha": "41a67ca6558102a4e6c13389635d746c0f4c4b23",
   "scope": "python-unit-static-only",
   "goals": false,
   "faults": false,
@@ -27,15 +27,15 @@
     },
     {
       "source": "training/d03/d3_demo/scripts/run_d3_live_scene.sh",
-      "git_blob_sha": "f1e4e3450537dcb1fbc076668f7b393586052713"
+      "git_blob_sha": "e1256d2109c12db02a1a79fe54738bfe31777106"
     },
     {
       "source": "training/d03/d3_demo/scripts/run_d3_preview.sh",
-      "git_blob_sha": "a26efd3258a5e4af32d2afcffe2e7a450c0a8a3e"
+      "git_blob_sha": "91cb87969bd7181255cfd3553e3fbbba1b00cb2d"
     },
     {
       "source": "training/d03/d3_demo/scripts/d3_route.sh",
-      "git_blob_sha": "5bf5304eb6b41fe6fd82e3506424f13f379906d5"
+      "git_blob_sha": "f01dc44253d272551eb31140e7faae1cb6234704"
     },
     {
       "source": "training/d03/d3_demo/scripts/d3_session.sh",
@@ -47,11 +47,11 @@
     },
     {
       "source": "training/d03/d3_demo/scripts/d3_wsl2_prepare_once.sh",
-      "git_blob_sha": "83242c2d7dc633c72da4d654f193d86f34558ee3"
+      "git_blob_sha": "217a548d47558a39689d69b9a1ae74be883156a3"
     },
     {
       "source": "ros2_ws/src/axia_d3_demo/test/test_d3_v2_static.py",
-      "git_blob_sha": "b3037b299a162886275756c7eff5939430e9f994"
+      "git_blob_sha": "f549600c3c730c38f479ed4abfc6b852a293fddd"
     }
   ]
 }
