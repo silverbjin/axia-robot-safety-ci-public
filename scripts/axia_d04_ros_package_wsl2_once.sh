@@ -73,7 +73,8 @@ trap finish EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-echo "D04 packaged demo WSL2: public=$PUBLIC_SHA private=$PRIVATE_SHA"
+echo "[D04][PREP] D04 packaged demo WSL2: public=$PUBLIC_SHA private=$PRIVATE_SHA"
+echo "[D04][PREP] No Nav2 Goal/Fault/cmd_vel publication; visual human animation only"
 gh repo clone "$CI_REPO" "$SRC/public" -- --single-branch --branch "$CI_BRANCH" --depth 1 > "$OUT/public_checkout.log" 2>&1 || exit 2
 git -C "$SRC/public" fetch -q --depth 1 origin "$PUBLIC_SHA" >> "$OUT/public_checkout.log" 2>&1 || exit 2
 git -C "$SRC/public" checkout -q --detach "$PUBLIC_SHA" || exit 2
@@ -100,6 +101,7 @@ if ! python3 -c "import cv2; import rclpy" >/dev/null 2>&1; then
   sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq python3-opencv ros-jazzy-rclpy
 fi
 
+echo "[D04][BUILD] Building D04/P1 packages; detailed logs: $OUT/package_build.log"
 # Build the actual D04 ROS 2 package, not just the prior test runner.
 D04_WS="$CACHE/d04_package_ws_$PRIVATE_SHA"
 mkdir -p "$D04_WS"
@@ -111,6 +113,7 @@ mkdir -p "$D04_WS"
 ) > "$OUT/package_build.log" 2>&1 || {
   echo "BLOCKED: D04/P1 build"; tail -n 35 "$OUT/package_build.log"; exit 2; }
 
+echo "[D04][BUILD] D04/P1 package build finished; verifying upstream yolo_ros engine"
 YOLO_WS="$CACHE/yolo_ws_$YOLO_SHA"
 if [[ ! -f "$YOLO_WS/install/setup.bash" ]]; then
   mkdir -p "$YOLO_WS/src"
@@ -129,7 +132,8 @@ fi
 mkdir -p "$CACHE/assets"
 MODEL="$CACHE/assets/yolo26n.onnx"
 ACTOR="$CACHE/assets/walk.dae"
-if [[ ! -f "$MODEL" ]] || ! echo "$ONNX_SHA  $MODEL" | sha256sum -c - >/dev/null; then
+if [[ ! -f "$MODEL" ]] || ! echo "[D04][ASSETS] Confirming real ONNX weights and actor mesh SHA256"
+echo "$ONNX_SHA  $MODEL" | sha256sum -c - >/dev/null; then
   curl -fL --retry 3 --max-time 160 \
     'https://huggingface.co/unileon-robotics/YOLO26-ONNX/resolve/main/yolo26n.onnx' \
     -o "$MODEL.tmp"
@@ -148,25 +152,31 @@ set +u
 source "$YOLO_WS/install/setup.bash"
 source "$D04_WS/install/setup.bash"
 set -u
+echo "[D04][LAUNCH_ARGS] Checking installed package launch --show-args (max 45s)"
 ros2 pkg prefix axia_d04_vision_demo | tee "$OUT/package_prefix.txt"
-ros2 launch axia_d04_vision_demo d04_p1_yolo.launch.py --show-args > "$OUT/launch_args.txt" 2>&1 || {
-  echo "BLOCKED: installed ROS 2 launch invalid"; exit 2; }
+timeout 45s ros2 launch axia_d04_vision_demo d04_p1_yolo.launch.py --show-args > "$OUT/launch_args.txt" 2>&1 || {
+  echo "[D04][BLOCKED] launch --show-args failed"; tail -n 15 "$OUT/launch_args.txt"; exit 2; }
+echo "[D04][LAUNCH_ARGS] PASS; starting actual Gazebo+YOLO integration now"
 
 # default GUI when WSLg is present; user may set AXIA_D04_GUI=0.
 GUI_ARGS=()
 if [[ "${AXIA_D04_GUI:-1}" == "1" && -n "${DISPLAY:-}" ]]; then
   GUI_ARGS+=(--gui)
 else
-  echo "No WSLg or GUI disabled: headless live test; inspect evidence PNG."
+  echo "[D04][GUI] No WSLg DISPLAY or AXIA_D04_GUI=0; headless only. Review debug_frame.png after run."
 fi
 
+HOLD="${AXIA_D04_DEMO_HOLD_S:-90}"
+[[ "$HOLD" =~ ^[0-9]{1,3}$ ]] || { echo "[D04][BLOCKED] invalid AXIA_D04_DEMO_HOLD_S"; exit 2; }
+echo "[D04][LIVE] Starting P1/YOLO; GUI=${#GUI_ARGS[@]} preview-hold=${HOLD}s"
+echo "[D04][LIVE] Real-time stage progress + saved detailed log: $OUT/runtime.log"
 cd "$SRC/public"
 if timeout --signal=TERM --kill-after=30s 640s \
-  python3 scripts/d04_packaged_p1_yolo_gate.py \
+  python3 -u scripts/d04_packaged_p1_yolo_gate.py \
   --instructor "$SRC/instructor" \
   --d04-private-sha "$PRIVATE_SHA" --model "$MODEL" --actor "$ACTOR" \
-  --out "$OUT/live" "${GUI_ARGS[@]}" \
-  > "$OUT/runtime.log" 2>&1; then
+  --out "$OUT/live" --hold-seconds "$HOLD" "${GUI_ARGS[@]}" \
+  2>&1 | tee "$OUT/runtime.log"; then
   GATE_RC=0
 else
   GATE_RC=$?
@@ -185,6 +195,7 @@ assert v.get("goal_sent") is False and v.get("fault_injected") is False
 print("AXIA_D04_PACKAGED_ROS2_P1_YOLO_ACTUAL_ACCEPTANCE_PASS")
 PY
 STATUS="PASS_PACKAGED_P1_YOLO"
+echo "[D04][PASS] P1 graph unchanged and real person detected; evidence is under $OUT/live"
 if [[ -n "${DISPLAY:-}" && -f "$OUT/live/debug_frame.png" ]] && command -v xdg-open >/dev/null; then
   xdg-open "$OUT/live/debug_frame.png" >/dev/null 2>&1 || true
 fi
