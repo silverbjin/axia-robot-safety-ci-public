@@ -1,0 +1,75 @@
+name: AXIA P1 C4 audit-custody pre-final-commit CI
+on:
+  push:
+    branches: [feat/secure-instructor-cloud-bridge]
+    paths: ['.github/workflows/p1-c4-audit-retry-precommit-ci.yml']
+permissions:
+  contents: read
+concurrency:
+  group: axia-p1-c4-audit-custody-precommit
+  cancel-in-progress: false
+jobs:
+  public-no-motion:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - run: |
+          echo PRE_FINAL_COMMIT_PROBE=true
+          echo GOAL=NOT_RUN FAULT=NOT_RUN GAZEBO=NOT_RUN AUTO_YES=DISABLED
+  sealed-private-audit-l0:
+    needs: public-no-motion
+    if: github.repository == 'silverbjin/axia-robot-safety-ci-public' && github.actor == 'silverbjin' && github.ref == 'refs/heads/feat/secure-instructor-cloud-bridge' && github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment:
+      name: axia-instructor-sealed
+    env:
+      EXPECTED_PRIVATE_SHA: '15223497b3ba521d3f21127715e200a99f26bc42'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Check protected private read token
+        env:
+          T: ${{ secrets.AXIA_CLOUD_CI }}
+        run: test -n "$T"
+      - name: Checkout pinned private audit trial
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: '15223497b3ba521d3f21127715e200a99f26bc42'
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          fetch-depth: 1
+          persist-credentials: false
+          path: _private_probe
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --quiet pytest==8.3.5
+      - name: Read-only syntax and sequence plan
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd _private_probe
+          test "$(git rev-parse HEAD)" = "$EXPECTED_PRIVATE_SHA"
+          bash -n scripts/p1_c4_two_faults_3x_operator_20261108.sh
+          bash scripts/p1_c4_two_faults_3x_operator_20261108.sh --plan > /tmp/c4_audit_probe.private
+          grep -q 'TOTAL=6' /tmp/c4_audit_probe.private
+          echo C4_AUDIT_PRECOMMIT_BASH_PLAN_PASS
+      - name: Audit custody and inherited fail-closed tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd _private_probe
+          if timeout 180s python -m pytest -q               tests/unit/test_p1_t08_c4_audit_custody.py               tests/unit/test_p1_t08_c4_operator_sequential.py               tests/unit/test_p1_t08_c4_resume.py               tests/unit/test_p1_t08_c4_scan_triplicate_review.py               tests/unit/test_p1_t08_trace_oracle.py               > /tmp/c4_audit_probe_tests.private 2>&1; then
+            echo C4_AUDIT_PRECOMMIT_PROTECTED_L0_PASS
+          else
+            echo C4_AUDIT_PRECOMMIT_PROTECTED_L0_BLOCKED
+            exit 2
+          fi
+      - name: Remove private checkout and diagnostics
+        if: always()
+        run: |
+          rm -rf _private_probe
+          rm -f /tmp/c4_audit_probe.private /tmp/c4_audit_probe_tests.private
+          echo C4_AUDIT_PRECOMMIT_PRIVATE_CLEANUP_DONE
