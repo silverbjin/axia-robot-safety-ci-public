@@ -69,3 +69,15 @@ def test_p1_safe_domain_and_readonly():
     assert "send_goal_async(" not in content
     assert "fault_injector" not in content
     assert "cmd_vel" not in module.simple_world()
+
+
+def test_ros_subscriber_uses_same_domain_as_child_bridges(monkeypatch):
+    monkeypatch.delenv("ROS_DOMAIN_ID", raising=False)
+    monkeypatch.delenv("ROS_AUTOMATIC_DISCOVERY_RANGE", raising=False)
+    module.sync_ros_discovery_environment(
+        {"ROS_DOMAIN_ID": str(module.DOMAIN_ID),
+         "ROS_AUTOMATIC_DISCOVERY_RANGE": "LOCALHOST"}
+    )
+    import os
+    assert os.environ["ROS_DOMAIN_ID"] == "40"
+    assert os.environ["ROS_AUTOMATIC_DISCOVERY_RANGE"] == "LOCALHOST"

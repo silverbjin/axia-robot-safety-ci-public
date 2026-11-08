@@ -157,6 +157,12 @@ def _stop_all(processes: list, evidence: dict):
         evidence.setdefault("process_exit", {})[label] = proc.returncode
 
 
+def sync_ros_discovery_environment(child_env: dict) -> None:
+    """Keep this Python rclpy subscriber in the SAME DDS domain as its bridges."""
+    for name in ("ROS_DOMAIN_ID", "ROS_AUTOMATIC_DISCOVERY_RANGE"):
+        os.environ[name] = child_env[name]
+
+
 def _probe():
     out = Path("results/d04-waffle-pi-rgb")
     out.mkdir(parents=True, exist_ok=True)
@@ -175,6 +181,7 @@ def _probe():
     env["ROS_DOMAIN_ID"] = str(DOMAIN_ID)
     env["GZ_PARTITION"] = "axia_d04_pi_" + os.environ.get("GITHUB_RUN_ID", "manual")
     env["ROS_AUTOMATIC_DISCOVERY_RANGE"] = "LOCALHOST"
+    sync_ros_discovery_environment(env)
     env["TURTLEBOT3_MODEL"] = "waffle_pi"
     env["LIBGL_ALWAYS_SOFTWARE"] = "1"
     env.pop("EGL_PLATFORM", None)
