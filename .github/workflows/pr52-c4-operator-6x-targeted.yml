@@ -1,0 +1,92 @@
+name: AXIA P1 C4 operator-safe sequential 6x L0 validation
+on:
+  push:
+    branches: [feat/secure-instructor-cloud-bridge]
+    paths:
+      - '.github/workflows/pr52-c4-operator-6x-targeted.yml'
+permissions:
+  contents: read
+concurrency:
+  group: axia-p1-c4-operator-scope-check
+  cancel-in-progress: false
+jobs:
+  no-motion-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Declare read-only CI scope
+        run: |
+          echo AXIA_C4_OPERATOR_CI_SCOPE=PYTHON_L0_BASH_STATIC_ONLY
+          echo TTY_AUTO_YES=DISABLED
+          echo GAZEBO=NOT_RUN GOAL=NOT_RUN FAULT=NOT_RUN
+          echo G03_RESET_REARM=NOT_RUN G04_FULL=INCONCLUSIVE E_STOP=false
+  protected-private-review:
+    needs: no-motion-contract
+    if: github.repository == 'silverbjin/axia-robot-safety-ci-public' && github.actor == 'silverbjin' && github.ref == 'refs/heads/feat/secure-instructor-cloud-bridge' && github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment:
+      name: axia-instructor-sealed
+    env:
+      EXPECTED_PRIVATE_SHA: '2830c07fd7dea7f162da023cb5ff55f8c57e6b1c'
+    steps:
+      - name: Checkout only public recipe
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Verify protected read token
+        shell: bash
+        env:
+          PRIVATE_READ_TOKEN: ${{ secrets.AXIA_CLOUD_CI }}
+        run: |
+          set -euo pipefail
+          test -n "$PRIVATE_READ_TOKEN"
+      - name: Checkout exact private review commit
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: '2830c07fd7dea7f162da023cb5ff55f8c57e6b1c'
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          fetch-depth: 1
+          persist-credentials: false
+          path: _instructor_private
+      - name: Select Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install minimal pure-Python unit test requirements
+        shell: bash
+        run: python -m pip install --quiet pytest==8.3.5
+      - name: Verify frozen checkout, Bash syntax, compile and plan
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd _instructor_private
+          test "$(git rev-parse HEAD)" = "$EXPECTED_PRIVATE_SHA"
+          bash -n scripts/p1_c4_two_faults_3x_operator_20261108.sh
+          bash scripts/p1_c4_two_faults_3x_operator_20261108.sh --plan             > /tmp/axia_c4_six_plan.private.log
+          grep -q 'TOTAL=6' /tmp/axia_c4_six_plan.private.log
+          grep -q 'AUTO-APPROVE=DISABLED' /tmp/axia_c4_six_plan.private.log
+          python -m py_compile tools/p1_t08_c4_operator_sequential.py
+          echo AXIA_C4_OPERATOR_SHA_BASH_PLAN_COMPILE_PASS
+      - name: Run new sequencer and inherited G04 fail-closed tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd _instructor_private
+          if timeout 150s python -m pytest -q                 tests/unit/test_p1_t08_c4_operator_sequential.py                 tests/unit/test_p1_t08_c4_scan_triplicate_review.py                 tests/unit/test_p1_t08_trace_oracle.py                 tests/unit/test_p1_t08_r07_fault_suite.py                 > /tmp/axia_c4_operator.private.log 2>&1; then
+            echo AXIA_C4_OPERATOR_L0_PROTECTED_PASS
+          else
+            echo AXIA_C4_OPERATOR_L0_PROTECTED_BLOCKED
+            exit 2
+          fi
+      - name: Delete private checkout and private logs
+        if: always()
+        shell: bash
+        run: |
+          rm -rf _instructor_private
+          rm -f /tmp/axia_c4_operator.private.log /tmp/axia_c4_six_plan.private.log
+          echo AXIA_C4_PRIVATE_CLEANUP_COMPLETE
+      - name: State verification limits
+        if: always()
+        run: echo 'C4_SIX_LIVE=NOT_RUN C4_SCAN_DROP_LIVE=USER_REPORTED ONLY; FULL_G04=INCONCLUSIVE'
