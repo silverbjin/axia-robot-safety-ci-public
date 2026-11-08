@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
-      EXACT_PRIVATE_SHA: '896ec16ef97915b2d7f42538243e177b0a7bc0e6'
+      EXACT_PRIVATE_SHA: 'ddd7b162b816a45c7851c328e0ddcb127a7f4e27'
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -36,7 +36,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: '896ec16ef97915b2d7f42538243e177b0a7bc0e6'
+          ref: 'ddd7b162b816a45c7851c328e0ddcb127a7f4e27'
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
           fetch-depth: 1
@@ -61,7 +61,7 @@ jobs:
         run: |
           set -euo pipefail
           cd _private
-          if timeout 180s python -m pytest -q             tests/unit/test_p1_t08_g03_recovery_sidecar.py             tests/unit/test_p1_t08_g03_recovery_path_contract.py             tests/unit/test_p1_t08_c4_operator_sequential.py             tests/unit/test_p1_t08_c4_scan_triplicate_review.py             tests/unit/test_p1_t08_c4_resume.py             tests/unit/test_p1_t08_trace_oracle.py             > /tmp/g03_test_private 2>&1; then
+          if timeout 180s python -m pytest -q             tests/unit/test_p1_t08_g03_recovery_sidecar.py             tests/unit/test_p1_t08_g03_recovery_path_contract.py             tests/unit/test_p1_t08_r08_scoped_final.py             tests/unit/test_p1_t08_c4_operator_sequential.py             tests/unit/test_p1_t08_c4_scan_triplicate_review.py             tests/unit/test_p1_t08_c4_resume.py             tests/unit/test_p1_t08_trace_oracle.py             > /tmp/g03_test_private 2>&1; then
               echo 'G03_L2_PRECOMMIT_PROTECTED_L0_PASS'
           else
               echo 'G03_L2_PRECOMMIT_PROTECTED_L0_BLOCKED'
