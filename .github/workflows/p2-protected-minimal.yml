@@ -39,7 +39,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 950678d117e93e74bf8775c1c801fb5b218fc0f9
+          ref: 2e7de684d8a7e64af724927f16595146bc183471
           token: ${{ secrets.AXIA_CLOUD_CI }}
           fetch-depth: 1
           persist-credentials: false
@@ -49,7 +49,7 @@ jobs:
       - name: Python L0 exact source SHA, 72 focused P2 tests
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = 950678d117e93e74bf8775c1c801fb5b218fc0f9
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 2e7de684d8a7e64af724927f16595146bc183471
           python3 -m pip install --disable-pip-version-check --quiet pytest==8.3.5 PyYAML==6.0.2
           python3 -m pytest -q -ra tests/unit/test_p2_*.py
           echo 'AXIA_P2_PRIVATE_L0_EXACT_SHA_PASS_G05_G06_G07_NOT_ACCEPTED'
@@ -70,7 +70,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 950678d117e93e74bf8775c1c801fb5b218fc0f9
+          ref: 2e7de684d8a7e64af724927f16595146bc183471
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Install only Python ROS middleware test dependencies
@@ -108,7 +108,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 950678d117e93e74bf8775c1c801fb5b218fc0f9
+          ref: 2e7de684d8a7e64af724927f16595146bc183471
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Install official Nav2 Waffle + Gazebo Harmonic once
@@ -130,7 +130,7 @@ jobs:
           ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
         run: |
           set -eo pipefail
-          test "$(git rev-parse HEAD)" = 950678d117e93e74bf8775c1c801fb5b218fc0f9
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 2e7de684d8a7e64af724927f16595146bc183471
           bash scripts/p2_no_goal_smoke_ci.sh
           echo 'P2_L2_NO_GOAL_SMOKE_ONLY_G05_G06_G07_NOT_ACCEPTED'
       - name: Remove private checkout and private logs (no artifacts)

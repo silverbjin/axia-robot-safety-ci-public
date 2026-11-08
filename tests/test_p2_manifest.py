@@ -19,7 +19,7 @@ class CIContract(unittest.TestCase):
     def test_workflow_hardcodes_private_sha_in_every_job(self):
         text=WORKFLOW.read_text()
         self.assertGreaterEqual(text.count('ref: '+mod.SOURCE_SHA),3)
-        self.assertGreaterEqual(text.count('test "$(git rev-parse HEAD)" = '+mod.SOURCE_SHA),2)
+        self.assertGreaterEqual(text.count('test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '+mod.SOURCE_SHA),2)
         self.assertNotIn('pull_request_target:',text)
 
     def test_private_jobs_only_on_main_push(self):
