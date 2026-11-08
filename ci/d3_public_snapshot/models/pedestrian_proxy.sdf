@@ -13,6 +13,26 @@
         <geometry><cylinder><radius>0.18</radius><length>0.95</length></cylinder></geometry>
         <material><ambient>0.1 0.3 0.9 1</ambient><diffuse>0.1 0.3 0.9 1</diffuse></material>
       </visual>
+      <!-- Extra shin-to-waist lidar target. A robot scanner at ~0.2m must see this proxy. -->
+      <collision name="lower_body_scan_collision">
+        <pose>0 0 0.28 0 0 0</pose>
+        <geometry><cylinder><radius>0.16</radius><length>0.50</length></cylinder></geometry>
+      </collision>
+      <visual name="vest_visual">
+        <pose>0 0 0.92 0 0 0</pose>
+        <geometry><box><size>0.42 0.41 0.65</size></box></geometry>
+        <material><ambient>1 0.55 0.02 1</ambient><diffuse>1 0.55 0.02 1</diffuse></material>
+      </visual>
+      <visual name="left_arm_visual">
+        <pose>0 0.32 1.12 1.5708 0 0</pose>
+        <geometry><cylinder><radius>0.065</radius><length>0.43</length></cylinder></geometry>
+        <material><ambient>0.1 0.3 0.9 1</ambient></material>
+      </visual>
+      <visual name="right_arm_visual">
+        <pose>0 -0.32 1.12 1.5708 0 0</pose>
+        <geometry><cylinder><radius>0.065</radius><length>0.43</length></cylinder></geometry>
+        <material><ambient>0.1 0.3 0.9 1</ambient></material>
+      </visual>
       <collision name="head_collision">
         <pose>0 0 1.65 0 0 0</pose>
         <geometry><sphere><radius>0.19</radius></sphere></geometry>

@@ -1,10 +1,49 @@
 {
-  "schema": "axia-d3-minimal-ci-v1",
+  "schema": "axia-d3-minimal-ci-v2",
   "target_repo": "silverbjin/axia-robot-safety-instructor",
-  "target_sha": "5db2bfc1cdac944d78ed0f15349606e6f20184e3",
+  "target_sha": "99c81a9f02efdf64d7a1e3ad40d45a00c7a6e37c",
   "scope": "python-unit-static-only",
   "goals": false,
   "faults": false,
   "gazebo": false,
-  "physical_estop_certified": false
+  "physical_estop_certified": false,
+  "dynamic_scene": true,
+  "source_blobs": [
+    {
+      "source": "ros2_ws/src/axia_d3_demo/axia_d3_demo/scenario.py",
+      "git_blob_sha": "7989573a2919a19b85085fa270889ba131331357"
+    },
+    {
+      "source": "ros2_ws/src/axia_d3_demo/axia_d3_demo/contract.py",
+      "git_blob_sha": "87cd8f4151ea61a3d34c4277f12df08a37056dac"
+    },
+    {
+      "source": "ros2_ws/src/axia_d3_demo/models/pedestrian_proxy.sdf",
+      "git_blob_sha": "9c864cc660626563124ff7eda446ffcda9e63b8e"
+    },
+    {
+      "source": "ros2_ws/src/axia_d3_demo/test/test_d3_live_scenario.py",
+      "git_blob_sha": "ad67e17f00e16a4d37d9f491cf2b0349b615d184"
+    },
+    {
+      "source": "training/d03/d3_demo/scripts/run_d3_live_scene.sh",
+      "git_blob_sha": "f1e4e3450537dcb1fbc076668f7b393586052713"
+    },
+    {
+      "source": "training/d03/d3_demo/scripts/run_d3_preview.sh",
+      "git_blob_sha": "a26efd3258a5e4af32d2afcffe2e7a450c0a8a3e"
+    },
+    {
+      "source": "training/d03/d3_demo/scripts/d3_route.sh",
+      "git_blob_sha": "5bf5304eb6b41fe6fd82e3506424f13f379906d5"
+    },
+    {
+      "source": "training/d03/d3_demo/scripts/d3_session.sh",
+      "git_blob_sha": "11d50ea09e2768a68f075919217673cb2f821cf5"
+    },
+    {
+      "source": "ros2_ws/src/axia_d3_demo/setup.py",
+      "git_blob_sha": "21337fd41323b3bb40b5fd26d5cba8c245deed4b"
+    }
+  ]
 }

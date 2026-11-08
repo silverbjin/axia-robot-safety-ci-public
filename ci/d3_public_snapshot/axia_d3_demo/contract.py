@@ -16,6 +16,7 @@ FIELDS = {
     'odom': ('v', 'w'),
     'stage_spawned': ('world', 'name'),
     'obstacle_visible': ('name',),
+    'obstacle_moved': ('name', 'step'),
     'fault_status': ('mode', 'enabled'),
     'diagnostic': ('name', 'level'),
     'operator_decision': ('choice',),
