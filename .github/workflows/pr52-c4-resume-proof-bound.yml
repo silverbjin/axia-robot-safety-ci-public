@@ -69,6 +69,18 @@ jobs:
             echo AXIA_C4_RESUME_L0_PASS
           else
             echo AXIA_C4_RESUME_L0_BLOCKED
+            # Safe telemetry: numeric test indices only; no private stdout/logs.
+            python - <<'PY'
+import ast,subprocess,sys
+path='tests/unit/test_p1_t08_c4_resume.py'
+items=[node.name for node in ast.parse(open(path,encoding='utf-8').read()).body
+       if isinstance(node,ast.FunctionDef) and node.name.startswith('test_')]
+for i,name in enumerate(items,1):
+    result=subprocess.run([sys.executable,'-m','pytest','-q',path+'::'+name],
+                          stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,
+                          timeout=35,check=False)
+    print(f'AXIA_RESUME_CASE_{i:02d}_RC={result.returncode}')
+PY
             exit 2
           fi
       - name: Delete private source and logs
