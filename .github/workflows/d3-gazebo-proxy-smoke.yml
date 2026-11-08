@@ -33,7 +33,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          set +u
           source /opt/ros/jazzy/setup.bash
+          set -u
           mkdir -p results/d3-gazebo
           export GZ_PARTITION="axia_d3_ci_${GITHUB_RUN_ID}"
           export LIBGL_ALWAYS_SOFTWARE=1
