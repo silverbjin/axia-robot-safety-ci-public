@@ -8,6 +8,8 @@ graph and real person bbox/confidence/debug PNG all exist.
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
+import threading
 import hashlib
 import json
 import os
@@ -23,6 +25,24 @@ from d04_yolo_person_runtime import _watch_detections_and_images, valid_person, 
 EXPECTED_P1 = "653ef49c30973c57a9fcc34b7b2fcc185bc84d95"
 EXPECTED_MODEL = "4f44c33cea12d4b5785e5e7c0a20c13d0c62a77de607ce96a40d6036c7d7bbcf"
 EXPECTED_ACTOR = "49af0df3a319d1cb8ca2cebf02dbd00f625e5d5bec820bc5e109925b18b65c6e"
+
+@contextmanager
+def visible_stage(name: str, interval_s: float = 8):
+    """Emit progress during blocking ROS/Gazebo checks without claiming success."""
+    finished = threading.Event()
+    start = time.monotonic()
+    print(f"[D04][{name}] START", flush=True)
+    def heartbeat():
+        while not finished.wait(interval_s):
+            print(f"[D04][{name}] RUNNING elapsed={time.monotonic()-start:.0f}s", flush=True)
+    worker = threading.Thread(target=heartbeat, daemon=True)
+    worker.start()
+    try:
+        yield
+    finally:
+        finished.set()
+        worker.join(timeout=1)
+        print(f"[D04][{name}] DONE elapsed={time.monotonic()-start:.0f}s", flush=True)
 
 
 def build_launch_command(p1: Path, model: Path, actor: Path, *, gui: bool = False):
@@ -79,24 +99,39 @@ def run(a) -> int:
         verdict["instructor_sha"] = sha
         cmd = build_launch_command(p1, a.model, a.actor, gui=a.gui)
         (out / "launch_command.json").write_text(json.dumps(cmd, indent=2) + "\n")
+        print(f"[D04][LAUNCH] Starting installed ROS2 package; GUI={'ON' if a.gui else 'OFF'}; no Goal/Fault/cmd_vel", flush=True)
         _start("package_launch", cmd, env, out, proc)
-        first = graph_oracle(p1root, env, out, "first", timeout=150)
+        with visible_stage("P1_GRAPH_BEFORE"):
+            first = graph_oracle(p1root, env, out, "first", timeout=150)
         verdict["graph_first"] = first.get("verdict")
         if not first["passed"]:
             raise RuntimeError("P1 original graph was not ready")
-        verdict["clock_samples"] = sensor_sample("/clock", "clock")
-        verdict["scan_samples"] = sensor_sample("/scan", "scan")
-        verdict["odom_samples"] = sensor_sample("/odom", "odom")
+        with visible_stage("P1_SENSOR_INPUTS"):
+            verdict["clock_samples"] = sensor_sample("/clock", "clock")
+            verdict["scan_samples"] = sensor_sample("/scan", "scan")
+            verdict["odom_samples"] = sensor_sample("/odom", "odom")
+        print(f"[D04][SENSORS] /clock={verdict['clock_samples']} /scan={verdict['scan_samples']} /odom={verdict['odom_samples']}", flush=True)
         if not all(verdict[k] > 0 for k in ("clock_samples", "scan_samples", "odom_samples")):
             raise RuntimeError("P1 sensors not active")
-        evidence = _watch_detections_and_images(out, duration_s=130)
+        print("[D04][YOLO] Waiting for real Gazebo RGB -> ONNX person bbox + debug image", flush=True)
+        with visible_stage("RGB_YOLO_PERSON", interval_s=5):
+            evidence = _watch_detections_and_images(out, duration_s=130)
+        person = evidence.get("person")
+        print(
+            f"[D04][PERSON] class={person.get('class_name') if person else 'NOT_DETECTED'} "
+            f"confidence={person.get('score',0):.3f} "
+            f"bbox={[(person or {}).get(k) for k in ('center_x','center_y','size_x','size_y')]} "
+            f"frames(rgb/det/debug)={evidence.get('camera_frames',0)}/"
+            f"{evidence.get('detection_frames',0)}/{evidence.get('debug_frames',0)}",
+            flush=True)
         verdict["vision"] = evidence
         verdict["person_valid"] = bool(
             evidence.get("person") and valid_person(evidence["person"]))
         verdict["rgb_valid"] = bool(
             evidence.get("first_image") and valid_rgb(evidence["first_image"]))
         verdict["debug_image_saved"] = evidence.get("debug_saved") is True
-        after = graph_oracle(p1root, env, out, "after_vision", timeout=50)
+        with visible_stage("P1_GRAPH_AFTER"):
+            after = graph_oracle(p1root, env, out, "after_vision", timeout=50)
         verdict["graph_after_vision"] = after.get("verdict")
         verdict["graph_stable"] = bool(
             after["passed"] and core_chain(first["graph"]) == core_chain(after["graph"]))
@@ -105,12 +140,17 @@ def run(a) -> int:
         )):
             raise RuntimeError("Package vision or P1 graph gate failed")
         verdict["status"] = "PASS_P1_AND_YOLO_PACKAGE_RUNTIME"
+        print("[D04][PASS] Real person detection + unchanged P1 velocity graph verified", flush=True)
         if a.gui:
-            # Keep annotated image viewer visible, without ever issuing a Goal.
-            time.sleep(min(max(a.hold_seconds, 0), 40))
+            print("[D04][GUI] Check Gazebo and 'axia_d04_yolo_preview' video windows; "
+                  "human actor is VISUAL-ONLY and robot stays stationary.", flush=True)
+            with visible_stage("GUI_DEMO_HOLD", interval_s=10):
+                time.sleep(min(max(a.hold_seconds, 0), 120))
     except Exception as exc:
         verdict["blocker"] = type(exc).__name__ + ":" + str(exc)[:500]
+        print(f"[D04][BLOCKED] {verdict['blocker']}", flush=True)
     finally:
+        print("[D04][SHUTDOWN] Stopping demo processes; shutdown quality tracked separately", flush=True)
         _stop_all(proc, verdict)
         log = out / "package_launch.log"
         if log.exists():
@@ -138,5 +178,5 @@ if __name__ == "__main__":
         p.add_argument("--" + name, type=Path, required=True)
     p.add_argument("--d04-private-sha", required=True)
     p.add_argument("--gui", action="store_true")
-    p.add_argument("--hold-seconds", type=int, default=20)
+    p.add_argument("--hold-seconds", type=int, default=90)
     raise SystemExit(run(p.parse_args()))
