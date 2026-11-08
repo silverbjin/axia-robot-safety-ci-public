@@ -22,11 +22,26 @@
 ~~~bash
 bash -c '
 set -euo pipefail
+repo="silverbjin/axia-robot-safety-ci-public"
+branch="fix/d3-wsl2-bootstrap-safe-20261109"
+ci_sha="$(gh api "repos/$repo/git/ref/heads/$branch" --jq .object.sha)"
+gh run list -R "$repo" --branch "$branch" --limit 50 \
+  --json name,headSha,status,conclusion |
+  python3 -c "
+import json,sys
+sha=sys.argv[1]
+runs=json.load(sys.stdin)
+name=\"AXIA D3 WSL2 bootstrap safe checkout regression (NO ROS OR GAZEBO)\"
+matching=[r for r in runs if r[\"headSha\"]==sha and r[\"name\"]==name]
+if not any(r[\"status\"]==\"completed\" and r[\"conclusion\"]==\"success\" for r in matching):
+    sys.exit(\"[BLOCKED] CI success for exact branch HEAD not confirmed: \"+sha)
+print(\"[CI_VERIFIED]\",sha)
+" "$ci_sha"
 tmp="$(mktemp)"
 trap "rm -f -- \"$tmp\"" EXIT
 curl -fL --retry 3 -sS -o "$tmp" \
-  "https://raw.githubusercontent.com/silverbjin/axia-robot-safety-ci-public/<PUBLIC_CI_VERIFIED_COMMIT_SHA>/scripts/d3_wsl2_bootstrap_safe.sh"
-printf "%s  %s\n" "<PUBLISHED_SCRIPT_SHA256>" "$tmp" | sha256sum -c -
+  "https://raw.githubusercontent.com/silverbjin/axia-robot-safety-ci-public/bdf1c89d80dd17a67205739639ef2b94d6153bee/scripts/d3_wsl2_bootstrap_safe.sh"
+printf "%s  %s\n" "994aad7905e2462f526a4b2888f48a3a706c39be8bb1ca5f1ef8cb3578005849" "$tmp" | sha256sum -c -
 bash "$tmp" --prepare
 '
 ~~~
