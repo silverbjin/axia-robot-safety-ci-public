@@ -1,0 +1,39 @@
+name: AXIA D3 WSL2 bootstrap safe checkout regression (NO ROS OR GAZEBO)
+on:
+  push:
+    branches:
+      - fix/d3-wsl2-bootstrap-safe-20261109
+    paths:
+      - scripts/d3_wsl2_bootstrap_safe.sh
+      - tests/test_d3_wsl2_bootstrap_safe.py
+      - .github/workflows/d3-bootstrap-safe-tests.yml
+      - docs/D3_WSL2_BOOTSTRAP_RECOVERY_KO.md
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: axia-d3-bootstrap-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  d3-bootstrap-regressions:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Shell parsing and static source guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n scripts/d3_wsl2_bootstrap_safe.sh
+          grep -Fq '0be687ee033233fcd53be1190e0b2f9e86730fc9' scripts/d3_wsl2_bootstrap_safe.sh
+          grep -Fq 'SOURCE_PIN_VERIFIED' scripts/d3_wsl2_bootstrap_safe.sh
+          test ! -e training/d03/instructor/solutions/p1_adapter_todo.py
+          echo D3_BOOTSTRAP_SHELL_AND_PUBLIC_SCOPE_PASS
+      - name: Eleven real Git repository regression tests (no ROS)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p 'test_d3_wsl2_bootstrap_safe.py' -v
+          echo D3_BOOTSTRAP_GIT_REGRESSIONS_PASS_NO_ROS_GAZEBO
