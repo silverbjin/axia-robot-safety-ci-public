@@ -1,0 +1,30 @@
+name: AXIA P2 WSL2 one-command owner prelocal wrapper (PUBLIC CONTRACT)
+on:
+  push:
+    paths:
+      - 'scripts/axia_p2_wsl2_once.sh'
+      - 'tests/test_p2_wsl2_once.py'
+      - '.github/workflows/p2-owner-wsl2-once.yml'
+  pull_request:
+    paths:
+      - 'scripts/axia_p2_wsl2_once.sh'
+      - 'tests/test_p2_wsl2_once.py'
+      - '.github/workflows/p2-owner-wsl2-once.yml'
+permissions:
+  contents: read
+jobs:
+  public-owner-wrapper-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Check no-goal Owner wrapper contract (never runs a Goal, Crash or Gazebo)
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n scripts/axia_p2_wsl2_once.sh
+          bash scripts/axia_p2_wsl2_once.sh --self-check
+          python3 -m unittest discover -s tests -p test_p2_wsl2_once.py -v
+          echo 'P2_PUBLIC_OWNER_WRAPPER_CONTRACT_PASS_L3_NOT_RUN'
