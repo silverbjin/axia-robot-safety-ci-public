@@ -1,0 +1,195 @@
+name: AXIA D04 sealed private P1 + YOLO simultaneous and 3x stability (NO GOAL)
+
+on:
+  push:
+    branches: ['preflight/d04-p1-yolo-integration-20261108']
+    paths:
+      - '.github/workflows/d04-p1-yolo-sealed-integration.yml'
+      - 'scripts/d04_p1_yolo_live.py'
+      - 'scripts/d04_p1_vision_overlay.py'
+      - 'scripts/d04_yolo_stability.py'
+      - 'tests/test_d04_p1_overlay_contract.py'
+      - 'tests/test_d04_yolo_stability.py'
+  pull_request:
+    paths:
+      - '.github/workflows/d04-p1-yolo-sealed-integration.yml'
+      - 'scripts/d04_p1_yolo_live.py'
+      - 'scripts/d04_p1_vision_overlay.py'
+      - 'scripts/d04_yolo_stability.py'
+      - 'tests/test_d04_p1_overlay_contract.py'
+      - 'tests/test_d04_yolo_stability.py'
+
+permissions:
+  contents: read
+
+jobs:
+  public-l0:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: |
+          set -euo pipefail
+          python -m pip install -q pytest==8.3.5
+          python -m compileall -q scripts/d04_p1_yolo_live.py scripts/d04_p1_vision_overlay.py scripts/d04_yolo_stability.py
+          python -m pytest -q tests/test_d04_p1_overlay_contract.py tests/test_d04_yolo_stability.py tests/test_d04_yolo_person_runtime.py
+
+  sealed-p1-and-3x:
+    needs: public-l0
+    if: github.event_name == 'push' && github.ref == 'refs/heads/preflight/d04-p1-yolo-integration-20261108' && github.repository == 'silverbjin/axia-robot-safety-ci-public'
+    environment: axia-instructor-sealed
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    container:
+      image: ros:jazzy-ros-base-noble
+    env:
+      DEBIAN_FRONTEND: noninteractive
+      MAKEFLAGS: -j2
+      CMAKE_BUILD_PARALLEL_LEVEL: '2'
+      AXIA_TESTED_HEAD_SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Read private instructor source at exact pinned SHA; never upload
+        uses: actions/checkout@v4
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 653ef49c30973c57a9fcc34b7b2fcc185bc84d95
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          path: private_p1
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Exact SHA proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C private_p1 rev-parse HEAD)" = 653ef49c30973c57a9fcc34b7b2fcc185bc84d95
+          echo "SEALED_P1_PINNED_SOURCE_SHA_CONFIRMED"
+      - name: Install Jazzy Nav2 Waffle, Waffle Pi, Gazebo Harmonic and C++ prerequisites once
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt-get update -qq
+          apt-get install -y -qq --no-install-recommends \
+            git curl ca-certificates procps build-essential cmake pkg-config \
+            python3-colcon-common-extensions python3-rosdep python3-yaml \
+            ros-jazzy-nav2-bringup ros-jazzy-nav2-minimal-tb3-sim ros-jazzy-navigation2 \
+            ros-jazzy-turtlebot3-gazebo ros-jazzy-ros-gz ros-jazzy-rosbag2 \
+            ros-jazzy-rclpy ros-jazzy-sensor-msgs ros-jazzy-geometry-msgs \
+            ros-jazzy-rosgraph-msgs ros-jazzy-nav-msgs ros-jazzy-nav2-msgs \
+            ros-jazzy-std-msgs ros-jazzy-std-srvs ros-jazzy-action-msgs \
+            ros-jazzy-lifecycle-msgs ros-jazzy-cv-bridge \
+            ros-jazzy-pluginlib ros-jazzy-vision-msgs ros-jazzy-message-filters \
+            ros-jazzy-tf2-ros libcurl4-openssl-dev libopencv-dev \
+            python3-opencv python3-numpy libgl1-mesa-dri libglx-mesa0 xvfb xauth
+      - name: Build actual P1 packages without altering private source
+        shell: bash
+        run: |
+          set -eo pipefail
+          source /opt/ros/jazzy/setup.bash
+          colcon build --base-paths private_p1/ros2_ws/src \
+            --packages-select axia_safety_supervisor axia_fault_injector axia_scenario_verifier \
+            --event-handlers console_direct+ --executor sequential
+      - name: Build pinned upstream yolo_ros CPU once for both gates
+        shell: bash
+        run: |
+          set -eo pipefail
+          source /opt/ros/jazzy/setup.bash
+          mkdir -p /tmp/d04_yolo_ws/src
+          git clone -q https://github.com/mgonzs13/yolo_ros.git /tmp/d04_yolo_ws/src/yolo_ros
+          git -C /tmp/d04_yolo_ws/src/yolo_ros checkout --detach 94d2dd500cb26027ee9c019f4d3a02029ac615cc
+          test "$(git -C /tmp/d04_yolo_ws/src/yolo_ros rev-parse HEAD)" = 94d2dd500cb26027ee9c019f4d3a02029ac615cc
+          cd /tmp/d04_yolo_ws
+          colcon build --merge-install --executor sequential --packages-up-to yolo_bringup \
+            --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF \
+            --event-handlers console_direct+
+      - name: Fetch ephemeral model and official Gazebo actor with exact hashes
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/d04_assets
+          curl -fL --retry 3 --max-time 120 -o /tmp/d04_assets/walk.dae \
+            https://fuel.gazebosim.org/1.0/Mingfei/models/actor/tip/files/meshes/walk.dae
+          curl -fL --retry 3 --max-time 120 -o /tmp/d04_assets/yolo26n.onnx \
+            https://huggingface.co/unileon-robotics/YOLO26-ONNX/resolve/main/yolo26n.onnx
+          echo '49af0df3a319d1cb8ca2cebf02dbd00f625e5d5bec820bc5e109925b18b65c6e  /tmp/d04_assets/walk.dae' | sha256sum -c -
+          echo '4f44c33cea12d4b5785e5e7c0a20c13d0c62a77de607ce96a40d6036c7d7bbcf  /tmp/d04_assets/yolo26n.onnx' | sha256sum -c -
+      - name: Three independent real YOLO cold starts then real P1 simultaneous gate
+        shell: bash
+        run: |
+          set -eo pipefail
+          source /opt/ros/jazzy/setup.bash
+          source /tmp/d04_yolo_ws/install/setup.bash
+          source install/setup.bash
+          export AXIA_ACTOR_DAE=/tmp/d04_assets/walk.dae
+          export AXIA_ONNX_PATH=/tmp/d04_assets/yolo26n.onnx
+          export TURTLEBOT3_GAZEBO_SHARE="$(ros2 pkg prefix turtlebot3_gazebo)/share/turtlebot3_gazebo"
+          NAV2_SIM="$(ros2 pkg prefix nav2_minimal_tb3_sim)/share/nav2_minimal_tb3_sim"
+          set +e
+          xvfb-run -a -s '-screen 0 1280x720x24' \
+            python3 scripts/d04_yolo_stability.py --rounds 3 --out results/d04-yolo-stability
+          STABILITY_RC=$?
+          xvfb-run -a -s '-screen 0 1280x720x24' \
+            python3 scripts/d04_p1_yolo_live.py \
+              --instructor private_p1 \
+              --p1-sha 653ef49c30973c57a9fcc34b7b2fcc185bc84d95 \
+              --waffle "$NAV2_SIM/urdf/gz_waffle.sdf.xacro" \
+              --world "$NAV2_SIM/worlds/tb3_sandbox.sdf.xacro" \
+              --pi "$TURTLEBOT3_GAZEBO_SHARE/models/turtlebot3_waffle_pi/model.sdf" \
+              --actor "$AXIA_ACTOR_DAE" --onnx "$AXIA_ONNX_PATH" \
+              --cpu-renderer --out results/d04-p1-yolo-private
+          P1_RC=$?
+          set -e
+          echo "YOLO_STABILITY_3X_RC=$STABILITY_RC P1_YOLO_SIMULTANEOUS_RC=$P1_RC"
+          # No private files, source, model weights, world overlays, paths or raw logs in artifacts.
+          mkdir -p results/d04-safe-public-report
+          python3 - "$STABILITY_RC" "$P1_RC" <<'PY'
+          import json,sys
+          from pathlib import Path
+          stable=Path('results/d04-yolo-stability/summary.json')
+          private=Path('results/d04-p1-yolo-private/verdict.json')
+          s=json.loads(stable.read_text()) if stable.exists() else {}
+          v=json.loads(private.read_text()) if private.exists() else {}
+          safe={
+             'stability_3x_exit':int(sys.argv[1]),
+             'p1_concurrent_exit':int(sys.argv[2]),
+             'stability_actual_pass':s.get('passed',False),
+             'stability_completed_rounds':s.get('completed_rounds',0),
+             'p1_concurrent_status':v.get('status','NO_VERDICT'),
+             'p1_graph_before':(v.get('graph_before_verdict') or {}).get('passed',False),
+             'p1_graph_during':(v.get('graph_during_verdict') or {}).get('passed',False),
+             'p1_graph_unchanged':v.get('graph_unchanged',False),
+             'person_valid':v.get('person_valid',False),
+             'rgb_valid':v.get('rgb_valid',False),
+             'debug_saved':v.get('debug_saved',False),
+             'clock_samples':v.get('clock_samples',0),
+             'scan_samples':v.get('scan_samples',0),
+             'odom_samples':v.get('odom_samples',0),
+             'goal_sent':False,'fault_injected':False,
+             'p1_acceptance':False,'certified_estop':False,
+          }
+          Path('results/d04-safe-public-report/summary.json').write_text(json.dumps(safe,indent=2)+'\n')
+          print(json.dumps(safe))
+          PY
+          test "$STABILITY_RC" -eq 0
+          test "$P1_RC" -eq 0
+      - name: Delete sealed checkout, raw private logs, AGPL model and source
+        shell: bash
+        if: always()
+        run: |
+          rm -rf -- private_p1 /tmp/d04_assets /tmp/d04_yolo_ws \
+            results/d04-p1-yolo-private results/d04-yolo-stability \
+            build install log || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d04-p1-sanitized-verdict-only
+          path: results/d04-safe-public-report/summary.json
+          retention-days: 14
+          if-no-files-found: warn
