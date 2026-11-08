@@ -57,6 +57,9 @@ def test_package_gate_reports_real_visible_progress_and_hold():
     assert "flush=True" in src
     assert "PERSON" in src
     assert "min(max(a.hold_seconds, 0), 120)" in src
+    assert "WSLG_HOST_OPENGL" in src
+    assert "HEADLESS_LLVMPIPE" in src
+    assert 'env.pop("LIBGL_ALWAYS_SOFTWARE", None)' in src
     assert "create_publisher(" not in src
 
 
