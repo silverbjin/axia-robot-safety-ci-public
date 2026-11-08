@@ -1,0 +1,142 @@
+#!/usr/bin/env python3
+"""AXIA D04 packaged ROS2 launch actual P1+YOLO acceptance (read-only).
+
+Distinct from the previous verified-script runner: starts *the installed
+axia_d04_vision_demo ROS2 package*. Fails closed unless the exact P1 command
+graph and real person bbox/confidence/debug PNG all exist.
+"""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import time
+
+from d04_waffle_pi_rgb_preflight import _start, _stop_all, sync_ros_discovery_environment
+from d04_p1_yolo_live import graph_oracle, core_chain, sensor_sample
+from d04_yolo_person_runtime import _watch_detections_and_images, valid_person, valid_rgb
+
+EXPECTED_P1 = "653ef49c30973c57a9fcc34b7b2fcc185bc84d95"
+EXPECTED_MODEL = "4f44c33cea12d4b5785e5e7c0a20c13d0c62a77de607ce96a40d6036c7d7bbcf"
+EXPECTED_ACTOR = "49af0df3a319d1cb8ca2cebf02dbd00f625e5d5bec820bc5e109925b18b65c6e"
+
+
+def build_launch_command(p1: Path, model: Path, actor: Path, *, gui: bool = False):
+    if p1.name != "axia_tb3_p1.launch.py":
+        raise ValueError("Only original AXIA P1 launch is accepted")
+    return [
+        "ros2", "launch", "axia_d04_vision_demo", "d04_p1_yolo.launch.py",
+        "p1_launch:=" + str(p1.resolve()),
+        "onnx_model:=" + str(model.resolve()),
+        "actor_dae:=" + str(actor.resolve()),
+        "use_rviz:=false",
+        "headless:=" + ("false" if gui else "true"),
+        "show_image:=" + ("true" if gui else "false"),
+        "cpu_renderer:=" + ("false" if gui else "true"),
+    ]
+
+
+def run(a) -> int:
+    out = a.out.resolve()
+    out.mkdir(parents=True, exist_ok=True)
+    verdict = {
+        "gate": "G-D04-PACKAGE-P1-YOLO",
+        "status": "BLOCKED_OR_INCONCLUSIVE",
+        "p1_expected_sha": EXPECTED_P1,
+        "goal_sent": False, "fault_injected": False,
+        "cmd_vel_published_by_demo": False,
+        "certified_estop_verified": False,
+        "p1_g00_g04_accepted": False,
+        "shutdown_quality": "NOT_EVALUATED",
+    }
+    env = os.environ.copy()
+    env["ROS_DOMAIN_ID"] = "40"
+    env["ROS_AUTOMATIC_DISCOVERY_RANGE"] = "LOCALHOST"
+    env["GZ_PARTITION"] = "axia_d04_pkg_" + str(os.getpid())
+    env["AXIA_P0_SIM_ONLY"] = "1"
+    env["LIBGL_ALWAYS_SOFTWARE"] = "1"
+    env["GALLIUM_DRIVER"] = "llvmpipe"
+    env.pop("EGL_PLATFORM", None)
+    sync_ros_discovery_environment(env)
+    proc = []
+    try:
+        p1root = a.instructor.resolve()
+        sha = subprocess.check_output(
+            ["git", "-C", str(p1root), "rev-parse", "HEAD"], text=True).strip()
+        if sha != EXPECTED_P1 and sha != a.d04_private_sha:
+            raise ValueError("Private instructor source SHA not approved")
+        p1 = p1root / "ros2_ws/src/axia_safety_bringup/launch/axia_tb3_p1.launch.py"
+        if not p1.is_file():
+            raise FileNotFoundError(p1)
+        if hashlib.sha256(a.model.read_bytes()).hexdigest() != EXPECTED_MODEL:
+            raise ValueError("Model SHA mismatch")
+        if hashlib.sha256(a.actor.read_bytes()).hexdigest() != EXPECTED_ACTOR:
+            raise ValueError("Actor SHA mismatch")
+        verdict["instructor_sha"] = sha
+        cmd = build_launch_command(p1, a.model, a.actor, gui=a.gui)
+        (out / "launch_command.json").write_text(json.dumps(cmd, indent=2) + "\n")
+        _start("package_launch", cmd, env, out, proc)
+        first = graph_oracle(p1root, env, out, "first", timeout=150)
+        verdict["graph_first"] = first.get("verdict")
+        if not first["passed"]:
+            raise RuntimeError("P1 original graph was not ready")
+        verdict["clock_samples"] = sensor_sample("/clock", "clock")
+        verdict["scan_samples"] = sensor_sample("/scan", "scan")
+        verdict["odom_samples"] = sensor_sample("/odom", "odom")
+        if not all(verdict[k] > 0 for k in ("clock_samples", "scan_samples", "odom_samples")):
+            raise RuntimeError("P1 sensors not active")
+        evidence = _watch_detections_and_images(out, duration_s=130)
+        verdict["vision"] = evidence
+        verdict["person_valid"] = bool(
+            evidence.get("person") and valid_person(evidence["person"]))
+        verdict["rgb_valid"] = bool(
+            evidence.get("first_image") and valid_rgb(evidence["first_image"]))
+        verdict["debug_image_saved"] = evidence.get("debug_saved") is True
+        after = graph_oracle(p1root, env, out, "after_vision", timeout=50)
+        verdict["graph_after_vision"] = after.get("verdict")
+        verdict["graph_stable"] = bool(
+            after["passed"] and core_chain(first["graph"]) == core_chain(after["graph"]))
+        if not all(verdict.get(x) for x in (
+            "person_valid", "rgb_valid", "debug_image_saved", "graph_stable"
+        )):
+            raise RuntimeError("Package vision or P1 graph gate failed")
+        verdict["status"] = "PASS_P1_AND_YOLO_PACKAGE_RUNTIME"
+        if a.gui:
+            # Keep annotated image viewer visible, without ever issuing a Goal.
+            time.sleep(min(max(a.hold_seconds, 0), 40))
+    except Exception as exc:
+        verdict["blocker"] = type(exc).__name__ + ":" + str(exc)[:500]
+    finally:
+        _stop_all(proc, verdict)
+        log = out / "package_launch.log"
+        if log.exists():
+            lines = log.read_text(errors="replace")
+            verdict["shutdown_quality"] = (
+                "WARN_SIGABRT" if ("planner_server" in lines and
+                                  ("exit code -6" in lines or "SIGABRT" in lines))
+                else "NO_KNOWN_SIGABRT_IN_CAPTURED_LAUNCH_LOG")
+        (out / "verdict.json").write_text(
+            json.dumps(verdict, indent=2, ensure_ascii=False) + "\n")
+        files = sorted(f for f in out.rglob("*") if f.is_file() and f.name != "SHA256SUMS")
+        (out / "SHA256SUMS").write_text("".join(
+            hashlib.sha256(f.read_bytes()).hexdigest() + "  " +
+            f.relative_to(out).as_posix() + "\n" for f in files))
+        print(json.dumps({k:verdict.get(k) for k in (
+            "gate", "status", "blocker", "graph_first", "graph_after_vision",
+            "graph_stable", "person_valid", "rgb_valid", "debug_image_saved",
+            "shutdown_quality")}, ensure_ascii=False))
+    return 0 if verdict["status"] == "PASS_P1_AND_YOLO_PACKAGE_RUNTIME" else 2
+
+
+if __name__ == "__main__":
+    p = argparse.ArgumentParser()
+    for name in ("instructor", "model", "actor", "out"):
+        p.add_argument("--" + name, type=Path, required=True)
+    p.add_argument("--d04-private-sha", required=True)
+    p.add_argument("--gui", action="store_true")
+    p.add_argument("--hold-seconds", type=int, default=20)
+    raise SystemExit(run(p.parse_args()))
