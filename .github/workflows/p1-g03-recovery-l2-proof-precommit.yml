@@ -61,7 +61,7 @@ jobs:
         run: |
           set -euo pipefail
           cd _private
-          if timeout 180s python -m pytest -q             tests/unit/test_p1_t08_g03_recovery_sidecar.py             tests/unit/test_p1_t08_c4_operator_sequential.py             tests/unit/test_p1_t08_c4_scan_triplicate_review.py             tests/unit/test_p1_t08_c4_resume.py             tests/unit/test_p1_t08_trace_oracle.py             > /tmp/g03_test_private 2>&1; then
+          if timeout 180s python -m pytest -q             tests/unit/test_p1_t08_g03_recovery_sidecar.py             tests/unit/test_p1_t08_g03_recovery_path_contract.py             tests/unit/test_p1_t08_c4_operator_sequential.py             tests/unit/test_p1_t08_c4_scan_triplicate_review.py             tests/unit/test_p1_t08_c4_resume.py             tests/unit/test_p1_t08_trace_oracle.py             > /tmp/g03_test_private 2>&1; then
               echo 'G03_L2_PRECOMMIT_PROTECTED_L0_PASS'
           else
               echo 'G03_L2_PRECOMMIT_PROTECTED_L0_BLOCKED'
