@@ -56,6 +56,18 @@ jobs:
           bash scripts/p1_t08_g03_recovery_3x_owner.sh --plan >/tmp/g03_plan_private
           grep -q AUTO_YES=DISABLED /tmp/g03_plan_private
           echo 'G03_L2_PRECOMMIT_BASH_COMPILE_PLAN_PASS'
+      - name: New scoped R08 synthetic contract (safe failures only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd _private
+          if timeout 80s python -m pytest -q tests/unit/test_p1_t08_r08_scoped_final.py > /tmp/r08_synthetic_private 2>&1; then
+            echo R08_SCOPED_SYNTHETIC_9_PASS
+          else
+            grep -E '^(FAILED|ERROR|[0-9]+ failed|[0-9]+ error|E  )' /tmp/r08_synthetic_private | head -35 | sed -E 's#(/home/[^ ]+|/tmp/[^ ]+)#<PRIVATE_PATH>#g' || true
+            echo R08_SCOPED_SYNTHETIC_BLOCKED
+            exit 2
+          fi
       - name: New G03 interlock tests and prior C3/C4 no-motion oracles
         shell: bash
         run: |
@@ -71,7 +83,7 @@ jobs:
         if: always()
         run: |
           rm -rf _private
-          rm -f /tmp/g03_plan_private /tmp/g03_test_private
+          rm -f /tmp/g03_plan_private /tmp/g03_test_private /tmp/r08_synthetic_private
           echo 'G03_L2_PRECOMMIT_PRIVATE_CLEANUP'
       - name: Testing limits
         if: always()
