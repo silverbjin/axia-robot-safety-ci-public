@@ -1,7 +1,7 @@
 {
   "schema": "axia-d3-minimal-ci-v2",
   "target_repo": "silverbjin/axia-robot-safety-instructor",
-  "target_sha": "99c81a9f02efdf64d7a1e3ad40d45a00c7a6e37c",
+  "target_sha": "973430fa853f273f5b0e9a9f700e97e8cdad705b",
   "scope": "python-unit-static-only",
   "goals": false,
   "faults": false,
@@ -44,6 +44,14 @@
     {
       "source": "ros2_ws/src/axia_d3_demo/setup.py",
       "git_blob_sha": "21337fd41323b3bb40b5fd26d5cba8c245deed4b"
+    },
+    {
+      "source": "training/d03/d3_demo/scripts/d3_wsl2_prepare_once.sh",
+      "git_blob_sha": "83242c2d7dc633c72da4d654f193d86f34558ee3"
+    },
+    {
+      "source": "ros2_ws/src/axia_d3_demo/test/test_d3_v2_static.py",
+      "git_blob_sha": "b3037b299a162886275756c7eff5939430e9f994"
     }
   ]
 }

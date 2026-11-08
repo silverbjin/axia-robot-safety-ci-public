@@ -38,6 +38,8 @@ jobs:
           test "$(git hash-object ci/d3_public_snapshot/training/d03/d3_demo/scripts/d3_route.sh)" = "5bf5304eb6b41fe6fd82e3506424f13f379906d5"
           test "$(git hash-object ci/d3_public_snapshot/training/d03/d3_demo/scripts/d3_session.sh)" = "11d50ea09e2768a68f075919217673cb2f821cf5"
           test "$(git hash-object ci/d3_public_snapshot/setup.py)" = "21337fd41323b3bb40b5fd26d5cba8c245deed4b"
+          test "$(git hash-object ci/d3_public_snapshot/training/d03/d3_demo/scripts/d3_wsl2_prepare_once.sh)" = "83242c2d7dc633c72da4d654f193d86f34558ee3"
+          test "$(git hash-object ci/d3_public_snapshot/review_only/test_d3_v2_static.py)" = "b3037b299a162886275756c7eff5939430e9f994"
           echo D3_REVIEWED_BLOB_SHA_ALL_MATCH
       - name: Python contracts, moving proxy and scenario fail-closed tests
         shell: bash
