@@ -78,8 +78,17 @@ def run(a) -> int:
     env["ROS_AUTOMATIC_DISCOVERY_RANGE"] = "LOCALHOST"
     env["GZ_PARTITION"] = "axia_d04_pkg_" + str(os.getpid())
     env["AXIA_P0_SIM_ONLY"] = "1"
-    env["LIBGL_ALWAYS_SOFTWARE"] = "1"
-    env["GALLIUM_DRIVER"] = "llvmpipe"
+    # WSLg GUI: allow host-accelerated GL when available. Forcing llvmpipe
+    # on the instructor laptop can prevent the 6-s actor cycle advancing in
+    # observable wall time. Preserve the proven CPU fallback for headless CI.
+    if a.gui:
+        env.pop("LIBGL_ALWAYS_SOFTWARE", None)
+        env.pop("GALLIUM_DRIVER", None)
+        verdict["render_policy"] = "WSLG_HOST_OPENGL"
+    else:
+        env["LIBGL_ALWAYS_SOFTWARE"] = "1"
+        env["GALLIUM_DRIVER"] = "llvmpipe"
+        verdict["render_policy"] = "HEADLESS_LLVMPIPE"
     env.pop("EGL_PLATFORM", None)
     sync_ros_discovery_environment(env)
     proc = []
