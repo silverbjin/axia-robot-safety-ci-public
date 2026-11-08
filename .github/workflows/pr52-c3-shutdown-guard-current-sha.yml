@@ -1,0 +1,125 @@
+name: AXIA P1 C3 protected shutdown guard L0 L1 (no Gazebo or Goal)
+on:
+  push:
+    branches: [feat/secure-instructor-cloud-bridge]
+    paths:
+      - '.github/workflows/pr52-c3-shutdown-guard-current-sha.yml'
+permissions:
+  contents: read
+concurrency:
+  group: axia-pr52-c3-targeted-current-sha
+  cancel-in-progress: false
+jobs:
+  public-scope-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Never execute simulated Goal or Fault in this CI
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'AXIA_C3_SCOPE=L0_AND_JAZZY_NODE_SHUTDOWN_ONLY'
+          echo 'G00_G03_G04_LIVE=NOT_RUN'
+          echo 'GAZEBO=NOT_RUN; CERTIFIED_ESTOP=false; GATE_ACCEPTED=false'
+  protected-c3-l0-jazzy:
+    needs: public-scope-contract
+    if: github.repository == 'silverbjin/axia-robot-safety-ci-public' && github.actor == 'silverbjin' && github.ref == 'refs/heads/feat/secure-instructor-cloud-bridge' && github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    container:
+      image: ros:jazzy-ros-base-noble
+    environment:
+      name: axia-instructor-sealed
+    env:
+      ROS_DOMAIN_ID: '37'
+      ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+      EXPECTED_PRIVATE_SHA: '8715f6bae062e2af9b672802a742769ba975a9be'
+    steps:
+      - name: Checkout only public CI recipe
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Require existing private read token without printing it
+        shell: bash
+        env:
+          PRIVATE_READ_TOKEN: ${{ secrets.AXIA_CLOUD_CI }}
+        run: |
+          set -euo pipefail
+          test -n "$PRIVATE_READ_TOKEN"
+      - name: Checkout exact private FIX-C3-01 code transiently
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 8715f6bae062e2af9b672802a742769ba975a9be
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          fetch-depth: 1
+          persist-credentials: false
+          path: _instructor_private
+      - name: Install only Jazzy middleware and Python test dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+            git python3-pytest python3-colcon-common-extensions \
+            ros-jazzy-rclpy ros-jazzy-nav2-msgs ros-jazzy-lifecycle-msgs \
+            ros-jazzy-geometry-msgs ros-jazzy-sensor-msgs ros-jazzy-std-msgs \
+            ros-jazzy-std-srvs ros-jazzy-rosgraph-msgs ros-jazzy-action-msgs \
+            ros-jazzy-nav-msgs
+      - name: L0 Python pure shutdown-guard and fail-closed regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd _instructor_private
+          test "$(git rev-parse HEAD)" = "$EXPECTED_PRIVATE_SHA"
+          python3 -m py_compile tools/p1_t08_shutdown_guard.py tools/p1_nav2_shutdown.py
+          if python3 -m pytest -q \
+            tests/unit/test_p1_t08_shutdown_guard.py \
+            tests/unit/test_p1_shutdown_contract.py \
+            tests/unit/test_p1_t08_shutdown.py \
+            > /tmp/axia_c3_l0_private.log 2>&1; then
+            echo AXIA_C3_L0_TARGETED_PASS
+          else
+            echo AXIA_C3_L0_TARGETED_BLOCKED
+            exit 2
+          fi
+      - name: Build actual Jazzy Supervisor and Fault Injector
+        shell: bash
+        run: |
+          set -eo pipefail
+          source /opt/ros/jazzy/setup.bash
+          cd _instructor_private
+          colcon build --base-paths ros2_ws/src --packages-select axia_safety_supervisor axia_fault_injector \
+            > /tmp/axia_c3_colcon_private.log 2>&1 || { echo AXIA_C3_JAZZY_BUILD_BLOCKED; exit 2; }
+          source install/setup.bash
+          ros2 pkg executables axia_safety_supervisor | grep -q supervisor_node
+          ros2 pkg executables axia_fault_injector | grep -q fault_injector_node
+          echo AXIA_C3_JAZZY_BUILD_PASS
+      - name: L1 real Jazzy SIGINT and health diagnostics regression
+        shell: bash
+        run: |
+          set -eo pipefail
+          source /opt/ros/jazzy/setup.bash
+          cd _instructor_private
+          source install/setup.bash
+          mkdir -p /tmp/axia_c3
+          if timeout 110s python3 -m pytest -q \
+            tests/ros_integration/test_p1_t08_shutdown.py \
+            tests/ros_integration/test_p1_t08_health_diag.py \
+            > /tmp/axia_c3_l1_private.log 2>&1; then
+            echo AXIA_C3_L1_JAZZY_NO_GAZEBO_PASS
+          else
+            echo AXIA_C3_L1_JAZZY_NO_GAZEBO_BLOCKED
+            exit 2
+          fi
+      - name: Destroy private source and all private logs
+        if: always()
+        shell: bash
+        run: |
+          rm -rf _instructor_private
+          rm -f /tmp/axia_c3_*private.log /tmp/axia_c3_colcon_private.log
+          echo AXIA_C3_PRIVATE_CLEANUP_COMPLETE
+      - name: Verification boundaries
+        if: always()
+        shell: bash
+        run: echo 'R08=INCONCLUSIVE G03_REAL_FAULT=NOT_RUN G04_REAL_FAULT=NOT_RUN; no hardware, no E-Stop certification'
