@@ -1,0 +1,87 @@
+name: AXIA P1 C3 3x report C4 scan-only raw review targeted CI
+on:
+  push:
+    branches: [feat/secure-instructor-cloud-bridge]
+    paths:
+      - '.github/workflows/pr52-c3-c4-scan-review-targeted.yml'
+permissions:
+  contents: read
+concurrency:
+  group: axia-p1-c3-c4-targeted-l0
+  cancel-in-progress: false
+jobs:
+  public-safe-scope:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Confirm no robot actuation or raw private log publication
+        run: |
+          echo "AXIA_C4_CI_SCOPE=PURE_PYTHON_ONLY"
+          echo "ROS_JAZZY=NOT_RUN GAZEBO=NOT_RUN GOAL=NOT_RUN FAULT=NOT_RUN"
+          echo "G03_FINAL=REVIEW_PENDING G04_FULL=INCONCLUSIVE GATE_ACCEPTED=false"
+  protected-instructor-l0:
+    needs: public-safe-scope
+    if: github.repository == 'silverbjin/axia-robot-safety-ci-public' && github.actor == 'silverbjin' && github.ref == 'refs/heads/feat/secure-instructor-cloud-bridge' && github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment:
+      name: axia-instructor-sealed
+    env:
+      EXPECTED_PRIVATE_SHA: 'eedbd9f8c9628277faa51264d5e695a6d7ddc09d'
+    steps:
+      - name: Checkout only public recipe
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Check approved token without printing
+        shell: bash
+        env:
+          PRIVATE_READ_TOKEN: ${{ secrets.AXIA_CLOUD_CI }}
+        run: |
+          set -euo pipefail
+          test -n "$PRIVATE_READ_TOKEN"
+      - name: Checkout exact new instructor review commit
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 'eedbd9f8c9628277faa51264d5e695a6d7ddc09d'
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          fetch-depth: 1
+          persist-credentials: false
+          path: _instructor_private
+      - name: Pin Python 3.12 only
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install only small Python test dependency
+        shell: bash
+        run: python -m pip install --quiet pytest==8.3.5
+      - name: Verify pinned source and compile read-only observer
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd _instructor_private
+          test "$(git rev-parse HEAD)" = "$EXPECTED_PRIVATE_SHA"
+          python -m py_compile tools/p1_t08_c4_scan_triplicate_review.py
+          echo AXIA_C4_SOURCE_SHA_PINNED_AND_COMPILED
+      - name: Execute new C4 and existing G04 scope fail-closed oracles
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd _instructor_private
+          if timeout 180s python -m pytest -q               tests/unit/test_p1_t08_c4_scan_triplicate_review.py               tests/unit/test_p1_t08_trace_oracle.py               tests/unit/test_p1_t08_r07_fault_suite.py               > /tmp/axia_c4_protected_pytest.log 2>&1; then
+            echo AXIA_C4_L0_REVIEW_AND_G04_SCOPE_PASS
+          else
+            echo AXIA_C4_L0_REVIEW_OR_SCOPE_BLOCKED
+            exit 2
+          fi
+      - name: Clear private source and CI private logs
+        shell: bash
+        if: always()
+        run: |
+          rm -rf _instructor_private
+          rm -f /tmp/axia_c4_protected_pytest.log
+          echo AXIA_C4_PROTECTED_PRIVATE_CLEANUP_DONE
+      - name: Verification limits
+        if: always()
+        run: echo 'C4_9X_LIVE=NOT_RUN C3_RESET_REARM=NOT_RUN G04_FULL=INCONCLUSIVE E_STOP=false'
