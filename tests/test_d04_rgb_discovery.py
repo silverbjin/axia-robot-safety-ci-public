@@ -49,4 +49,4 @@ def test_rgb_under_depth_named_sensor_is_valid():
     # Official Waffle SDF names its RGB-capable depth sensor this way.
     rgb = "/world/default/model/turtlebot3_waffle/link/camera_link/sensor/intel_realsense_r200_depth/image"
     depth = "/world/default/model/turtlebot3_waffle/link/camera_link/sensor/intel_realsense_r200_depth/depth_image"
-    assert module.choose_rgb_topic(depth + "\\n" + rgb) == rgb
+    assert module.choose_rgb_topic(depth + "\n" + rgb) == rgb
