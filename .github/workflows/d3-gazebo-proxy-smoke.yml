@@ -1,0 +1,78 @@
+name: AXIA D3 v2 Gazebo Harmonic proxy motion smoke (NO NAVIGATION OR FAULT)
+on:
+  push:
+    branches:
+      - feat/d3-minimal-exact-sha-ci-20261108
+    paths:
+      - .github/workflows/d3-gazebo-proxy-smoke.yml
+      - ci/d3_public_snapshot/models/pedestrian_proxy.sdf
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: axia-d3-gz-proxy-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  proxy-motion-headless:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    container:
+      image: ros:jazzy-ros-base-noble
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Install official Gazebo Harmonic ROS bridge only
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            procps python3 ros-jazzy-ros-gz ros-jazzy-ros2cli
+      - name: Headless Gazebo create proxy and walk using UserCommands
+        shell: bash
+        run: |
+          set -euo pipefail
+          source /opt/ros/jazzy/setup.bash
+          mkdir -p results/d3-gazebo
+          export GZ_PARTITION="axia_d3_ci_${GITHUB_RUN_ID}"
+          export LIBGL_ALWAYS_SOFTWARE=1
+          gz sim -s -r -v 3 empty.sdf > results/d3-gazebo/server.log 2>&1 &
+          GZ_PID=$!
+          cleanup() { kill -INT "$GZ_PID" 2>/dev/null || true; wait "$GZ_PID" 2>/dev/null || true; }
+          trap cleanup EXIT
+          ready=0
+          for n in $(seq 1 90); do
+            if gz service -l > results/d3-gazebo/services.log 2>&1; then
+              if grep -Fxq /world/empty/create results/d3-gazebo/services.log &&
+                 grep -Fxq /world/empty/set_pose results/d3-gazebo/services.log; then
+                 ready=1; break
+              fi
+            fi
+            sleep 1
+          done
+          test "$ready" = 1 || { tail -80 results/d3-gazebo/server.log; echo D3_GAZEBO_SERVICES_BLOCKED; exit 2; }
+          test "$(git hash-object ci/d3_public_snapshot/models/pedestrian_proxy.sdf)" = 9c864cc660626563124ff7eda446ffcda9e63b8e
+          timeout 50 ros2 run ros_gz_sim create \
+            -world empty -file ci/d3_public_snapshot/models/pedestrian_proxy.sdf \
+            -name d3_pedestrian_proxy -x 0 -y 0 -z 0 \
+            > results/d3-gazebo/spawn.log 2>&1 || { cat results/d3-gazebo/spawn.log; exit 2; }
+          for x in 0.3 0.6 0.9; do
+            req="name: \"d3_pedestrian_proxy\" position: { x: $x y: 0 z: 0 } orientation: { w: 1 }"
+            gz service -s /world/empty/set_pose \
+              --reqtype gz.msgs.Pose --reptype gz.msgs.Boolean \
+              --timeout 5000 --req "$req" \
+              > "results/d3-gazebo/set_pose_$x.log" 2>&1
+            cat "results/d3-gazebo/set_pose_$x.log"
+            grep -Eiq 'data: *(true|1)|^ *true *$' "results/d3-gazebo/set_pose_$x.log" ||
+              { echo D3_POSE_MOVE_REJECTED; exit 2; }
+          done
+          echo D3_GAZEBO_HEADLESS_PROXY_CREATE_AND_SET_POSE_3X_PASS_NO_P1_GOAL_FAULT
+      - name: Save actual Gazebo evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d3-headless-gazebo-model-motion
+          path: results/d3-gazebo/
+          retention-days: 14
+          if-no-files-found: warn
