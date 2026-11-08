@@ -1,0 +1,10 @@
+{
+  "schema": "axia-d3-minimal-ci-v1",
+  "target_repo": "silverbjin/axia-robot-safety-instructor",
+  "target_sha": "5db2bfc1cdac944d78ed0f15349606e6f20184e3",
+  "scope": "python-unit-static-only",
+  "goals": false,
+  "faults": false,
+  "gazebo": false,
+  "physical_estop_certified": false
+}

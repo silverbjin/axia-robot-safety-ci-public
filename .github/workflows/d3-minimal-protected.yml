@@ -1,0 +1,67 @@
+name: AXIA D3 minimum protected exact-SHA Python gate (NO GAZEBO)
+on:
+  push:
+    branches:
+      - feat/d3-minimal-exact-sha-ci-20261108
+    paths:
+      - .github/workflows/d3-minimal-protected.yml
+      - ci/d3_minimal_manifest.json
+      - tests/test_d3_minimal_manifest.py
+permissions:
+  contents: read
+concurrency:
+  group: d3-minimal-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  public-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Check public-only D3 SHA/scope manifest (no private checkout)
+        run: python3 -m unittest discover -s tests -p test_d3_minimal_manifest.py -v
+  private-l0:
+    needs: public-contract
+    if: github.event_name == 'push' && github.ref == 'refs/heads/feat/d3-minimal-exact-sha-ci-20261108'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    environment: axia-instructor-sealed
+    steps:
+      - name: Checkout exact private D3 SHA into ephemeral runner
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 5db2bfc1cdac944d78ed0f15349606e6f20184e3
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run targeted D3 Python-only TDD tests and package static checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = "5db2bfc1cdac944d78ed0f15349606e6f20184e3"
+          python -m pip install --disable-pip-version-check --quiet pytest==8.3.5
+          export PYTHONPATH="$PWD/ros2_ws/src/axia_d3_demo"
+          python -m pytest -q -ra ros2_ws/src/axia_d3_demo/test
+          python -m compileall -q ros2_ws/src/axia_d3_demo/axia_d3_demo
+          python - <<'PY'
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+          p=Path("ros2_ws/src/axia_d3_demo")
+          ET.parse(p / "package.xml")
+          ET.parse(p / "models/pedestrian_proxy.sdf")
+          print("D3_SDF_PACKAGE_XML_STATIC_PASS")
+          PY
+          for f in training/d03/d3_demo/scripts/*.sh; do bash -n "$f"; done
+          echo 'D3_PRIVATE_EXACT_SHA_PYTHON_GATE_PASS_ROS_AND_GAZEBO_NOT_RUN'
+      - name: Remove private checkout; do not upload private evidence
+        if: always()
+        shell: bash
+        run: |
+          rm -rf -- ros2_ws training docs scripts tests results build install log .git
+          echo 'D3_PRIVATE_CHECKOUT_REMOVED'
