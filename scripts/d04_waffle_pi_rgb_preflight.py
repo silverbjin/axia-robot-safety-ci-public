@@ -176,7 +176,8 @@ def _probe():
     env["ROS_AUTOMATIC_DISCOVERY_RANGE"] = "LOCALHOST"
     env["TURTLEBOT3_MODEL"] = "waffle_pi"
     env["LIBGL_ALWAYS_SOFTWARE"] = "1"
-    env["EGL_PLATFORM"] = "surfaceless"
+    env.pop("EGL_PLATFORM", None)
+    env["GALLIUM_DRIVER"] = "llvmpipe"
 
     try:
         import ament_index_python.packages
@@ -192,7 +193,8 @@ def _probe():
         world.write_text(simple_world(), encoding="utf-8")
         verdict["world_sha256"] = hashlib.sha256(world.read_bytes()).hexdigest()
         sim = _start("gazebo_server",
-                     ["gz", "sim", "-r", "-s", "--headless-rendering", "-v3", str(world.resolve())],
+                     ["xvfb-run", "-a", "-s", "-screen 0 1280x720x24",
+                      "gz", "sim", "-r", "-s", "-v3", str(world.resolve())],
                      env, out, processes)
         image_bridge = _start("image_bridge",
                               ["ros2", "run", "ros_gz_image", "image_bridge", EXPECTED_IMAGE_TOPIC],
@@ -219,6 +221,13 @@ def _probe():
                 verdict["blocker"] = ("NO_RGB_FRAME" if rgb is None else
                                       "INVALID_RGB_FRAME" if not valid_rgb(rgb) else
                                       "NO_VALID_CAMERA_INFO")
+        # Distinguish an advertised Gazebo transport topic from actual sensor data.
+        raw_info = subprocess.run(["gz", "topic", "-i", "-t", EXPECTED_IMAGE_TOPIC],
+                                   env=env, capture_output=True, text=True,
+                                   timeout=10, check=False)
+        (out / "gz_image_topic_info.txt").write_text(raw_info.stdout + "\n" + raw_info.stderr,
+                                                      encoding="utf-8")
+        verdict["gz_image_topic_info_exit"] = raw_info.returncode
         listing = subprocess.run(["gz", "topic", "-l"], env=env,
                                   capture_output=True, text=True, timeout=12, check=False)
         (out / "gz_topics.txt").write_text(listing.stdout + "\n" + listing.stderr, encoding="utf-8")
