@@ -86,7 +86,7 @@ def main():
     out = Path("results/d04-readonly-camera")
     out.mkdir(parents=True, exist_ok=True)
     env = os.environ.copy()
-    env["ROS_DOMAIN_ID"] = "174"
+    env["ROS_DOMAIN_ID"] = "40"
     env["GZ_PARTITION"] = "axia_d04_rgb_" + env.get("GITHUB_RUN_ID", "local")
     env["TURTLEBOT3_MODEL"] = "waffle"
     env["ROS_AUTOMATIC_DISCOVERY_RANGE"] = "LOCALHOST"

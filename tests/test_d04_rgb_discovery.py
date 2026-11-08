@@ -37,3 +37,9 @@ def test_no_command_publication_in_preflight():
     assert "create_publisher(" not in src
     assert "send_goal_async(" not in src
     assert "fault_injector_node" not in src
+
+
+def test_ros_domain_id_is_below_ephemeral_udp_threshold():
+    src = SOURCE.read_text(encoding="utf-8")
+    assert 'env["ROS_DOMAIN_ID"] = "40"' in src
+    assert 7400 + 250 * 40 + 240 < 32768
