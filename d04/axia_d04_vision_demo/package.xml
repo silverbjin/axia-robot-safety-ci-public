@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>axia_d04_vision_demo</name>
+  <version>0.1.0</version>
+  <description>D04 education-only read-only official Waffle Pi camera overlay and yolo_ros bringup; not a certified safety function.</description>
+  <maintainer email="noreply@example.invalid">AXIA Safety Instructor</maintainer>
+  <license>Apache-2.0</license>
+  <buildtool_depend>ament_python</buildtool_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>ament_index_python</exec_depend>
+  <exec_depend>nav2_bringup</exec_depend>
+  <exec_depend>nav2_minimal_tb3_sim</exec_depend>
+  <exec_depend>turtlebot3_gazebo</exec_depend>
+  <exec_depend>ros_gz_image</exec_depend>
+  <test_depend>python3-pytest</test_depend>
+  <export><build_type>ament_python</build_type></export>
+</package>
