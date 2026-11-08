@@ -18,6 +18,10 @@ source /etc/os-release
 [[ "$ID" == ubuntu && "$VERSION_ID" == '24.04' ]] || { echo 'BLOCKED: Ubuntu 24.04 required'; exit 2; }
 grep -qiE 'microsoft|wsl' /proc/sys/kernel/osrelease || { echo 'BLOCKED: WSL2 required'; exit 2; }
 [[ -f /opt/ros/jazzy/setup.bash ]] || { echo 'BLOCKED: ROS Jazzy missing'; exit 2; }
+set +u
+# shellcheck disable=SC1091
+source /opt/ros/jazzy/setup.bash
+set -u
 for cmd in gh git python3 colcon ros2 gz setsid timeout sha256sum tar; do
   command -v "$cmd" >/dev/null || { echo "BLOCKED: missing $cmd"; exit 2; }
 done
@@ -67,10 +71,6 @@ gh repo clone "$REPO" "$SRC/instructor" -- --single-branch --branch "$BRANCH" --
 [[ -z "$(git -C "$SRC/instructor" status --porcelain)" ]] || { echo 'BLOCKED: dirty checkout'; exit 2; }
 printf '%s\n' "$SHA" > "$OUT/source.sha"
 cd "$SRC/instructor"
-set +u
-# shellcheck disable=SC1091
-source /opt/ros/jazzy/setup.bash
-set -u
 for pkg in nav2_bringup nav2_minimal_tb3_sim ros_gz_sim; do
   ros2 pkg prefix "$pkg" >/dev/null || { echo "BLOCKED: ROS package $pkg"; exit 2; }
 done

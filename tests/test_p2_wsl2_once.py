@@ -19,6 +19,9 @@ class OwnerWrapperContract(unittest.TestCase):
     def test_rejects_unknown_flag(self):
         x=subprocess.run(['bash',str(SCRIPT),'--execute'],capture_output=True,text=True)
         self.assertEqual(x.returncode,2)
+    def test_ros_is_sourced_before_dependency_probe(self):
+        s=SCRIPT.read_text()
+        self.assertLess(s.index("source /opt/ros/jazzy/setup.bash"),s.index("for cmd in gh git python3 colcon ros2"))
     def test_fail_closed_contract(self):
         s=SCRIPT.read_text()
         for item in ('gh repo clone', 'private SHA mismatch','umask 077',
