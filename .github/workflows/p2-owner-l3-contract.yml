@@ -1,0 +1,97 @@
+name: AXIA P2 T07 Owner L3 contract (NO Goal/Fault in CI)
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/p2-owner-l3-contract.yml'
+      - 'scripts/axia_p2_owner_l3_once.sh'
+      - 'tests/test_p2_owner_l3_once.py'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/p2-owner-l3-contract.yml'
+      - 'scripts/axia_p2_owner_l3_once.sh'
+      - 'tests/test_p2_owner_l3_once.py'
+permissions:
+  contents: read
+concurrency:
+  group: axia-p2-owner-l3-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  public-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Public fail-closed Owner wrapper contract (never runs a Goal/Fault)
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n scripts/axia_p2_owner_l3_once.sh
+          bash scripts/axia_p2_owner_l3_once.sh --self-check
+          python3 -m unittest discover -s tests -p test_p2_owner_l3_once.py -v
+          echo 'AXIA_P2_T07_PUBLIC_CONTRACT_PASS_L3_NOT_RUN'
+  instructor-l0:
+    needs: public-contract
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'silverbjin/axia-robot-safety-ci-public'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: axia-instructor-sealed
+    steps:
+      - name: Checkout private SHA for read-only tests (no artifacts)
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 148ce2a66a13fd9c3a62da904511b3dcd63cf593
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Exact SHA P2 L0 + shell syntax; no Goal/Fault
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 148ce2a66a13fd9c3a62da904511b3dcd63cf593
+          python3 -m pip install --disable-pip-version-check --quiet pytest==8.3.5 PyYAML==6.0.2
+          python3 -m pytest -q -ra tests/unit/test_p2_*.py
+          python3 -m compileall -q tools/p2_l3_*.py tools/p2_live_fault_gate.py
+          bash -n scripts/p2_owner_l3_wsl2.sh
+          echo 'AXIA_P2_T07_PRIVATE_L0_EXACT_SHA_PASS_L3_NOT_RUN'
+      - name: Remove private code and worktree
+        if: always()
+        shell: bash
+        run: rm -rf -- ros2_ws tools scripts docs configs tests results build install log .git
+  instructor-l1-qos:
+    needs: instructor-l0
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'silverbjin/axia-robot-safety-ci-public'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    container:
+      image: ros:jazzy-ros-base-noble
+    environment: axia-instructor-sealed
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 148ce2a66a13fd9c3a62da904511b3dcd63cf593
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Jazzy Action status transient-local QoS / no runtime Goal or Fault
+        shell: bash
+        run: |
+          set -euo pipefail
+          source /opt/ros/jazzy/setup.bash
+          python3 - <<'PY'
+          from rclpy.qos import QoSProfile, QoSDurabilityPolicy, QoSReliabilityPolicy
+          q=QoSProfile(depth=10)
+          q.reliability=QoSReliabilityPolicy.RELIABLE
+          q.durability=QoSDurabilityPolicy.TRANSIENT_LOCAL
+          assert q.durability == QoSDurabilityPolicy.TRANSIENT_LOCAL
+          from pathlib import Path
+          s=Path('tools/p2_live_fault_gate.py').read_text()
+          assert 'action,action_qos' in s and 'TRANSIENT_LOCAL' in s
+          print('AXIA_P2_T07_JAZZY_QOS_L1_PASS_NO_GOAL_NO_FAULT')
+          PY
+      - name: Remove private checkout
+        if: always()
+        shell: bash
+        run: rm -rf -- ros2_ws tools scripts docs configs tests .git
