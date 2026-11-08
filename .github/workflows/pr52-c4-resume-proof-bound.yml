@@ -1,0 +1,83 @@
+name: AXIA C4 safe resume proof-bound regression CI
+on:
+  push:
+    branches: [feat/secure-instructor-cloud-bridge]
+    paths: ['.github/workflows/pr52-c4-resume-proof-bound.yml']
+permissions:
+  contents: read
+concurrency:
+  group: axia-p1-c4-resume-proof-bound
+  cancel-in-progress: false
+jobs:
+  public-no-motion:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - run: |
+          echo C4_RESUME_SCOPE=PURE_PYTHON_BASH_STATIC
+          echo AUTO_APPROVAL=DISABLED FAULT=NOT_RUN GAZEBO=NOT_RUN
+          echo ORIGINAL_FAKE_ROS_FAILURE_ROOT_CAUSE=LOCAL_LOG_PENDING
+  sealed-instructor-l0:
+    needs: public-no-motion
+    if: github.repository == 'silverbjin/axia-robot-safety-ci-public' && github.actor == 'silverbjin' && github.ref == 'refs/heads/feat/secure-instructor-cloud-bridge' && github.event_name == 'push'
+    environment:
+      name: axia-instructor-sealed
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      EXPECTED_PRIVATE_SHA: '4f966a0a7e5dee36c3768c494a32d32a5e6c883f'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Verify scoped secret
+        env:
+          T: ${{ secrets.AXIA_CLOUD_CI }}
+        shell: bash
+        run: test -n "$T"
+      - name: Checkout exact private instructor code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: '4f966a0a7e5dee36c3768c494a32d32a5e6c883f'
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+          fetch-depth: 1
+          path: _private
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install minimal test runner
+        run: python -m pip install --quiet pytest==8.3.5
+      - name: Validate branch, bash, and read-only modules
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd _private
+          test "$(git rev-parse HEAD)" = "$EXPECTED_PRIVATE_SHA"
+          bash -n scripts/p1_c4_two_faults_3x_operator_20261108.sh
+          python -m py_compile tools/p1_t08_c4_resume.py tools/p1_t08_c4_operator_sequential.py
+          bash scripts/p1_c4_two_faults_3x_operator_20261108.sh --plan > /tmp/c4_resume_plan.private
+          grep -q 'AUTO-APPROVE=DISABLED' /tmp/c4_resume_plan.private
+          echo AXIA_C4_RESUME_BASH_AND_PIN_PASS
+      - name: TDD targeted review+resume+G04 guard regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd _private
+          if timeout 180s python -m pytest -q              tests/unit/test_p1_t08_c4_resume.py              tests/unit/test_p1_t08_c4_operator_sequential.py              tests/unit/test_p1_t08_c4_scan_triplicate_review.py              tests/unit/test_p1_t08_trace_oracle.py              tests/unit/test_p1_t08_r07_fault_suite.py              > /tmp/c4_resume_test.private 2>&1; then
+            echo AXIA_C4_RESUME_L0_PASS
+          else
+            echo AXIA_C4_RESUME_L0_BLOCKED
+            exit 2
+          fi
+      - name: Delete private source and logs
+        if: always()
+        shell: bash
+        run: |
+          rm -rf _private
+          rm -f /tmp/c4_resume_test.private /tmp/c4_resume_plan.private
+          echo AXIA_C4_PRIVATE_CLEANUP_COMPLETE
+      - name: Limits
+        if: always()
+        run: echo 'C4_RETRY_LIVE=NOT_RUN G04_FULL=INCONCLUSIVE CERTIFIED_ESTOP=false'
