@@ -1,0 +1,88 @@
+name: AXIA P1 C4 pre-final-commit Goal receipt fix validation
+on:
+  push:
+    branches: [feat/secure-instructor-cloud-bridge]
+    paths:
+      - '.github/workflows/p1-c4-goal-receipt-precommit-ci.yml'
+permissions:
+  contents: read
+concurrency:
+  group: axia-p1-c4-goal-receipt-precommit
+  cancel-in-progress: false
+jobs:
+  scope-check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Declare no-motion scope
+        run: |
+          echo PRE_FINAL_COMMIT_PROBE=TRUE
+          echo ROS_JAZZY=NOT_RUN GAZEBO=NOT_RUN GOAL=NOT_RUN FAULT=NOT_RUN
+          echo INSTRUCTOR_MAIN_MERGE=NOT_REQUESTED
+  sealed-instructor-ci:
+    needs: scope-check
+    if: github.repository == 'silverbjin/axia-robot-safety-ci-public' && github.actor == 'silverbjin' && github.ref == 'refs/heads/feat/secure-instructor-cloud-bridge' && github.event_name == 'push'
+    environment:
+      name: axia-instructor-sealed
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      EXPECTED_PRIVATE_SHA: 'd58799c6617ebeb8fd41df06088db23b0855e2cb'
+    steps:
+      - name: Checkout public policy only
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Check sealed private read access
+        shell: bash
+        env:
+          T: ${{ secrets.AXIA_CLOUD_CI }}
+        run: |
+          set -euo pipefail
+          test -n "$T"
+      - name: Checkout pinned private CI probe snapshot
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 'd58799c6617ebeb8fd41df06088db23b0855e2cb'
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+          fetch-depth: 1
+          path: _private_probe
+      - name: Setup pure Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install minimal pytest
+        run: python -m pip install --quiet pytest==8.3.5
+      - name: Verify exact SHA, syntax and read-only scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd _private_probe
+          test "$(git rev-parse HEAD)" = "$EXPECTED_PRIVATE_SHA"
+          bash -n scripts/run_p1_t08_wsl2_field_capture.sh
+          python -m py_compile tools/p1_t08_goal_receipt.py
+          grep -q 'SUPERVISOR_GOAL_OWNERSHIP_NOT_VERIFIED' scripts/run_p1_t08_wsl2_field_capture.sh
+          echo C4_PRECOMMIT_GOAL_GUARD_SYNTAX_PASS
+      - name: Validate new Goal-observation and existing fail-closed oracles
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd _private_probe
+          if timeout 180s python -m pytest -q               tests/unit/test_p1_t08_goal_receipt.py               tests/unit/test_p1_t08_trace_oracle.py               tests/unit/test_p1_t08_c4_scan_triplicate_review.py               tests/unit/test_p1_t08_r07_fault_suite.py               > /tmp/axia_c4_goal_probe.private.log 2>&1; then
+            echo C4_PRECOMMIT_SEALED_L0_PASS
+          else
+            echo C4_PRECOMMIT_SEALED_L0_BLOCKED
+            exit 2
+          fi
+      - name: Delete private checkout and logs
+        shell: bash
+        if: always()
+        run: |
+          rm -rf _private_probe
+          rm -f /tmp/axia_c4_goal_probe.private.log
+          echo C4_PRECOMMIT_PRIVATE_CLEANUP_DONE
+      - name: Set verification scope
+        if: always()
+        run: echo 'L0_PYTHON_BASH_ONLY; GAZEBO=NOT_RUN; G04_FULL=INCONCLUSIVE; ESTOP=false'
