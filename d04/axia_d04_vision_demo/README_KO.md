@@ -48,3 +48,14 @@ ros2 launch axia_d04_vision_demo d04_p1_yolo.launch.py --show-args
 ```
 
 WSL2의 검증된 P1+YOLO 이전 원클릭 실행기는 별도 공개 CI 소스 `scripts/axia_d04_p1_yolo_wsl2_once.sh`입니다. 새 패키지 Launcher의 실제 P1 동시 실행은 별도 인수로 진행해야 하며 예전 실행 결과를 이 패키지의 실제 PASS로 주장하지 않습니다.
+
+## D04 화면에서 실제로 관찰할 변화
+
+- 로봇은 **이동하지 않습니다**. D04에서 Goal/Fault 주입을 금지하여 P1 안전 체인을 유지합니다.
+- Gazebo Actor `axia_d04_person`이 **6초 시뮬레이션 시간 주기로 좌우를 왕복**합니다. 사람은 시각적 Actor이며 물리 충돌 대상이 아닙니다.
+- WSLg 환경에서는 **Gazebo 창과 YOLO image_view 창**을 함께 관찰합니다. YOLO 창의 `person` 경계 상자와 confidence가 움직이는 사람을 따라 변경됩니다.
+- 진단 터미널에서는 `[D04][P1_GRAPH_BEFORE]` → `[D04][RGB_YOLO_PERSON]` → `[D04][PERSON]` → `[D04][PASS]`와 단계별 RUNNING 타이머가 표시됩니다. 단계 진행 중이라는 정보만으로 PASS로 판단하지 마십시오.
+- WSLg가 없거나 창이 표시되지 않더라도 `~/axia_d04_evidence/d04-package-*/live/debug_frame.png`와 `runtime.log`에서 검출 결과를 확인할 수 있습니다. 단일 PNG는 연속 움직임을 증명하지 않습니다.
+- 현장 스크립트는 `AXIA_D04_DEMO_HOLD_S=90`(최대 120초)로 YOLO 창 관찰 시간을 조정할 수 있습니다. 종료 후 WSL2에서 새 패키지의 `verdict.json`으로 실제 PASS 판정해야 합니다.
+
+**주의:** 배우의 위치 변화는 안전정지 시험이 아닙니다. P1 S02 물리 접촉, 주행 Goal, SW STOP 및 인증된 하드웨어 E-Stop은 이번 D04 시연 범위 밖입니다.
