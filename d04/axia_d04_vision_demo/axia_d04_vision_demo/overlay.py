@@ -66,9 +66,13 @@ def make_overlay(waffle: Path, pi: Path, world: Path, dae: Path, out: Path,
       <animation name="walk"><filename>{dae.resolve()}</filename>
       <interpolate_x>true</interpolate_x></animation>
       <script><loop>true</loop><auto_start>true</auto_start>
-        <trajectory id="0" type="walk">
+        <trajectory id="0" type="walk" tension="1.0">
+          <!-- A 6-s *simulation-time* loop. Camera-facing visual human only.
+               No actor collision, robot goal or cmd_vel side effects. -->
           <waypoint><time>0</time><pose>0.8 -0.5 1.0 0 0 3.14159</pose></waypoint>
-          <waypoint><time>300</time><pose>0.8 -0.5 1.0 0 0 3.14159</pose></waypoint>
+          <waypoint><time>2</time><pose>0.8 -0.72 1.0 0 0 3.14159</pose></waypoint>
+          <waypoint><time>4</time><pose>0.8 -0.28 1.0 0 0 3.14159</pose></waypoint>
+          <waypoint><time>6</time><pose>0.8 -0.5 1.0 0 0 3.14159</pose></waypoint>
         </trajectory>
       </script>
     </actor>""")
