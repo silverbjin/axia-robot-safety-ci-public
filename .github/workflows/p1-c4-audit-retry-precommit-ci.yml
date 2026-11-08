@@ -24,7 +24,7 @@ jobs:
     environment:
       name: axia-instructor-sealed
     env:
-      EXPECTED_PRIVATE_SHA: '15223497b3ba521d3f21127715e200a99f26bc42'
+      EXPECTED_PRIVATE_SHA: '8cc6fbd05e29880fe6daa3ccecdc2487ee497fd4'
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -37,7 +37,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: '15223497b3ba521d3f21127715e200a99f26bc42'
+          ref: '8cc6fbd05e29880fe6daa3ccecdc2487ee497fd4'
           token: ${{ secrets.AXIA_CLOUD_CI }}
           fetch-depth: 1
           persist-credentials: false
