@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
-      EXACT_PRIVATE_SHA: '3d070f0b89e77fa14806c2b118e719f6ab6afd36'
+      EXACT_PRIVATE_SHA: '72bf319cbf886287927ccc14b227fc1e3ecbcdc7'
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -36,7 +36,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: '3d070f0b89e77fa14806c2b118e719f6ab6afd36'
+          ref: '72bf319cbf886287927ccc14b227fc1e3ecbcdc7'
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
           fetch-depth: 1
