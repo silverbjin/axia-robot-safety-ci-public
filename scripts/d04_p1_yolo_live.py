@@ -47,8 +47,18 @@ def graph_oracle(root,env,out,label,timeout=125):
             "rc":r.returncode,"verdict":v.get("verdict",{}),"graph":v.get("graph",{})}
 
 def core_chain(graph):
+    """Normalize DDS endpoint order; compare topology, never array order."""
     topics=("/cmd_vel_smoothed","/cmd_vel_supervised","/cmd_vel")
-    return {k:graph[k] for k in topics if k in graph}
+    def norm_endpoint(ep):
+        return (ep.get("node_name",""),ep.get("node_namespace",""),
+                ep.get("topic_type",""))
+    return {
+        topic: {
+            key: sorted((norm_endpoint(v) for v in graph[topic].get(key,[])))
+            for key in ("publishers","subscriptions")
+        }
+        for topic in topics if topic in graph
+    }
 
 def sensor_sample(topic,kind,timeout=20):
     import rclpy
