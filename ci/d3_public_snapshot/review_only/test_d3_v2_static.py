@@ -69,3 +69,10 @@ def test_preview_model_removal_uses_documented_ros_parameters():
         assert 'ros2 run ros_gz_sim remove' in text
         assert '-p entity_name:=' in text
         assert '-entity d3_pedestrian_proxy' not in text
+
+
+def test_colcon_generated_output_directories_are_ignored():
+    ignore = ROOT / '.gitignore'
+    entries = ignore.read_text().splitlines()
+    for item in ('/build/', '/install/', '/log/'):
+        assert item in entries, item

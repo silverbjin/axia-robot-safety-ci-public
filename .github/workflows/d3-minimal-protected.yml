@@ -39,7 +39,8 @@ jobs:
           test "$(git hash-object ci/d3_public_snapshot/training/d03/d3_demo/scripts/d3_session.sh)" = "11d50ea09e2768a68f075919217673cb2f821cf5"
           test "$(git hash-object ci/d3_public_snapshot/setup.py)" = "21337fd41323b3bb40b5fd26d5cba8c245deed4b"
           test "$(git hash-object ci/d3_public_snapshot/training/d03/d3_demo/scripts/d3_wsl2_prepare_once.sh)" = "217a548d47558a39689d69b9a1ae74be883156a3"
-          test "$(git hash-object ci/d3_public_snapshot/review_only/test_d3_v2_static.py)" = "f549600c3c730c38f479ed4abfc6b852a293fddd"
+          test "$(git hash-object ci/d3_public_snapshot/review_only/test_d3_v2_static.py)" = "4f0400244e157bda9882c4878df45d8f9ee9ee11"
+          test "$(git hash-object ci/d3_public_snapshot/review_only/instructor.gitignore)" = "eced4013ba86186f5a2510eb566437717fea6cba"
           echo D3_REVIEWED_BLOB_SHA_ALL_MATCH
       - name: Python contracts, moving proxy and scenario fail-closed tests
         shell: bash
@@ -72,6 +73,9 @@ jobs:
               assert 'set -u' in c[i:], n
           s=(src/'run_d3_preview.sh').read_text()
           assert '-p entity_name:=d3_pedestrian_proxy' in s
-          print('D3_ROS_NOUNSET_AND_REMOVE_STATIC_PASS')
+          ignores=(Path('ci/d3_public_snapshot/review_only/instructor.gitignore').read_text().splitlines())
+          for item in ('/build/','/install/','/log/'):
+              assert item in ignores, item
+          print('D3_ROS_NOUNSET_REMOVE_AND_COLCON_IGNORE_STATIC_PASS')
           PY
           echo D3_PUBLIC_SAFE_PYTHON_BASH_SDF_PASS_ROS_GAZEBO_NOT_RUN

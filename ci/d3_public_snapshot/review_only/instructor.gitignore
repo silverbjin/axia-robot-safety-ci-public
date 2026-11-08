@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+evidence/
+.superpowers/
+.worktrees/
+results/
+/build/
+/install/
+/log/
