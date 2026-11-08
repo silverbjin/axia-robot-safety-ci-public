@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
-      EXACT_PRIVATE_SHA: '7f73d925592accdd2c6ca226c436c40ec6f100fb'
+      EXACT_PRIVATE_SHA: '653ef49c30973c57a9fcc34b7b2fcc185bc84d95'
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -36,7 +36,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: '7f73d925592accdd2c6ca226c436c40ec6f100fb'
+          ref: '653ef49c30973c57a9fcc34b7b2fcc185bc84d95'
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
           fetch-depth: 1
@@ -75,7 +75,7 @@ jobs:
           cd _private
           python -m py_compile scripts/p1_r08_local_signoff_prepare.py
           if timeout 90s python -m pytest -q tests/unit/test_p1_r08_local_signoff_prepare.py > /tmp/r08_signoff_private 2>&1; then
-            echo 'R08_OWNER_SIGNOFF_PREP_13_SYNTHETIC_PASS'
+            echo 'R08_OWNER_SIGNOFF_PREP_TTY_REPLAY_REGRESSIONS_PASS'
           else
             grep -E '^(FAILED|ERROR|[0-9]+ failed|[0-9]+ error|E  )' /tmp/r08_signoff_private | head -35 | sed -E 's#(/home/[^ ]+|/tmp/[^ ]+)#<PRIVATE_PATH>#g' || true
             echo 'R08_OWNER_SIGNOFF_PREP_BLOCKED'
