@@ -71,7 +71,7 @@ def simple_world() -> str:
 <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
 <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
 <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
-  <render_engine>ogre2</render_engine>
+  <render_engine>ogre</render_engine>
 </plugin>
 <light name="key_light" type="directional"><pose>0 0 5 0 0 0</pose>
 <diffuse>0.85 0.85 0.85 1</diffuse><specular>0.15 0.15 0.15 1</specular>
@@ -165,6 +165,7 @@ def _probe():
         "status": "BLOCKED_OR_INCONCLUSIVE",
         "source_head_sha": os.environ.get("AXIA_TESTED_HEAD_SHA", "UNVERIFIED"),
         "official_model": "turtlebot3_waffle_pi",
+        "renderer_under_test": "ogre_xvfb_software",
         "human_added": False, "yolo_executed": False, "p1_executed": False,
         "goal_sent": False, "fault_injected": False,
         "command_published": False, "p1_acceptance": False,
@@ -212,7 +213,7 @@ def _probe():
         elif info_bridge.poll() is not None:
             verdict["blocker"] = "CAMERA_INFO_BRIDGE_EXITED_BEFORE_FRAME"
         else:
-            rgb, info = _read_ros_frames(EXPECTED_IMAGE_TOPIC, EXPECTED_INFO_TOPIC, timeout_s=100)
+            rgb, info = _read_ros_frames(EXPECTED_IMAGE_TOPIC, EXPECTED_INFO_TOPIC, timeout_s=55)
             verdict["ros_image"] = rgb
             verdict["ros_camera_info"] = info
             if valid_rgb(rgb) and valid_camera_info(info):
@@ -221,6 +222,18 @@ def _probe():
                 verdict["blocker"] = ("NO_RGB_FRAME" if rgb is None else
                                       "INVALID_RGB_FRAME" if not valid_rgb(rgb) else
                                       "NO_VALID_CAMERA_INFO")
+        # Distinguish an advertised Gazebo topic from a topic carrying data.
+        # These CLI samplers intentionally time out; samples remain as evidence.
+        for topic, filename in (("/clock", "gz_clock_sample.txt"),
+                                (EXPECTED_INFO_TOPIC, "gz_camera_info_sample.txt")):
+            try:
+                sample = subprocess.run(["gz", "topic", "-e", "-t", topic], env=env,
+                                        capture_output=True, text=True, timeout=4, check=False)
+                raw_text = sample.stdout + "\\n" + sample.stderr
+            except subprocess.TimeoutExpired as exc:
+                raw_text = (exc.stdout or b"").decode("utf-8", "replace") if isinstance(exc.stdout, bytes) else (exc.stdout or "")
+            (out / filename).write_text(raw_text[:8000], encoding="utf-8")
+            verdict[filename.replace(".txt","_bytes")] = len(raw_text)
         # Distinguish an advertised Gazebo transport topic from actual sensor data.
         raw_info = subprocess.run(["gz", "topic", "-i", "-t", EXPECTED_IMAGE_TOPIC],
                                    env=env, capture_output=True, text=True,
