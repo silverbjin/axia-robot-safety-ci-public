@@ -3,7 +3,7 @@
 set -Eeuo pipefail
 umask 077
 PUBLIC_SHA="${AXIA_D04_PUBLIC_SHA:-}"
-PRIVATE_SHA="779868ff3145410b5de7a645cc2d3a4f359adbf1"
+PRIVATE_SHA="c1b92d9dd3dd2cd038db16253102542d120ea87e"
 P1_REPO="silverbjin/axia-robot-safety-instructor"
 P1_BRANCH="feature/d04-yolo-ros-package-20261109"
 CI_REPO="silverbjin/axia-robot-safety-ci-public"
