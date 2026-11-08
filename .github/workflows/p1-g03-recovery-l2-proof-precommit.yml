@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
-      EXACT_PRIVATE_SHA: 'ee3a48689329f8316ed154f682156e4b6f2905ef'
+      EXACT_PRIVATE_SHA: 'c4886dcdcc8f5cf9212772ad0a9c452c7c80b7d8'
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -36,7 +36,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 'ee3a48689329f8316ed154f682156e4b6f2905ef'
+          ref: 'c4886dcdcc8f5cf9212772ad0a9c452c7c80b7d8'
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
           fetch-depth: 1
@@ -66,6 +66,19 @@ jobs:
           else
             grep -E '^(FAILED|ERROR|[0-9]+ failed|[0-9]+ error|E  )' /tmp/r08_synthetic_private | head -35 | sed -E 's#(/home/[^ ]+|/tmp/[^ ]+)#<PRIVATE_PATH>#g' || true
             echo R08_SCOPED_SYNTHETIC_BLOCKED
+            exit 2
+          fi
+      - name: R08 Owner local-signoff A/B/C read-only contract (no real evidence)
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd _private
+          python -m py_compile scripts/p1_r08_local_signoff_prepare.py
+          if timeout 90s python -m pytest -q tests/unit/test_p1_r08_local_signoff_prepare.py > /tmp/r08_signoff_private 2>&1; then
+            echo 'R08_OWNER_SIGNOFF_PREP_13_SYNTHETIC_PASS'
+          else
+            grep -E '^(FAILED|ERROR|[0-9]+ failed|[0-9]+ error|E  )' /tmp/r08_signoff_private | head -35 | sed -E 's#(/home/[^ ]+|/tmp/[^ ]+)#<PRIVATE_PATH>#g' || true
+            echo 'R08_OWNER_SIGNOFF_PREP_BLOCKED'
             exit 2
           fi
       - name: Integration docs and main-approved conflict resolutions
@@ -100,7 +113,7 @@ jobs:
         if: always()
         run: |
           rm -rf _private
-          rm -f /tmp/g03_plan_private /tmp/g03_test_private /tmp/r08_synthetic_private
+          rm -f /tmp/g03_plan_private /tmp/g03_test_private /tmp/r08_synthetic_private /tmp/r08_signoff_private
           echo 'G03_L2_PRECOMMIT_PRIVATE_CLEANUP'
       - name: Testing limits
         if: always()
