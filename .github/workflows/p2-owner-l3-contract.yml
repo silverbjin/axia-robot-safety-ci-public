@@ -78,8 +78,11 @@ jobs:
       - name: Jazzy Action status transient-local QoS / no runtime Goal or Fault
         shell: bash
         run: |
-          set -euo pipefail
+          set -eo pipefail
+          # Jazzy setup scripts expect certain vars unset; source before nounset.
+          set +u
           source /opt/ros/jazzy/setup.bash
+          set -u
           python3 - <<'PY'
           from rclpy.qos import QoSProfile, QoSDurabilityPolicy, QoSReliabilityPolicy
           q=QoSProfile(depth=10)

@@ -6,6 +6,10 @@ ROOT=Path(__file__).resolve().parents[1]
 SCRIPT=ROOT/'scripts/axia_p2_owner_l3_once.sh'
 
 class PublicOwnerL3Contract(unittest.TestCase):
+    def test_jazzy_setup_sourced_before_nounset(self):
+        w=(ROOT/'.github/workflows/p2-owner-l3-contract.yml').read_text()
+        assert 'set +u\n          source /opt/ros/jazzy/setup.bash\n          set -u' in w
+
     def test_bash_syntax(self):
         self.assertEqual(subprocess.run(['bash','-n',str(SCRIPT)]).returncode,0)
     def test_offline_selfcheck(self):
