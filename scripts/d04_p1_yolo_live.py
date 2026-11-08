@@ -104,7 +104,7 @@ def execute(a):
         launch=[
             "ros2","launch",str(private/"ros2_ws/src/axia_safety_bringup/launch/axia_tb3_p1.launch.py"),
             "robot_sdf:="+overlay["robot_sdf"],"world:="+overlay["world"],
-            "headless:=True","use_rviz:=False","use_composition:=False",
+            ("headless:=False" if a.gui else "headless:=True"),"use_rviz:=False","use_composition:=False",
             "autostart:=true","allow_fault_injection:=false"]
         _start("p1_gazebo_nav2",launch,env,out,processes)
         before=graph_oracle(private,env,out,"before",timeout=140)
@@ -121,7 +121,7 @@ def execute(a):
         params.write_text(model_yaml(a.onnx))
         _start("yolo_node",["ros2","launch","yolo_bringup","yolo.launch.py",
                            "params_file:="+str(params.resolve())],env,out,processes)
-        during=graph_oracle(private,env,out,"during",timeout=65)
+        if a.gui:\n            # Optional GUI observer, not part of safety gate or YOLO oracle.\n            _start("yolo_image_view",["ros2","run","image_view","image_view",\n                       "--ros-args","-r","image:=/yolo/cam0/debug_image"],env,out,processes)\n        during=graph_oracle(private,env,out,"during",timeout=65)
         verdict["graph_during_verdict"]=during.get("verdict")
         if not during["passed"]:
             raise RuntimeError("P1 graph disrupted by D04 vision sidecar")
@@ -135,7 +135,7 @@ def execute(a):
         verdict["debug_saved"]=vision.get("debug_saved") is True
         if not all(verdict[k] for k in ("person_valid","rgb_valid","debug_saved")):
             raise RuntimeError("No actual person/bbox/debug in P1 mixed Gazebo")
-        verdict["status"]="PASS_P1_GRAPH_UNCHANGED_REAL_PERSON"
+        verdict["status"]="PASS_P1_GRAPH_UNCHANGED_REAL_PERSON"\n        if a.gui and a.display_hold>0:\n            time.sleep(min(a.display_hold,60))
     except Exception as exc:
         verdict["blocker"]=type(exc).__name__+": "+str(exc)[:400]
     finally:
@@ -152,5 +152,5 @@ if __name__=="__main__":
     for k in ("instructor","waffle","pi","world","actor","onnx","out"):
         p.add_argument("--"+k,required=True,type=Path)
     p.add_argument("--p1-sha",required=True)
-    p.add_argument("--cpu-renderer",action="store_true")
+    p.add_argument("--cpu-renderer",action="store_true")\n    p.add_argument("--gui",action="store_true",help="Show Gazebo and image_view if WSLg is available")\n    p.add_argument("--display-hold",type=int,default=0)
     raise SystemExit(execute(p.parse_args()))
