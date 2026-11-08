@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
-      EXACT_PRIVATE_SHA: 'bf3cdb8ee287b3c0d2ba04c3a0bcc085e38ada72'
+      EXACT_PRIVATE_SHA: 'ea2f342dfa322719ec27f913bc3c7e3a6f5d496e'
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -36,7 +36,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 'bf3cdb8ee287b3c0d2ba04c3a0bcc085e38ada72'
+          ref: 'ea2f342dfa322719ec27f913bc3c7e3a6f5d496e'
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
           fetch-depth: 1
@@ -76,6 +76,7 @@ jobs:
           if timeout 180s python -m pytest -q             tests/unit/test_p1_t08_g03_recovery_sidecar.py             tests/unit/test_p1_t08_g03_recovery_path_contract.py             tests/unit/test_p1_t08_r08_scoped_final.py             tests/unit/test_p1_t08_c4_operator_sequential.py             tests/unit/test_p1_t08_c4_scan_triplicate_review.py             tests/unit/test_p1_t08_c4_resume.py             tests/unit/test_p1_t08_trace_oracle.py             > /tmp/g03_test_private 2>&1; then
               echo 'G03_L2_PRECOMMIT_PROTECTED_L0_PASS'
           else
+              grep -E '^(FAILED|ERROR|[0-9]+ failed|[0-9]+ error|E  )' /tmp/g03_test_private | head -35 | sed -E 's#(/home/[^ ]+|/tmp/[^ ]+)#<PRIVATE_PATH>#g' || true
               echo 'G03_L2_PRECOMMIT_PROTECTED_L0_BLOCKED'
               exit 2
           fi
