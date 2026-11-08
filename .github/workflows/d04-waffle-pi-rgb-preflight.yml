@@ -49,7 +49,7 @@ jobs:
       - name: Print exact ROS and Waffle Pi package versions
         shell: bash
         run: |
-          set -euo pipefail
+          set -eo pipefail
           source /opt/ros/jazzy/setup.bash
           dpkg-query -W ros-jazzy-turtlebot3-gazebo ros-jazzy-ros-gz
           ros2 pkg prefix turtlebot3_gazebo
