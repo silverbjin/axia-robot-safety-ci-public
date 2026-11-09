@@ -113,9 +113,33 @@ jobs:
           git clone https://github.com/mgonzs13/yolo_ros.git /tmp/axia-yolo-ws/src/yolo_ros
           git -C /tmp/axia-yolo-ws/src/yolo_ros checkout --detach 94d2dd500cb26027ee9c019f4d3a02029ac615cc
           test "$(git -C /tmp/axia-yolo-ws/src/yolo_ros rev-parse HEAD)" = "94d2dd500cb26027ee9c019f4d3a02029ac615cc"
+          # Upstream vendor's bare curl -L can accept a transient 92-byte
+          # GitHub release error page and then fail extracting it as a tarball.
+          # Fetch only the official Microsoft release asset with strict checks.
+          ORT=/tmp/axia-ort-cache/onnxruntime-linux-x64-1.20.0.tgz
+          mkdir -p /tmp/axia-ort-cache
+          for url in \
+            'https://github.com/microsoft/onnxruntime/releases/download/v1.20.0/onnxruntime-linux-x64-1.20.0.tgz' \
+            'https://api.github.com/repos/microsoft/onnxruntime/releases/assets/202999196'; do
+            if curl --fail --location --retry 4 --retry-all-errors --retry-delay 2 \
+                --connect-timeout 15 --max-time 130 \
+                -H 'Accept: application/octet-stream' -o "${ORT}.tmp" "$url" \
+               && test "$(stat -c %s "${ORT}.tmp")" = "6184676" \
+               && tar -tzf "${ORT}.tmp" | grep -q 'lib/libonnxruntime.so'; then
+              mv -f "${ORT}.tmp" "$ORT"
+              break
+            fi
+            rm -f "${ORT}.tmp"
+          done
+          test -s "$ORT"
+          test "$(stat -c %s "$ORT")" = "6184676"
+          tar -tzf "$ORT" >/dev/null
+          echo "OFFICIAL_ONNXRUNTIME_1_20_0_ARCHIVE_VERIFIED"
+          sha256sum "$ORT"
           cd /tmp/axia-yolo-ws
           colcon build --merge-install --executor sequential --packages-up-to yolo_bringup \
             --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF \
+            -DONNXRUNTIME_URL=file:///tmp/axia-ort-cache/onnxruntime-linux-x64-1.20.0.tgz \
             --event-handlers console_direct+
           source install/setup.bash
           ros2 pkg prefix yolo_bringup
