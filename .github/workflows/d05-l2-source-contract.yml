@@ -1,0 +1,28 @@
+name: AXIA D05 L2 public source contract only (NO ROS)
+on:
+  push:
+    branches: ['feature/d05-real-rgbd-l2-20261110']
+    paths:
+      - 'scripts/d05_*.py'
+      - 'tests/test_d05_*.py'
+      - '.github/workflows/d05-l2-source-contract.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-l0:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: |
+          set -euo pipefail
+          python -m pip install -q pytest==8.3.5
+          python -m compileall -q scripts/d05_rgbd_gazebo_scene.py \
+             scripts/d05_rgbd_sensor_preflight.py scripts/d05_real_rgbd_l2_gate.py
+          python -m pytest -q tests/test_d05_rgbd_scene.py tests/test_d05_real_l2_contract.py
