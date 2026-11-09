@@ -1,0 +1,105 @@
+name: AXIA P2 G06 targeted Guard loss (no Gazebo / no Goal / no Fault)
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths:
+      - '.github/workflows/p2-g06-cm-timeout-protected.yml'
+      - 'scripts/axia_p2_owner_l3_once.sh'
+      - 'tests/test_p2_owner_l3_once.py'
+  pull_request:
+    paths:
+      - '.github/workflows/p2-g06-cm-timeout-protected.yml'
+      - 'scripts/axia_p2_owner_l3_once.sh'
+      - 'tests/test_p2_owner_l3_once.py'
+permissions:
+  contents: read
+concurrency:
+  group: axia-p2-g06-targeted-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  public-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Pinned Owner script is safe and exact; no motion
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n scripts/axia_p2_owner_l3_once.sh
+          python3 -m unittest discover -s tests -p test_p2_owner_l3_once.py -v
+          echo 'P2_G06_PUBLIC_BOOTSTRAP_CONTRACT_PASS_NO_GOAL_NO_FAULT'
+  private-l0:
+    needs: public-contract
+    if: github.event_name == 'push' && github.ref == 'refs/heads/release/p2-g06-cm-ttl-20261110'
+    environment: axia-instructor-sealed
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 276c13d4d046df0f0ee73e7953d7639f312e0029
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Exact private SHA; impacted G06 Guard and Cancel regression ONLY
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = "276c13d4d046df0f0ee73e7953d7639f312e0029"
+          python3 -m pip install --disable-pip-version-check --quiet pytest==8.3.5
+          python3 -m pytest -q -ra tests/unit/test_p2_base_guard_policy.py tests/unit/test_p2_guard_cancel_contract.py tests/unit/test_p2_evidence_oracles.py
+          python3 -m py_compile ros2_ws/src/axia_safety_supervisor/axia_safety_supervisor/p2_base_guard_policy.py tools/p2_guard_ros_smoke.py
+          bash -n scripts/p2_guard_ros_smoke_ci.sh
+          echo 'P2_G06_PRIVATE_TARGETED_L0_PASS_GAZEBO_NOT_RUN'
+      - name: Delete private checkout
+        if: always()
+        shell: bash
+        run: rm -rf -- ros2_ws tools scripts docs configs tests .git
+  private-l1-cm-loss:
+    needs: private-l0
+    if: github.event_name == 'push' && github.ref == 'refs/heads/release/p2-g06-cm-ttl-20261110'
+    environment: axia-instructor-sealed
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    container:
+      image: ros:jazzy-ros-base-noble
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 276c13d4d046df0f0ee73e7953d7639f312e0029
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Install only real ROS2 Jazzy Guard middleware deps
+        shell: bash
+        run: |
+          set -eo pipefail
+          apt-get update -qq >/dev/null
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+            python3-colcon-common-extensions ros-jazzy-rclpy ros-jazzy-geometry-msgs \
+            ros-jazzy-std-msgs ros-jazzy-std-srvs ros-jazzy-sensor-msgs \
+            ros-jazzy-nav2-msgs ros-jazzy-action-msgs ros-jazzy-lifecycle-msgs >/dev/null
+      - name: Real Jazzy Guard: fresh Supervisor, CM stream lost, zero latched <=300ms
+        shell: bash
+        env:
+          ROS_DOMAIN_ID: '58'
+          ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+        run: |
+          set -eo pipefail
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = "276c13d4d046df0f0ee73e7953d7639f312e0029"
+          set +u
+          source /opt/ros/jazzy/setup.bash
+          set -u
+          colcon build --base-paths ros2_ws/src --packages-select axia_safety_supervisor --event-handlers console_cohesion+ >/tmp/p2_g06_build.log 2>&1 || {
+            tail -n 60 /tmp/p2_g06_build.log
+            exit 1
+          }
+          timeout --signal=TERM --kill-after=8s 80s bash scripts/p2_guard_ros_smoke_ci.sh --drop-source collision_monitor
+          echo 'P2_G06_JAZZY_CM_LOSS_L1_PASS_NO_GAZEBO_NO_GOAL_NO_FAULT'
+      - name: Delete private checkout
+        if: always()
+        shell: bash
+        run: rm -rf -- ros2_ws tools scripts docs configs tests build install log .git
