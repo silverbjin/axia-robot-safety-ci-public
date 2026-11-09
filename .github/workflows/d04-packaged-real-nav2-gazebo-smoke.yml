@@ -7,11 +7,13 @@ on:
       - 'scripts/d04_package_nav2_real_smoke.py'
       - 'scripts/d04_packaged_stability_3x.py'
       - 'scripts/d04_nav2_orderly_shutdown.py'
+      - 'scripts/d04_nav2_initialpose_ready.py'
       - 'scripts/d04_bbox_motion_gate.py'
       - 'scripts/d04_yolo_person_runtime.py'
       - 'tests/test_d04_closeout.py'
       - 'scripts/d04_packaged_stability_3x.py'
       - 'scripts/d04_nav2_orderly_shutdown.py'
+      - 'scripts/d04_nav2_initialpose_ready.py'
       - 'scripts/d04_bbox_motion_gate.py'
       - 'scripts/d04_yolo_person_runtime.py'
       - 'tests/test_d04_closeout.py'
@@ -42,7 +44,7 @@ jobs:
         run: |
           set -euo pipefail
           python -m pip install pytest==8.3.5
-          python -m compileall -q scripts/d04_package_nav2_real_smoke.py scripts/d04_yolo_person_runtime.py scripts/d04_packaged_stability_3x.py scripts/d04_bbox_motion_gate.py scripts/d04_nav2_orderly_shutdown.py
+          python -m compileall -q scripts/d04_package_nav2_real_smoke.py scripts/d04_yolo_person_runtime.py scripts/d04_packaged_stability_3x.py scripts/d04_bbox_motion_gate.py scripts/d04_nav2_orderly_shutdown.py scripts/d04_nav2_initialpose_ready.py
           python -m pytest -q tests/test_d04_closeout.py tests/test_d04_packaged_nav2_real_smoke.py tests/test_d04_nav2_headless_regression.py tests/test_d04_yolo_person_runtime.py tests/test_d04_waffle_pi_rgb_preflight.py
 
   external-assets:
@@ -97,6 +99,7 @@ jobs:
             ros-jazzy-nav2-bringup ros-jazzy-nav2-minimal-tb3-sim ros-jazzy-navigation2 \
             ros-jazzy-image-view ros-jazzy-xacro \
             ros-jazzy-rclpy ros-jazzy-sensor-msgs ros-jazzy-cv-bridge \
+            ros-jazzy-geometry-msgs ros-jazzy-std-srvs \
             ros-jazzy-pluginlib ros-jazzy-vision-msgs ros-jazzy-message-filters \
             ros-jazzy-tf2-ros ros-jazzy-lifecycle-msgs \
             libcurl4-openssl-dev libopencv-dev python3-opencv python3-numpy \
