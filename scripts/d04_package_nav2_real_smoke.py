@@ -18,6 +18,7 @@ import time
 
 from d04_waffle_pi_rgb_preflight import _start, _stop_all, sync_ros_discovery_environment
 from d04_nav2_orderly_shutdown import request_nav2_shutdown
+from d04_nav2_initialpose_ready import request_initialpose_ready
 from d04_yolo_person_runtime import (
     _watch_detections_and_images, valid_rgb, valid_person,
     PINNED_ONNX_SHA256,
@@ -96,6 +97,9 @@ def run() -> int:
         _start("installed_d04_package",cmd,env,out,processes)
         # Authentic rclpy subscriptions; only real Gazebo Image may satisfy the gate.
         print("[D04][L2] Executing installed D04 package / official Nav2 / real Gazebo + person ONNX",flush=True)
+        verdict["nav2_initialpose_ready"]=request_initialpose_ready(env,out,timeout_s=70)
+        if verdict["nav2_initialpose_ready"].get("passed") is not True:
+            raise RuntimeError("Nav2 initial pose/localization not ACTIVE; refuse shutdown while planner activation is pending")
         seen=_watch_detections_and_images(out,duration_s=135,require_motion=True)
         verdict["ros_evidence"]=seen
         verdict["rgb_valid"]=bool(seen.get("first_image") and valid_rgb(seen["first_image"]))
