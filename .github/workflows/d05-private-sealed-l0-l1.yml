@@ -1,0 +1,67 @@
+name: AXIA D05 sealed private depth L0/L1 (NO GOAL / NO SIM)
+on:
+  push:
+    branches: ['preflight/d04-p1-yolo-integration-20261108']
+    paths:
+      - '.github/workflows/d05-private-sealed-l0-l1.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  private-depth-l0-l1:
+    if: github.repository == 'silverbjin/axia-robot-safety-ci-public'
+    environment: axia-instructor-sealed
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    container:
+      image: ros:jazzy-ros-base-noble
+    env:
+      DEBIAN_FRONTEND: noninteractive
+      D05_PINNED_INSTRUCTOR_SHA: '7404f1f22da77a59b5986f082b6c32ca9e269955'
+    steps:
+      - name: Checkout sealed instructor source at exact reviewed SHA (no upload)
+        uses: actions/checkout@v4
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 7404f1f22da77a59b5986f082b6c32ca9e269955
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          path: private_instructor
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Exact source identity + minimal Jazzy build dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C private_instructor rev-parse HEAD)" = "$D05_PINNED_INSTRUCTOR_SHA"
+          echo "D05_EXACT_PRIVATE_SHA_CONFIRMED"
+          apt-get update -qq
+          apt-get install -y -qq --no-install-recommends \
+            python3-pytest python3-colcon-common-extensions \
+            ros-jazzy-rclpy ros-jazzy-sensor-msgs ros-jazzy-std-msgs
+      - name: L0 actual private Python contracts (do not print source)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m compileall -q private_instructor/ros2_ws/src/axia_d05_depth_demo
+          python3 -m pytest -q --tb=no --disable-warnings \
+            private_instructor/ros2_ws/src/axia_d05_depth_demo/test \
+            private_instructor/training/block_B/tests \
+            private_instructor/training/block_B/instructor/hidden_tests
+          echo "D05_PRIVATE_L0_PASS; ROS_AND_GAZEBO_NOT_TESTED"
+      - name: L1 actual Jazzy colcon build and installed entrypoint check
+        shell: bash
+        run: |
+          set -eo pipefail
+          source /opt/ros/jazzy/setup.bash
+          colcon build --base-paths private_instructor/ros2_ws/src \
+            --packages-select axia_d05_depth_demo \
+            --executor sequential --event-handlers console_direct+
+          source install/setup.bash
+          test -n "$(ros2 pkg prefix axia_d05_depth_demo)"
+          ros2 pkg executables axia_d05_depth_demo | grep -F 'd05_range_observer'
+          echo "D05_JAZZY_PACKAGE_L1_PASS; ALIGNED_RGBD_GAZEBO_L2_NOT_RUN"
+      - name: Remove sealed source and build outputs (no public artifact)
+        if: always()
+        shell: bash
+        run: |
+          rm -rf -- private_instructor build install log || true
