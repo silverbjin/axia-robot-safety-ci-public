@@ -27,11 +27,16 @@ class PublicOwnerL3Contract(unittest.TestCase):
 
     def test_bash_syntax(self):
         self.assertEqual(subprocess.run(['bash','-n',str(SCRIPT)]).returncode,0)
+    def test_bootstrap_tracks_targeted_private_ref(self):
+        source=SCRIPT.read_text()
+        self.assertIn("readonly BRANCH='fix/p2-g06-cm-ttl-20261110'",source)
+        self.assertIn("readonly SHA='276c13d4d046df0f0ee73e7953d7639f312e0029'",source)
+
     def test_offline_selfcheck(self):
         p=subprocess.run(['bash',str(SCRIPT),'--self-check'],capture_output=True,text=True)
         self.assertEqual(p.returncode,0,p.stderr)
         self.assertIn('L3_NOT_RUN',p.stdout)
-        self.assertIn('d5be4b55a935c0c4d9ca3ff895ce44090ef07fd5',p.stdout)
+        self.assertIn('276c13d4d046df0f0ee73e7953d7639f312e0029',p.stdout)
     def test_noninteractive_always_refused(self):
         p=subprocess.run(['bash',str(SCRIPT)],stdin=subprocess.DEVNULL,capture_output=True,text=True)
         self.assertEqual(p.returncode,2,p.stdout+p.stderr)
