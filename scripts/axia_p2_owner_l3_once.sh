@@ -3,7 +3,7 @@
 set -Eeuo pipefail
 umask 077
 readonly REPO='silverbjin/axia-robot-safety-instructor'
-readonly BRANCH='feat/p2-t07-owner-physical-acceptance-20261108'
+readonly BRANCH='integration/p1-p2-mvp-shell-consent-20261110'
 readonly SHA='d5be4b55a935c0c4d9ca3ff895ce44090ef07fd5'
 if [[ "${1:-}" == '--self-check' ]]; then
   [[ $# == 1 && "$SHA" =~ ^[0-9a-f]{40}$ ]] || exit 2
