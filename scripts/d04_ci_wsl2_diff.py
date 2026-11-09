@@ -275,7 +275,7 @@ def build_report(evidence: Path, output: Path, *, collect_host: bool = True) -> 
     md = [
         "# AXIA D04 — 공개 CI / WSL2 실제 실행 차이 분석",
         "",
-        f"- Evidence: \`{evidence}\`",
+        f"- Evidence: `{evidence}`",
         f"- Runtime: **{refs['runtime_status']}**, gate RC={refs['gate_exit']}",
         "- 모델 및 사람 에셋: 기존 WSL2 로그에서 SHA256 OK; 이 진단은 재다운로드하지 않음",
         f"- P1 graph: **{'PASS' if graph['ready'] else 'BLOCKED'}**",
@@ -312,14 +312,14 @@ def build_report(evidence: Path, output: Path, *, collect_host: bool = True) -> 
         md.append(f"{n}. **{obj['id']}** [{obj['level']}]: {obj['detail']}")
     md += ["", "## 실제 Launch 로그의 오류 근거 (자동 추출)", ""]
     if bad_logs:
-        md += ["\`\`\`text", *bad_logs[:35], "\`\`\`"]
+        md += ["```text", *bad_logs[:35], "```"]
     else:
         md.append("오류 정규식에 맞는 줄이 없거나 로그가 없습니다. 최초 오류의 부재를 증명하지 않습니다.")
     md += ["", "## 현재 환경 및 WSLg 점검", ""]
     if collect_host:
         for k in ("DISPLAY", "WAYLAND_DISPLAY", "ROS_DOMAIN_ID", "GZ_PARTITION",
                   "LIBGL_ALWAYS_SOFTWARE", "GALLIUM_DRIVER"):
-            md.append(f"- \`{k}\`: \`{host['variables'].get(k,'')}\`")
+            md.append(f"- `{k}`: `{host['variables'].get(k,'')}`")
         md.append(f"- X11 연결 검사: **{host['xdpyinfo'].get('status')}**")
         md.append(f"- OpenGL 검사: **{host['glxinfo'].get('status')}**")
         md.append(f"- WSL 감지: **{host['wsl_detected']}**")
@@ -329,9 +329,9 @@ def build_report(evidence: Path, output: Path, *, collect_host: bool = True) -> 
     md += [
         "", "## 후속 진단 순서",
         "",
-        "1. \`live/package_launch.log\` 최초 ERROR/Traceback 및 xacro/Gazebo 실행 오류 확인",
-        "2. \`live/graph_first.json\`의 세 토픽 발행자·구독자 / ROS_DOMAIN_ID 확인",
-        "3. \`DISPLAY\`, \`xdpyinfo\`, \`glxinfo\`로 GUI 경로 분리 검사",
+        "1. `live/package_launch.log` 최초 ERROR/Traceback 및 xacro/Gazebo 실행 오류 확인",
+        "2. `live/graph_first.json`의 세 토픽 발행자·구독자 / ROS_DOMAIN_ID 확인",
+        "3. `DISPLAY`, `xdpyinfo`, `glxinfo`로 GUI 경로 분리 검사",
         "4. P1 기동을 수정해 실제 그래프 PASS 이후에만 /camera/image_raw와 YOLO person 판단",
         "5. 종료 중 planner_server SIGABRT는 독립 이슈로 취급",
         "",
