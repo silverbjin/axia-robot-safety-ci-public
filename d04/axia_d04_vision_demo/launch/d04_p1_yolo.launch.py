@@ -29,6 +29,21 @@ def _cleanup(_context, folder):
     return []
 
 
+def normalize_nav2_boolean(value: str) -> str:
+    """Canonical Python bool spelling required by official Jazzy Nav2.
+
+    nav2_bringup/tb3_simulation_launch.py uses
+    PythonExpression([use_simulator, ' and not ', headless]).
+    Lower-case 'false' raises NameError before simulator startup.
+    """
+    v = str(value).strip().lower()
+    if v in ("true", "1", "yes", "on"):
+        return "True"
+    if v in ("false", "0", "no", "off"):
+        return "False"
+    raise ValueError("Invalid Nav2 headless boolean: " + str(value))
+
+
 def _launch_setup(context):
     p1 = Path(LaunchConfiguration("p1_launch").perform(context)).expanduser().resolve()
     model = Path(LaunchConfiguration("onnx_model").perform(context)).expanduser().resolve()
@@ -62,11 +77,11 @@ def _launch_setup(context):
             "robot_sdf": overlay["robot_sdf"],
             "world": overlay["world"],
             "use_rviz": LaunchConfiguration("use_rviz"),
-            "headless": LaunchConfiguration("headless"),
-            "use_composition": "false",
-            "autostart": "true",
-            "allow_fault_injection": "false",
-            "use_sim_time": "true",
+            "headless": normalize_nav2_boolean(LaunchConfiguration("headless").perform(context)),
+            "use_composition": "False",
+            "autostart": "True",
+            "allow_fault_injection": "False",
+            "use_sim_time": "True",
         }.items(),
     )
     image_bridge = Node(
@@ -109,7 +124,7 @@ def generate_launch_description():
                               description="Absolute path to approved pinned yolo26n.onnx; not distributed"),
         DeclareLaunchArgument("actor_dae", default_value="",
                               description="Absolute path to pinned Gazebo walk.dae; not distributed"),
-        DeclareLaunchArgument("headless", default_value="true",
+        DeclareLaunchArgument("headless", default_value="True",
                               description="Use official Nav2 headless Gazebo server"),
         DeclareLaunchArgument("use_rviz", default_value="false"),
         DeclareLaunchArgument("show_image", default_value="false",
