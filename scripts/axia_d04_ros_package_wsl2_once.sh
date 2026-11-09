@@ -3,7 +3,7 @@
 set -Eeuo pipefail
 umask 077
 PUBLIC_SHA="${AXIA_D04_PUBLIC_SHA:-}"
-PRIVATE_SHA="c1b92d9dd3dd2cd038db16253102542d120ea87e"
+PRIVATE_SHA="f2edba114dd0540d1f27a1e216bfda2b885c5cb9"
 P1_REPO="silverbjin/axia-robot-safety-instructor"
 P1_BRANCH="feature/d04-yolo-ros-package-20261109"
 CI_REPO="silverbjin/axia-robot-safety-ci-public"
@@ -132,14 +132,14 @@ fi
 mkdir -p "$CACHE/assets"
 MODEL="$CACHE/assets/yolo26n.onnx"
 ACTOR="$CACHE/assets/walk.dae"
-if [[ ! -f "$MODEL" ]] || ! echo "[D04][ASSETS] Confirming real ONNX weights and actor mesh SHA256"
-echo "$ONNX_SHA  $MODEL" | sha256sum -c - >/dev/null; then
+echo "[D04][ASSETS] Verifying ONNX weights and Gazebo actor mesh against pinned SHA256"
+if [[ ! -f "$MODEL" ]] || ! echo "$ONNX_SHA  $MODEL" | sha256sum -c - >/dev/null 2>&1; then
   curl -fL --retry 3 --max-time 160 \
     'https://huggingface.co/unileon-robotics/YOLO26-ONNX/resolve/main/yolo26n.onnx' \
     -o "$MODEL.tmp"
   mv "$MODEL.tmp" "$MODEL"
 fi
-if [[ ! -f "$ACTOR" ]] || ! echo "$DAE_SHA  $ACTOR" | sha256sum -c - >/dev/null; then
+if [[ ! -f "$ACTOR" ]] || ! echo "$DAE_SHA  $ACTOR" | sha256sum -c - >/dev/null 2>&1; then
   curl -fL --retry 3 --max-time 160 \
     'https://fuel.gazebosim.org/1.0/Mingfei/models/actor/tip/files/meshes/walk.dae' \
     -o "$ACTOR.tmp"
