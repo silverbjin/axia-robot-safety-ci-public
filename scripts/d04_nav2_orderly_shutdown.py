@@ -71,6 +71,31 @@ def orderly_shutdown(out: Path, timeout_s: float = 24) -> dict:
     return result
 
 
+
+def request_nav2_shutdown(env: dict, out: Path, *, timeout_s: int = 60) -> dict:
+    """Run the actual service client in a fresh process with strict time bound."""
+    import os
+    import subprocess
+    target=out/"nav2_shutdown.json"
+    log=out/"nav2_shutdown.log"
+    args=[
+        sys.executable,str(Path(__file__).resolve()),"--out",str(target),
+        "--service-timeout","24",
+    ]
+    try:
+        result=subprocess.run(
+            args,env=env,text=True,capture_output=True,
+            timeout=timeout_s,check=False)
+        log.write_text(result.stdout+"\n"+result.stderr,encoding="utf-8")
+        payload=json.loads(target.read_text(encoding="utf-8")) if target.is_file() else {}
+        payload["client_exit_code"]=result.returncode
+        payload["passed"]=bool(payload.get("passed") is True and result.returncode==0)
+        return payload
+    except (OSError,subprocess.TimeoutExpired,ValueError,json.JSONDecodeError) as exc:
+        log.write_text("ERROR:"+type(exc).__name__+"\n",encoding="utf-8")
+        return {"passed":False,"error":type(exc).__name__,"client_exit_code":None}
+
+
 def main() -> int:
     p=argparse.ArgumentParser()
     p.add_argument("--out",required=True,type=Path)
