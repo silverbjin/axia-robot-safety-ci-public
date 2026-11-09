@@ -1,0 +1,38 @@
+# D06 teaching test bench only. DO NOT remap to the real /cmd_vel or /safety/scan.
+# Official nav2_collision_monitor Jazzy: /axia/d06/test/* isolated from P1.
+collision_monitor:
+  ros__parameters:
+    enabled: true
+    use_sim_time: false
+    base_frame_id: "base_footprint"
+    odom_frame_id: "odom"
+    cmd_vel_in_topic: "/axia/d06/test/cmd_in"
+    cmd_vel_out_topic: "/axia/d06/test/cmd_out"
+    state_topic: "/axia/d06/test/collision_monitor_state"
+    transform_tolerance: 0.3
+    source_timeout: 0.5
+    base_shift_correction: false
+    stop_pub_timeout: 1.0
+    enable_stamped_cmd_vel: false
+    polygons: ["StopZone", "SlowZone"]
+    StopZone:
+      type: "circle"
+      radius: 0.40
+      action_type: "stop"
+      min_points: 4
+      visualize: false
+      enabled: true
+    SlowZone:
+      type: "circle"
+      radius: 0.75
+      action_type: "slowdown"
+      min_points: 4
+      slowdown_ratio: 0.30
+      visualize: false
+      enabled: true
+    observation_sources: ["scan"]
+    scan:
+      type: "scan"
+      topic: "/axia/d06/test/scan"
+      source_timeout: 0.5
+      enabled: true
