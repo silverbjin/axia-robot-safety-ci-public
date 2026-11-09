@@ -27,6 +27,12 @@ class PublicOwnerL3Contract(unittest.TestCase):
 
     def test_bash_syntax(self):
         self.assertEqual(subprocess.run(['bash','-n',str(SCRIPT)]).returncode,0)
+    def test_bootstrap_tracks_integrated_private_ref(self):
+        # Catch a mismatched branch+SHA before Owner WSL2 spends time on Gazebo.
+        source=SCRIPT.read_text()
+        self.assertIn("readonly BRANCH='integration/p1-p2-mvp-shell-consent-20261110'",source)
+        self.assertIn("readonly SHA='d5be4b55a935c0c4d9ca3ff895ce44090ef07fd5'",source)
+
     def test_offline_selfcheck(self):
         p=subprocess.run(['bash',str(SCRIPT),'--self-check'],capture_output=True,text=True)
         self.assertEqual(p.returncode,0,p.stderr)
