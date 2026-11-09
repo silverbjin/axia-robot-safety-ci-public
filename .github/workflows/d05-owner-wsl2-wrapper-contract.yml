@@ -1,0 +1,37 @@
+name: AXIA D05 owner WSL2 launcher L0 contract (NO ROS/Gazebo)
+on:
+  push:
+    branches: ['feature/d05-real-rgbd-l2-20261110']
+    paths:
+      - 'scripts/axia_d05_rgbd_wsl2_once.sh'
+      - 'tests/test_d05_owner_wsl2_once.py'
+      - '.github/workflows/d05-owner-wsl2-wrapper-contract.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  owner-launcher-source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check Bash parser and deterministic self-check
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n scripts/axia_d05_rgbd_wsl2_once.sh
+          bash scripts/axia_d05_rgbd_wsl2_once.sh --self-check
+      - name: Execute owner launcher Python contract tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --quiet pytest==8.3.5
+          python -m pytest -q tests/test_d05_owner_wsl2_once.py \
+              tests/test_d05_rgbd_scene.py tests/test_d05_real_l2_contract.py \
+              tests/test_d05_safe_export.py
+          echo "D05_WSL2_LAUNCHER_L0_PASS; WSL2_RUNTIME_NOT_RUN_HERE"
