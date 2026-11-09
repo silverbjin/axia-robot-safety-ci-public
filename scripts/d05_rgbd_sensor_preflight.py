@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import struct
@@ -28,8 +29,9 @@ def _metadata(msg):
            "payload_sha256":hashlib.sha256(msg.data).hexdigest()}
     if msg.encoding == "32FC1" and msg.step>=msg.width*4 and len(msg.data)>=msg.step*msg.height:
         off=(msg.height//2)*msg.step+(msg.width//2)*4
-        out["center_depth_m"]=struct.unpack_from(
+        sample=struct.unpack_from(
             (">" if msg.is_bigendian else "<")+"f",msg.data,off)[0]
+        out["center_depth_m"]=sample if math.isfinite(sample) else None
     return out
 
 def _observe(timeout_s):
