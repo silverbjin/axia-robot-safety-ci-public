@@ -35,3 +35,25 @@ def test_owner_wrapper_bash_syntax_and_no_motion():
     src=WRAPPER.read_text()
     assert "ros2 topic pub /cmd_vel" not in src
     assert "ros2 action send_goal" not in src
+
+def test_launch_crash_returns_fast_without_waiting_150_seconds(tmp_path):
+    import importlib.util
+    import os
+    import sys
+    import time
+    import pytest
+    path=RUNTIME
+    sys.path.insert(0,str(ROOT/"scripts"))
+    spec=importlib.util.spec_from_file_location("d04_pkg_runtime_fast",path)
+    m=importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    src=tmp_path/"instructor"
+    (src/"tools").mkdir(parents=True)
+    (src/"tools/p1_t05_graph_oracle.py").write_text(
+        "import time\ntime.sleep(18)\n")
+    launch=subprocess.Popen([sys.executable,"-c","import sys; sys.exit(1)"])
+    started=time.monotonic()
+    with pytest.raises(RuntimeError,match="D04_PACKAGE_LAUNCH_EXITED_EARLY"):
+        m.graph_oracle_while_launch_alive(
+            src,dict(os.environ),tmp_path,"fail",launch,timeout=15)
+    assert time.monotonic()-started<4.5
