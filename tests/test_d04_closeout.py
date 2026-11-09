@@ -30,7 +30,7 @@ def test_nav2_lifecycle_helper_uses_real_service_success_not_stdout_guess():
     assert "ManageLifecycleNodes.Request.SHUTDOWN" in t
     assert "/lifecycle_manager_navigation/manage_nodes" in t
     assert "/lifecycle_manager_localization/manage_nodes" in t
-    assert "response.success" in t
+    assert "resp.success" in t or "response.success" in t
     assert "create_publisher(" not in t
 
 
@@ -57,7 +57,7 @@ def test_real_yolo_watcher_samples_multiple_distinct_stamped_boxes():
 def test_stability_requires_three_distinct_real_packaged_launches():
     t=source("d04_packaged_stability_3x.py")
     assert "d04_package_nav2_real_smoke.py" in t
-    assert "range(1, 4)" in t
+    assert "range(1,4)" in t.replace(" ", "")
     assert "PASS_PACKAGED_OFFICIAL_NAV2_GAZEBO_PERSON" in t
     assert "shutdown_quality" in t
     assert "motion_verified" in t
