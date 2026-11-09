@@ -55,7 +55,7 @@ def test_owner_script_bash_syntax_and_self_check():
 def test_owner_script_exact_pins_no_motion_no_credential_leak():
     src=(SCRIPT_DIR/"axia_d04_ros_package_wsl2_once.sh").read_text()
     assert "AXIA_D04_PUBLIC_SHA" in src
-    assert "c1b92d9dd3dd2cd038db16253102542d120ea87e" in src
+    assert "f2edba114dd0540d1f27a1e216bfda2b885c5cb9" in src
     assert "94d2dd500cb26027ee9c019f4d3a02029ac615cc" in src
     assert "d04_packaged_p1_yolo_gate.py" in src
     assert "colcon build" in src
