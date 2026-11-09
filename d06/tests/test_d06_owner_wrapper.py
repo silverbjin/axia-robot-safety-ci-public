@@ -13,7 +13,7 @@ def test_launcher_bash_syntax_and_local_self_check():
 
 def test_launcher_pins_verified_public_source_and_never_claims_gazebo():
     s=SCRIPT.read_text()
-    assert 'PUBLIC_SOURCE_SHA="d045e245b0faee6ad88f78e7a9878207b494b6f2"' in s
+    assert 'PUBLIC_SOURCE_SHA="94f4900f89f8e04c4d0a45461ac39ea9e13d6e6f"' in s
     assert 'test "$(git -C "$SRC" rev-parse HEAD)" = "$PUBLIC_SOURCE_SHA"' in s
     assert "d06_cm_live_gate.py" in s
     assert '"gazebo_actual":False' in s
