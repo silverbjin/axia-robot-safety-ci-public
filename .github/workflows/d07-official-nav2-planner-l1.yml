@@ -50,7 +50,9 @@ jobs:
             ros-jazzy-tf2-ros ros-jazzy-rclpy ros-jazzy-nav-msgs \
             ros-jazzy-geometry-msgs ros-jazzy-sensor-msgs \
             ros-jazzy-action-msgs ros-jazzy-ros2lifecycle
+          set +u
           source /opt/ros/jazzy/setup.bash
+          set -u
           ros2 pkg prefix nav2_planner
           ros2 pkg prefix nav2_navfn_planner
           ros2 pkg prefix nav2_costmap_2d
