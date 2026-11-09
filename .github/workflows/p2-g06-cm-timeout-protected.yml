@@ -82,7 +82,7 @@ jobs:
             python3-colcon-common-extensions ros-jazzy-rclpy ros-jazzy-geometry-msgs \
             ros-jazzy-std-msgs ros-jazzy-std-srvs ros-jazzy-sensor-msgs \
             ros-jazzy-nav2-msgs ros-jazzy-action-msgs ros-jazzy-lifecycle-msgs >/dev/null
-      - name: Real Jazzy Guard: fresh Supervisor, CM stream lost, zero latched <=300ms
+      - name: "Real Jazzy Guard - fresh Supervisor, CM lost, zero latch within 300ms"
         shell: bash
         env:
           ROS_DOMAIN_ID: '58'
