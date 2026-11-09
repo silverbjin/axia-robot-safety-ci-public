@@ -166,37 +166,70 @@ else
   echo "[D04][GUI] No WSLg DISPLAY or AXIA_D04_GUI=0; headless only. Review debug_frame.png after run."
 fi
 
-HOLD="${AXIA_D04_DEMO_HOLD_S:-90}"
+HOLD="${AXIA_D04_DEMO_HOLD_S:-20}"
 [[ "$HOLD" =~ ^[0-9]{1,3}$ ]] || { echo "[D04][BLOCKED] invalid AXIA_D04_DEMO_HOLD_S"; exit 2; }
-echo "[D04][LIVE] Starting P1/YOLO; GUI=${#GUI_ARGS[@]} preview-hold=${HOLD}s"
-echo "[D04][LIVE] Real-time stage progress + saved detailed log: $OUT/runtime.log"
+REPEAT="${AXIA_D04_REPEAT:-3}"
+[[ "$REPEAT" == "1" || "$REPEAT" == "3" ]] || {
+  echo "[D04][BLOCKED] AXIA_D04_REPEAT must be 1 or 3"; exit 2; }
+echo "[D04][LIVE] Real P1+YOLO accepted only with motion and clean shutdown x${REPEAT}"
 cd "$SRC/public"
-if timeout --signal=TERM --kill-after=30s 640s \
-  python3 -u scripts/d04_packaged_p1_yolo_gate.py \
-  --instructor "$SRC/instructor" \
-  --d04-private-sha "$PRIVATE_SHA" --model "$MODEL" --actor "$ACTOR" \
-  --out "$OUT/live" --hold-seconds "$HOLD" "${GUI_ARGS[@]}" \
-  2>&1 | tee "$OUT/runtime.log"; then
-  GATE_RC=0
-else
-  GATE_RC=$?
-  echo "BLOCKED: packaged ROS 2 runtime gate $GATE_RC"
-  tail -n 45 "$OUT/runtime.log" || true
-  exit 2
-fi
-python3 - "$OUT/live/verdict.json" <<'PY'
+for (( ROUND=1; ROUND<=REPEAT; ROUND++ )); do
+  DEST="$OUT/round-${ROUND}"
+  mkdir -p "$DEST"
+  echo "[D04][ROUND] ${ROUND}/${REPEAT} running fresh P1/Gazebo/YOLO startup"
+  if timeout --signal=TERM --kill-after=30s 640s \
+    python3 -u scripts/d04_packaged_p1_yolo_gate.py \
+      --instructor "$SRC/instructor" \
+      --d04-private-sha "$PRIVATE_SHA" --model "$MODEL" --actor "$ACTOR" \
+      --out "$DEST/live" --hold-seconds "$HOLD" "${GUI_ARGS[@]}" \
+      2>&1 | tee "$DEST/runtime.log"; then
+    GATE_RC=0
+  else
+    GATE_RC=$?
+    echo "[D04][BLOCKED] package runtime round ${ROUND} rc=${GATE_RC}"
+    tail -n 40 "$DEST/runtime.log" || true
+    exit 2
+  fi
+  python3 - "$DEST/live/verdict.json" <<'PY'
 import json,sys
 from pathlib import Path
 v=json.loads(Path(sys.argv[1]).read_text())
-assert v.get("status")=="PASS_P1_AND_YOLO_PACKAGE_RUNTIME"
+assert v.get("status")=="PASS_P1_AND_YOLO_PACKAGE_CLEAN_EXIT"
 assert v.get("graph_stable") is True
-assert all(v.get(k) for k in ("person_valid","rgb_valid","debug_image_saved"))
+assert all(v.get(k) for k in ("person_valid","rgb_valid","debug_image_saved","motion_verified"))
+assert v.get("shutdown_quality")=="PASS_NAV2_MANAGED_NO_SIGABRT"
+assert (v.get("shutdown_service") or {}).get("passed") is True
 assert v.get("goal_sent") is False and v.get("fault_injected") is False
-print("AXIA_D04_PACKAGED_ROS2_P1_YOLO_ACTUAL_ACCEPTANCE_PASS")
+print("AXIA_D04_PACKAGED_P1_YOLO_MOTION_CLEAN_SHUTDOWN_PASS")
 PY
-STATUS="PASS_PACKAGED_P1_YOLO"
-echo "[D04][PASS] P1 graph unchanged and real person detected; evidence is under $OUT/live"
-if [[ -n "${DISPLAY:-}" && -f "$OUT/live/debug_frame.png" ]] && command -v xdg-open >/dev/null; then
-  xdg-open "$OUT/live/debug_frame.png" >/dev/null 2>&1 || true
+  echo "[D04][ROUND] ${ROUND}/${REPEAT} P1 graph, moving person and Nav2 shutdown PASS"
+done
+python3 - "$OUT" "$REPEAT" <<'PY'
+from pathlib import Path
+import json,sys
+root=Path(sys.argv[1]);count=int(sys.argv[2])
+rows=[]
+for i in range(1,count+1):
+    v=json.loads((root/f"round-{i}/live/verdict.json").read_text())
+    rows.append({
+       "round":i,"status":v["status"],
+       "graph_stable":v["graph_stable"],
+       "motion":v["vision"]["motion_evidence"],
+       "shutdown_quality":v["shutdown_quality"],
+    })
+summary={"gate":"G-D04-P1-PACKAGE-OWNER-REPEAT",
+         "required_rounds":count,"completed_rounds":len(rows),
+         "passed":len(rows)==count and all(
+              v["status"]=="PASS_P1_AND_YOLO_PACKAGE_CLEAN_EXIT" for v in rows),
+         "certified_estop":False,"goal_sent":False,"fault_injected":False,
+         "results":rows}
+(root/"repeat_summary.json").write_text(json.dumps(summary,indent=2,ensure_ascii=False)+"\n")
+assert summary["passed"]
+print("AXIA_D04_PACKAGED_P1_YOLO_OWNER_REPEAT_PASS",count,"/",count)
+PY
+STATUS="PASS_PACKAGED_P1_YOLO_CLEAN_${REPEAT}X"
+echo "[D04][PASS] Exact P1 command graph, moving real BBox and clean Nav2 shutdown x${REPEAT}"
+if [[ -n "${DISPLAY:-}" && -f "$OUT/round-1/live/debug_frame.png" ]] && command -v xdg-open >/dev/null; then
+  xdg-open "$OUT/round-1/live/debug_frame.png" >/dev/null 2>&1 || true
 fi
-echo "D04_BBOX_IMAGE=$OUT/live/debug_frame.png"
+echo "D04_BBOX_IMAGE=$OUT/round-1/live/debug_frame.png"
