@@ -137,10 +137,18 @@ jobs:
           tar -tzf "$ORT" >/dev/null
           echo "OFFICIAL_ONNXRUNTIME_1_20_0_ARCHIVE_VERIFIED"
           sha256sum "$ORT"
+          # The upstream ONNXRUNTIME_URL branch uses CMake NAME_WE which
+          # truncates dotted versions (1.20.0 -> 1), causing install failure.
+          # Use upstream-supported ONNXRUNTIME_ROOT with exact extract directory.
+          tar -xzf "$ORT" -C /tmp/axia-ort-cache
+          ORT_ROOT=/tmp/axia-ort-cache/onnxruntime-linux-x64-1.20.0
+          test -s "$ORT_ROOT/lib/libonnxruntime.so"
+          test -d "$ORT_ROOT/include"
+          echo "ONNXRUNTIME_ROOT_EXTRACT_VERIFIED=$ORT_ROOT"
           cd /tmp/axia-yolo-ws
           colcon build --merge-install --executor sequential --packages-up-to yolo_bringup \
             --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF \
-            -DONNXRUNTIME_URL=file:///tmp/axia-ort-cache/onnxruntime-linux-x64-1.20.0.tgz \
+            "-DONNXRUNTIME_ROOT=$ORT_ROOT" \
             --event-handlers console_direct+
           source install/setup.bash
           ros2 pkg prefix yolo_bringup
