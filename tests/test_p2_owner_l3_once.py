@@ -25,6 +25,13 @@ class PublicOwnerL3Contract(unittest.TestCase):
         assert 'AXIA_P2_T07_JAZZY_REAL_PTY_CONSENT_L1_PASS_NO_GOAL_NO_FAULT' in wf
         assert 'python3-pytest' in wf
 
+    def test_exact_integrated_branch_and_sha(self):
+        s=SCRIPT.read_text()
+        wf=(ROOT/'.github/workflows/p2-owner-l3-contract.yml').read_text()
+        self.assertIn("readonly BRANCH='integration/p1-p2-mvp-shell-consent-20261110'",s)
+        self.assertIn("readonly SHA='d5be4b55a935c0c4d9ca3ff895ce44090ef07fd5'",s)
+        self.assertIn('ref: d5be4b55a935c0c4d9ca3ff895ce44090ef07fd5',wf)
+
     def test_bash_syntax(self):
         self.assertEqual(subprocess.run(['bash','-n',str(SCRIPT)]).returncode,0)
     def test_offline_selfcheck(self):
