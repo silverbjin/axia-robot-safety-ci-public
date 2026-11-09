@@ -1,0 +1,46 @@
+name: D06 Jazzy CM integration
+on:
+  push:
+    branches: ['feature/d06-safety-bubble-20261110']
+    paths:
+      - 'd06/**'
+      - '.github/workflows/d06-official-cm-l1.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  l0:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: |
+          python -m pip install pytest==8.3.5 PyYAML==6.0.2
+          python -m pytest -q d06/tests
+  l1:
+    needs: l0
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    container:
+      image: ros:jazzy-ros-base-noble
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install official ROS packages
+        shell: bash
+        run: |
+          apt-get update -qq
+          apt-get install -y -qq --no-install-recommends ros-jazzy-nav2-collision-monitor ros-jazzy-nav2-msgs ros-jazzy-rclpy ros-jazzy-geometry-msgs ros-jazzy-sensor-msgs ros-jazzy-ros2lifecycle
+      - name: Run D06 isolated ROS integration
+        shell: bash
+        run: |
+          set -eo pipefail
+          source /opt/ros/jazzy/setup.bash
+          timeout --signal=TERM --kill-after=20s 150s python3 -u d06/scripts/d06_cm_live_gate.py --params d06/params/collision_monitor_d06.yaml --out results/d06-official-cm
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d06-jazzy-cm
+          path: results/d06-official-cm
+          retention-days: 14
