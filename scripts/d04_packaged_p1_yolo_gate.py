@@ -45,6 +45,52 @@ def visible_stage(name: str, interval_s: float = 8):
         print(f"[D04][{name}] DONE elapsed={time.monotonic()-start:.0f}s", flush=True)
 
 
+def graph_oracle_while_launch_alive(root: Path, env: dict, out: Path,
+                                   label: str, live_launch, timeout: int = 150):
+    """Read real P1 graph; abort promptly if actual ROS launch exits beforehand.
+
+    The original P1 oracle and topology criteria are unchanged. No shortcut to
+    ACCEPTED is possible. This only avoids a useless 150s wait after a crash.
+    """
+    graph_path = out / ("graph_" + label + ".json")
+    log_path = out / ("graph_" + label + ".log")
+    args = [
+        sys.executable, str(root / "tools/p1_t05_graph_oracle.py"),
+        "--output", str(graph_path), "--timeout", str(timeout),
+    ]
+    deadline = time.monotonic() + timeout + 10
+    with log_path.open("w", encoding="utf-8") as stream:
+        oracle = subprocess.Popen(args, cwd=root, env=env,
+                                  stdout=stream, stderr=subprocess.STDOUT)
+        try:
+            while oracle.poll() is None:
+                if live_launch.poll() is not None:
+                    raise RuntimeError(
+                        "D04_PACKAGE_LAUNCH_EXITED_EARLY: rc=" +
+                        str(live_launch.returncode) +
+                        "; review live/package_launch.log first"
+                    )
+                if time.monotonic() >= deadline:
+                    raise TimeoutError("P1_ORACLE_TIMEOUT")
+                time.sleep(0.4)
+        finally:
+            if oracle.poll() is None:
+                oracle.terminate()
+                try:
+                    oracle.wait(timeout=3)
+                except subprocess.TimeoutExpired:
+                    oracle.kill()
+                    oracle.wait(timeout=3)
+    if not graph_path.is_file():
+        return {"passed": False, "graph": {},
+                "verdict": {"passed": False, "reasons": ["NO_GRAPH_JSON"]}}
+    data = json.loads(graph_path.read_text(encoding="utf-8"))
+    return {"passed": oracle.returncode == 0 and
+            data.get("verdict", {}).get("passed") is True,
+            "graph": data.get("graph", {}),
+            "verdict": data.get("verdict", {})}
+
+
 def build_launch_command(p1: Path, model: Path, actor: Path, *, gui: bool = False):
     if p1.name != "axia_tb3_p1.launch.py":
         raise ValueError("Only original AXIA P1 launch is accepted")
@@ -109,9 +155,10 @@ def run(a) -> int:
         cmd = build_launch_command(p1, a.model, a.actor, gui=a.gui)
         (out / "launch_command.json").write_text(json.dumps(cmd, indent=2) + "\n")
         print(f"[D04][LAUNCH] Starting installed ROS2 package; GUI={'ON' if a.gui else 'OFF'}; no Goal/Fault/cmd_vel", flush=True)
-        _start("package_launch", cmd, env, out, proc)
+        launch_process = _start("package_launch", cmd, env, out, proc)
         with visible_stage("P1_GRAPH_BEFORE"):
-            first = graph_oracle(p1root, env, out, "first", timeout=150)
+            first = graph_oracle_while_launch_alive(
+                p1root, env, out, "first", launch_process, timeout=150)
         verdict["graph_first"] = first.get("verdict")
         if not first["passed"]:
             raise RuntimeError("P1 original graph was not ready")
