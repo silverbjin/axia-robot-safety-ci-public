@@ -3,7 +3,7 @@
 # This tests ROS command transformation, NOT Gazebo motion or certified E-Stop.
 set -Eeuo pipefail
 umask 077
-PUBLIC_SOURCE_SHA="d045e245b0faee6ad88f78e7a9878207b494b6f2"
+PUBLIC_SOURCE_SHA="94f4900f89f8e04c4d0a45461ac39ea9e13d6e6f"
 REPO="https://github.com/silverbjin/axia-robot-safety-ci-public.git"
 if [[ "${1:-}" == "--self-check" ]]; then
   [[ "$PUBLIC_SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
