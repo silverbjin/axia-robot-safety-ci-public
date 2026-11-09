@@ -277,6 +277,7 @@ def build_report(evidence: Path, output: Path, *, collect_host: bool = True) -> 
         "",
         f"- Evidence: \`{evidence}\`",
         f"- Runtime: **{refs['runtime_status']}**, gate RC={refs['gate_exit']}",
+        "- 모델 및 사람 에셋: 기존 WSL2 로그에서 SHA256 OK; 이 진단은 재다운로드하지 않음",
         f"- P1 graph: **{'PASS' if graph['ready'] else 'BLOCKED'}**",
         f"- GUI: {'DISPLAY=' + host.get('variables',{}).get('DISPLAY','') if collect_host else 'not probed'}",
         "",
