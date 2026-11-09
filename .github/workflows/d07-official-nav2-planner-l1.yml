@@ -1,0 +1,72 @@
+name: AXIA D07 official Nav2 Costmap Planner L0 L1
+on:
+  push:
+    branches: ['feature/d07-nav2-human-aware-20261110']
+    paths:
+      - 'd07/**'
+      - '.github/workflows/d07-official-nav2-planner-l1.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  l0:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Source contract only (no ROS/Gazebo)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --quiet pytest==8.3.5 PyYAML==6.0.2
+          python -m compileall -q d07
+          python -m pytest -q d07/tests
+          echo "D07_L0_SOURCE_PASS; NAV2_AND_GAZEBO_NOT_RUN"
+  l1:
+    needs: l0
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    container:
+      image: ros:jazzy-ros-base-noble
+    env:
+      DEBIAN_FRONTEND: noninteractive
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install official Nav2 PlannerServer and Costmap plugins
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt-get update -qq
+          apt-get install -y -qq --no-install-recommends \
+            ros-jazzy-nav2-planner ros-jazzy-nav2-navfn-planner \
+            ros-jazzy-nav2-costmap-2d ros-jazzy-nav2-msgs \
+            ros-jazzy-tf2-ros ros-jazzy-rclpy ros-jazzy-nav-msgs \
+            ros-jazzy-geometry-msgs ros-jazzy-sensor-msgs \
+            ros-jazzy-action-msgs ros-jazzy-ros2lifecycle
+          source /opt/ros/jazzy/setup.bash
+          ros2 pkg prefix nav2_planner
+          ros2 pkg prefix nav2_navfn_planner
+          ros2 pkg prefix nav2_costmap_2d
+      - name: Actual ROS Jazzy official PlannerServer and Costmap replan test
+        shell: bash
+        run: |
+          set -eo pipefail
+          source /opt/ros/jazzy/setup.bash
+          timeout --signal=TERM --kill-after=20s 170s \
+            python3 -u d07/scripts/d07_nav2_planner_l1.py \
+              --params d07/params/nav2_d07_planner.yaml \
+              --out results/d07-official-nav2
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d07-official-nav2-costmap-l1
+          path: results/d07-official-nav2/
+          retention-days: 14
+          if-no-files-found: warn
