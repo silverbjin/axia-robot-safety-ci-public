@@ -1,0 +1,65 @@
+name: AXIA D05 Gazebo Harmonic registered RGBD sensor preflight (NO YOLO)
+on:
+  push:
+    branches: ['feature/d05-real-rgbd-l2-20261110']
+    paths:
+      - 'scripts/d05_rgbd_gazebo_scene.py'
+      - 'scripts/d05_rgbd_sensor_preflight.py'
+      - 'tests/test_d05_rgbd_scene.py'
+      - '.github/workflows/d05-real-rgbd-sensor-preflight.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  l0:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Python structural contract only
+        run: |
+          set -euo pipefail
+          python -m pip install -q pytest==8.3.5
+          python -m pytest -q tests/test_d05_rgbd_scene.py
+  actual-gazebo-rgbd:
+    needs: l0
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    container:
+      image: ros:jazzy-ros-base-noble
+    env:
+      DEBIAN_FRONTEND: noninteractive
+      MAKEFLAGS: -j2
+      CMAKE_BUILD_PARALLEL_LEVEL: '2'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install official Jazzy + Harmonic sensor/bridge dependencies once
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt-get update -qq
+          apt-get install -y -qq --no-install-recommends \
+            ros-jazzy-turtlebot3-gazebo ros-jazzy-ros-gz \
+            ros-jazzy-rclpy ros-jazzy-sensor-msgs \
+            libgl1-mesa-dri libglx-mesa0 python3-numpy xvfb xauth
+      - name: Actual Gazebo RGBD camera + ROS RGB/depth frames (not person range)
+        shell: bash
+        run: |
+          set -eo pipefail
+          source /opt/ros/jazzy/setup.bash
+          python3 -u scripts/d05_rgbd_sensor_preflight.py \
+            --out results/d05-rgbd-sensor --timeout-s 85
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d05-gazebo-rgbd-sensor-only
+          path: results/d05-rgbd-sensor/
+          retention-days: 14
+          if-no-files-found: warn
