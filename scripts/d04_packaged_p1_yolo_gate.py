@@ -21,6 +21,7 @@ import time
 from d04_waffle_pi_rgb_preflight import _start, _stop_all, sync_ros_discovery_environment
 from d04_p1_yolo_live import graph_oracle, core_chain, sensor_sample
 from d04_yolo_person_runtime import _watch_detections_and_images, valid_person, valid_rgb
+from d04_nav2_orderly_shutdown import request_nav2_shutdown
 
 EXPECTED_P1 = "653ef49c30973c57a9fcc34b7b2fcc185bc84d95"
 EXPECTED_MODEL = "4f44c33cea12d4b5785e5e7c0a20c13d0c62a77de607ce96a40d6036c7d7bbcf"
@@ -118,6 +119,8 @@ def run(a) -> int:
         "certified_estop_verified": False,
         "p1_g00_g04_accepted": False,
         "shutdown_quality": "NOT_EVALUATED",
+        "shutdown_service": None,
+        "motion_verified": False,
     }
     env = os.environ.copy()
     env["ROS_DOMAIN_ID"] = "40"
@@ -171,7 +174,7 @@ def run(a) -> int:
             raise RuntimeError("P1 sensors not active")
         print("[D04][YOLO] Waiting for real Gazebo RGB -> ONNX person bbox + debug image", flush=True)
         with visible_stage("RGB_YOLO_PERSON", interval_s=5):
-            evidence = _watch_detections_and_images(out, duration_s=130)
+            evidence = _watch_detections_and_images(out, duration_s=130, require_motion=True)
         person = evidence.get("person")
         print(
             f"[D04][PERSON] class={person.get('class_name') if person else 'NOT_DETECTED'} "
@@ -181,6 +184,8 @@ def run(a) -> int:
             f"{evidence.get('detection_frames',0)}/{evidence.get('debug_frames',0)}",
             flush=True)
         verdict["vision"] = evidence
+        verdict["motion_verified"] = evidence["motion_evidence"]["passed"]
+        print("[D04][MOTION] "+json.dumps(evidence["motion_evidence"],ensure_ascii=False)[:850],flush=True)
         verdict["person_valid"] = bool(
             evidence.get("person") and valid_person(evidence["person"]))
         verdict["rgb_valid"] = bool(
@@ -192,7 +197,8 @@ def run(a) -> int:
         verdict["graph_stable"] = bool(
             after["passed"] and core_chain(first["graph"]) == core_chain(after["graph"]))
         if not all(verdict.get(x) for x in (
-            "person_valid", "rgb_valid", "debug_image_saved", "graph_stable"
+            "person_valid", "rgb_valid", "debug_image_saved", "graph_stable",
+            "motion_verified"
         )):
             raise RuntimeError("Package vision or P1 graph gate failed")
         verdict["status"] = "PASS_P1_AND_YOLO_PACKAGE_RUNTIME"
@@ -206,15 +212,29 @@ def run(a) -> int:
         verdict["blocker"] = type(exc).__name__ + ":" + str(exc)[:500]
         print(f"[D04][BLOCKED] {verdict['blocker']}", flush=True)
     finally:
-        print("[D04][SHUTDOWN] Stopping demo processes; shutdown quality tracked separately", flush=True)
+        print("[D04][SHUTDOWN] Requesting Nav2 managed lifecycle Shutdown before SIGINT",flush=True)
+        if verdict["status"]=="PASS_P1_AND_YOLO_PACKAGE_RUNTIME" and proc:
+            verdict["shutdown_service"] = request_nav2_shutdown(env,out,timeout_s=65)
+        else:
+            verdict["shutdown_service"] = {"passed":False,"skipped":"NOT_RUNTIME_ACCEPTED"}
+        print("[D04][SHUTDOWN] Stopping launch process group",flush=True)
         _stop_all(proc, verdict)
-        log = out / "package_launch.log"
-        if log.exists():
-            lines = log.read_text(errors="replace")
-            verdict["shutdown_quality"] = (
-                "WARN_SIGABRT" if ("planner_server" in lines and
-                                  ("exit code -6" in lines or "SIGABRT" in lines))
-                else "NO_KNOWN_SIGABRT_IN_CAPTURED_LAUNCH_LOG")
+        log=out/"package_launch.log"
+        lines=log.read_text(errors="replace") if log.exists() else ""
+        sigabrt=bool("exit code -6" in lines or "SIGABRT" in lines)
+        if sigabrt:
+            verdict["shutdown_quality"]="WARN_SIGABRT"
+        elif verdict["shutdown_service"].get("passed") is not True:
+            verdict["shutdown_quality"]="BLOCKED_NAV2_SHUTDOWN_SERVICE"
+        elif verdict.get("shutdown_escalated"):
+            verdict["shutdown_quality"]="BLOCKED_TERMINATION_ESCALATION"
+        else:
+            verdict["shutdown_quality"]="PASS_NAV2_MANAGED_NO_SIGABRT"
+        if verdict["status"]=="PASS_P1_AND_YOLO_PACKAGE_RUNTIME":
+            if verdict["shutdown_quality"]=="PASS_NAV2_MANAGED_NO_SIGABRT":
+                verdict["status"]="PASS_P1_AND_YOLO_PACKAGE_CLEAN_EXIT"
+            else:
+                verdict["status"]="BLOCKED_SHUTDOWN_UNCLEAN"
         (out / "verdict.json").write_text(
             json.dumps(verdict, indent=2, ensure_ascii=False) + "\n")
         files = sorted(f for f in out.rglob("*") if f.is_file() and f.name != "SHA256SUMS")
@@ -225,7 +245,7 @@ def run(a) -> int:
             "gate", "status", "blocker", "graph_first", "graph_after_vision",
             "graph_stable", "person_valid", "rgb_valid", "debug_image_saved",
             "shutdown_quality")}, ensure_ascii=False))
-    return 0 if verdict["status"] == "PASS_P1_AND_YOLO_PACKAGE_RUNTIME" else 2
+    return 0 if verdict["status"] == "PASS_P1_AND_YOLO_PACKAGE_CLEAN_EXIT" else 2
 
 
 if __name__ == "__main__":
