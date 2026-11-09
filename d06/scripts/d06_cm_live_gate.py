@@ -40,17 +40,21 @@ def _zone_scan(stamp, distance):
 def _run_stage(node, pubs, seen, *, name, distance, expected, seconds=3.0):
     from geometry_msgs.msg import Twist
     start=time.monotonic()
+    next_tick=start
     observed=[]
     state_events=[]
     seen["out"].clear()
     seen["state"].clear()
     while time.monotonic()-start<seconds:
-        stamp=node.get_clock().now().to_msg()
-        pubs["scan"].publish(_zone_scan(stamp,distance))
-        cmd=Twist();cmd.linear.x=0.20
-        pubs["cmd"].publish(cmd)
+        now=time.monotonic()
+        if now>=next_tick:
+            stamp=node.get_clock().now().to_msg()
+            pubs["scan"].publish(_zone_scan(stamp,distance))
+            cmd=Twist();cmd.linear.x=0.20
+            pubs["cmd"].publish(cmd)
+            next_tick=now+0.10  # 10 Hz teaching fixture; avoid CPU-saturating ROS
         import rclpy
-        rclpy.spin_once(node,timeout_sec=0.07)
+        rclpy.spin_once(node,timeout_sec=0.025)
         # CollisionMonitorState may be emitted only on action transitions.
         # Capture ALL state events, but discard startup speed samples.
         state_events.extend(seen["state"])
