@@ -43,14 +43,14 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: e5e1f90c3ba755772c30537475a4f732dc565d90
+          ref: 3ba7c889de40c9f326c4d5f6a49c2b304e7f9465
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Exact SHA P2 L0 + shell syntax; no Goal/Fault
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = e5e1f90c3ba755772c30537475a4f732dc565d90
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 3ba7c889de40c9f326c4d5f6a49c2b304e7f9465
           python3 -m pip install --disable-pip-version-check --quiet pytest==8.3.5 PyYAML==6.0.2
           python3 -m pytest -q -ra tests/unit/test_p2_*.py
           python3 -m compileall -q tools/p2_l3_*.py tools/p2_live_fault_gate.py
@@ -72,7 +72,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: e5e1f90c3ba755772c30537475a4f732dc565d90
+          ref: 3ba7c889de40c9f326c4d5f6a49c2b304e7f9465
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Jazzy Action status transient-local QoS / no runtime Goal or Fault
@@ -113,14 +113,14 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: e5e1f90c3ba755772c30537475a4f732dc565d90
+          ref: 3ba7c889de40c9f326c4d5f6a49c2b304e7f9465
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Build minimal actual Jazzy nodes and verify isolated /proc PID ownership
         shell: bash
         run: |
           set -eo pipefail
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = e5e1f90c3ba755772c30537475a4f732dc565d90
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 3ba7c889de40c9f326c4d5f6a49c2b304e7f9465
           export DEBIAN_FRONTEND=noninteractive
           apt-get update -qq >/dev/null
           apt-get install -y -qq --no-install-recommends python3-colcon-common-extensions ros-jazzy-nav2-msgs ros-jazzy-nav2-collision-monitor python3-pytest >/dev/null
@@ -139,7 +139,7 @@ jobs:
           export GZ_PARTITION="axia_p2_pid_$GITHUB_RUN_ID"
           export AXIA_P0_SIM_ONLY=1
           export AXIA_P2_L1_PID_ONLY=1
-          timeout --signal=TERM --kill-after=15s 100s python3 tools/p2_pid_real_l1.py --expected-sha e5e1f90c3ba755772c30537475a4f732dc565d90
+          timeout --signal=TERM --kill-after=15s 100s python3 tools/p2_pid_real_l1.py --expected-sha 3ba7c889de40c9f326c4d5f6a49c2b304e7f9465
           echo 'AXIA_P2_T07_JAZZY_REAL_PROC_PID_L1_PASS_NO_GOAL_NO_FAULT'
           # No Nav2 Goal, no process Fault: exercise the ACTUAL Owner consent
           # function through a Linux controlling PTY, noncanonical VMIN,
