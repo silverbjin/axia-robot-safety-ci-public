@@ -43,14 +43,14 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: d8a1e6173f838936d267e8cbec6e3b31a6fa93e5
+          ref: 66e6d5c53a42b123716a4fbfd47d4de0b77f1269
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Exact SHA P2 L0 + shell syntax; no Goal/Fault
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = d8a1e6173f838936d267e8cbec6e3b31a6fa93e5
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 66e6d5c53a42b123716a4fbfd47d4de0b77f1269
           python3 -m pip install --disable-pip-version-check --quiet pytest==8.3.5 PyYAML==6.0.2
           python3 -m pytest -q -ra tests/unit/test_p2_*.py
           python3 -m compileall -q tools/p2_l3_*.py tools/p2_live_fault_gate.py
@@ -72,7 +72,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: d8a1e6173f838936d267e8cbec6e3b31a6fa93e5
+          ref: 66e6d5c53a42b123716a4fbfd47d4de0b77f1269
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Jazzy Action status transient-local QoS / no runtime Goal or Fault
