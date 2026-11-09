@@ -66,7 +66,7 @@ def test_package_gate_reports_real_visible_progress_and_hold():
 def test_wsl_script_does_not_hide_10_min_runtime_from_user():
     src=(SCRIPTS/"axia_d04_ros_package_wsl2_once.sh").read_text()
     assert '[D04]' in src
-    assert 'tee "$OUT/runtime.log"' in src, "status must be shown live AND preserved"
+    assert ('tee "$OUT/runtime.log"' in src or 'tee "$DEST/runtime.log"' in src), "status must be shown live AND preserved"
     assert "AXIA_D04_DEMO_HOLD_S" in src
     assert 'cd "$HOME"' in src
     assert "ros2 action send_goal" not in src

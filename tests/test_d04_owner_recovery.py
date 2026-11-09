@@ -64,7 +64,7 @@ def test_owner_3x_requires_real_clean_shutdown_and_motion():
     assert 'ROUND<=REPEAT' in src
     assert 'PASS_P1_AND_YOLO_PACKAGE_CLEAN_EXIT' in src
     assert '"motion_verified"' in src
-    assert '"shutdown_quality"=="PASS_NAV2_MANAGED_NO_SIGABRT"' in src
+    assert 'v.get("shutdown_quality")=="PASS_NAV2_MANAGED_NO_SIGABRT"' in src
     assert 'AXIA_D04_PACKAGED_P1_YOLO_OWNER_REPEAT_PASS' in src
     assert 'repeat_summary.json' in src
     assert 'ros2 topic pub /cmd_vel' not in src
