@@ -54,7 +54,7 @@ def build_launch_command(p1: Path, model: Path, actor: Path, *, gui: bool = Fals
         "onnx_model:=" + str(model.resolve()),
         "actor_dae:=" + str(actor.resolve()),
         "use_rviz:=false",
-        "headless:=" + ("false" if gui else "true"),
+        "headless:=" + ("False" if gui else "True"),
         "show_image:=" + ("true" if gui else "false"),
         "cpu_renderer:=" + ("false" if gui else "true"),
     ]
