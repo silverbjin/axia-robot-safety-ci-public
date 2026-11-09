@@ -125,7 +125,8 @@ jobs:
                 --connect-timeout 15 --max-time 130 \
                 -H 'Accept: application/octet-stream' -o "${ORT}.tmp" "$url" \
                && test "$(stat -c %s "${ORT}.tmp")" = "6184676" \
-               && tar -tzf "${ORT}.tmp" | grep -q 'lib/libonnxruntime.so'; then
+               && tar -tzf "${ORT}.tmp" > /tmp/axia-ort-cache/archive_members.txt \
+               && grep -Fq 'lib/libonnxruntime.so' /tmp/axia-ort-cache/archive_members.txt; then
               mv -f "${ORT}.tmp" "$ORT"
               break
             fi
