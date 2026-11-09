@@ -18,13 +18,20 @@ class PublicOwnerL3Contract(unittest.TestCase):
         assert 'ros-jazzy-nav2-collision-monitor' in wf
         assert 'AXIA_P2_T07_JAZZY_REAL_PROC_PID_L1_PASS_NO_GOAL_NO_FAULT' in wf
 
+    def test_protected_real_jazzy_tty_boundary_required(self):
+        wf=(ROOT/'.github/workflows/p2-owner-l3-contract.yml').read_text()
+        assert 'test_p2_owner_tty_deadline_contract.py' in wf
+        assert 'test_p2_tty_stdio_contract.py' in wf
+        assert 'AXIA_P2_T07_JAZZY_REAL_PTY_CONSENT_L1_PASS_NO_GOAL_NO_FAULT' in wf
+        assert 'python3-pytest' in wf
+
     def test_bash_syntax(self):
         self.assertEqual(subprocess.run(['bash','-n',str(SCRIPT)]).returncode,0)
     def test_offline_selfcheck(self):
         p=subprocess.run(['bash',str(SCRIPT),'--self-check'],capture_output=True,text=True)
         self.assertEqual(p.returncode,0,p.stderr)
         self.assertIn('L3_NOT_RUN',p.stdout)
-        self.assertIn('6459dfbba6523d248e954124fe1ec953ca7beaab',p.stdout)
+        self.assertIn('52ea7146fb6b99f88f52d0ce641b01e40edb47b0',p.stdout)
     def test_noninteractive_always_refused(self):
         p=subprocess.run(['bash',str(SCRIPT)],stdin=subprocess.DEVNULL,capture_output=True,text=True)
         self.assertEqual(p.returncode,2,p.stdout+p.stderr)
