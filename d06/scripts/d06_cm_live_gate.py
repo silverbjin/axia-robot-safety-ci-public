@@ -51,22 +51,26 @@ def _run_stage(node, pubs, seen, *, name, distance, expected, seconds=3.0):
         pubs["cmd"].publish(cmd)
         import rclpy
         rclpy.spin_once(node,timeout_sec=0.07)
+        # CollisionMonitorState may be emitted only on action transitions.
+        # Capture ALL state events, but discard startup speed samples.
+        state_events.extend(seen["state"])
         if time.monotonic()-start>0.75:
             observed.extend(seen["out"])
-            state_events.extend(seen["state"])
         seen["out"].clear()
         seen["state"].clear()
     # Only evaluate recent output after monitor has received at least one scan.
     recent=observed[-18:]
     recent_actions=state_events[-18:]
-    if not recent or not recent_actions:
-        raise AssertionError(f"{name}: no actual output/state from official Collision Monitor")
+    if not recent:
+        raise AssertionError(f"{name}: no actual Twist output; state_events={state_events[-8:]}")
     output_samples=[x[0] for x in recent]
     yaw_samples=[x[1] for x in recent]
     expected_actions={"CLEAR":0,"SLOWDOWN":2,"STOP":1}
     action=expected_actions[expected]
     matched_states=[x for x in recent_actions if x[0]==action]
-    if not matched_states:
+    # DO_NOTHING may have transitioned before the verifier subscribed.
+    # SLOWDOWN and STOP must have actual CollisionMonitorState evidence.
+    if expected!="CLEAR" and not matched_states:
         raise AssertionError(f"{name}: official CM action {action} absent, seen={recent_actions[-8:]}")
     if expected=="CLEAR":
         ok=all(abs(x-0.20)<0.012 for x in output_samples[-6:])
