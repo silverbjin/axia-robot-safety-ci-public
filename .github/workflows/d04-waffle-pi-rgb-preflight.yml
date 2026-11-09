@@ -1,0 +1,70 @@
+name: AXIA D04 Waffle Pi RGB camera preflight (READ ONLY, no Goal/Fault)
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/d04_waffle_pi_rgb_preflight.py'
+      - 'tests/test_d04_waffle_pi_rgb_preflight.py'
+      - '.github/workflows/d04-waffle-pi-rgb-preflight.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  l0-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: L0 isolated script tests (NOT Gazebo proof)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install pytest==8.3.5
+          python -m compileall -q scripts/d04_waffle_pi_rgb_preflight.py
+          python -m pytest -q tests/test_d04_waffle_pi_rgb_preflight.py
+
+  g-d04-1pi:
+    needs: l0-contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    container:
+      image: ros:jazzy-ros-base-noble
+    env:
+      AXIA_TESTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install only official ROBOTIS Jazzy Waffle Pi and Gazebo Harmonic dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            procps ros-jazzy-turtlebot3-gazebo ros-jazzy-ros-gz \
+            ros-jazzy-rclpy ros-jazzy-sensor-msgs libgl1-mesa-dri libegl1 \
+            xvfb xauth libglx-mesa0
+      - name: Print exact ROS and Waffle Pi package versions
+        shell: bash
+        run: |
+          set -eo pipefail
+          source /opt/ros/jazzy/setup.bash
+          dpkg-query -W ros-jazzy-turtlebot3-gazebo ros-jazzy-ros-gz
+          ros2 pkg prefix turtlebot3_gazebo
+      - name: Gazebo Waffle Pi RGB frame + CameraInfo real runtime gate
+        shell: bash
+        run: |
+          set -eo pipefail
+          source /opt/ros/jazzy/setup.bash
+          python3 scripts/d04_waffle_pi_rgb_preflight.py
+      - name: Upload evidence even on block
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d04-waffle-pi-rgb-evidence
+          path: results/d04-waffle-pi-rgb/
+          retention-days: 14
+          if-no-files-found: warn
