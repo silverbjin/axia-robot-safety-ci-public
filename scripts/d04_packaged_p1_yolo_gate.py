@@ -22,6 +22,7 @@ from d04_waffle_pi_rgb_preflight import _start, _stop_all, sync_ros_discovery_en
 from d04_p1_yolo_live import graph_oracle, core_chain, sensor_sample
 from d04_yolo_person_runtime import _watch_detections_and_images, valid_person, valid_rgb
 from d04_nav2_orderly_shutdown import request_nav2_shutdown
+from d04_nav2_initialpose_ready import request_initialpose_ready
 
 EXPECTED_P1 = "653ef49c30973c57a9fcc34b7b2fcc185bc84d95"
 EXPECTED_MODEL = "4f44c33cea12d4b5785e5e7c0a20c13d0c62a77de607ce96a40d6036c7d7bbcf"
@@ -165,6 +166,10 @@ def run(a) -> int:
         verdict["graph_first"] = first.get("verdict")
         if not first["passed"]:
             raise RuntimeError("P1 original graph was not ready")
+        with visible_stage("NAV2_INITIALPOSE_READY"):
+            verdict["nav2_initialpose_ready"]=request_initialpose_ready(env,out,timeout_s=70)
+        if verdict["nav2_initialpose_ready"].get("passed") is not True:
+            raise RuntimeError("Nav2 planner/localization not ACTIVE after simulation initialpose")
         with visible_stage("P1_SENSOR_INPUTS"):
             verdict["clock_samples"] = sensor_sample("/clock", "clock")
             verdict["scan_samples"] = sensor_sample("/scan", "scan")
