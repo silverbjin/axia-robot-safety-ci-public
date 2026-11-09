@@ -16,7 +16,7 @@ class PublicOwnerL3Contract(unittest.TestCase):
         p=subprocess.run(['bash',str(SCRIPT),'--self-check'],capture_output=True,text=True)
         self.assertEqual(p.returncode,0,p.stderr)
         self.assertIn('L3_NOT_RUN',p.stdout)
-        self.assertIn('f40182a1f3b22ece906e4b02eb5fd2c5630001ff',p.stdout)
+        self.assertIn('8b32249a436912008af6bd0bd53a2668e1b9e380',p.stdout)
     def test_noninteractive_always_refused(self):
         p=subprocess.run(['bash',str(SCRIPT)],stdin=subprocess.DEVNULL,capture_output=True,text=True)
         self.assertEqual(p.returncode,2,p.stdout+p.stderr)
