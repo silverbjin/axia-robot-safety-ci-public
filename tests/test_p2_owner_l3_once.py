@@ -10,13 +10,21 @@ class PublicOwnerL3Contract(unittest.TestCase):
         w=(ROOT/'.github/workflows/p2-owner-l3-contract.yml').read_text()
         assert 'set +u\n          source /opt/ros/jazzy/setup.bash\n          set -u' in w
 
+    def test_protected_jazzy_real_process_l1_is_required(self):
+        wf=(ROOT/'.github/workflows/p2-owner-l3-contract.yml').read_text()
+        assert 'instructor-l1-real-pid:' in wf
+        assert 'needs: instructor-l1-qos' in wf
+        assert 'python3 tools/p2_pid_real_l1.py --expected-sha' in wf
+        assert 'ros-jazzy-nav2-collision-monitor' in wf
+        assert 'AXIA_P2_T07_JAZZY_REAL_PROC_PID_L1_PASS_NO_GOAL_NO_FAULT' in wf
+
     def test_bash_syntax(self):
         self.assertEqual(subprocess.run(['bash','-n',str(SCRIPT)]).returncode,0)
     def test_offline_selfcheck(self):
         p=subprocess.run(['bash',str(SCRIPT),'--self-check'],capture_output=True,text=True)
         self.assertEqual(p.returncode,0,p.stderr)
         self.assertIn('L3_NOT_RUN',p.stdout)
-        self.assertIn('8b32249a436912008af6bd0bd53a2668e1b9e380',p.stdout)
+        self.assertIn('c7d40cd03b4ce72b9e2737364e1dc28bdfa962bc',p.stdout)
     def test_noninteractive_always_refused(self):
         p=subprocess.run(['bash',str(SCRIPT)],stdin=subprocess.DEVNULL,capture_output=True,text=True)
         self.assertEqual(p.returncode,2,p.stdout+p.stderr)

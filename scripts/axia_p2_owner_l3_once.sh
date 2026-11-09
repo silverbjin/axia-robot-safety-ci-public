@@ -4,7 +4,7 @@ set -Eeuo pipefail
 umask 077
 readonly REPO='silverbjin/axia-robot-safety-instructor'
 readonly BRANCH='feat/p2-t07-owner-physical-acceptance-20261108'
-readonly SHA='8b32249a436912008af6bd0bd53a2668e1b9e380'
+readonly SHA='c7d40cd03b4ce72b9e2737364e1dc28bdfa962bc'
 if [[ "${1:-}" == '--self-check' ]]; then
   [[ $# == 1 && "$SHA" =~ ^[0-9a-f]{40}$ ]] || exit 2
   printf 'P2_L3_OWNER_PUBLIC_BOOTSTRAP_CONTRACT_OK private_sha=%s L3_NOT_RUN\n' "$SHA"
