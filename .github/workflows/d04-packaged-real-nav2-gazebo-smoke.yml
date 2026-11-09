@@ -1,10 +1,20 @@
-name: AXIA D04 installed package REAL Nav2 Gazebo person bbox (NO PRIVATE P1)
+name: AXIA D04 installed Nav2 Gazebo 3x moving person and clean shutdown
 
 on:
   push:
     branches: ['feature/d04-yolo-ros-package-20261109']
     paths:
       - 'scripts/d04_package_nav2_real_smoke.py'
+      - 'scripts/d04_packaged_stability_3x.py'
+      - 'scripts/d04_nav2_orderly_shutdown.py'
+      - 'scripts/d04_bbox_motion_gate.py'
+      - 'scripts/d04_yolo_person_runtime.py'
+      - 'tests/test_d04_closeout.py'
+      - 'scripts/d04_packaged_stability_3x.py'
+      - 'scripts/d04_nav2_orderly_shutdown.py'
+      - 'scripts/d04_bbox_motion_gate.py'
+      - 'scripts/d04_yolo_person_runtime.py'
+      - 'tests/test_d04_closeout.py'
       - 'tests/test_d04_packaged_nav2_real_smoke.py'
       - 'd04/axia_d04_vision_demo/**'
       - '.github/workflows/d04-packaged-real-nav2-gazebo-smoke.yml'
@@ -32,8 +42,8 @@ jobs:
         run: |
           set -euo pipefail
           python -m pip install pytest==8.3.5
-          python -m compileall -q scripts/d04_package_nav2_real_smoke.py scripts/d04_yolo_person_runtime.py
-          python -m pytest -q tests/test_d04_packaged_nav2_real_smoke.py tests/test_d04_nav2_headless_regression.py tests/test_d04_yolo_person_runtime.py tests/test_d04_waffle_pi_rgb_preflight.py
+          python -m compileall -q scripts/d04_package_nav2_real_smoke.py scripts/d04_yolo_person_runtime.py scripts/d04_packaged_stability_3x.py scripts/d04_bbox_motion_gate.py scripts/d04_nav2_orderly_shutdown.py
+          python -m pytest -q tests/test_d04_closeout.py tests/test_d04_packaged_nav2_real_smoke.py tests/test_d04_nav2_headless_regression.py tests/test_d04_yolo_person_runtime.py tests/test_d04_waffle_pi_rgb_preflight.py
 
   external-assets:
     runs-on: ubuntu-24.04
@@ -65,7 +75,7 @@ jobs:
   real-gazebo-package:
     needs: [l0-contracts, external-assets]
     runs-on: ubuntu-24.04
-    timeout-minutes: 48
+    timeout-minutes: 55
     container:
       image: ros:jazzy-ros-base-noble
     env:
@@ -142,7 +152,7 @@ jobs:
           source install/setup.bash
           test -n "$(ros2 pkg prefix axia_d04_vision_demo)"
           xvfb-run -a -s '-screen 0 1280x720x24' \
-            python3 scripts/d04_package_nav2_real_smoke.py
+            python3 scripts/d04_packaged_stability_3x.py
       - name: Remove AGPL model and actor binaries before artifact collection
         if: always()
         shell: bash
@@ -151,7 +161,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: d04-packaged-real-nav2-person
-          path: results/d04-packaged-nav2-live/
+          name: d04-packaged-real-nav2-person-3x
+          path: results/d04-packaged-nav2-stability/
           retention-days: 14
           if-no-files-found: warn
