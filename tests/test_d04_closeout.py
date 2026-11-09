@@ -70,3 +70,19 @@ def test_owner_verdict_shutdown_warning_never_counted_as_complete_pass():
     assert '"shutdown_quality"' in t
     assert "WARN_SIGABRT" in t
     assert "PASS_P1_AND_YOLO_PACKAGE_CLEAN_EXIT" in t
+
+def test_amcl_real_initialpose_before_lifecycle_shutdown_sim_only():
+    init=source("d04_nav2_initialpose_ready.py")
+    assert 'SPAWN_X = -2.00' in init
+    assert 'SPAWN_Y = -0.50' in init
+    assert '"/initialpose"' in init
+    assert "PoseWithCovarianceStamped" in init
+    assert "NAV_ACTIVE" in init
+    assert "nav.service_is_ready" not in init or "service_is_ready()" in init
+    assert '"navigation_active":False' in init
+    assert "send_goal_async(" not in init and '"/cmd_vel"' not in init
+    for tool in ("d04_package_nav2_real_smoke.py","d04_packaged_p1_yolo_gate.py"):
+        t=source(tool)
+        assert "request_initialpose_ready" in t
+        assert t.index("request_initialpose_ready(")<t.index("_watch_detections_and_images(")
+        assert "Nav2" in t
