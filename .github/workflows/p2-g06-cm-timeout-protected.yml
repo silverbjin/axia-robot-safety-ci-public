@@ -6,11 +6,15 @@ on:
       - '.github/workflows/p2-g06-cm-timeout-protected.yml'
       - 'scripts/axia_p2_owner_l3_once.sh'
       - 'tests/test_p2_owner_l3_once.py'
+      - 'scripts/axia_p2_g06_ci_recover_wsl2_once.sh'
+      - 'tests/test_p2_g06_ci_recover_wsl2_once.py'
   pull_request:
     paths:
       - '.github/workflows/p2-g06-cm-timeout-protected.yml'
       - 'scripts/axia_p2_owner_l3_once.sh'
       - 'tests/test_p2_owner_l3_once.py'
+      - 'scripts/axia_p2_g06_ci_recover_wsl2_once.sh'
+      - 'tests/test_p2_g06_ci_recover_wsl2_once.py'
 permissions:
   contents: read
 concurrency:
@@ -30,6 +34,7 @@ jobs:
           set -euo pipefail
           bash -n scripts/axia_p2_owner_l3_once.sh
           python3 -m unittest discover -s tests -p test_p2_owner_l3_once.py -v
+          python3 -m unittest discover -s tests -p test_p2_g06_ci_recover_wsl2_once.py -v
           echo 'P2_G06_PUBLIC_BOOTSTRAP_CONTRACT_PASS_NO_GOAL_NO_FAULT'
   private-l0:
     needs: public-contract
