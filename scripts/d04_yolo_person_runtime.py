@@ -15,6 +15,8 @@ import subprocess
 import time
 import xml.etree.ElementTree as ET
 
+from d04_bbox_motion_gate import motion_evidence
+
 from d04_waffle_pi_rgb_preflight import (
     DOMAIN_ID, EXPECTED_IMAGE_TOPIC, EXPECTED_INFO_TOPIC,
     _start, _stop_all, official_camera_contract, simple_world,
@@ -98,7 +100,7 @@ def valid_person(box: dict, width: int = 640, height: int = 480) -> bool:
     )
 
 
-def _watch_detections_and_images(out: Path, duration_s: int = 95) -> dict:
+def _watch_detections_and_images(out: Path, duration_s: int = 95, *, require_motion: bool = False) -> dict:
     """Actual ROS 2 subscriptions, never publishes data or synthetic detections."""
     import rclpy
     from rclpy.qos import qos_profile_sensor_data
@@ -109,7 +111,8 @@ def _watch_detections_and_images(out: Path, duration_s: int = 95) -> dict:
     node = rclpy.create_node("axia_d04_person_readonly_verifier")
     seen = {"camera_frames": 0, "detection_frames": 0, "debug_frames": 0,
             "person": None, "first_image": None,
-            "non_person_detections": 0, "debug_saved": False}
+            "non_person_detections": 0, "debug_saved": False,
+            "person_samples": []}
     saved = {"camera": False, "debug": False}
 
     def image_cb(msg, which):
@@ -146,8 +149,11 @@ def _watch_detections_and_images(out: Path, duration_s: int = 95) -> dict:
                 "center_x": float(d.bbox.center.position.x),
                 "center_y": float(d.bbox.center.position.y),
                 "size_x": float(d.bbox.size.x), "size_y": float(d.bbox.size.y)}
-            if valid_person(b) and (seen["person"] is None or b["score"] > seen["person"]["score"]):
-                seen["person"] = b
+            if valid_person(b):
+                if len(seen["person_samples"]) < 250:
+                    seen["person_samples"].append(b)
+                if seen["person"] is None or b["score"] > seen["person"]["score"]:
+                    seen["person"] = b
             elif b["class_name"] != "person":
                 seen["non_person_detections"] += 1
 
@@ -159,11 +165,20 @@ def _watch_detections_and_images(out: Path, duration_s: int = 95) -> dict:
         deadline = time.monotonic() + duration_s
         while time.monotonic() < deadline:
             rclpy.spin_once(node, timeout_sec=0.5)
-            if seen["person"] is not None and seen["debug_frames"] >= 1 and seen["camera_frames"] >= 1:
+            basic_ready = (seen["person"] is not None and
+                           seen["debug_frames"] >= 1 and
+                           seen["camera_frames"] >= 1)
+            if basic_ready and (not require_motion or
+                                motion_evidence(seen["person_samples"])["passed"]):
                 break
     finally:
         node.destroy_node()
         rclpy.shutdown()
+    seen["motion_evidence"] = motion_evidence(seen["person_samples"])
+    (out/"person_samples.json").write_text(
+        json.dumps({"samples":seen["person_samples"],
+                    "motion_evidence":seen["motion_evidence"]},
+                   ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
     return seen
 
 
