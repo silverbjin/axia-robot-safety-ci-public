@@ -1,0 +1,164 @@
+name: AXIA D05 REAL Gazebo RGBD YOLO person VALID to UNKNOWN (NO CONTROL)
+on:
+  push:
+    branches: ['main']
+    paths:
+      - '.github/workflows/d05-real-rgbd-sealed-l2.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  actual-sealed-person-depth:
+    if: github.repository == 'silverbjin/axia-robot-safety-ci-public'
+    environment: axia-instructor-sealed
+    runs-on: ubuntu-24.04
+    timeout-minutes: 44
+    container:
+      image: ros:jazzy-ros-base-noble
+    env:
+      DEBIAN_FRONTEND: noninteractive
+      MAKEFLAGS: '-j2'
+      CMAKE_BUILD_PARALLEL_LEVEL: '2'
+      D05_PRIVATE_SHA: 'e26069e3d2396e9d9ee89addfb6d7c07794ef6fb'
+      D05_PUBLIC_TEST_SHA: '2dcd5f5cad091f9bd3e5fce71e0009d9e18d609d'
+    steps:
+      - name: Checkout exact public L0+real-sensor verified runner
+        uses: actions/checkout@v4
+        with:
+          ref: 2dcd5f5cad091f9bd3e5fce71e0009d9e18d609d
+          persist-credentials: false
+      - name: Checkout exact private D05 implementation without export
+        uses: actions/checkout@v4
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: e26069e3d2396e9d9ee89addfb6d7c07794ef6fb
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          path: private_instructor
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Source SHA and sealed checkout proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$D05_PUBLIC_TEST_SHA"
+          test "$(git -C private_instructor rev-parse HEAD)" = "$D05_PRIVATE_SHA"
+          echo "D05_L2_PUBLIC_AND_PRIVATE_EXACT_SHA_CONFIRMED"
+      - name: Install official ROS Jazzy / Harmonic and upstream yolo_ros dependencies ONCE
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt-get update -qq
+          apt-get install -y -qq --no-install-recommends \
+            git curl ca-certificates build-essential cmake pkg-config \
+            python3-pytest python3-colcon-common-extensions python3-rosdep \
+            ros-jazzy-turtlebot3-gazebo ros-jazzy-ros-gz \
+            ros-jazzy-rclpy ros-jazzy-sensor-msgs ros-jazzy-std-msgs \
+            ros-jazzy-cv-bridge ros-jazzy-pluginlib ros-jazzy-vision-msgs \
+            ros-jazzy-message-filters ros-jazzy-tf2-ros \
+            libcurl4-openssl-dev libopencv-dev python3-opencv python3-numpy \
+            libgl1-mesa-dri libglx-mesa0 xvfb xauth
+      - name: RED GREEN private D05 Python contracts 43+ and public static gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m compileall -q private_instructor/ros2_ws/src/axia_d05_depth_demo scripts/d05_*.py
+          python3 -m pytest -q --tb=short \
+            private_instructor/ros2_ws/src/axia_d05_depth_demo/test \
+            private_instructor/training/block_B/tests \
+            private_instructor/training/block_B/instructor/hidden_tests \
+            tests/test_d05_rgbd_scene.py tests/test_d05_real_l2_contract.py tests/test_d05_safe_export.py
+          echo "D05_L0_PRIVATE_AND_PUBLIC_CONTRACTS_PASS"
+      - name: Fetch pinned yolo_ros MIT source and build ONNX Runtime CPU once
+        shell: bash
+        run: |
+          set -eo pipefail
+          source /opt/ros/jazzy/setup.bash
+          mkdir -p /tmp/axia-yolo-ws/src /tmp/axia-ort-cache
+          git clone -q https://github.com/mgonzs13/yolo_ros.git /tmp/axia-yolo-ws/src/yolo_ros
+          git -C /tmp/axia-yolo-ws/src/yolo_ros checkout -q --detach 94d2dd500cb26027ee9c019f4d3a02029ac615cc
+          test "$(git -C /tmp/axia-yolo-ws/src/yolo_ros rev-parse HEAD)" = 94d2dd500cb26027ee9c019f4d3a02029ac615cc
+          ORT=/tmp/axia-ort-cache/onnxruntime-linux-x64-1.20.0.tgz
+          for url in \
+            'https://github.com/microsoft/onnxruntime/releases/download/v1.20.0/onnxruntime-linux-x64-1.20.0.tgz' \
+            'https://api.github.com/repos/microsoft/onnxruntime/releases/assets/202999196'; do
+            if curl --fail --location --retry 4 --retry-all-errors --retry-delay 2 \
+                --connect-timeout 15 --max-time 130 -H 'Accept: application/octet-stream' \
+                -o "${ORT}.tmp" "$url" \
+                && test "$(stat -c %s "${ORT}.tmp")" = 6184676 \
+                && tar -tzf "${ORT}.tmp" > /dev/null; then
+              mv -f "${ORT}.tmp" "$ORT"
+              break
+            fi
+            rm -f "${ORT}.tmp"
+          done
+          test -s "$ORT"
+          tar -xzf "$ORT" -C /tmp/axia-ort-cache
+          ORT_ROOT=/tmp/axia-ort-cache/onnxruntime-linux-x64-1.20.0
+          test -s "$ORT_ROOT/lib/libonnxruntime.so"
+          cd /tmp/axia-yolo-ws
+          colcon build --merge-install --executor sequential --packages-up-to yolo_bringup \
+            --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF \
+            "-DONNXRUNTIME_ROOT=$ORT_ROOT" --event-handlers console_direct+
+          source install/setup.bash
+          ros2 pkg prefix yolo_bringup
+          echo "D05_PINNED_UPSTREAM_YOLO_ROS_BUILD_PASS"
+      - name: Actual private D05 Jazzy package build and executable discovery
+        shell: bash
+        run: |
+          set -eo pipefail
+          source /opt/ros/jazzy/setup.bash
+          source /tmp/axia-yolo-ws/install/setup.bash
+          colcon build --base-paths private_instructor/ros2_ws/src \
+            --packages-select axia_d05_depth_demo \
+            --executor sequential --event-handlers console_direct+
+          source install/setup.bash
+          ros2 pkg executables axia_d05_depth_demo | grep -F d05_range_observer
+          echo "D05_JAZZY_PACKAGE_L1_PASS"
+      - name: Fetch actor / AGPL model ephemeral with pinned hashes
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/axia-d05-assets
+          curl --fail -L --retry 3 --max-time 110 \
+            -o /tmp/axia-d05-assets/walk.dae \
+            'https://fuel.gazebosim.org/1.0/Mingfei/models/actor/tip/files/meshes/walk.dae'
+          curl --fail -L --retry 3 --max-time 120 \
+            -o /tmp/axia-d05-assets/yolo26n.onnx \
+            'https://huggingface.co/unileon-robotics/YOLO26-ONNX/resolve/main/yolo26n.onnx'
+          echo '49af0df3a319d1cb8ca2cebf02dbd00f625e5d5bec820bc5e109925b18b65c6e  /tmp/axia-d05-assets/walk.dae' | sha256sum -c -
+          echo '4f44c33cea12d4b5785e5e7c0a20c13d0c62a77de607ce96a40d6036c7d7bbcf  /tmp/axia-d05-assets/yolo26n.onnx' | sha256sum -c -
+      - name: L2 actual Gazebo person YOLO aligned Depth VALID -> UNKNOWN sensor loss
+        shell: bash
+        run: |
+          set -eo pipefail
+          source /opt/ros/jazzy/setup.bash
+          source /tmp/axia-yolo-ws/install/setup.bash
+          source install/setup.bash
+          timeout --signal=TERM --kill-after=25s 355s \
+            python3 -u scripts/d05_real_rgbd_l2_gate.py \
+              --model /tmp/axia-d05-assets/yolo26n.onnx \
+              --actor /tmp/axia-d05-assets/walk.dae \
+              --private-sha "$D05_PRIVATE_SHA" \
+              --wait-s 190 --out results/d05-real-private
+      - name: Export whitelisted real metrics without private code or weights
+        if: always()
+        shell: bash
+        run: |
+          if test -s results/d05-real-private/verdict.json; then
+            python3 scripts/d05_l2_safe_export.py \
+              --source results/d05-real-private --target results/d05-safe
+          fi
+      - name: Erase sealed source, private runtime logs and licensed assets
+        if: always()
+        shell: bash
+        run: |
+          rm -rf -- private_instructor /tmp/axia-yolo-ws /tmp/axia-ort-cache \
+             /tmp/axia-d05-assets results/d05-real-private build install log || true
+      - name: Upload only sanitized verdict/PNG/checksums, even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d05-real-rgbd-yoIo-valid-to-unknown-safe
+          path: results/d05-safe/
+          retention-days: 14
+          if-no-files-found: warn
