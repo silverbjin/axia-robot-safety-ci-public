@@ -17,6 +17,7 @@ import subprocess
 import time
 
 from d04_waffle_pi_rgb_preflight import _start, _stop_all, sync_ros_discovery_environment
+from d04_nav2_orderly_shutdown import request_nav2_shutdown
 from d04_yolo_person_runtime import (
     _watch_detections_and_images, valid_rgb, valid_person,
     PINNED_ONNX_SHA256,
@@ -58,7 +59,7 @@ def launch_command(shim: Path, onnx: Path, actor: Path) -> list[str]:
 
 
 def run() -> int:
-    out = Path("results/d04-packaged-nav2-live")
+    out = Path(os.environ.get("D04_OUTPUT_DIR", "results/d04-packaged-nav2-live"))
     out.mkdir(parents=True, exist_ok=True)
     verdict = {
         "gate":"G-D04-PACKAGED-OFFICIAL-NAV2-RUNTIME",
@@ -95,22 +96,38 @@ def run() -> int:
         _start("installed_d04_package",cmd,env,out,processes)
         # Authentic rclpy subscriptions; only real Gazebo Image may satisfy the gate.
         print("[D04][L2] Executing installed D04 package / official Nav2 / real Gazebo + person ONNX",flush=True)
-        seen=_watch_detections_and_images(out,duration_s=115)
+        seen=_watch_detections_and_images(out,duration_s=135,require_motion=True)
         verdict["ros_evidence"]=seen
         verdict["rgb_valid"]=bool(seen.get("first_image") and valid_rgb(seen["first_image"]))
         verdict["person_valid"]=bool(seen.get("person") and valid_person(seen["person"]))
         verdict["debug_saved"]=seen.get("debug_saved") is True
-        if not all(verdict[k] for k in ("rgb_valid","person_valid","debug_saved")):
+        verdict["motion_verified"]=seen["motion_evidence"]["passed"]
+        if not all(verdict[k] for k in ("rgb_valid","person_valid","debug_saved","motion_verified")):
             raise RuntimeError("Real upstream Nav2 Waffle RGB/person/debug evidence absent")
         verdict["status"]="PASS_PACKAGED_OFFICIAL_NAV2_GAZEBO_PERSON"
     except Exception as exc:
         verdict["blocker"]=type(exc).__name__+": "+str(exc)[:500]
     finally:
+        if verdict["status"]=="PASS_PACKAGED_OFFICIAL_NAV2_GAZEBO_PERSON" and processes:
+            verdict["shutdown_service"]=request_nav2_shutdown(env,out,timeout_s=65)
+        else:
+            verdict["shutdown_service"]={"passed":False,"skipped":"VISION_NOT_ACCEPTED"}
         _stop_all(processes,verdict)
         logfile=out/"installed_d04_package.log"
         log=logfile.read_text(errors="replace") if logfile.is_file() else ""
         verdict["launch_no_lowercase_bool_nameerror"]="name 'false' is not defined" not in log
         verdict["launch_no_world_file_missing"]="No such file or directory: '/tmp/nav2_" not in log
+        verdict["shutdown_quality"] = (
+            "WARN_SIGABRT" if ("exit code -6" in log or "SIGABRT" in log)
+            else "BLOCKED_NAV2_SHUTDOWN_SERVICE"
+            if verdict["shutdown_service"].get("passed") is not True
+            else "BLOCKED_TERMINATION_ESCALATION"
+            if verdict.get("shutdown_escalated") else "PASS_NAV2_MANAGED_NO_SIGABRT"
+        )
+        if verdict["status"]=="PASS_PACKAGED_OFFICIAL_NAV2_GAZEBO_PERSON" and (
+                verdict["shutdown_quality"]!="PASS_NAV2_MANAGED_NO_SIGABRT"):
+            verdict["status"]="BLOCKED_SHUTDOWN_UNCLEAN"
+            verdict["blocker"]="NAV2_SHUTDOWN_NOT_CLEAN"
         # Runtime must not silently PASS if Launch failed with a late NameError.
         if not verdict["launch_no_lowercase_bool_nameerror"] or not verdict["launch_no_world_file_missing"]:
             verdict["status"]="BLOCKED_OR_INCONCLUSIVE"
@@ -121,7 +138,8 @@ def run() -> int:
             hashlib.sha256(x.read_bytes()).hexdigest()+"  "+x.name+"\n" for x in files))
         print(json.dumps({k:verdict.get(k) for k in (
             "gate","status","blocker","rgb_valid","person_valid","debug_saved",
-            "launch_no_lowercase_bool_nameerror","launch_no_world_file_missing"
+            "launch_no_lowercase_bool_nameerror","launch_no_world_file_missing",
+            "motion_verified","shutdown_quality","shutdown_service"
         )},ensure_ascii=False),flush=True)
     return 0 if verdict["status"]=="PASS_PACKAGED_OFFICIAL_NAV2_GAZEBO_PERSON" else 2
 
