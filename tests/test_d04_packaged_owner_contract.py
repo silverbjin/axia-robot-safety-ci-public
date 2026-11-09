@@ -23,7 +23,7 @@ def test_packaged_launch_uses_real_ros_package_and_not_yolo_proxy(tmp_path):
         tmp_path/"walk.dae",
         gui=False)
     assert launch[:4]==["ros2","launch","axia_d04_vision_demo","d04_p1_yolo.launch.py"]
-    assert "headless:=true" in launch
+    assert "headless:=True" in launch
     assert "show_image:=false" in launch
     assert not any("cmd_vel" in part for part in launch)
     assert not any("goal" in part.lower() for part in launch)
@@ -33,7 +33,7 @@ def test_gui_is_explicit_and_only_changes_visualization(tmp_path):
     launch=runtime.build_launch_command(
         tmp_path/"axia_tb3_p1.launch.py", tmp_path/"model.onnx",
         tmp_path/"walk.dae",gui=True)
-    assert "headless:=false" in launch
+    assert "headless:=False" in launch
     assert "show_image:=true" in launch
     assert "use_rviz:=false" in launch
 
