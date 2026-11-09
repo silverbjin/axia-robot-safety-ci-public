@@ -131,6 +131,9 @@ def main():
     env=os.environ.copy()
     env["ROS_DOMAIN_ID"]=str(20+(os.getpid()%170))
     env["ROS_AUTOMATIC_DISCOVERY_RANGE"]="LOCALHOST"
+    # Local rclpy process and official CM subprocess must use the SAME DDS domain.
+    os.environ["ROS_DOMAIN_ID"]=env["ROS_DOMAIN_ID"]
+    os.environ["ROS_AUTOMATIC_DISCOVERY_RANGE"]=env["ROS_AUTOMATIC_DISCOVERY_RANGE"]
     params=args.params.resolve(strict=True)
     result["params_sha256"]=hashlib.sha256(params.read_bytes()).hexdigest()
     node=None;proc=None
