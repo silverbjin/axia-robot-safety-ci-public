@@ -40,6 +40,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          git config --global --add safe.directory "$PWD"
+          git config --global --add safe.directory "$PWD/private_instructor"
           test "$(git rev-parse HEAD)" = "$D05_PUBLIC_TEST_SHA"
           test "$(git -C private_instructor rev-parse HEAD)" = "$D05_PRIVATE_SHA"
           echo "D05_L2_PUBLIC_AND_PRIVATE_EXACT_SHA_CONFIRMED"
