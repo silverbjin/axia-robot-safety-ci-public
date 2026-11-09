@@ -27,7 +27,8 @@ def test_l1_no_motion_publisher_and_nav2_plan_only():
     assert '"ros2","run","nav2_planner","planner_server"' in s
     assert '"/axia/d07/test/scan"' in s
     assert '"/cmd_vel"' in s # graph must prove zero publishers
-    assert 'node.count_publishers("/cmd_vel")==0' in s
+    assert 'node.count_publishers("/cmd_vel")' in s
+    assert 'verdict["graph"]["actual_robot_cmd_publishers"]!=0' in s
     assert "NavigateToPose" not in s
     assert "FollowPath" not in s
     assert "create_publisher(Twist" not in s
