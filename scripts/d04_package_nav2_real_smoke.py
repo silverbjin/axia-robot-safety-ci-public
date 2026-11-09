@@ -22,7 +22,7 @@ from d04_yolo_person_runtime import (
     PINNED_ONNX_SHA256,
 )
 
-ACTOR_SHA256 = "49af0df3a319d1cb8ca2cebf02dbd00f625e5e109925b18b65c6e"
+ACTOR_SHA256 = "49af0df3a319d1cb8ca2cebf02dbd00f625e5d5bec820bc5e109925b18b65c6e"
 SHIM = '''"""CI-only official Nav2 simulation wrapper: NOT AXIA P1."""
 from launch import LaunchDescription
 from launch.actions import IncludeLaunchDescription
