@@ -29,8 +29,9 @@ def test_l1_no_motion_publisher_and_nav2_plan_only():
     assert '"/cmd_vel"' in s # graph must prove zero publishers
     assert 'node.count_publishers("/cmd_vel")' in s
     assert 'verdict["graph"]["actual_robot_cmd_publishers"]!=0' in s
-    assert "NavigateToPose" not in s
-    assert "FollowPath" not in s
+    assert 'ActionClient(node,ComputePathToPose' in s
+    assert 'ActionClient(node,NavigateToPose' not in s
+    assert 'ActionClient(node,FollowPath' not in s
     assert "create_publisher(Twist" not in s
     assert '"gazebo_actual":False' in s
     assert '"certified_estop":False' in s
