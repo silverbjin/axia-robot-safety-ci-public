@@ -1,0 +1,40 @@
+name: AXIA G07 Owner real-motion gate regression L0 (NO GOAL)
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/p2-g07-mvp-motion-gate-l0.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  sealed-owner-g07-l0:
+    runs-on: ubuntu-24.04
+    environment: axia-instructor-sealed
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 176eae2f72b88fc0ee1a78b031c0e3de88ed2ac2
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Exact-source Owner QrDCwq8W trace regression, original P1/P2 strict gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '176eae2f72b88fc0ee1a78b031c0e3de88ed2ac2'
+          python3 -m pip install --quiet pytest==8.3.5 PyYAML==6.0.2
+          python3 -m pytest -q -ra \
+            tests/unit/test_p2_g07_mvp_motion_gate.py \
+            tests/unit/test_p2_mvp_one_goal_timing.py \
+            tests/unit/test_p2_mvp_one_goal_readiness.py \
+            tests/unit/test_p2_g07_live_phase.py \
+            tests/unit/test_p2_g07_demo_evidence.py \
+            tests/unit/test_p2_evidence_oracles.py \
+            tests/unit/test_p2_base_guard_policy.py \
+            tests/unit/test_p2_t07_owner_contract.py
+          python3 -m py_compile tools/p2_l3_acceptance_contract.py tools/p2_l3_live_session.py
+          echo AXIA_P2_G07_OWNER_REAL_MOTION_GATE_L0_PASS_NOT_L3
+      - name: Erase private checkout
+        if: always()
+        run: rm -rf -- ros2_ws tools scripts docs configs tests .git
