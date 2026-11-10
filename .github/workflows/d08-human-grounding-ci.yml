@@ -7,6 +7,7 @@ on:
       - 'd08/scripts/d08_inspect_collada_bounds.py'
       - 'd08/harness/d08_live_world.py'
       - 'd08/tests/test_d08_grounded_human_visual.py'
+      - 'd08/tests/test_d08_camera_fullbody_framing.py'
       - '.github/workflows/d08-human-grounding-ci.yml'
   workflow_dispatch:
 permissions:
@@ -20,7 +21,7 @@ jobs:
         with:
           persist-credentials: false
       - run: python3 -m pip install --quiet pytest==8.3.5
-      - run: PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest -q d08/tests/test_d08_grounded_human_visual.py
+      - run: PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest -q d08/tests/test_d08_grounded_human_visual.py d08/tests/test_d08_camera_fullbody_framing.py
 
   mesh-ground-source:
     runs-on: ubuntu-24.04
