@@ -1,0 +1,74 @@
+name: AXIA P2 MVP actual Jazzy Harmonic pre-Goal SlowZone + STOP L2
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/p2-mvp-timing-real-gazebo-l2.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: axia-p2-mvp-timing-real-gazebo-l2
+  cancel-in-progress: true
+jobs:
+  real-gazebo-no-goal:
+    runs-on: ubuntu-24.04
+    environment: axia-instructor-sealed
+    timeout-minutes: 32
+    container:
+      image: ros:jazzy-ros-base-noble
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 167027902234202f7a975333759944b7ddbd8ad7
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Official Jazzy Nav2 + Gazebo Harmonic
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+            procps git python3-yaml python3-colcon-common-extensions \
+            ros-jazzy-nav2-bringup ros-jazzy-navigation2 ros-jazzy-nav2-minimal-tb3-sim \
+            ros-jazzy-ros-gz ros-jazzy-rclpy ros-jazzy-rosgraph-msgs \
+            ros-jazzy-nav-msgs ros-jazzy-sensor-msgs ros-jazzy-geometry-msgs \
+            ros-jazzy-std-msgs ros-jazzy-std-srvs ros-jazzy-lifecycle-msgs \
+            ros-jazzy-nav2-msgs ros-jazzy-action-msgs ros-jazzy-tf2-ros
+      - name: P1 + P2 exact source/goal tolerance, Gazebo physical 3-zone LiDAR (NO GOAL)
+        shell: bash
+        env:
+          ROS_DOMAIN_ID: '69'
+          ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+          AXIA_P2_G07_PHYSICAL_PREFLIGHT: '1'
+          AXIA_P2_MVP_ONE_GOAL: '1'
+          AXIA_P2_SMOKE_RESULTS: 'results/p2-mvp-timing'
+        run: |
+          set -eo pipefail
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '167027902234202f7a975333759944b7ddbd8ad7'
+          mkdir -p results
+          timeout --signal=TERM --kill-after=10s 650s bash scripts/p2_no_goal_smoke_ci.sh
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('results/p2-mvp-timing')
+          startup=json.loads((root/'startup_verdict.json').read_text())
+          scan=json.loads((root/'g07_physical/g07_physical_preflight.json').read_text())
+          assert startup.get('status')=='SMOKE_READY'
+          assert not startup.get('goal_sent') and not startup.get('fault_injected')
+          assert scan['status']=='G07_PHYSICAL_OBSTACLE_LASER_PROVEN',scan
+          assert scan.get('fixture_ack') is True and scan.get('set_pose_ack') is True
+          assert scan.get('slowdown_pose_ack') is True and scan.get('near_pose_ack') is True
+          a,b,c=(scan['baseline_front'],scan['slowdown_front'],scan['stopped_front'])
+          assert a>.75 and .4<b<.75 and .14<=c<.4 and a>b>c,(a,b,c)
+          assert not scan.get('goal_sent') and not scan.get('fault_injected')
+          assert scan.get('collision_ground_truth_available') is False
+          assert scan.get('gate_accepted') is False and scan.get('certified_estop') is False
+          txt=(root/'launch.log').read_text(errors='replace')
+          assert 'AXIA_P2_MVP_GOAL_TOLERANCE_ONLY' in txt, 'MVP Nav2 params overlay not loaded'
+          print('P2_MVP_REAL_JAZZY_HARMONIC_THREEZONE_NO_GOAL_L2_PASS',a,b,c)
+          PY
+      - name: Delete private source and local evidence
+        if: always()
+        shell: bash
+        run: rm -rf -- ros2_ws tools scripts docs configs tests results build install log .git
