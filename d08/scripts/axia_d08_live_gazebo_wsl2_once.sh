@@ -4,7 +4,7 @@ set -Eeuo pipefail
 umask 077
 readonly PRIVATE_REPO='silverbjin/axia-robot-safety-instructor'
 readonly PRIVATE_BRANCH='feature/d08-gazebo-live-one-world-20261110'
-readonly PRIVATE_SHA='66d37130e517544165ccd02f3115704dbcd14c56'
+readonly PRIVATE_SHA='b5e69e4b221522a79ba38dff42c1f9cb86d1662f'
 readonly D04_SOURCE_SHA='c775820077917c4da56c6aa60001b224071664b3'
 readonly YOLO_SHA='94d2dd500cb26027ee9c019f4d3a02029ac615cc'
 readonly ONNX_SHA='4f44c33cea12d4b5785e5e7c0a20c13d0c62a77de607ce96a40d6036c7d7bbcf'
@@ -129,7 +129,17 @@ ref=modules['d08_live_readonly_probe'].measure_real_person(img,bbox,11_000_000_0
 assert ref is not None and abs(ref['distance_m']-1.65)<1e-5
 assert modules['d08_live_readonly_probe'].measure_real_person(
     img,bbox,10_800_000_000) is None
+from p2_l3_acceptance_contract import before_moving_g07_slowdown
+from p2_mvp_stop_geometry import STOP_DISPATCH_M
+from p2_contact_discovery import resolve_g07_contact_topic, SENSOR
+from p2_teardown_audit import assess_teardown_log
+assert callable(before_moving_g07_slowdown) and STOP_DISPATCH_M==0.43
+assert resolve_g07_contact_topic(SENSOR)==SENSOR
+assert assess_teardown_log(
+ "[ERROR] [collision_monitor-18]: process has died [pid 11908, exit code -11, cmd binary]")[
+ "collision_monitor_exit_minus11"]
 print('D08_PRIVATE_PREFLIGHT_STATIC_PASS D05_REFERENCE_32FC1_PASS NO_ROS_NO_GOAL',flush=True)
+print('G07_PRIVATE_STOP_043_CONTACT_AND_SHUTDOWN_AUDIT_PREFLIGHT_PASS',flush=True)
 PY
 export AXIA_D08_GAZEBO_GUI=1
 export AXIA_P2_OWNER_PINNED_SHA="$PRIVATE_SHA"
