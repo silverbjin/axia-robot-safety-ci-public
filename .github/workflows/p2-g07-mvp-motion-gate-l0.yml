@@ -15,14 +15,14 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 176eae2f72b88fc0ee1a78b031c0e3de88ed2ac2
+          ref: a9a33cc32586e4a30843efcf9172bdaade85d8ea
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Exact-source Owner QrDCwq8W trace regression, original P1/P2 strict gate
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '176eae2f72b88fc0ee1a78b031c0e3de88ed2ac2'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 'a9a33cc32586e4a30843efcf9172bdaade85d8ea'
           python3 -m pip install --quiet pytest==8.3.5 PyYAML==6.0.2
           python3 -m pytest -q -ra \
             tests/unit/test_p2_g07_mvp_motion_gate.py \
