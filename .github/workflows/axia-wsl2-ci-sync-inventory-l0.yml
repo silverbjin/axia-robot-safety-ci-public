@@ -1,0 +1,64 @@
+name: AXIA WSL2 to CI environment inventory collector L0
+on:
+  push:
+    branches: [feature/axia-wsl2-ci-sync-inventory-20261111]
+    paths:
+      - 'tools/axia_wsl2_ci_sync_collect.py'
+      - 'scripts/axia_wsl2_ci_sync_collect_once.sh'
+      - 'tests/unit/test_axia_wsl2_ci_sync_collect.py'
+      - '.github/workflows/axia-wsl2-ci-sync-inventory-l0.yml'
+permissions:
+  contents: read
+concurrency:
+  group: axia-wsl2-ci-sync-inventory-l0
+  cancel-in-progress: false
+
+jobs:
+  collector-l0:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - name: Checkout exact public collector sources
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: RED-GREEN privacy, schema and no-side-effect tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n scripts/axia_wsl2_ci_sync_collect_once.sh
+          bash scripts/axia_wsl2_ci_sync_collect_once.sh --self-check
+          python3 tools/axia_wsl2_ci_sync_collect.py --self-check
+          python3 -m unittest discover -s tests/unit -p test_axia_wsl2_ci_sync_collect.py -v
+          echo 'AXIA_WSL2_CI_SYNC_UNIT_TESTS_PASS'
+      - name: Capture real CI Linux identity safely without ROS/Gazebo installs or Goal
+        shell: bash
+        run: |
+          set -euo pipefail
+          RUN_DIR="$(mktemp -d)"
+          chmod 700 "$RUN_DIR"
+          trap 'rm -rf -- "$RUN_DIR"' EXIT
+          python3 tools/axia_wsl2_ci_sync_collect.py --mode ci --out-dir "$RUN_DIR"
+          (cd "$RUN_DIR" && sha256sum -c SHA256SUMS)
+          python3 - "$RUN_DIR" <<'PY'
+          from pathlib import Path
+          import json,sys
+          d=Path(sys.argv[1])
+          p=json.loads((d/'owner_profile.json').read_text())
+          s=json.loads((d/'owner_summary.json').read_text())
+          assert p['schema']=='axia_ros_jazzy_harmonic_env_v1'
+          assert p['wsl2_detected'] is False
+          assert p['profile_kind']=='ci_linux'
+          assert p['privacy']['hostname_username_paths_addresses_tokens_excluded']
+          assert p['runtime_details']['ci_parity_compared'] is False
+          assert s['ci_sync_applied'] is False
+          assert s['goal_sent'] is False
+          print('AXIA_WSL2_CI_SYNC_LINUX_COLLECTOR_L0_PASS_NO_ROS_NO_GOAL')
+          PY
+      - name: Verify script source SHA pin resolves to source in this PR branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'b27df09529daab4e67d6c3486f8b7e0cf2c6b123' scripts/axia_wsl2_ci_sync_collect_once.sh
+          grep -q 'axia_wsl2_ci_sync_collect.py' scripts/axia_wsl2_ci_sync_collect_once.sh
+          echo 'AXIA_WSL2_CI_SYNC_BOOTSTRAP_SHA_PIN_STATIC_PASS'
