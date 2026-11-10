@@ -36,6 +36,7 @@ MIN_REQUIRED = (
     "ros-jazzy-nav2-bringup",
     "ros-jazzy-nav2-minimal-tb3-sim",
     "ros-jazzy-navigation2",
+    "ros-jazzy-ros-gz",
 )
 OFFICIAL_REQUIRED = (
     "nav2_bringup/launch/tb3_simulation_launch.py",
