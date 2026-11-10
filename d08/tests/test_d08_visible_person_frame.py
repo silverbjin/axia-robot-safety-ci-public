@@ -20,6 +20,10 @@ def frame(path,person=False):
             for x in range(285,350):
                 at=(y*width+x)*3
                 rgb[at:at+3]=bytes([172,117,86]) # visible face
+        for y in range(230,380):
+            for x in range(260,365):
+                at=(y*width+x)*3
+                rgb[at:at+3]=bytes([21,28,60]) # visible navy legs
     path.write_bytes(HEADER+bytes(rgb))
     return path
 
@@ -36,6 +40,7 @@ def test_actual_view_with_shirt_and_head_is_candidate_not_yolo_pass(tmp_path):
     assert result['status']=='VISUAL_FRAMING_CANDIDATE'
     assert result['sampled_shirt_green_pixels']>=150
     assert result['sampled_skin_pixels']>=30
+    assert result['sampled_navy_pants_pixels']>=150
     assert result['yolo_person_detection_verified'] is False
     assert result['d05_valid_verified'] is False
 
