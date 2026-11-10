@@ -4,6 +4,10 @@ on:
     branches: [feature/p3-mvp-evidence-ci-20261110]
     paths:
       - '.github/workflows/axia-p3-mvp-offline-l0.yml'
+  pull_request:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths:
+      - '.github/workflows/axia-p3-mvp-offline-l0.yml'
 permissions:
   contents: read
 concurrency:
