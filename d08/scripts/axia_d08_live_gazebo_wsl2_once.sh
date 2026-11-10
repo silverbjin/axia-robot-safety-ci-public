@@ -4,7 +4,7 @@ set -Eeuo pipefail
 umask 077
 readonly PRIVATE_REPO='silverbjin/axia-robot-safety-instructor'
 readonly PRIVATE_BRANCH='feature/d08-gazebo-live-one-world-20261110'
-readonly PRIVATE_SHA='986828e65dc7e7605c508e81f525101c14ec8ae7'
+readonly PRIVATE_SHA='5f2a15ef3ea0a7866bce15b66f2ecd48d28e959e'
 readonly D04_SOURCE_SHA='c775820077917c4da56c6aa60001b224071664b3'
 readonly YOLO_SHA='94d2dd500cb26027ee9c019f4d3a02029ac615cc'
 readonly ONNX_SHA='4f44c33cea12d4b5785e5e7c0a20c13d0c62a77de607ce96a40d6036c7d7bbcf'
@@ -64,7 +64,6 @@ fi
 if [[ "$READY" == 0 ]];then
   echo '[D08] Missing D04 cached assets or upstream YOLO; provisioning via approved D04 one-shot'
   PREP="$(mktemp --suffix=.sh)"
-  trap 'rm -f -- "$PREP"' RETURN
   curl -fL -sS --retry 3 \
     "https://raw.githubusercontent.com/silverbjin/axia-robot-safety-ci-public/$D04_SOURCE_SHA/scripts/axia_d04_ros_package_wsl2_once.sh" \
     -o "$PREP"
