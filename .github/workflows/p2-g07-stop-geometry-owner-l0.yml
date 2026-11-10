@@ -1,0 +1,39 @@
+name: AXIA P2 G07 Owner STOP geometry regression L0 - NO GOAL
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/p2-g07-stop-geometry-owner-l0.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  sealed-g07-stop-geometry-l0:
+    environment: axia-instructor-sealed
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 97ea20a8557cc08fd9c5672b39753df6efb6d909
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '97ea20a8557cc08fd9c5672b39753df6efb6d909'
+          python3 -m pip install -q pytest==8.3.5 PyYAML==6.0.2
+          python3 -m pytest -q -ra \
+            tests/unit/test_p2_g07_stop_geometry_owner.py \
+            tests/unit/test_p2_g07_mvp_motion_gate.py \
+            tests/unit/test_p2_mvp_one_goal_timing.py \
+            tests/unit/test_p2_mvp_one_goal_readiness.py \
+            tests/unit/test_p2_g07_live_phase.py \
+            tests/unit/test_p2_evidence_oracles.py \
+            tests/unit/test_p2_base_guard_policy.py
+          bash -n scripts/p2_owner_l3_wsl2.sh
+          python3 -m py_compile tools/p2_l3_live_session.py tools/p2_g07_physical_preflight.py
+          echo AXIA_G07_STOP_GEOMETRY_OWNER_TRACE_L0_PASS_NOT_REAL_GAZEBO
+      - name: Destroy private checkout
+        if: always()
+        run: rm -rf -- ros2_ws tools scripts docs configs tests .git
