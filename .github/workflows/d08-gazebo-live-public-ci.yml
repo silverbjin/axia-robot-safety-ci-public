@@ -1,0 +1,37 @@
+name: AXIA D08 one-world Gazebo live harness (public L0)
+on:
+  push:
+    branches: ['feature/d08-gazebo-live-ci-20261110']
+    paths:
+      - 'd08/harness/**'
+      - 'd08/tests/test_d08_live_public_harness.py'
+      - 'd08/scripts/**'
+      - '.github/workflows/d08-gazebo-live-public-ci.yml'
+  pull_request:
+    paths:
+      - 'd08/harness/**'
+      - 'd08/tests/test_d08_live_public_harness.py'
+      - 'd08/scripts/**'
+      - '.github/workflows/d08-gazebo-live-public-ci.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  public-world-and-sensor-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile exact public D08 harness and reproduce synthetic XML negative gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install -q pytest==8.3.5
+          python -m compileall -q d08/harness
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -q d08/tests/test_d08_live_public_harness.py
+          echo 'D08_PUBLIC_L0_ONLY_ROS_GAZEBO_NOT_RUN'
