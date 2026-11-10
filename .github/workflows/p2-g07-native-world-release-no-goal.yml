@@ -18,18 +18,19 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 4abde293c5c628a101c39b7b41abc5e3877f71a7
+          ref: 77801f983f02da57c3692b4eec45cff5215dcbd5
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Owner coordinate-frame regression and original G07 safety contracts
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '4abde293c5c628a101c39b7b41abc5e3877f71a7'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '77801f983f02da57c3692b4eec45cff5215dcbd5'
           python3 -m pip install --quiet pytest==8.3.5 PyYAML==6.0.2
           python3 -m pytest -q -ra \
             tests/unit/test_p2_g07_coordinate_frames.py \
             tests/unit/test_p2_g07_native_pose_fallback.py \
+            tests/unit/test_p2_g07_native_scene_info.py \
             tests/unit/test_p2_g07_world_broadcast.py \
             tests/unit/test_p2_g07_live_phase.py \
             tests/unit/test_p2_t07_owner_contract.py \
@@ -54,7 +55,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 4abde293c5c628a101c39b7b41abc5e3877f71a7
+          ref: 77801f983f02da57c3692b4eec45cff5215dcbd5
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Install official Nav2 Waffle Jazzy Gazebo Harmonic once
@@ -73,7 +74,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '4abde293c5c628a101c39b7b41abc5e3877f71a7'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '77801f983f02da57c3692b4eec45cff5215dcbd5'
           export AXIA_P2_G07_FRAME_RESULTS="$PWD/results/p2-g07-frame"
           timeout --signal=TERM --kill-after=20s 600s bash scripts/p2_g07_worldframe_ci.sh
           python3 - <<'PY'
