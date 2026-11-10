@@ -53,6 +53,14 @@ def run(out:Path,timeout_s=25):
     try:
         if not client.wait_for_server(timeout_sec=10):
             raise RuntimeError('D08_OFFICIAL_NAV2_PLANNER_UNAVAILABLE')
+        # A fresh simulation-time rclpy node must receive /clock BEFORE
+        # timestamping a planner request; stale/zero clock cannot pass.
+        clock_deadline=time.monotonic()+6
+        while (node.get_clock().now().nanoseconds<=0
+               and time.monotonic()<clock_deadline):
+            rclpy.spin_once(node,timeout_sec=.15)
+        if node.get_clock().now().nanoseconds<=0:
+            raise RuntimeError('D08_NAV2_PLANNER_SIM_CLOCK_NOT_READY')
         goal=ComputePathToPose.Goal()
         goal.goal.header.frame_id='map'
         goal.goal.header.stamp=node.get_clock().now().to_msg()
