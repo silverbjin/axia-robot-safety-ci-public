@@ -39,6 +39,32 @@ def test_actual_view_with_shirt_and_head_is_candidate_not_yolo_pass(tmp_path):
     assert result['yolo_person_detection_verified'] is False
     assert result['d05_valid_verified'] is False
 
+def test_actual_shaded_d04_head_pixels_are_visible_not_a_false_negative(tmp_path):
+    # Reproduce verified Gazebo RGB from run #42853632220: upper head
+    # pixels are about RGB(90,75,63), not the old >=100 skin cutoff.
+    width,height=640,480
+    rgb=bytearray(bytes([218,218,218])*(width*height))
+    for y in range(100,175):
+        for x in range(220,420):
+            at=(y*width+x)*3
+            rgb[at:at+3]=bytes([29,51,25])
+    for y in range(60,105):
+        for x in range(280,340):
+            at=(y*width+x)*3
+            rgb[at:at+3]=bytes([90,75,63])
+    for y in range(176,370):
+        for x in range(260,360):
+            at=(y*width+x)*3
+            rgb[at:at+3]=bytes([21,28,60])
+    p=tmp_path/'actual_d04_shaded.ppm'
+    p.write_bytes(HEADER+bytes(rgb))
+    r=assess_rgb_ppm(p)
+    assert r['status']=='VISUAL_FRAMING_CANDIDATE',r
+    assert r['sampled_head_skin_pixels']>=50
+    assert r['sampled_navy_pants_pixels']>=150
+    assert r['yolo_person_detection_verified'] is False
+
+
 def test_nonstandard_ppm_rejected(tmp_path):
     file=tmp_path/'invalid.ppm'
     file.write_bytes(b'P6\\n640 480\\n255\\n' + b'0'*(640*480*3))
