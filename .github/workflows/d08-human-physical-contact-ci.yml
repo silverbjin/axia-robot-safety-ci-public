@@ -86,7 +86,7 @@ jobs:
             -o /tmp/axia-d08-assets/walk.dae \
             'https://fuel.gazebosim.org/1.0/Mingfei/models/actor/tip/files/meshes/walk.dae'
           echo '49af0df3a319d1cb8ca2cebf02dbd00f625e5d5bec820bc5e109925b18b65c6e  /tmp/axia-d08-assets/walk.dae' | sha256sum -c -
-      - name: Real Gazebo after grounded-human visual: actual RGBD and native LiDAR set_pose
+      - name: Real Gazebo grounded human RGBD and native LiDAR set_pose
         shell: bash
         run: |
           set -eo pipefail
