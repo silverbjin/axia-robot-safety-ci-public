@@ -51,7 +51,7 @@ def run_pty(program, env):
     return os.waitstatus_to_exitcode(status), b"".join(chunks).decode(errors="replace")
 
 
-def simulate(tmp_path, fail_case=""):
+def simulate(tmp_path, fail_case="", wrapper=WRAPPER):
     origin = tmp_path / "origin"
     origin.mkdir()
     git("init", "-q", "-b", BRANCH, str(origin))
@@ -74,7 +74,7 @@ if [[ "$2" == "${AXIA_TEST_FAIL_CASE:-}" ]]; then exit 8; fi
     git("add", ".", cwd=origin)
     git("commit", "-qm", "dummy source", cwd=origin)
     sha = git("rev-parse", "HEAD", cwd=origin)
-    source = WRAPPER.read_text()
+    source = wrapper.read_text()
     assert source.count(PIN) == 1
     copy = tmp_path / "wrapper.sh"
     # Replace only the SHA in a temporary testing copy; production pin stays immutable.
@@ -87,7 +87,7 @@ if [[ "$2" == "${AXIA_TEST_FAIL_CASE:-}" ]]; then exit 8; fi
 set -euo pipefail
 if [[ "$1" == auth && "$2" == status ]]; then exit 0; fi
 if [[ "$1" == repo && "$2" == clone ]]; then
-  exec git clone -q -b "$AXIA_TEST_BRANCH" "$AXIA_TEST_LOCAL_ORIGIN" "$4"
+  exec git clone -q --depth 1 -b "$AXIA_TEST_BRANCH" "file://$AXIA_TEST_LOCAL_ORIGIN" "$4"
 fi
 exit 6
 ''')
@@ -119,3 +119,13 @@ def test_g06_failure_never_starts_g07(tmp_path):
     assert rc != 0
     assert [r[0] for r in entries] == ["G06"]
     assert "P2_REMAINING_OWNER_BLOCKED_CASE=G06" in out
+
+def test_g07_only_fresh_shallow_checkout(tmp_path):
+    # Recommended next Owner action runs G07 only; do not repeat valid G06.
+    # Mock the private runner and gh authentication, but use real shallow Git
+    # clone, a real controlling PTY and the exact public bootstrap logic.
+    wrapper = ROOT / "scripts" / "axia_p2_g07_owner_l3_once.sh"
+    rc, out, entries = simulate(tmp_path, wrapper=wrapper)
+    assert rc == 0, out
+    assert [x[0] for x in entries] == ["G07"]
+    assert "DIRTY_CASE=G07" not in out
