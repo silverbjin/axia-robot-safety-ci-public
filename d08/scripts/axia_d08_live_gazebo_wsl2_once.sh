@@ -3,8 +3,8 @@
 set -Eeuo pipefail
 umask 077
 readonly PRIVATE_REPO='silverbjin/axia-robot-safety-instructor'
-readonly PRIVATE_BRANCH='fix/d08-human-physical-model-20261110'
-readonly PRIVATE_SHA='8c5c50e4379096208f84ce9572833c8f705fbb38'
+readonly PRIVATE_BRANCH='fix/d08-humanoid-single-visual-rgbd-diagnostics-20261110'
+readonly PRIVATE_SHA='84fdf0a26a5c9340100808d28704ec85d186bc45'
 readonly D04_SOURCE_SHA='c775820077917c4da56c6aa60001b224071664b3'
 readonly YOLO_SHA='94d2dd500cb26027ee9c019f4d3a02029ac615cc'
 readonly ONNX_SHA='4f44c33cea12d4b5785e5e7c0a20c13d0c62a77de607ce96a40d6036c7d7bbcf'
