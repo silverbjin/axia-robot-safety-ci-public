@@ -50,7 +50,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 404897cefaebf97495e9fd9a1c276971846a8810
+          ref: 488bfd132ed494b572384dc6e61537458cee0783
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor-src
           fetch-depth: 0
@@ -61,7 +61,7 @@ jobs:
         run: |
           set -euo pipefail
           cd instructor-src
-          test "$(git rev-parse HEAD)" = '404897cefaebf97495e9fd9a1c276971846a8810'
+          test "$(git rev-parse HEAD)" = '488bfd132ed494b572384dc6e61537458cee0783'
           git merge-base --is-ancestor 'd73b6170c86e392761b5446253f1f452d0f5c2d1' HEAD
           python3 - <<'PY'
           import pathlib, subprocess
@@ -126,7 +126,7 @@ jobs:
           assert x['gates']==dict.fromkeys(['G08','G09','G10','G11'],'NOT_ACCEPTED')
           assert len(x['records'])==5
           assert [z['status'] for z in x['records']]==['NOT_VERIFIED','NOT_VERIFIED','NOT_VERIFIED','OFFLINE_FIXTURE_PASS','NOT_VERIFIED']
-          assert m['runner_source_sha']=='404897cefaebf97495e9fd9a1c276971846a8810'
+          assert m['runner_source_sha']=='488bfd132ed494b572384dc6e61537458cee0783'
           assert m['goal_sent'] is False and m['fault_injected'] is False and m['certified_estop'] is False
           audit=[json.loads(line) for line in (p/'audit_events.jsonl').read_text().splitlines()]
           assert len(audit)==5 and all(e['event']=='SCENARIO_VERDICT' and e['goal_sent'] is False for e in audit)
