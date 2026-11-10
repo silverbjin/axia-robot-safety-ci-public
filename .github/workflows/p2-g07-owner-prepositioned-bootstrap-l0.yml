@@ -1,0 +1,44 @@
+name: AXIA P2 G07 prepositioned Owner bootstrap fail-closed L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths:
+      - '.github/workflows/p2-g07-owner-prepositioned-bootstrap-l0.yml'
+      - 'scripts/axia_p2_g07_owner_prepositioned_wsl2_once.sh'
+permissions:
+  contents: read
+concurrency:
+  group: axia-p2-g07-owner-prepositioned-static
+  cancel-in-progress: false
+jobs:
+  public-static-no-goal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Owner prepositioned shell syntax, exact SHA, no AUTO TTY
+        shell: bash
+        run: |
+          set -euo pipefail
+          SCRIPT="scripts/axia_p2_g07_owner_prepositioned_wsl2_once.sh"
+          bash -n "$SCRIPT"
+          bash "$SCRIPT" --self-check | tee /tmp/axia_g07_owner_pregoal_selfcheck.txt
+          grep -q 'AXIA_G07_PREPOSITIONED_BOOTSTRAP_STATIC_OK' /tmp/axia_g07_owner_pregoal_selfcheck.txt
+          grep -q 'private_sha=89bbff228ca3595eefd68058fa2aa583b2203a0c' /tmp/axia_g07_owner_pregoal_selfcheck.txt
+          set +e
+          OUT="$(bash "$SCRIPT" </dev/null 2>&1)"
+          RC=$?
+          set -e
+          test "$RC" -eq 2
+          [[ "$OUT" == *'controlling TTY required NO_GOAL'* ]]
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('scripts/axia_p2_g07_owner_prepositioned_wsl2_once.sh').read_text()
+          assert "89bbff228ca3595eefd68058fa2aa583b2203a0c" in s
+          assert "--case G07 --mvp-relocated-obstacle" in s
+          assert "AXIA_P2_OWNER_PINNED_SHA" in s
+          assert all(k not in s for k in ("printf 'YES-P2-G07-GOAL", "echo YES-P2-G07-GOAL |", "expect -c"))
+          print("AXIA_G07_PREPOSITIONED_OWNER_BOOTSTRAP_L0_PASS_NO_GOAL_NO_AUTO_CONSENT")
+          PY
