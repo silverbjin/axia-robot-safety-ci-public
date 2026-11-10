@@ -1,0 +1,116 @@
+name: AXIA P3 offline fixtures and replay L0 (source-pinned, no Goal)
+on:
+  push:
+    branches: [feature/p3-mvp-evidence-ci-20261110]
+    paths:
+      - '.github/workflows/axia-p3-mvp-offline-l0.yml'
+permissions:
+  contents: read
+concurrency:
+  group: axia-p3-mvp-l0-fixed-sha
+  cancel-in-progress: false
+
+jobs:
+  private-source-offline-l0:
+    runs-on: ubuntu-24.04
+    environment: axia-instructor-sealed
+    timeout-minutes: 12
+    steps:
+      - name: Retrieve pinned Owner profile before private source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: evidence/wsl2-jazzy-harmonic-profile-20261110
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          path: owner-evidence
+          sparse-checkout: docs/environment/wsl2_owner_profile.json
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - name: Verify scoped WSL2-L2 source environment parity reference (NO L2 rerun)
+        shell: bash
+        run: |
+          set -euo pipefail
+          P="owner-evidence/docs/environment/wsl2_owner_profile.json"
+          test -s "$P"
+          test "$(sha256sum "$P" | cut -d' ' -f1)" = "dedd807884507222e2361f70e31ed47c8b4be7701b751a35e7f4a796ba4dd7b8"
+          python3 - "$P" <<'PY'
+          import datetime as dt, json, sys
+          x=json.load(open(sys.argv[1]))
+          t=dt.datetime.fromisoformat(x['captured_utc'].replace('Z','+00:00'))
+          age=dt.datetime.now(dt.timezone.utc)-t
+          assert dt.timedelta(0) <= age <= dt.timedelta(days=7), 'OWNER_PROFILE_AGE_INVALID'
+          assert x.get('wsl2_detected') is True, 'OWNER_WSL2_PROFILE_INVALID'
+          print('AXIA_P3_OWNER_PROFILE_VALID_7D')
+          PY
+          echo 'AXIA_P3_CI_SCOPED_PARITY_L2_REUSE=42787337562_NO_GOAL'
+          echo 'AXIA_P3_CI_NOT_WSL2_KERNEL_OR_L3_PARITY'
+
+      - name: Checkout exact private P3 source (sealed)
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: f4d4b57743c4d63e96f92639f503b644b3157e7f
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          path: instructor-src
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify source SHA and no P1/P2/official runtime change
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd instructor-src
+          test "$(git rev-parse HEAD)" = 'f4d4b57743c4d63e96f92639f503b644b3157e7f'
+          git merge-base --is-ancestor 'd73b6170c86e392761b5446253f1f452d0f5c2d1' HEAD
+          python3 - <<'PY'
+          import pathlib, subprocess
+          delta=subprocess.check_output(['git','diff','--name-only','d73b6170c86e392761b5446253f1f452d0f5c2d1','HEAD'],text=True).splitlines()
+          permitted=('scenarios/','fixtures/p3/','docs/operations/P3_T00_T01_',
+                     'ros2_ws/src/axia_scenario_verifier/axia_scenario_verifier/p3_',
+                     'scripts/run_p3_mvp.py','tests/unit/test_p3_mvp.py')
+          assert delta and all(any(p.startswith(prefix) for prefix in permitted) for p in delta), 'UNEXPECTED_P1_P2_SAFETY_DIFF'
+          print('AXIA_P3_SOURCE_SHA_AND_SAFETY_CHANGE_SCOPE_VERIFIED files='+str(len(delta)))
+          PY
+
+      - name: Test real private Runner integration (Python L0 ONLY)
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd instructor-src
+          export PYTHONPATH="$PWD/ros2_ws/src/axia_scenario_verifier"
+          python3 -m unittest discover -s tests/unit -p 'test_p3*.py' -q
+          echo 'AXIA_P3_PRIVATE_REAL_RUNNER_L0_TESTS_PASS'
+
+      - name: Execute one-command P3 evidence pack, verify hashes without false pass
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd instructor-src
+          python3 scripts/run_p3_mvp.py --scenario all --results-root results/p3 --allow-partial-ci
+          python3 - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          roots=list(Path('results/p3').glob('p3-*'))
+          assert len(roots)==1
+          p=roots[0]
+          x=json.loads((p/'summary.json').read_text())
+          m=json.loads((p/'manifest.json').read_text())
+          assert x['status']=='INCONCLUSIVE' and x['formal_accepted'] is False
+          assert x['gates']==dict.fromkeys(['G08','G09','G10','G11'],'NOT_ACCEPTED')
+          assert len(x['records'])==5
+          assert [z['status'] for z in x['records']]==['NOT_VERIFIED','NOT_VERIFIED','NOT_VERIFIED','OFFLINE_FIXTURE_PASS','NOT_VERIFIED']
+          assert m['runner_source_sha']=='f4d4b57743c4d63e96f92639f503b644b3157e7f'
+          assert m['goal_sent'] is False and m['fault_injected'] is False and m['certified_estop'] is False
+          for row in (p/'SHA256SUMS').read_text().splitlines():
+              h,n=row.split('  ',1)
+              assert hashlib.sha256((p/n).read_bytes()).hexdigest()==h
+          print('AXIA_P3_L0_FIXTURES_AND_EVIDENCE_HASH_PASS')
+          print('AXIA_P3_FORMAL_G08_G09_G10_G11_NOT_ACCEPTED_NO_L2_L3_NEW_RUN')
+          PY
+
+      - name: Delete private checkout and Owner data from public runner
+        if: always()
+        shell: bash
+        run: |
+          rm -rf -- instructor-src owner-evidence
