@@ -1,0 +1,34 @@
+name: AXIA P2 G07 relocated demo obstacle / open-map corridor L0 + L2 no Goal
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/p2-g07-relocated-obstacle-l2.yml']
+permissions:
+  contents: read
+concurrency:
+  group: axia-p2-g07-relocated-open-corridor-l2
+  cancel-in-progress: false
+jobs:
+  private-l0:
+    runs-on: ubuntu-24.04
+    environment: axia-instructor-sealed
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact isolated private P2 change
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: b1729fd7a00b12288421dff51bf385bfbe6fb1ac
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Verify exact SHA and RED corridor regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = b1729fd7a00b12288421dff51bf385bfbe6fb1ac
+          python3 -m pip install --disable-pip-version-check -q pytest==8.3.5
+          python3 -m pytest -q -ra tests/unit/test_p2_g07_demo_corridor_relocation.py
+          echo 'P2_G07_RELOCATED_CORRIDOR_L0_PASS_GAZEBO_NOT_RUN'
+      - name: Remove private source
+        if: always()
+        run: rm -rf -- .git tools scripts tests configs ros2_ws docs fixtures results
