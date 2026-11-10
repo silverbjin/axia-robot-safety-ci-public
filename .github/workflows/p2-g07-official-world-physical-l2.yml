@@ -1,0 +1,127 @@
+name: AXIA G07 official spawn plus physical LiDAR L2 (NO GOAL)
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths:
+      - '.github/workflows/p2-g07-official-world-physical-l2.yml'
+permissions:
+  contents: read
+concurrency:
+  group: axia-g07-official-world-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  private-l0:
+    runs-on: ubuntu-24.04
+    environment: axia-instructor-sealed
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: af986162289ba913188fc0233f43499c29d32f27
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Exact source SHA and only modified contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 'af986162289ba913188fc0233f43499c29d32f27'
+          python3 -m pip install --quiet --disable-pip-version-check pytest==8.3.5 PyYAML==6.0.2
+          python3 -m pytest -q -ra \
+            tests/unit/test_p2_g07_official_spawn.py \
+            tests/unit/test_p2_g07_physical_preflight_contract.py \
+            tests/unit/test_p2_g07_coordinate_frames.py \
+            tests/unit/test_p2_g07_live_phase.py \
+            tests/unit/test_p2_t07_owner_contract.py \
+            tests/unit/test_p2_evidence_oracles.py \
+            tests/unit/test_p2_zone_overlay.py
+          python3 -m py_compile \
+            tools/p2_g07_spawn_contract.py tools/p2_g07_physical_preflight.py \
+            tools/p2_l3_coordinate_frames.py tools/p2_l3_gz_fixture.py \
+            tools/p2_l3_live_session.py
+          bash -n scripts/p2_no_goal_smoke_ci.sh
+          echo 'P2_G07_OFFICIAL_SPAWN_L0_PASS_GAZEBO_NOT_RUN'
+      - name: Delete private sources
+        if: always()
+        shell: bash
+        run: rm -rf -- ros2_ws tools scripts docs configs tests results .git
+  real-gazebo-no-goal:
+    needs: private-l0
+    runs-on: ubuntu-24.04
+    environment: axia-instructor-sealed
+    timeout-minutes: 32
+    container:
+      image: ros:jazzy-ros-base-noble
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: af986162289ba913188fc0233f43499c29d32f27
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Install official Jazzy Nav2 and Gazebo Harmonic once
+        shell: bash
+        run: |
+          set -eo pipefail
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+            procps git python3-yaml python3-colcon-common-extensions \
+            ros-jazzy-nav2-bringup ros-jazzy-navigation2 ros-jazzy-nav2-minimal-tb3-sim \
+            ros-jazzy-ros-gz ros-jazzy-rclpy ros-jazzy-rosgraph-msgs \
+            ros-jazzy-nav-msgs ros-jazzy-sensor-msgs ros-jazzy-geometry-msgs \
+            ros-jazzy-std-msgs ros-jazzy-std-srvs ros-jazzy-lifecycle-msgs \
+            ros-jazzy-nav2-msgs ros-jazzy-action-msgs ros-jazzy-tf2-ros
+      - name: Native entity create and set_pose plus real /safety/scan change; no Goal
+        shell: bash
+        env:
+          ROS_DOMAIN_ID: '63'
+          ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+          AXIA_P2_G07_PHYSICAL_PREFLIGHT: '1'
+          AXIA_P2_SMOKE_RESULTS: results/g07-official-physical
+        run: |
+          set -eo pipefail
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 'af986162289ba913188fc0233f43499c29d32f27'
+          mkdir -p results
+          set +e
+          timeout --signal=TERM --kill-after=10s 650s bash scripts/p2_no_goal_smoke_ci.sh
+          rc=$?
+          set -e
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('results/g07-official-physical')
+          for name in ('g07_physical/g07_physical_preflight.json',
+                       'g07_physical/gazebo_transport_services.json'):
+              p=root/name
+              if not p.is_file():
+                  print('G07_L2_DIAGNOSTIC_MISSING',name)
+                  continue
+              d=json.loads(p.read_text())
+              print('G07_L2_DIAGNOSTIC',name,{k:d.get(k) for k in (
+                  'status','reason','returncode','verified_official_world_spawn',
+                  'baseline_front','stopped_front','fixture_ack',
+                  'set_pose_ack','contact_topic_ack','gz_partition')})
+              if 'gz_services' in d:
+                  print('G07_L2_GZ_SERVICE_COUNT',len(d['gz_services']))
+                  print('G07_L2_HAS_CREATE','/world/default/create' in d['gz_services'])
+                  print('G07_L2_HAS_SET_POSE','/world/default/set_pose' in d['gz_services'])
+          PY
+          if [[ "$rc" != 0 ]];then
+            echo "P2_G07_OFFICIAL_WORLD_PHYSICAL_L2_BLOCKED rc=$rc"
+            exit 2
+          fi
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          v=json.loads(Path('results/g07-official-physical/g07_physical/g07_physical_preflight.json').read_text())
+          assert v['status']=='G07_PHYSICAL_OBSTACLE_LASER_PROVEN'
+          assert v['fixture_ack'] is True and v['set_pose_ack'] is True
+          assert v['contact_topic_ack'] is True
+          assert v['goal_sent'] is False and v['fault_injected'] is False
+          assert v['certified_estop'] is False and v['gate_accepted'] is False
+          print('P2_G07_OFFICIAL_WAFFLE_PHYSICAL_L2_PASS_NO_GOAL_NO_FAULT')
+          PY
+      - name: Delete all private source and unexported evidence
+        if: always()
+        shell: bash
+        run: rm -rf -- ros2_ws tools scripts docs configs tests results build install log .git
