@@ -1,0 +1,100 @@
+name: P2 G07 native Gazebo world vs ROS odom map targeted no-Goal
+on:
+  push:
+    branches: ['fix/p2-g07-world-truth-no-goal-ci-20261110']
+    paths:
+      - '.github/workflows/p2-g07-native-world-no-goal.yml'
+      - 'scripts/axia_p2_g07_owner_worldframe_once.sh'
+      - 'tests/test_p2_g07_owner_worldframe_once.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  private-l0:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    environment: axia-instructor-sealed
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 13d8e109d62ed43960192d87002abb6c39f84f10
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Owner coordinate-frame regression and original G07 safety contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '13d8e109d62ed43960192d87002abb6c39f84f10'
+          python3 -m pip install --quiet pytest==8.3.5 PyYAML==6.0.2
+          python3 -m pytest -q -ra \
+            tests/unit/test_p2_g07_coordinate_frames.py \
+            tests/unit/test_p2_g07_live_phase.py \
+            tests/unit/test_p2_t07_owner_contract.py \
+            tests/unit/test_p2_evidence_oracles.py
+          python3 -m py_compile tools/p2_g07_frame_no_goal_probe.py tools/p2_l3_coordinate_frames.py tools/p2_l3_live_session.py
+          bash -n scripts/p2_g07_worldframe_ci.sh scripts/p2_owner_l3_wsl2.sh
+          echo 'P2_G07_NATIVE_WORLD_L0_PASS; GOAL_GAZEBO_NOT_RUN'
+      - name: Remove private sources
+        if: always()
+        shell: bash
+        run: rm -rf -- ros2_ws tools scripts docs configs tests results build install log .git
+  real-gazebo-no-goal:
+    needs: private-l0
+    runs-on: ubuntu-24.04
+    timeout-minutes: 38
+    container:
+      image: ros:jazzy-ros-base-noble
+    environment: axia-instructor-sealed
+    env:
+      DEBIAN_FRONTEND: noninteractive
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 13d8e109d62ed43960192d87002abb6c39f84f10
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Install official Nav2 Waffle Jazzy Gazebo Harmonic once
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt-get update -qq
+          apt-get install -y -qq --no-install-recommends \
+            procps git python3-yaml python3-colcon-common-extensions \
+            ros-jazzy-nav2-bringup ros-jazzy-navigation2 ros-jazzy-nav2-minimal-tb3-sim \
+            ros-jazzy-ros-gz ros-jazzy-rclpy ros-jazzy-rosgraph-msgs \
+            ros-jazzy-tf2-ros ros-jazzy-nav-msgs ros-jazzy-sensor-msgs \
+            ros-jazzy-geometry-msgs ros-jazzy-std-msgs ros-jazzy-std-srvs \
+            ros-jazzy-lifecycle-msgs ros-jazzy-nav2-msgs ros-jazzy-action-msgs
+      - name: P2 G07 read-only real Gazebo world/odom/map with NO Goal
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '13d8e109d62ed43960192d87002abb6c39f84f10'
+          export AXIA_P2_G07_FRAME_RESULTS="$PWD/results/p2-g07-frame"
+          timeout --signal=TERM --kill-after=20s 600s bash scripts/p2_g07_worldframe_ci.sh
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          v=json.loads(Path('results/p2-g07-frame/frame_verdict.json').read_text())
+          assert v['status']=='PASS_REAL_GAZEBO_MAP_WORLD_ODOM_FRAME_NO_GOAL'
+          assert v['goal_sent'] is False and v['fixture_created'] is False
+          assert v['actual_cmd_publishers']==1
+          print('P2_G07_REAL_GAZEBO_NATIVE_WORLD_FRAME_NO_GOAL_CI_PASS')
+          PY
+      - name: Preserve ONLY sanitized frame verdict and test-stage messages
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2-g07-native-world-frame-no-goal
+          path: |
+            results/p2-g07-frame/frame_verdict.json
+            results/p2-g07-frame/frame_probe.log
+            results/p2-g07-frame/staged_startup.log
+          retention-days: 14
+          if-no-files-found: warn
+      - name: Remove private source on public runner
+        if: always()
+        shell: bash
+        run: rm -rf -- ros2_ws tools scripts docs configs tests results build install log .git
