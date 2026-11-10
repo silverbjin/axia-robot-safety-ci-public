@@ -10,6 +10,8 @@ on:
       - 'd08/tests/test_d08_rgbd_alignment_evidence.py'
       - 'd08/tests/test_d08_g07_lidar_visible_proxy.py'
       - 'd08/tests/test_d08_grounded_human_visual.py'
+      - 'd08/harness/d08_visible_person_frame.py'
+      - 'd08/tests/test_d08_visible_person_frame.py'
       - 'd08/tests/test_d08_native_positive_contact_parser.py'
       - 'd08/tests/test_d08_live_public_harness.py'
       - 'd08/tests/test_d08_live_field_layout.py'
@@ -46,6 +48,7 @@ jobs:
             d08/tests/test_d08_rgbd_alignment_evidence.py \
             d08/tests/test_d08_g07_lidar_visible_proxy.py \
             d08/tests/test_d08_grounded_human_visual.py \
+            d08/tests/test_d08_visible_person_frame.py \
             d08/tests/test_d08_last_mile_bootstrap.py \
             d08/tests/test_d08_native_positive_contact_parser.py \
             d08/tests/test_d08_live_public_harness.py \
@@ -114,6 +117,9 @@ jobs:
           print('D08_G07_NO_GOAL_REAL_LIDAR_MOVE_L2_PASS')
           print('D08_G07_ROBOT_NO_COLLISION_NOT_CLAIMED')
           PY
+          # This asserts real camera *framing* only, not YOLO inference.
+          python3 d08/harness/d08_visible_person_frame.py \
+            results/d08-human-contact-calibration/real_gazebo_rgb.ppm
       - name: Remove external mesh (not part of artifact)
         if: always()
         run: rm -f /tmp/axia-d08-assets/walk.dae
