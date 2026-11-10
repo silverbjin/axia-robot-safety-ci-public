@@ -1,0 +1,46 @@
+name: AXIA G07 relocated Owner bootstrap static L0 - no Goal
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths:
+      - '.github/workflows/p2-g07-relocated-owner-bootstrap-l0.yml'
+      - 'scripts/axia_p2_g07_relocated_owner_wsl2_once.sh'
+permissions:
+  contents: read
+concurrency:
+  group: axia-g07-relocated-owner-bootstrap-static
+  cancel-in-progress: false
+
+jobs:
+  public-static-no-goal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - name: Checkout public-only bootstrap
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Test pinned SHA, actual TTY gate and absence of auto approval
+        shell: bash
+        run: |
+          set -euo pipefail
+          SCRIPT="scripts/axia_p2_g07_relocated_owner_wsl2_once.sh"
+          bash -n "$SCRIPT"
+          bash "$SCRIPT" --self-check | tee /tmp/axia_g07_bootstrap_selfcheck.txt
+          grep -q 'AXIA_P2_G07_RELOCATED_PUBLIC_BOOTSTRAP_STATIC_PASS' /tmp/axia_g07_bootstrap_selfcheck.txt
+          grep -q 'private_sha=843338cf3338d15658a5486bd15d1aead8e0096c' /tmp/axia_g07_bootstrap_selfcheck.txt
+          set +e
+          OUTPUT="$(bash "$SCRIPT" </dev/null 2>&1)"
+          RC=$?
+          set -e
+          test "$RC" -eq 2
+          [[ "$OUTPUT" == *'OWNER_CONTROLLING_TTY_REQUIRED_GOAL_NOT_SENT'* ]]
+          python3 - <<'PY'
+          from pathlib import Path
+          t=Path('scripts/axia_p2_g07_relocated_owner_wsl2_once.sh').read_text()
+          assert 'PRIVATE_SHA=' in t and '843338cf3338d15658a5486bd15d1aead8e0096c' in t
+          assert 'bash "$WORK/instructor/scripts/p2_owner_l3_wsl2.sh" --case G07 --mvp-relocated-obstacle' in t
+          assert 'YES-P2-G07-GOAL' in t
+          assert all(bad not in t for bad in ("printf 'YES-P2-G07-GOAL", 'echo YES-P2-G07-GOAL |', 'expect -c'))
+          print('AXIA_G07_RELOCATED_PUBLIC_BOOTSTRAP_FAIL_CLOSED_L0_PASS_OWNER_L3_NOT_RUN')
+          PY
