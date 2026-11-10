@@ -32,5 +32,6 @@ jobs:
           python -m pip install -q pytest==8.3.5
           python -m compileall -q d08/harness
           PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -q \
-            d08/tests/test_g07_mvp_slow_motion_gate.py
+            d08/tests/test_g07_mvp_slow_motion_gate.py \
+            d08/tests/test_g07_contact_topic_discovery.py
           echo 'G07_MVP_SLOW_MOTION_L0_PASS ROS_GAZEBO_NOT_RUN'
