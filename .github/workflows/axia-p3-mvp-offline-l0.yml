@@ -50,7 +50,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: c38f8ef4b416fe0fb8d2f056f184e1d8ee2c8fb4
+          ref: 653784eb284dde618d065263ed54d98ade6e72fa
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor-src
           fetch-depth: 0
@@ -61,14 +61,15 @@ jobs:
         run: |
           set -euo pipefail
           cd instructor-src
-          test "$(git rev-parse HEAD)" = 'c38f8ef4b416fe0fb8d2f056f184e1d8ee2c8fb4'
+          test "$(git rev-parse HEAD)" = '653784eb284dde618d065263ed54d98ade6e72fa'
           git merge-base --is-ancestor 'd73b6170c86e392761b5446253f1f452d0f5c2d1' HEAD
           python3 - <<'PY'
           import pathlib, subprocess
           delta=subprocess.check_output(['git','diff','--name-only','d73b6170c86e392761b5446253f1f452d0f5c2d1','HEAD'],text=True).splitlines()
           permitted=('scenarios/','fixtures/p3/','docs/operations/P3_',
                      'ros2_ws/src/axia_scenario_verifier/axia_scenario_verifier/p3_',
-                     'scripts/run_p3_mvp.py','tests/unit/test_p3_mvp.py',
+                     'scripts/run_p3_mvp.py','scripts/p3_owner_inventory_review_wsl2_once.sh',
+                     'tests/unit/test_p3_mvp.py',
                      'tests/unit/test_p3_owner_probe.py','tests/unit/test_p3_inventory.py','docs/reports/P3_R01_',
                      'docs/reports/p3_r01_source_registry.json',
                      'tools/p3_owner_evidence_probe.py')
@@ -107,6 +108,20 @@ jobs:
           assert sum(r['status']=='LOCAL_ANCHORS_NOT_FOUND' for r in x['records'])==4
           print('AXIA_P3_R01_R02_OWNER_PROBE_FAIL_CLOSED_L0_PASS_NO_RAW')
           PY
+
+      - name: Verify instructor WSL2 wrapper syntax and missing SHA fail-closed without ROS
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd instructor-src
+          bash -n scripts/p3_owner_inventory_review_wsl2_once.sh
+          set +e
+          OUTPUT="$(env -u AXIA_P3_PRIVATE_SHA bash scripts/p3_owner_inventory_review_wsl2_once.sh 2>&1)"
+          RC=$?
+          set -e
+          test "$RC" -eq 2
+          [[ "$OUTPUT" == *'AXIA_P3_BLOCKED EXACT_40_HEX_PRIVATE_SHA_REQUIRED'* ]]
+          echo 'AXIA_P3_INSTRUCTOR_WRAPPER_STATIC_FAIL_CLOSED_PASS_NO_OWNER_RUN'
 
       - name: Exercise one-command Owner inventory annotation without pretending real L3
         shell: bash
@@ -150,7 +165,7 @@ jobs:
           assert x['gates']==dict.fromkeys(['G08','G09','G10','G11'],'NOT_ACCEPTED')
           assert len(x['records'])==5
           assert [z['status'] for z in x['records']]==['NOT_VERIFIED','NOT_VERIFIED','NOT_VERIFIED','OFFLINE_FIXTURE_PASS','NOT_VERIFIED']
-          assert m['runner_source_sha']=='c38f8ef4b416fe0fb8d2f056f184e1d8ee2c8fb4'
+          assert m['runner_source_sha']=='653784eb284dde618d065263ed54d98ade6e72fa'
           assert m['goal_sent'] is False and m['fault_injected'] is False and m['certified_estop'] is False
           audit=[json.loads(line) for line in (p/'audit_events.jsonl').read_text().splitlines()]
           assert len(audit)==5 and all(e['event']=='SCENARIO_VERDICT' and e['goal_sent'] is False for e in audit)
