@@ -20,14 +20,14 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 86a0280d6716833b8f4909ca6e8ab3de7a365ea2
+          ref: 7d61bac6f32e7e205942f3f7cda9cde8c34cbb85
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Exact source, RED/GREEN one-Goal readiness and original strict safety oracles
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '86a0280d6716833b8f4909ca6e8ab3de7a365ea2'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '7d61bac6f32e7e205942f3f7cda9cde8c34cbb85'
           python3 -m pip install --quiet --disable-pip-version-check pytest==8.3.5 PyYAML==6.0.2
           python3 -m pytest -q -ra \
             tests/unit/test_p2_mvp_one_goal_readiness.py \
@@ -57,7 +57,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 86a0280d6716833b8f4909ca6e8ab3de7a365ea2
+          ref: 7d61bac6f32e7e205942f3f7cda9cde8c34cbb85
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Install official Jazzy Nav2 and Harmonic for full P1+P2 no-Goal startup
@@ -81,7 +81,7 @@ jobs:
           AXIA_P2_SMOKE_RESULTS: results/p2-mvp-threezone
         run: |
           set -eo pipefail
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '86a0280d6716833b8f4909ca6e8ab3de7a365ea2'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '7d61bac6f32e7e205942f3f7cda9cde8c34cbb85'
           mkdir -p results
           timeout --signal=TERM --kill-after=10s 650s bash scripts/p2_no_goal_smoke_ci.sh
           python3 - <<'PY'
