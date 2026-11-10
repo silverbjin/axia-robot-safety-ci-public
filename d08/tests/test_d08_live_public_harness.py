@@ -89,3 +89,11 @@ def test_no_actuator_or_fake_ros_success_in_public_harness():
     for prohibited in ('create_publisher(', 'NavigateToPose(', 'FollowPath(', 'cmd_vel_out_topic'):
         assert prohibited not in code
     assert "'gazebo_actual':False" in code or "'gazebo_actual':False," in code
+
+def test_real_l2_does_not_use_standalone_gz_sdf_parser_for_model_uri(tmp_path):
+    # gz sdf -p has no Gazebo resource find callback for official model:// URIs.
+    # Validate xacro XML, then let real gz sim load the model + camera.
+    source=(ROOT/'d08/scripts/d08_public_gazebo_l2.py').read_text()
+    assert "['gz','sdf','-p'" not in source
+    assert 'ET.parse(dest)' in source
+    assert "gz','sim'" in source
