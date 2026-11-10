@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # AXIA P1+P2 one-Goal WSL2 MVP demo (single controlled G07 motion).
-# Private source is pinned; actual one-Goal Owner WSL2 remains NOT_RUN.
+# Private source is pinned; actual one-Goal Owner WSL2 on corrected SHA is NOT_RUN.\n# Only release after owner-profile matched real Gazebo L2 and public CI.
 # Requires explicit owner consent in the private runner; never auto-approves.
 set -Eeuo pipefail
 umask 077
 
 readonly REPO='silverbjin/axia-robot-safety-instructor'
-readonly BRANCH='fix/p2-g07-mvp-motion-gate-20261110'
-readonly SHA='a9a33cc32586e4a30843efcf9172bdaade85d8ea'
+readonly BRANCH='fix/p2-g07-mvp-stop-geometry-20261110'
+readonly SHA='d73b6170c86e392761b5446253f1f452d0f5c2d1'
 
 if [[ "${1:-}" == '--self-check' ]]; then
   [[ $# == 1 && "$SHA" =~ ^[0-9a-f]{40}$ ]] || exit 2
