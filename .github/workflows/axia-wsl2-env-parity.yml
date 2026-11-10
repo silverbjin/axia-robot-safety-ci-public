@@ -22,7 +22,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-ci-public
-          ref: 62d78cba6346786f97e55411c9755ac5086c58a1
+          ref: c38264d51494a836602fe8c276b120fb7c02bd4e
           path: ci-tools
           persist-credentials: false
 
@@ -43,6 +43,9 @@ jobs:
           set -euo pipefail
           OWNER="$GITHUB_WORKSPACE/owner-evidence/docs/environment/wsl2_owner_profile.json"
           test -s "$OWNER" || { echo 'AXIA_CI_ENV_REFERENCE_MISSING_NO_SYNC_DONE'; exit 2; }
+          # The owner uses upstream OSRF Gazebo packages; ROS-vendor-only
+          # CI images do not publish libgz-sim8/libsdformat14 exact versions.
+          bash ci-tools/scripts/axia_ci_enable_osrf_gazebo_repo.sh
           apt-get update -qq
           DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
             ca-certificates procps git python3-yaml python3-colcon-common-extensions \
