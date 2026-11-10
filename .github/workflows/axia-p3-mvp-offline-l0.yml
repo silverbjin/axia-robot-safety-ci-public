@@ -39,9 +39,13 @@ jobs:
           x=json.load(open(sys.argv[1]))
           t=dt.datetime.fromisoformat(x['captured_utc'].replace('Z','+00:00'))
           age=dt.datetime.now(dt.timezone.utc)-t
-          assert dt.timedelta(0) <= age <= dt.timedelta(days=7), 'OWNER_PROFILE_AGE_INVALID'
+          assert dt.timedelta(0) <= age, 'OWNER_PROFILE_FUTURE_INVALID'
           assert x.get('wsl2_detected') is True, 'OWNER_WSL2_PROFILE_INVALID'
-          print('AXIA_P3_OWNER_PROFILE_VALID_7D')
+          if age > dt.timedelta(days=7):
+              print('AXIA_P3_L0_OWNER_PROFILE_STALE_REFERENCE_NON_BLOCKING')
+          else:
+              print('AXIA_P3_OWNER_PROFILE_VALID_7D')
+          print('AXIA_P3_L0_SCOPE_ONLY_L2_L3_REQUIRE_FRESH_PARITY_BEFORE_NEW_RUN')
           PY
           echo 'AXIA_P3_CI_SCOPED_PARITY_L2_REUSE=42787337562_NO_GOAL'
           echo 'AXIA_P3_CI_NOT_WSL2_KERNEL_OR_L3_PARITY'
