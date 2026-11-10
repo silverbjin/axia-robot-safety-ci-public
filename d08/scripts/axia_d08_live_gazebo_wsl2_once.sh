@@ -3,8 +3,8 @@
 set -Eeuo pipefail
 umask 077
 readonly PRIVATE_REPO='silverbjin/axia-robot-safety-instructor'
-readonly PRIVATE_BRANCH='fix/d08-humanoid-single-visual-rgbd-diagnostics-20261110'
-readonly PRIVATE_SHA='84fdf0a26a5c9340100808d28704ec85d186bc45'
+readonly PRIVATE_BRANCH='fix/d08-g07-lidar-preflight-20261110'
+readonly PRIVATE_SHA='3e7fc1948fe97e8a6c514729d321016111ba0826'
 readonly D04_SOURCE_SHA='c775820077917c4da56c6aa60001b224071664b3'
 readonly YOLO_SHA='94d2dd500cb26027ee9c019f4d3a02029ac615cc'
 readonly ONNX_SHA='4f44c33cea12d4b5785e5e7c0a20c13d0c62a77de607ce96a40d6036c7d7bbcf'
@@ -104,6 +104,11 @@ gh repo clone "$PRIVATE_REPO" "$SRC/instructor" -- \
 # Validate the exact private teacher reference and pure data converters BEFORE
 # starting any ROS/Gazebo or an authorized Goal. No pytest/ROS plugin autoload.
 bash -n "$SRC/instructor/scripts/p2_owner_l3_wsl2.sh"
+/usr/bin/python3 -m py_compile \
+  "$SRC/instructor/tools/d08_live_world.py" \
+  "$SRC/instructor/tools/p2_l3_live_session.py" \
+  "$SRC/instructor/tools/p2_l3_gz_fixture.py"
+echo 'D08_G07_PRIVATE_SOURCE_SYNTAX_PASS; MOVING_G07_NOT_RUN'
 env -u PYTHONPATH -u AMENT_PREFIX_PATH -u COLCON_PREFIX_PATH \
     -u CMAKE_PREFIX_PATH -u LD_LIBRARY_PATH -u BASH_ENV \
     AXIA_D08_PRIVATE_SRC="$SRC/instructor" /usr/bin/python3 - <<'PY'
@@ -153,6 +158,7 @@ echo '============================================================'
 # Only the child interpreter environment is sanitized; no change to
 # the Owner's shell, GUI DISPLAY, files or other independent ROS workspaces.
 # ROS Jazzy and cached YOLO local_setup are sourced anew in the child.
+echo 'D08_G07_GPU_LIDAR_SURFACE_OWNER_PINNED: real scan must enter SlowZone before Goal'
 echo 'D08_CLEAN_ROS_ENV_ENABLED: dropping stale D03 underlay paths in child'
 env -u AMENT_PREFIX_PATH -u COLCON_PREFIX_PATH -u CMAKE_PREFIX_PATH \
     -u PYTHONPATH -u LD_LIBRARY_PATH -u ROS_DISTRO -u ROS_VERSION \

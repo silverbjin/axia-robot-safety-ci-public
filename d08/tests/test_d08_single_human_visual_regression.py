@@ -35,8 +35,12 @@ def test_only_one_visual_inside_existing_physical_proxy(tmp_path):
     model=world.find(".//model[@name='axia_p2_g07_obstacle']")
     link=model.find("./link[@name='obstacle_link']")
     visuals=link.findall('./visual')
-    assert len(visuals)==1, [v.get('name') for v in visuals]
-    assert visuals[0].get('name')=='axia_d08_human_mesh'
+    # Exactly one *human* mesh plus one narrow LiDAR-facing shin surface.
+    assert set(v.get('name') for v in visuals)=={
+        'axia_d08_human_mesh','axia_d08_lidar_leg_surface'}
+    assert len([v for v in visuals if v.find('./geometry/mesh') is not None])==1
+    assert result['human_visual_count']==1
+    assert result['gpu_lidar_leg_surface'] is True
     assert model.findtext('./static')=='true'
     assert link.find('./collision[@name="obstacle_collision"]') is not None
     assert link.find('./sensor[@name="axia_contact"]') is not None
