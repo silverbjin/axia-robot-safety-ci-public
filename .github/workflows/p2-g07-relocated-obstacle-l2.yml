@@ -18,14 +18,14 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 7ba733bc48d0d5224f2ec511a7b04f88408923b5
+          ref: 7651b672a4313a58c7976a3929df89aced9dc193
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Verify exact private SHA + RED-to-GREEN P2 G07 and prior safety regressions
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = 7ba733bc48d0d5224f2ec511a7b04f88408923b5
+          test "$(git rev-parse HEAD)" = 7651b672a4313a58c7976a3929df89aced9dc193
           python3 -m pip install --disable-pip-version-check -q pytest==8.3.5
           python3 -m pytest -q -ra \
             tests/unit/test_p2_g07_demo_corridor_relocation.py \
@@ -55,7 +55,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 7ba733bc48d0d5224f2ec511a7b04f88408923b5
+          ref: 7651b672a4313a58c7976a3929df89aced9dc193
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Install official Nav2 Jazzy / Gazebo Harmonic once for changed L2 fixture
@@ -80,7 +80,7 @@ jobs:
           AXIA_P2_SMOKE_RESULTS: results/p2-g07-relocated-l2
         run: |
           set -euo pipefail
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '7ba733bc48d0d5224f2ec511a7b04f88408923b5'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '7651b672a4313a58c7976a3929df89aced9dc193'
           mkdir -p results
           timeout --signal=TERM --kill-after=10s 650s bash scripts/p2_no_goal_smoke_ci.sh
           python3 - <<'PY'
