@@ -7,12 +7,6 @@ on:
       - 'd08/tests/test_d08_live_public_harness.py'
       - 'd08/scripts/**'
       - '.github/workflows/d08-gazebo-live-public-ci.yml'
-  pull_request:
-    paths:
-      - 'd08/harness/**'
-      - 'd08/tests/test_d08_live_public_harness.py'
-      - 'd08/scripts/**'
-      - '.github/workflows/d08-gazebo-live-public-ci.yml'
   workflow_dispatch:
 permissions:
   contents: read
