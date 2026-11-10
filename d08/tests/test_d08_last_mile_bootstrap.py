@@ -3,12 +3,12 @@ from pathlib import Path
 import subprocess
 ROOT=Path(__file__).resolve().parents[2]
 WRAPPER=ROOT/'d08/scripts/axia_d08_live_gazebo_wsl2_once.sh'
-SHA='3e7fc1948fe97e8a6c514729d321016111ba0826'
+SHA='67eda6a2d36d610d61e05687857c1811be19318e'
 
 def test_exact_private_revision_and_no_auto_consent():
     src=WRAPPER.read_text()
     assert ("readonly PRIVATE_SHA='"+SHA+"'") in src
-    assert "readonly PRIVATE_BRANCH='fix/d08-g07-lidar-preflight-20261110'" in src
+    assert "readonly PRIVATE_BRANCH='fix/d08-grounded-human-visual-20261111'" in src
     # A single-branch shallow clone must refer to the branch that actually
     # contains PRIVATE_SHA; otherwise all WSL2 runs fail after checkout.
     assert '--single-branch --branch "$PRIVATE_BRANCH" --depth 1' in src
@@ -20,6 +20,8 @@ def test_exact_private_revision_and_no_auto_consent():
     assert "AXIA_D08_GAZEBO_GUI=1" in src
     assert "human mesh and G07 Contact proxy share ONE SDF model" in src
     assert "D08_G07_GPU_LIDAR_SURFACE_OWNER_PINNED" in src
+    assert "D08_GROUNDED_FULL_BODY_CAMERA_CI_L2_VERIFIED" in src
+    assert "OWNER_YOLO_PERSON_AND_D05_STILL_REQUIRED" in src
     assert 'p2_l3_live_session.py' in src
     assert 'py_compile' in src
     # One official ROS-Gazebo image bridge, but SAME 50ms real-D05 gate.
