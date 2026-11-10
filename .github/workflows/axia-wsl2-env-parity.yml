@@ -22,7 +22,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-ci-public
-          ref: 5587ac46378bb75c52127fee0ebd9c4769b98c61
+          ref: d147555bd4ed6bb13ab9a8f9108ed4669afa7666
           path: ci-tools
           persist-credentials: false
 
@@ -64,13 +64,36 @@ jobs:
           print(value if value in ('rmw_fastrtps_cpp','rmw_cyclonedds_cpp') else '')
           PY
           )"
-          if [[ -n "$RMW" ]]; then export RMW_IMPLEMENTATION="$RMW"; fi
-          export ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
+          if [[ -n "$RMW" ]]; then
+            export RMW_IMPLEMENTATION="$RMW"
+            echo "RMW_IMPLEMENTATION=$RMW" >> "$GITHUB_ENV"
+          fi
+          DISCOVERY="$(python3 - "$OWNER" <<'PY'
+          import json,sys
+          value=json.load(open(sys.argv[1]))['env_allowlist']['discovery_range']
+          print(value if value in ('LOCALHOST','SUBNET','SYSTEM_DEFAULT','OFF') else 'LOCALHOST')
+          PY
+          )"
+          export ROS_AUTOMATIC_DISCOVERY_RANGE="$DISCOVERY"
+          echo "ROS_AUTOMATIC_DISCOVERY_RANGE=$DISCOVERY" >> "$GITHUB_ENV"
+          OWNER_DOMAIN="$(python3 - "$OWNER" <<'PY'
+          import json,sys
+          x=json.load(open(sys.argv[1]))['env_allowlist']['domain_id']
+          print(x if type(x)==int and 0<=x<=232 else 67)
+          PY
+          )"
+          echo "ROS_DOMAIN_ID=$OWNER_DOMAIN" >> "$GITHUB_ENV"
           python3 ci-tools/tools/axia_env_profile.py \
             --output "$GITHUB_WORKSPACE/ci-private/ci-profile.json"
           python3 ci-tools/tools/axia_ci_env_compare.py \
             --owner "$OWNER" --ci "$GITHUB_WORKSPACE/ci-private/ci-profile.json" \
             --report "$GITHUB_WORKSPACE/ci-private/parity-report.json"
+          python3 - "$OWNER" "$GITHUB_WORKSPACE/ci-private/ci-profile.json" <<'PY'
+          import json,sys
+          a,b=(json.load(open(x)) for x in sys.argv[1:])
+          if not (a.get('commands',{}).get('gz_sim') and b.get('commands',{}).get('gz_sim')):
+              raise SystemExit('AXIA_ENV_GZ_SIM_BINARY_UNVERIFIED')
+          PY
           echo 'AXIA_CI_ENV_USERSPACE_MATCHED_NO_WSL2_KERNEL_CLAIM'
 
       - name: Checkout EXACT private P1+P2 source after parity
