@@ -8,7 +8,7 @@ import subprocess
 
 ROOT=Path(__file__).resolve().parents[1]
 WRAPPER=ROOT/'scripts/axia_p2_mvp_one_goal_wsl2_once.sh'
-PRIVATE_SHA='1526fba4675aeaac3c09a23f820cb916e7d4ac1e'
+PRIVATE_SHA='167027902234202f7a975333759944b7ddbd8ad7'
 PRIVATE_BRANCH='fix/p2-mvp-one-goal-timing-20261110'
 
 
