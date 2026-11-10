@@ -46,5 +46,6 @@
     "isolate_ros_domain_and_gz_partition": true,
     "goal_sent_in_ci": false,
     "certified_estop": false
-  }
+  },
+  "python_full_version": "3.12.3"
 }
