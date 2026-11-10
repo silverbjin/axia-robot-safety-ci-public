@@ -3,8 +3,8 @@
 set -Eeuo pipefail
 umask 077
 readonly PRIVATE_REPO='silverbjin/axia-robot-safety-instructor'
-readonly PRIVATE_BRANCH='fix/d08-g07-lidar-preflight-20261110'
-readonly PRIVATE_SHA='3e7fc1948fe97e8a6c514729d321016111ba0826'
+readonly PRIVATE_BRANCH='fix/d08-grounded-human-visual-20261111'
+readonly PRIVATE_SHA='67eda6a2d36d610d61e05687857c1811be19318e'
 readonly D04_SOURCE_SHA='c775820077917c4da56c6aa60001b224071664b3'
 readonly YOLO_SHA='94d2dd500cb26027ee9c019f4d3a02029ac615cc'
 readonly ONNX_SHA='4f44c33cea12d4b5785e5e7c0a20c13d0c62a77de607ce96a40d6036c7d7bbcf'
@@ -158,6 +158,7 @@ echo '============================================================'
 # Only the child interpreter environment is sanitized; no change to
 # the Owner's shell, GUI DISPLAY, files or other independent ROS workspaces.
 # ROS Jazzy and cached YOLO local_setup are sourced anew in the child.
+echo 'D08_GROUNDED_FULL_BODY_CAMERA_CI_L2_VERIFIED; OWNER_YOLO_PERSON_AND_D05_STILL_REQUIRED'
 echo 'D08_G07_GPU_LIDAR_SURFACE_OWNER_PINNED: real scan must enter SlowZone before Goal'
 echo 'D08_CLEAN_ROS_ENV_ENABLED: dropping stale D03 underlay paths in child'
 env -u AMENT_PREFIX_PATH -u COLCON_PREFIX_PATH -u CMAKE_PREFIX_PATH \
