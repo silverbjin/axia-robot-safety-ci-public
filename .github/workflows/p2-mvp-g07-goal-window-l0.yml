@@ -15,14 +15,14 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 1526fba4675aeaac3c09a23f820cb916e7d4ac1e
+          ref: 167027902234202f7a975333759944b7ddbd8ad7
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Verify exact source and replay G07 real Owner timing; no ROS Goal
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '1526fba4675aeaac3c09a23f820cb916e7d4ac1e'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '167027902234202f7a975333759944b7ddbd8ad7'
           python3 -m pip install -q pytest==8.3.5 PyYAML==6.0.2
           python3 -m pytest -q -ra \
             tests/unit/test_p2_mvp_one_goal_timing.py \
