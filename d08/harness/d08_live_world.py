@@ -92,32 +92,10 @@ def attach_human_visual_to_fixture(wn, actor_mesh: Path) -> None:
     _sub(mesh,'uri',str(actor_mesh.resolve()))
     _sub(mesh,'scale','0.75 0.75 0.75')
 
-    # A minimal humanoid silhouette remains visible if Gazebo's generic mesh
-    # importer cannot render the skinned COLLADA visual on an Owner GPU.
-    torso=_sub(link,'visual',None,name=HUMAN_VISUAL_FALLBACK)
-    _sub(torso,'pose','0 0 0.83 0 0 0')
-    torso_g=_sub(torso,'geometry')
-    torso_box=_sub(torso_g,'box')
-    _sub(torso_box,'size','0.25 0.34 0.63')
-    torso_mat=_sub(torso,'material')
-    _sub(torso_mat,'diffuse','0.12 0.39 0.20 1')
-
-    head=_sub(link,'visual',None,name='axia_d08_human_head')
-    _sub(head,'pose','0 0 1.27 0 0 0')
-    head_g=_sub(head,'geometry')
-    head_sphere=_sub(head_g,'sphere')
-    _sub(head_sphere,'radius','0.115')
-    head_mat=_sub(head,'material')
-    _sub(head_mat,'diffuse','0.73 0.53 0.40 1')
-
-    for suffix,y in [('left',.08),('right',-.08)]:
-        leg=_sub(link,'visual',None,name='axia_d08_human_leg_'+suffix)
-        _sub(leg,'pose',f'0 {y} 0.16 0 0 0')
-        leg_g=_sub(leg,'geometry')
-        leg_box=_sub(leg_g,'box')
-        _sub(leg_box,'size','0.11 0.13 0.55')
-        leg_mat=_sub(leg,'material')
-        _sub(leg_mat,'diffuse','0.13 0.18 0.35 1')
+    # Exactly ONE human renderer. The previous head/torso/leg fallback
+    # overlaid the COLLADA mesh and appeared as two stationary humans.
+    # No fallback visuals are added; a mesh rendering error must be
+    # diagnosed instead of silently drawing a duplicate body.
 
     if model.find("./link[@name='obstacle_link']/collision[@name='obstacle_collision']") is None:
         raise ValueError('D08_SAFETY_COLLISION_NOT_PRESERVED')
@@ -192,6 +170,8 @@ def build_overlay(world: Path, robot: Path, actor_mesh: Path, output: Path) -> d
       'separate_actor_removed':True,
       'human_visual_attached_to_physical_model':True,
       'human_visual_name':HUMAN_VISUAL_NAME,
+      'human_visual_count':1,
+      'procedural_fallback_visuals':False,
       'human_visible_collision_proxy':'obstacle_collision',
       'human_visual_animated':False,
       'human_model_motion_source':'existing_P2_G07_gz_set_pose',

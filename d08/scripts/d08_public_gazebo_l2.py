@@ -239,10 +239,9 @@ def run(out:Path,actor:Path,positive_contact:bool=False):
         (out/'native_create_ack.txt').write_text(create.stdout+create.stderr)
         if 'data: true' not in create.stdout:
             raise RuntimeError('D08_WAFFLE_SPAWN_NOT_ACKNOWLEDGED')
-        _start('rgb_bridge',['ros2','run','ros_gz_image','image_bridge',RGB_TOPIC],
-               env,out,processes)
-        _start('depth_bridge',['ros2','run','ros_gz_image','image_bridge',DEPTH_TOPIC],
-               env,out,processes)
+        # Mirror the Owner's one-process image bridge on real Gazebo L2.
+        _start('rgbd_bridge',['ros2','run','ros_gz_image','image_bridge',
+              RGB_TOPIC,DEPTH_TOPIC],env,out,processes)
         result['actual_rgbd']=observe_real_pair(timeout_s=80)
         topics=_run(['gz','topic','-l'],env,timeout=15)
         contact_topic=resolve_g07_contact_topic(topics.stdout)
