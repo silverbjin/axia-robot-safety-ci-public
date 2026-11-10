@@ -18,14 +18,14 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 604ff698a746062d56e4191f78b3f931bae44403
+          ref: 89bbff228ca3595eefd68058fa2aa583b2203a0c
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Verify exact private SHA + RED-to-GREEN P2 G07 and prior safety regressions
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = 604ff698a746062d56e4191f78b3f931bae44403
+          test "$(git rev-parse HEAD)" = 89bbff228ca3595eefd68058fa2aa583b2203a0c
           python3 -m pip install --disable-pip-version-check -q pytest==8.3.5
           python3 -m pytest -q -ra \
             tests/unit/test_p2_g07_demo_corridor_relocation.py \
@@ -37,7 +37,12 @@ jobs:
             tests/unit/test_p2_g07_stop_geometry_owner.py \
             tests/unit/test_p2_g07_physical_preflight_contract.py \
             tests/unit/test_p2_t07_owner_contract.py
-          python3 -m compileall -q tools/p2_g07_demo_corridor.py tools/p2_l3_live_session.py tools/p2_l3_coordinate_frames.py
+          python3 -m compileall -q tools/p2_g07_demo_corridor.py tools/p2_l3_live_session.py tools/p2_l3_coordinate_frames.py \
+            tools/p2_g07_owner_prepositioned.py tools/p2_g07_owner_env_parity.py
+          # Two diagnostics must exist in code; no synthetic L3 result.
+          grep -q G07_PREGOAL_SIDE_LIDAR_CONFIRMED tools/p2_l3_live_session.py
+          grep -q G07_PREGOAL_SIDE_LIDAR_NOT_MATCHED_TO_REAL_CI tools/p2_l3_live_session.py
+          grep -q AXIA_G07_ENV_CORE_PARITY_PASS tools/p2_g07_owner_env_parity.py
           bash -n scripts/p2_owner_l3_wsl2.sh scripts/p2_no_goal_smoke_ci.sh
           echo 'P2_G07_RELOCATED_CORRIDOR_L0_PASS_GAZEBO_NOT_RUN'
       - name: Remove private source
@@ -56,7 +61,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 604ff698a746062d56e4191f78b3f931bae44403
+          ref: 89bbff228ca3595eefd68058fa2aa583b2203a0c
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Install official Nav2 Jazzy / Gazebo Harmonic once for changed L2 fixture
@@ -78,16 +83,21 @@ jobs:
           ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
           AXIA_P2_G07_PHYSICAL_PREFLIGHT: '1'
           AXIA_P2_G07_DEMO_CORRIDOR_SURVEY: '1'
+          AXIA_P2_G07_OWNER_PARITY_CHECK: '1'
           AXIA_P2_SMOKE_RESULTS: results/p2-g07-relocated-l2
         run: |
           set -euo pipefail
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '604ff698a746062d56e4191f78b3f931bae44403'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '89bbff228ca3595eefd68058fa2aa583b2203a0c'
           mkdir -p results
           timeout --signal=TERM --kill-after=10s 650s bash scripts/p2_no_goal_smoke_ci.sh
           python3 - <<'PY'
           import json
           from pathlib import Path
           root=Path('results/p2-g07-relocated-l2')
+          parity=json.loads((root/'g07_userspace_parity.json').read_text())
+          assert parity['status']=='CORE_PARITY_PASS', parity['mismatch']
+          assert not parity['goal_sent'] and not parity['gate_accepted']
+          assert parity['wsl_kernel_equal_ci'] is False
           corridor=json.loads((root/'g07_demo_corridor.json').read_text())
           physical=json.loads((root/'g07_physical/g07_physical_preflight.json').read_text())
           reloc=json.loads((root/'g07_relocated_probe.json').read_text())
@@ -104,6 +114,7 @@ jobs:
           assert reloc['gate_accepted'] is False and reloc['collision_ground_truth'] is False
           print('AXIA_G07_LONG_FREE_MAP_CANDIDATE_L2_ONLY length=',corridor['path_distance_m'])
           print('AXIA_G07_RELOCATED_PHYSICAL_LIDAR_L2_PASS_NO_GOAL',reloc['baseline_sector_m'],reloc['after_sector_m'])
+          print('AXIA_G07_ENV_EXACT_CORE_USERSACE_PARITY_CI_PASS packages=8 files=3')
           print('AXIA_G07_OWNER_MOVING_L3_NOT_RUN_CERTIFIED_ESTOP_FALSE')
           PY
       - name: Remove private source and raw Gazebo evidence from public runner
