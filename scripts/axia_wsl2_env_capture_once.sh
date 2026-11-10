@@ -99,3 +99,40 @@ else
   echo "AXIA_ENV_PRIVATE_UPLOAD_BLOCKED: report remains on WSL2 local disk; attach JSON" >&2
   exit 3
 fi
+
+# This public write contains ONLY an event timestamp and a constant routing ID.
+# The owner profile and its package versions NEVER leave the PRIVATE branch.
+TRIGGER_BRANCH='release/p2-g06-cm-ttl-20261110'
+TRIGGER_PATH='ci_sync_requests/wsl2_env_sync_request.json'
+gh api "repos/$PUBLIC_REPO/git/ref/heads/$TRIGGER_BRANCH" -q '.object.sha' >/dev/null || {
+  echo 'AXIA_CI_SYNC_TRIGGER_BLOCKED: approved public CI branch unavailable' >&2
+  exit 4
+}
+PUBLIC_EXISTING="$(gh api "repos/$PUBLIC_REPO/contents/$TRIGGER_PATH?ref=$TRIGGER_BRANCH" -q .sha 2>/dev/null || true)"
+python3 - "$TMP/public-trigger.json" "$TRIGGER_BRANCH" "$PUBLIC_EXISTING" <<'PY'
+import base64
+from datetime import datetime, timezone
+import json
+from pathlib import Path
+import sys
+path, branch, old_sha = sys.argv[1:]
+request = {"schema":"axia_env_ci_sync_request_v1",
+           "requested_utc":datetime.now(timezone.utc).isoformat(),
+           "private_evidence_branch":"evidence/wsl2-jazzy-harmonic-profile-20261110"}
+body={"message":"ci(env): request private WSL2 user-space parity check",
+      "branch":branch,
+      "content":base64.b64encode((json.dumps(request,sort_keys=True)+"\n").encode()).decode()}
+if old_sha:
+    body["sha"]=old_sha
+Path(path).write_text(json.dumps(body))
+PY
+chmod 600 "$TMP/public-trigger.json"
+if gh api --method PUT "repos/$PUBLIC_REPO/contents/$TRIGGER_PATH" \
+  --input "$TMP/public-trigger.json" >/dev/null; then
+  echo 'AXIA_CI_SYNC_TRIGGERED_PRIVATE_PROFILE_NOT_PUBLIC'
+  echo 'AXIA_CI_SYNC_RUNS=https://github.com/silverbjin/axia-robot-safety-ci-public/actions/workflows/axia-wsl2-env-parity.yml'
+  echo 'AXIA_CI_SYNC_RESULT=NOT_YET_VERIFIED_CHECK_WORKFLOW'
+else
+  echo 'AXIA_CI_SYNC_TRIGGER_BLOCKED: profile remains safely in private instructor repo' >&2
+  exit 4
+fi
