@@ -1,7 +1,7 @@
 name: AXIA D08 one-world Gazebo live harness L0 + actual L2 no Goal
 on:
   push:
-    branches: ['feature/d08-gazebo-live-ci-20261110']
+    branches: ['feature/d08-gazebo-live-ci-20261110', 'fix/d08-g07-acceptance-ci-20261110']
     paths:
       - 'd08/harness/**'
       - 'd08/tests/test_d08_live_public_harness.py'
@@ -36,7 +36,9 @@ jobs:
             d08/tests/test_d08_live_public_harness.py \
             d08/tests/test_d08_live_field_layout.py \
             d08/tests/test_d08_plan_readonly.py \
-            d08/tests/test_d08_live_owner_wrapper.py
+            d08/tests/test_d08_live_owner_wrapper.py \
+            d08/tests/test_g07_contact_topic_discovery.py \
+            d08/tests/test_d08_last_mile_bootstrap.py
           bash -n d08/scripts/axia_d08_live_gazebo_wsl2_once.sh
           bash d08/scripts/axia_d08_live_gazebo_wsl2_once.sh --self-check
           echo 'D08_PUBLIC_L0_ONLY_ROS_GAZEBO_NOT_RUN'
@@ -89,6 +91,11 @@ jobs:
           assert v['actual_rgbd']['matched'] is True
           assert v['goal_sent'] is False and v['cmd_vel_published'] is False
           assert v['collision_ground_truth'] is False
+          assert v['contact_topic_proven'] is True
+          assert v['resolved_native_contact_topic'] in (
+            '/axia_p2_g07/contacts',
+            '/world/default/model/axia_p2_g07_obstacle/link/obstacle_link/sensor/axia_contact/contact')
+          print('G07_NATIVE_CONTACT_TOPIC_PRESENT_ZERO_CONTACT_NOT_PROVEN')
           print('D08_REAL_GAZEBO_L2_NO_GOAL_VERIFIED')
           PY
       - name: Remove external actor asset before artifact collection
