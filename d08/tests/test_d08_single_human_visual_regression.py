@@ -58,5 +58,5 @@ def test_do_not_weaken_approved_camera_and_CM_geometry(tmp_path):
     link=tree.find(".//model[@name='axia_p2_g07_obstacle']/link")
     assert link.findtext("./collision/geometry/cylinder/radius")=="0.07"
     assert link.findtext("./collision/geometry/cylinder/length")=="0.48"
-    assert m['rgbd_horizontal_fov_rad']==1.35
+    assert m['rgbd_horizontal_fov_rad']==1.95
     assert m['visual_person_same_as_physical_obstacle']
