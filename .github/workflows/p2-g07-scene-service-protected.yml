@@ -1,0 +1,98 @@
+name: AXIA P2 G07 native Scene service real Gazebo L2 (NO GOAL)
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/p2-g07-scene-service-protected.yml']
+permissions:
+  contents: read
+concurrency:
+  group: axia-g07-scene-service-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  private-l0:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    environment: axia-instructor-sealed
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: f6dd196e46045bb0d9011ba300c69378aea3d383
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: G07 native Scene and frame regression at exact private SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 'f6dd196e46045bb0d9011ba300c69378aea3d383'
+          python3 -m pip install --quiet --disable-pip-version-check pytest==8.3.5 PyYAML==6.0.2
+          python3 -m pytest -q -ra \
+            tests/unit/test_p2_g07_native_model_probe.py \
+            tests/unit/test_p2_g07_coordinate_frames.py \
+            tests/unit/test_p2_g07_live_phase.py \
+            tests/unit/test_p2_t07_owner_contract.py \
+            tests/unit/test_p2_evidence_oracles.py \
+            tests/unit/test_p2_zone_overlay.py
+          python3 -m py_compile tools/p2_gazebo_model_probe.py tools/p2_l3_coordinate_frames.py tools/p2_l3_live_session.py
+          bash -n scripts/p2_no_goal_smoke_ci.sh
+          echo 'P2_G07_NATIVE_SCENE_PRIVATE_L0_PASS_GAZEBO_NOT_RUN'
+      - name: Delete private source
+        if: always()
+        shell: bash
+        run: rm -rf -- ros2_ws tools scripts docs configs tests results .git
+  real-gazebo-no-goal:
+    needs: private-l0
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    environment: axia-instructor-sealed
+    container:
+      image: ros:jazzy-ros-base-noble
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: f6dd196e46045bb0d9011ba300c69378aea3d383
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Install official Gazebo Harmonic and Waffle Nav2 once
+        shell: bash
+        run: |
+          set -eo pipefail
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+            procps git python3-yaml python3-colcon-common-extensions \
+            ros-jazzy-nav2-bringup ros-jazzy-navigation2 ros-jazzy-nav2-minimal-tb3-sim \
+            ros-jazzy-ros-gz ros-jazzy-rclpy ros-jazzy-rosgraph-msgs \
+            ros-jazzy-nav-msgs ros-jazzy-sensor-msgs ros-jazzy-geometry-msgs \
+            ros-jazzy-std-msgs ros-jazzy-std-srvs ros-jazzy-lifecycle-msgs \
+            ros-jazzy-nav2-msgs ros-jazzy-action-msgs ros-jazzy-tf2-ros
+      - name: Actual G07 native /scene/info model location with NO Goal or Fault
+        shell: bash
+        env:
+          ROS_DOMAIN_ID: '62'
+          ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+          AXIA_P2_G07_MODEL_POSE_PROBE: '1'
+        run: |
+          set -eo pipefail
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 'f6dd196e46045bb0d9011ba300c69378aea3d383'
+          export AXIA_P2_SMOKE_RESULTS="$PWD/results/g07-probe"
+          timeout --signal=TERM --kill-after=8s 620s bash scripts/p2_no_goal_smoke_ci.sh || {
+            echo 'G07_REAL_GAZEBO_SCENE_PROBE_BLOCKED'
+            if [[ -f results/g07-probe/gazebo_model_pose_probe.json ]]; then
+              python3 - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path('results/g07-probe/gazebo_model_pose_probe.json').read_text())
+          print('MODEL_PROBE_DIAGNOSTIC',
+                {k:d.get(k) for k in ('status','query_method','returncode','failure')})
+          print('STDERR_PREVIEW',str(d.get('stderr',''))[:350])
+          print('STDOUT_PREVIEW',str(d.get('stdout',''))[:350])
+          PY
+            fi
+            exit 2
+          }
+          echo 'P2_G07_REAL_GAZEBO_SCENE_WORLD_POSE_L2_PASS_NO_GOAL_NO_FAULT'
+      - name: Remove private source and evidence
+        if: always()
+        shell: bash
+        run: rm -rf -- ros2_ws tools scripts docs configs tests results build install log .git
