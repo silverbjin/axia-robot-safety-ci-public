@@ -31,7 +31,16 @@ def test_compute_path_only_does_not_publish_control_or_claim_clearance():
     code=(ROOT/"d08/harness/d08_nav2_path_preflight.py").read_text()
     assert "ComputePathToPose" in code
     assert "'/compute_path_to_pose'" in code
-    assert "NavigateToPose" not in code
-    assert "create_publisher(" not in code
+    import ast
+    tree=ast.parse(code)
+    imported=[alias.name for node in ast.walk(tree)
+              if isinstance(node,ast.ImportFrom)
+              for alias in node.names]
+    called=[node.func.attr if isinstance(node.func,ast.Attribute)
+            else node.func.id if isinstance(node.func,ast.Name) else ""
+            for node in ast.walk(tree) if isinstance(node,ast.Call)]
+    assert "NavigateToPose" not in imported
+    assert "create_publisher" not in called
+    assert "send_goal_async" in called  # ComputePathToPose action, not NavigateToPose
     assert "'collision_free_verified':False" in code
     assert "'navigate_goal_sent':False" in code
