@@ -12,6 +12,16 @@ on:
 permissions:
   contents: read
 jobs:
+  red-green-human-visual:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - run: python3 -m pip install --quiet pytest==8.3.5
+      - run: PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest -q d08/tests/test_d08_grounded_human_visual.py
+
   mesh-ground-source:
     runs-on: ubuntu-24.04
     timeout-minutes: 6
