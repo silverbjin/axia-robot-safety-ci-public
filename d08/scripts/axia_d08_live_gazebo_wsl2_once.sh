@@ -4,7 +4,7 @@ set -Eeuo pipefail
 umask 077
 readonly PRIVATE_REPO='silverbjin/axia-robot-safety-instructor'
 readonly PRIVATE_BRANCH='feature/d08-gazebo-live-one-world-20261110'
-readonly PRIVATE_SHA='5f2a15ef3ea0a7866bce15b66f2ecd48d28e959e'
+readonly PRIVATE_SHA='66d37130e517544165ccd02f3115704dbcd14c56'
 readonly D04_SOURCE_SHA='c775820077917c4da56c6aa60001b224071664b3'
 readonly YOLO_SHA='94d2dd500cb26027ee9c019f4d3a02029ac615cc'
 readonly ONNX_SHA='4f44c33cea12d4b5785e5e7c0a20c13d0c62a77de607ce96a40d6036c7d7bbcf'
