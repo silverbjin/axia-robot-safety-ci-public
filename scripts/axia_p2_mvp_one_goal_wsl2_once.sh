@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # AXIA P1+P2 one-Goal WSL2 MVP demo (single controlled G07 motion).
-# Private source is pinned; actual one-Goal Owner WSL2 remains NOT_RUN.
+# Private source is pinned; actual one-Goal Owner WSL2 on corrected SHA is NOT_RUN.\n# Only release after owner-profile matched real Gazebo L2 and public CI.
 # Requires explicit owner consent in the private runner; never auto-approves.
 set -Eeuo pipefail
 umask 077
 
 readonly REPO='silverbjin/axia-robot-safety-instructor'
-readonly BRANCH='feature/p2-mvp-one-goal-readiness-20261110'
-readonly SHA='7d61bac6f32e7e205942f3f7cda9cde8c34cbb85'
+readonly BRANCH='fix/p2-g07-mvp-stop-geometry-20261110'
+readonly SHA='d73b6170c86e392761b5446253f1f452d0f5c2d1'
 
 if [[ "${1:-}" == '--self-check' ]]; then
   [[ $# == 1 && "$SHA" =~ ^[0-9a-f]{40}$ ]] || exit 2
@@ -63,6 +63,6 @@ fi
 
 export AXIA_P2_OWNER_PINNED_SHA="$SHA"
 echo 'SIMULATION ONLY: P1+P2 one Goal; type YES-P2-G07-GOAL directly at your terminal.'
-echo 'Native Contact is not proven. L2 obstacle/LaserScan PASS is NOT L3 acceptance.'
+echo 'MVP: preloaded actual SlowZone + dynamic StopZone in one Goal; no formal G07 or Contact certification. L3_NOT_RUN.'
 # Preserve all private per-case approval, PID and Guard policies.
-bash "$SRC_ROOT/instructor/scripts/p2_owner_l3_wsl2.sh" --case G07
+bash "$SRC_ROOT/instructor/scripts/p2_owner_l3_wsl2.sh" --case G07 --mvp-one-goal
