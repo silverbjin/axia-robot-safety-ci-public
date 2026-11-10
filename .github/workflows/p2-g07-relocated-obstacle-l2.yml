@@ -18,14 +18,14 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 0f86ab6c4fda9eff7256087709be641fdd0df0b5
+          ref: 2147f3baf4009b086be2159611e54ce1fb545b37
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Verify exact private SHA + RED-to-GREEN P2 G07 and prior safety regressions
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = 0f86ab6c4fda9eff7256087709be641fdd0df0b5
+          test "$(git rev-parse HEAD)" = 2147f3baf4009b086be2159611e54ce1fb545b37
           python3 -m pip install --disable-pip-version-check -q pytest==8.3.5
           python3 -m pytest -q -ra \
             tests/unit/test_p2_g07_demo_corridor_relocation.py \
