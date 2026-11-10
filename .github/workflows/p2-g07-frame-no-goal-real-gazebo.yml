@@ -1,0 +1,104 @@
+name: P2 G07 map vs odom vs Gazebo frame real no-Goal admission
+on:
+  push:
+    branches: ['fix/p2-g07-map-frame-ci-20261110']
+    paths:
+      - '.github/workflows/p2-g07-frame-no-goal-real-gazebo.yml'
+      - 'scripts/axia_p2_g07_owner_framefix_once.sh'
+      - 'tests/test_p2_g07_owner_framefix_once.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  private-l0-frame-regressions:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    environment: axia-instructor-sealed
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: e097e6029ef5ce53b861b545a11fd87eb28afa6f
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Exact pinned private source, map-odom owner replay and G07 focused contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = "e097e6029ef5ce53b861b545a11fd87eb28afa6f"
+          python3 -m pip install -q pytest==8.3.5 PyYAML==6.0.2
+          python3 -m pytest -q -ra \
+            tests/unit/test_p2_g07_map_frame_preflight.py \
+            tests/unit/test_p2_g07_gz_world_pose.py \
+            tests/unit/test_p2_g07_live_phase.py \
+            tests/unit/test_p2_t07_owner_contract.py \
+            tests/unit/test_p2_evidence_oracles.py
+          python3 -m py_compile tools/p2_g07_frame_policy.py tools/p2_g07_world_pose.py tools/p2_g07_frame_no_goal_probe.py tools/p2_l3_live_session.py
+          bash -n scripts/p2_g07_frame_no_goal_ci.sh scripts/p2_owner_l3_wsl2.sh
+          echo "P2_G07_FRAME_OWNER_REPLAY_AND_L0_PASS; NO_GOAL_NO_GAZEBO"
+      - name: Delete private source regardless of outcome
+        if: always()
+        shell: bash
+        run: rm -rf -- ros2_ws tools scripts docs configs tests results build install log .git
+  actual-harmonic-no-goal-map-world:
+    needs: private-l0-frame-regressions
+    runs-on: ubuntu-24.04
+    timeout-minutes: 38
+    container:
+      image: ros:jazzy-ros-base-noble
+    environment: axia-instructor-sealed
+    env:
+      DEBIAN_FRONTEND: noninteractive
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: e097e6029ef5ce53b861b545a11fd87eb28afa6f
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Install official Jazzy Nav2 Waffle Gazebo Harmonic only once
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt-get update -qq
+          apt-get install -y -qq --no-install-recommends \
+            procps git python3-yaml python3-colcon-common-extensions \
+            ros-jazzy-nav2-bringup ros-jazzy-navigation2 ros-jazzy-nav2-minimal-tb3-sim \
+            ros-jazzy-ros-gz ros-jazzy-rclpy ros-jazzy-rosgraph-msgs ros-jazzy-tf2-ros \
+            ros-jazzy-nav-msgs ros-jazzy-sensor-msgs ros-jazzy-geometry-msgs \
+            ros-jazzy-std-msgs ros-jazzy-std-srvs ros-jazzy-lifecycle-msgs \
+            ros-jazzy-nav2-msgs ros-jazzy-action-msgs
+      - name: Actual official Gazebo native model pose + AMCL map TF vs odom; never a Goal
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = "e097e6029ef5ce53b861b545a11fd87eb28afa6f"
+          export AXIA_P2_G07_FRAME_RESULTS="$PWD/results/p2-g07-frame"
+          timeout --signal=TERM --kill-after=20s 580s \
+            bash scripts/p2_g07_frame_no_goal_ci.sh
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          p=Path('results/p2-g07-frame/frame_verdict.json')
+          v=json.loads(p.read_text())
+          assert v['status']=='PASS_G07_FRAME_REAL_GAZEBO_NO_GOAL'
+          assert v['goal_sent'] is False and v['fixture_created'] is False
+          assert v['actual_robot_cmd_publishers']==1
+          assert v['actual_scan_publishers']>=1
+          print('P2_G07_ACTUAL_GAZEBO_MAP_WORLD_NO_GOAL_PREFLIGHT_PASS')
+          PY
+      - name: Publish ONLY sanitized no-Goal frame verdict
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2-g07-map-world-no-goal
+          path: |
+            results/p2-g07-frame/frame_verdict.json
+            results/p2-g07-frame/frame_probe.log
+            results/p2-g07-frame/staged_startup.log
+          retention-days: 14
+          if-no-files-found: warn
+      - name: Remove private source and process logs
+        if: always()
+        shell: bash
+        run: rm -rf -- ros2_ws tools scripts docs configs tests results build install log .git
