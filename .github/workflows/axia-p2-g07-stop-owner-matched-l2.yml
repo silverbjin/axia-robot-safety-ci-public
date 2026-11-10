@@ -1,0 +1,183 @@
+name: AXIA P2 G07 corrected STOP dispatch Owner-matched real Gazebo L2 NO GOAL
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths:
+      - '.github/workflows/axia-p2-g07-stop-owner-matched-l2.yml'
+permissions:
+  contents: read
+concurrency:
+  group: axia-p2-g07-stop-geometry-owner-l2
+  cancel-in-progress: true
+
+jobs:
+  owner-userspace-parity:
+    runs-on: ubuntu-24.04
+    environment: axia-instructor-sealed
+    timeout-minutes: 40
+    container:
+      image: ros:jazzy-ros-base-noble
+    steps:
+      - name: Checkout pinned public diagnostic code only
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-ci-public
+          ref: c38264d51494a836602fe8c276b120fb7c02bd4e
+          path: ci-tools
+          persist-credentials: false
+
+      - name: Retrieve owner profile from PRIVATE evidence branch (sparse)
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: evidence/wsl2-jazzy-harmonic-profile-20261110
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          path: owner-evidence
+          sparse-checkout: docs/environment/wsl2_owner_profile.json
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - name: Install official Jazzy/Harmonic dependencies once; pin exact Owner apt core; compare versions and hashes
+        shell: bash
+        run: |
+          set -euo pipefail
+          OWNER="$GITHUB_WORKSPACE/owner-evidence/docs/environment/wsl2_owner_profile.json"
+          test -s "$OWNER" || { echo 'AXIA_CI_ENV_REFERENCE_MISSING_NO_SYNC_DONE'; exit 2; }
+          test "$(sha256sum "$OWNER" | cut -d' ' -f1)" = 'dedd807884507222e2361f70e31ed47c8b4be7701b751a35e7f4a796ba4dd7b8' || {
+            echo 'AXIA_CI_ENV_OWNER_PROFILE_SHA_CHANGED_RECAPTURE_REQUIRED'; exit 2;
+          }
+          # The owner uses upstream OSRF Gazebo packages; ROS-vendor-only
+          # CI images do not publish libgz-sim8/libsdformat14 exact versions.
+          bash ci-tools/scripts/axia_ci_enable_osrf_gazebo_repo.sh
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+            ca-certificates procps git python3-yaml python3-colcon-common-extensions \
+            ros-jazzy-nav2-bringup ros-jazzy-navigation2 ros-jazzy-nav2-minimal-tb3-sim \
+            ros-jazzy-ros-gz ros-jazzy-rclpy ros-jazzy-rosgraph-msgs \
+            ros-jazzy-nav-msgs ros-jazzy-sensor-msgs ros-jazzy-geometry-msgs \
+            ros-jazzy-std-msgs ros-jazzy-std-srvs ros-jazzy-lifecycle-msgs \
+            ros-jazzy-nav2-msgs ros-jazzy-action-msgs ros-jazzy-tf2-ros
+          mkdir -p "$GITHUB_WORKSPACE/ci-private"
+          python3 ci-tools/tools/axia_ci_env_install.py \
+            --owner "$OWNER" \
+            --plan-output "$GITHUB_WORKSPACE/ci-private/pin-plan.json" --apply
+          set +u
+          source /opt/ros/jazzy/setup.bash
+          set -u
+          RMW="$(python3 - "$OWNER" <<'PY'
+          import json,sys
+          value=json.load(open(sys.argv[1]))['env_allowlist']['rmw_implementation']
+          print(value if value in ('rmw_fastrtps_cpp','rmw_cyclonedds_cpp') else '')
+          PY
+          )"
+          if [[ -n "$RMW" ]]; then
+            export RMW_IMPLEMENTATION="$RMW"
+            echo "RMW_IMPLEMENTATION=$RMW" >> "$GITHUB_ENV"
+          fi
+          DISCOVERY="$(python3 - "$OWNER" <<'PY'
+          import json,sys
+          value=json.load(open(sys.argv[1]))['env_allowlist']['discovery_range']
+          print(value if value in ('LOCALHOST','SUBNET','SYSTEM_DEFAULT','OFF') else 'LOCALHOST')
+          PY
+          )"
+          export ROS_AUTOMATIC_DISCOVERY_RANGE="$DISCOVERY"
+          echo "ROS_AUTOMATIC_DISCOVERY_RANGE=$DISCOVERY" >> "$GITHUB_ENV"
+          OWNER_DOMAIN="$(python3 - "$OWNER" <<'PY'
+          import json,sys
+          x=json.load(open(sys.argv[1]))['env_allowlist']['domain_id']
+          print(x if type(x)==int and 0<=x<=232 else 67)
+          PY
+          )"
+          echo "ROS_DOMAIN_ID=$OWNER_DOMAIN" >> "$GITHUB_ENV"
+          python3 ci-tools/tools/axia_env_profile.py \
+            --output "$GITHUB_WORKSPACE/ci-private/ci-profile.json"
+          python3 ci-tools/tools/axia_ci_env_compare.py \
+            --owner "$OWNER" --ci "$GITHUB_WORKSPACE/ci-private/ci-profile.json" \
+            --report "$GITHUB_WORKSPACE/ci-private/parity-report.json"
+          python3 - "$OWNER" "$GITHUB_WORKSPACE/ci-private/ci-profile.json" <<'PY'
+          import json,sys
+          a,b=(json.load(open(x)) for x in sys.argv[1:])
+          if not (a.get('commands',{}).get('gz_sim') and b.get('commands',{}).get('gz_sim')):
+              raise SystemExit('AXIA_ENV_GZ_SIM_BINARY_UNVERIFIED')
+          PY
+          echo 'AXIA_CI_ENV_USERSPACE_MATCHED_NO_WSL2_KERNEL_CLAIM'
+
+      - name: Checkout EXACT private P1+P2 source after parity
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: cf81555650c78a9bf96d30cc94b743650a3101be
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          path: instructor-src
+          persist-credentials: false
+
+      - name: Actual Gazebo Harmonic physical clear slow stop with P1+P2 startup (NO Goal)
+        shell: bash
+        env:
+          AXIA_P2_G07_PHYSICAL_PREFLIGHT: '1'
+          AXIA_P2_MVP_ONE_GOAL: '1'
+          AXIA_P0_SIM_ONLY: '1'
+          ROS_DOMAIN_ID: '67'
+          ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+        run: |
+          set -euo pipefail
+          cd instructor-src
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 'cf81555650c78a9bf96d30cc94b743650a3101be'
+          export AXIA_P2_SMOKE_RESULTS="$PWD/results/owner-env-parity-g07-stop"
+          timeout --signal=TERM --kill-after=10s 650s bash scripts/p2_no_goal_smoke_ci.sh
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('results/owner-env-parity-g07-stop')
+          startup=json.loads((root/'startup_verdict.json').read_text())
+          scan=json.loads((root/'g07_physical/g07_physical_preflight.json').read_text())
+          assert startup['status']=='SMOKE_READY'
+          assert startup['goal_sent'] is False and startup['fault_injected'] is False
+          assert scan['status']=='G07_PHYSICAL_OBSTACLE_LASER_PROVEN'
+          assert scan['fixture_ack'] is True and scan['set_pose_ack'] is True
+          assert scan['mvp_dispatch_pose_ack'] is True
+          assert scan['mvp_dispatch_target_surface_m'] == 0.43
+          assert 0.40 < scan['mvp_dispatch_front'] < 0.60, scan
+          print('AXIA_G07_OWNER_STOP_DISPATCH_043_REAL_GAZEBO_PREFLIGHT_PASS front=', scan['mvp_dispatch_front'])
+          clear,slow,stop=(scan['baseline_front'],scan['slowdown_front'],scan['stopped_front'])
+          assert clear>.75 and .4<slow<.75 and .14<=stop<.4 and clear>slow>stop
+          assert scan['goal_sent'] is False and scan['collision_ground_truth_available'] is False
+          assert scan['gate_accepted'] is False and scan['certified_estop'] is False
+          print('AXIA_OWNER_MATCHED_CI_G07_STOP_GEOMETRY_043_REAL_GAZEBO_L2_PASS_NO_GOAL')
+          PY
+
+      - name: Publish only non-sensitive pass/fail metadata
+        if: always()
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          p=Path('ci-private/parity-report.json')
+          if p.is_file():
+              x=json.loads(p.read_text())
+              y={'schema':'axia_ci_public_summary_v1',
+                 'status':x.get('status'),
+                 'drift_fields':[i['field'] for i in x.get('critical_issues',[])],
+                 'private_owner_values_included':False,
+                 'wsl2_kernel_parity':False,
+                 'real_goal_verified':False}
+          else:
+              y={'schema':'axia_ci_public_summary_v1','status':'NOT_YET_VERIFIED',
+                 'private_owner_values_included':False,
+                 'wsl2_kernel_parity':False,'real_goal_verified':False}
+          Path('public-ci-env-summary.json').write_text(json.dumps(y,indent=2)+'\n')
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: axia-wsl2-ci-public-parity-summary
+          path: public-ci-env-summary.json
+          if-no-files-found: warn
+
+      - name: Delete all private source and profile from public runner
+        if: always()
+        shell: bash
+        run: |
+          rm -rf -- owner-evidence instructor-src ci-private ci-tools
