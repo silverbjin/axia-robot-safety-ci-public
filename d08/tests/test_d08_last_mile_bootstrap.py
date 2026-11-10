@@ -8,6 +8,10 @@ SHA='b5e69e4b221522a79ba38dff42c1f9cb86d1662f'
 def test_exact_private_revision_and_no_auto_consent():
     src=WRAPPER.read_text()
     assert ("readonly PRIVATE_SHA='"+SHA+"'") in src
+    assert "readonly PRIVATE_BRANCH='integration/d08-g07-final-owner-20261110'" in src
+    # A single-branch shallow clone must refer to the branch that actually
+    # contains PRIVATE_SHA; otherwise all WSL2 runs fail after checkout.
+    assert '--single-branch --branch "$PRIVATE_BRANCH" --depth 1' in src
     assert "G07_PRIVATE_STOP_043_CONTACT_AND_SHUTDOWN_AUDIT_PREFLIGHT_PASS" in src
     assert "STOP_DISPATCH_M==0.43" in src
     assert "YES-P2-G07-GOAL" in src
