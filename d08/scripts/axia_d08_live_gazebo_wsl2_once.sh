@@ -3,8 +3,8 @@
 set -Eeuo pipefail
 umask 077
 readonly PRIVATE_REPO='silverbjin/axia-robot-safety-instructor'
-readonly PRIVATE_BRANCH='integration/d08-g07-final-owner-20261110'
-readonly PRIVATE_SHA='b5e69e4b221522a79ba38dff42c1f9cb86d1662f'
+readonly PRIVATE_BRANCH='fix/d08-human-physical-model-20261110'
+readonly PRIVATE_SHA='8c5c50e4379096208f84ce9572833c8f705fbb38'
 readonly D04_SOURCE_SHA='c775820077917c4da56c6aa60001b224071664b3'
 readonly YOLO_SHA='94d2dd500cb26027ee9c019f4d3a02029ac615cc'
 readonly ONNX_SHA='4f44c33cea12d4b5785e5e7c0a20c13d0c62a77de607ce96a40d6036c7d7bbcf'
@@ -144,8 +144,9 @@ PY
 export AXIA_D08_GAZEBO_GUI=1
 export AXIA_P2_OWNER_PINNED_SHA="$PRIVATE_SHA"
 echo '============================================================'
-echo 'D08 Gazebo GUI: Waffle + visual Actor + physical cylinder + RGBD/YOLO'
-echo 'SIMULATION ONLY: actor is NOT synchronized with LiDAR cylinder.'
+echo 'D08 Gazebo GUI: Waffle + ONE human-visible G07 collision model + RGBD/YOLO'
+echo 'SIMULATION ONLY: human mesh and G07 Contact proxy share ONE SDF model.'
+echo 'Walking Actor animation intentionally removed; native P2 set_pose moves human visuals and collision together.'
 echo 'Moving Goal requires your explicit manual YES-P2-G07-GOAL.'
 echo 'If RGBD/YOLO/D05 is not ready, abort BEFORE moving robot.'
 echo '============================================================'

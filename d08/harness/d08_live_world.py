@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""D08 one-world Gazebo educational view (camera + non-colliding visual actor).
+"""D08 one-world Gazebo educational view: human-looking *physical* fixture.
 
-Reuses P2's real physical G07 cylinder and original official Nav2 Waffle model.
-The visual-only person is NOT the physical cylinder. Nothing publishes controls.
+Attach the human mesh to the SAME Gazebo model/link as the existing G07
+Collision and Contact sensor. Original P2 set_pose moves everything together;
+no separate Actor scripted trajectory or new safety/planner/controller code.
+This is a collision PROXY, not a human-body geometry certification.
 """
 from __future__ import annotations
 import argparse
@@ -21,6 +23,9 @@ PHYSICAL_NAME = 'axia_p2_g07_obstacle'
 RGB_TOPIC = '/axia/d08/rgbd/image'
 DEPTH_TOPIC = '/axia/d08/rgbd/depth_image'
 OPTICAL_FRAME = 'axia_d08_rgbd_optical'
+HUMAN_VISUAL_NAME='axia_d08_human_mesh'
+HUMAN_VISUAL_FALLBACK='axia_d08_human_torso'
+
 
 
 def _sha(path: Path) -> str:
@@ -45,6 +50,79 @@ def make_yolo_params(model: Path) -> str:
     if data.count(old) != 1:
         raise ValueError('D04_YOLO_CONFIG_UNEXPECTED')
     return data.replace(old, 'rgb_topic: ' + RGB_TOPIC)
+
+
+def attach_human_visual_to_fixture(wn, actor_mesh: Path) -> None:
+    """Only change SDF visuals; preserve original P2 Collision/Contact/touch.
+
+    The original `axia_p2_g07_obstacle` model is moved by P2's native
+    /world/default/set_pose and renders the human in the same rigid transform.
+    An animated <actor> cannot safely guarantee this relationship.
+    """
+    matches=wn.findall("./model[@name='"+PHYSICAL_NAME+"']")
+    if len(matches)!=1:
+        raise ValueError('D08_PHYSICAL_OBSTACLE_NOT_UNIQUE')
+    model=matches[0]
+    links=model.findall("./link[@name='obstacle_link']")
+    if len(links)!=1:
+        raise ValueError('D08_PHYSICAL_OBSTACLE_LINK_NOT_UNIQUE')
+    link=links[0]
+    collision=link.find("./collision[@name='obstacle_collision']")
+    if collision is None:
+        raise ValueError('D08_PHYSICAL_COLLISION_MISSING')
+    radius=collision.findtext("./geometry/cylinder/radius")
+    length=collision.findtext("./geometry/cylinder/length")
+    if radius is None or length is None or abs(float(radius)-.07)>1e-8 or abs(float(length)-.48)>1e-8:
+        raise ValueError('D08_COLLISION_GEOMETRY_CHANGED')
+    sensors=link.findall("./sensor[@name='axia_contact']")
+    if len(sensors)!=1 or sensors[0].findtext("./contact/collision")!='obstacle_collision':
+        raise ValueError('D08_CONTACT_SENSOR_NOT_ON_PROXY_COLLISION')
+    old=link.findall("./visual[@name='obstacle_visual']")
+    if len(old)!=1:
+        raise ValueError('D08_EXPECTED_ONE_ORIGINAL_ORANGE_VISUAL')
+    link.remove(old[0])
+
+    # The COLLADA human asset was already used by D04's RGB YOLO demo.
+    # As an SDF <visual><mesh> it is a static pose, not a skeletal
+    # animation; the model itself moves along the P2 G07 test trajectory.
+    visual=_sub(link,'visual',None,name=HUMAN_VISUAL_NAME)
+    _sub(visual,'pose','0 0 0.76 0 0 3.14159')
+    geom=_sub(visual,'geometry')
+    mesh=_sub(geom,'mesh')
+    _sub(mesh,'uri',str(actor_mesh.resolve()))
+    _sub(mesh,'scale','0.75 0.75 0.75')
+
+    # A minimal humanoid silhouette remains visible if Gazebo's generic mesh
+    # importer cannot render the skinned COLLADA visual on an Owner GPU.
+    torso=_sub(link,'visual',None,name=HUMAN_VISUAL_FALLBACK)
+    _sub(torso,'pose','0 0 0.83 0 0 0')
+    torso_g=_sub(torso,'geometry')
+    torso_box=_sub(torso_g,'box')
+    _sub(torso_box,'size','0.25 0.34 0.63')
+    torso_mat=_sub(torso,'material')
+    _sub(torso_mat,'diffuse','0.12 0.39 0.20 1')
+
+    head=_sub(link,'visual',None,name='axia_d08_human_head')
+    _sub(head,'pose','0 0 1.27 0 0 0')
+    head_g=_sub(head,'geometry')
+    head_sphere=_sub(head_g,'sphere')
+    _sub(head_sphere,'radius','0.115')
+    head_mat=_sub(head,'material')
+    _sub(head_mat,'diffuse','0.73 0.53 0.40 1')
+
+    for suffix,y in [('left',.08),('right',-.08)]:
+        leg=_sub(link,'visual',None,name='axia_d08_human_leg_'+suffix)
+        _sub(leg,'pose',f'0 {y} 0.16 0 0 0')
+        leg_g=_sub(leg,'geometry')
+        leg_box=_sub(leg_g,'box')
+        _sub(leg_box,'size','0.11 0.13 0.55')
+        leg_mat=_sub(leg,'material')
+        _sub(leg_mat,'diffuse','0.13 0.18 0.35 1')
+
+    if model.find("./link[@name='obstacle_link']/collision[@name='obstacle_collision']") is None:
+        raise ValueError('D08_SAFETY_COLLISION_NOT_PRESERVED')
+    if wn.find("./actor[@name='"+ACTOR_NAME+"']") is not None:
+        raise ValueError('D08_SEPARATE_VISUAL_ACTOR_FORBIDDEN')
 
 
 def build_overlay(world: Path, robot: Path, actor_mesh: Path, output: Path) -> dict:
@@ -91,24 +169,7 @@ def build_overlay(world: Path, robot: Path, actor_mesh: Path, output: Path) -> d
     _sub(clip,'near','0.15')
     _sub(clip,'far','8.0')
 
-    actor=ET.SubElement(wn,'actor',{'name':ACTOR_NAME})
-    skin=_sub(actor,'skin')
-    _sub(skin,'filename',str(actor_mesh.resolve()))
-    _sub(skin,'scale','0.75')
-    anim=_sub(actor,'animation',None,name='walk')
-    _sub(anim,'filename',str(actor_mesh.resolve()))
-    _sub(anim,'interpolate_x','true')
-    script=_sub(actor,'script')
-    _sub(script,'loop','true')
-    _sub(script,'delay_start','0')
-    _sub(script,'auto_start','true')
-    trajectory=_sub(script,'trajectory',None,id='0',type='walk')
-    # Visual only. This animated person is independently located from the
-    # LiDAR physical cylinder, which P2 moves using native Gazebo UserCommands.
-    for t,y in [('0','-0.32'),('6','-0.68'),('12','-0.32')]:
-        waypoint=_sub(trajectory,'waypoint')
-        _sub(waypoint,'time',t)
-        _sub(waypoint,'pose',f'-0.38 {y} 1.0 0 0 3.14159')
+    attach_human_visual_to_fixture(wn,actor_mesh)
 
     if len(r.getroot().findall('.//plugin')) != before_plugins:
         raise ValueError('D08_ROBOT_PLUGIN_MODIFIED')
@@ -127,20 +188,23 @@ def build_overlay(world: Path, robot: Path, actor_mesh: Path, output: Path) -> d
       'actor_dae_sha256':_sha(actor_mesh),
       'result_world_sha256':_sha(world_out),
       'result_robot_sha256':_sha(robot_out),
-      'gazebo_visual_actor':ACTOR_NAME,
-      'actor_pose_initial_world':{'x':-0.38,'y':-0.32,'z':1.0},
-      'actor_visual_scale':0.75,
+      'gazebo_visual_actor':None,
+      'separate_actor_removed':True,
+      'human_visual_attached_to_physical_model':True,
+      'human_visual_name':HUMAN_VISUAL_NAME,
+      'human_visible_collision_proxy':'obstacle_collision',
+      'human_visual_animated':False,
+      'human_model_motion_source':'existing_P2_G07_gz_set_pose',
       'robot_world_spawn':{'x':-2.0,'y':-0.5,'yaw':0.0},
       'rgbd_horizontal_fov_rad':1.35,
       'rgbd_sensor_pitch_rad':-0.12,
-      'actor_min_forward_from_robot_m':1.62,
       'physical_obstacle_static_gap_not_certified':True,
       'gazebo_physical_fixture':PHYSICAL_NAME,
       'rgb_topic':RGB_TOPIC,
       'depth_topic':DEPTH_TOPIC,
       'optical_frame':OPTICAL_FRAME,
       'actor_physics_collision':False,
-      'visual_person_same_as_physical_obstacle':False,
+      'visual_person_same_as_physical_obstacle':True,
       'robot_drive_model_modified':False,
       'goal_sent':False,'certified_estop':False,
       'collision_ground_truth_verified':False,
@@ -164,7 +228,8 @@ def main():
         make_yolo_params(args.model),encoding='utf-8')
     print('D08_ONE_WORLD_OVERLAY_STATIC_PASS '+json.dumps({
         'world':manifest['world'],'robot_sdf':manifest['robot_sdf'],
-        'actor_visual_only':True,'physical_cylinder_distinct':True,
+        'human_visual_on_existing_physical_model':True,
+        'separate_actor_removed':True,
         'ros_gazebo_not_yet_run':True
     }),flush=True)
 

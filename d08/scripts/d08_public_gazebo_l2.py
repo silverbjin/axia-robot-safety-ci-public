@@ -10,6 +10,7 @@ import argparse
 import hashlib
 import json
 import os
+import signal
 from pathlib import Path
 import subprocess
 import sys
@@ -23,6 +24,7 @@ from d04_waffle_pi_rgb_preflight import _start,_stop_all,sync_ros_discovery_envi
 from d08_live_world import build_overlay,RGB_TOPIC,DEPTH_TOPIC
 from d08_live_readonly_probe import select_pair
 from p2_contact_discovery import resolve_g07_contact_topic
+from d08_contact_positive_contract import count_nonrobot_positive_contacts
 
 TEST_FIXTURE='''<plugin filename="gz-sim-contact-system"
  name="gz::sim::systems::Contact"/>
@@ -84,7 +86,88 @@ def observe_real_pair(timeout_s=65):
         rclpy.shutdown()
 
 
-def run(out:Path,actor:Path):
+def positive_contact_once(out:Path,env:dict,contact_topic:str)->dict:
+    """One isolated NON-ROBOT calibration contact. Never send a Nav2 Goal.
+
+    The physical sphere falls onto the existing human's G07 cylinder.
+    Positive sensor response proves this topic can carry contact, not that
+    a later moving-robot experiment has zero collisions.
+    """
+    out=Path(out)
+    probe_name='axia_d08_contact_calibrator'
+    sphere=out/'positive_contact_calibrator.sdf'
+    sphere.write_text('''<?xml version="1.0"?>
+<sdf version="1.9"><model name="axia_d08_contact_calibrator">
+  <static>false</static><link name="calibrator_link">
+  <inertial><mass>0.2</mass><inertia>
+    <ixx>0.001</ixx><iyy>0.001</iyy><izz>0.001</izz>
+    <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz>
+  </inertia></inertial>
+  <collision name="calibrator_collision"><geometry>
+    <sphere><radius>0.11</radius></sphere>
+  </geometry></collision>
+  <visual name="calibrator_visual"><geometry><sphere><radius>0.11</radius></sphere></geometry>
+    <material><diffuse>0.5 0.5 0.5 1</diffuse></material>
+  </visual>
+  </link>
+</model></sdf>''',encoding='utf-8')
+    log=out/'positive_contact_native.log'
+    watcher=None
+    try:
+        with log.open('w',encoding='utf-8') as file:
+            watcher=subprocess.Popen(['gz','topic','-e','-t',contact_topic],
+                env=env,stdout=file,stderr=subprocess.STDOUT,
+                start_new_session=True)
+            time.sleep(1.2)
+            # Exactly ONE probe entity create. It drops under gravity onto
+            # the existing Contact-monitored cylinder, while Waffle is still.
+            cmd=['gz','service','-s','/world/default/create',
+                '--reqtype','gz.msgs.EntityFactory','--reptype','gz.msgs.Boolean',
+                '--timeout','7000','--req',
+                'sdf_filename: "'+str(sphere)+'", name: "'+probe_name+
+                '", pose: { position: { x: -1.2, y: -0.5, z: 0.6 }, '
+                'orientation: { w: 1.0 } }']
+            ack=_run(cmd,env,timeout=17)
+            (out/'contact_calibration_spawn_ack.txt').write_text(ack.stdout+ack.stderr)
+            if 'data: true' not in ack.stdout:
+                raise RuntimeError('CONTACT_CALIBRATOR_CREATE_NOT_ACKNOWLEDGED')
+            time.sleep(9.0)
+    finally:
+        if watcher is not None and watcher.poll() is None:
+            try:os.killpg(watcher.pid,signal.SIGTERM)
+            except ProcessLookupError:pass
+            try:watcher.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                try:os.killpg(watcher.pid,signal.SIGKILL)
+                except ProcessLookupError:pass
+                watcher.wait(timeout=3)
+    raw=log.read_text(encoding='utf-8',errors='replace')[:200000]
+    # Gazebo gz.msgs.Contacts text uses 'collision1 { name: ... }', NOT
+    # 'collision1: ...'. The actual Owner-profile CI fixture recorded
+    # 2,978 adjacent collision pairs in its full native log, despite the
+    # legacy literal-colon parser incorrectly reporting BLOCKED.
+    sampled=count_nonrobot_positive_contacts(raw)
+    positive=sampled>0
+    verdict={'status':('POSITIVE_CONTACT_VERIFIED' if positive
+                       else 'CONTACT_POSITIVE_NOT_OBSERVED'),
+             'contact_topic':contact_topic,
+             'calibrator_name':probe_name,
+             'positive_contact_detected':positive,
+             'sampled_actual_collision_pairs':sampled,
+             'calibration_events_are_robot_contacts':False,
+             'robot_goal_sent':False,
+             'certified_estop':False,
+             'robot_collision_free_verified':False,
+             'raw_contact_log':str(log)}
+    (out/'positive_contact_verdict.json').write_text(
+        json.dumps(verdict,indent=2,ensure_ascii=False)+'\n')
+    print('D08_G07_NONROBOT_CONTACT_CALIBRATION_'+
+          ('PASS' if positive else 'BLOCKED'),flush=True)
+    if not positive:raise RuntimeError('POSITIVE_CONTACT_NONROBOT_SENSOR_UNVERIFIED')
+    return verdict
+
+
+def run(out:Path,actor:Path,positive_contact:bool=False):
     out=Path(out).resolve()
     if out.exists():raise ValueError('D08_EVIDENCE_EXISTS')
     out.mkdir(parents=True)
@@ -181,6 +264,11 @@ def run(out:Path,actor:Path):
             raise RuntimeError('D08_NO_MATCHED_REAL_REGISTERED_RGBD')
         if not all(t in topics.stdout for t in (RGB_TOPIC,DEPTH_TOPIC)):
             raise RuntimeError('D08_GAZEBO_RGBD_TOPICS_NOT_ADVERTISED')
+        # The calibration happens ONCE, only on the actual no-Goal L2 CI
+        # path after real RGBD and the native Contact topic were verified.
+        if positive_contact:
+            result['positive_contact_calibration']=positive_contact_once(
+                out,env,contact_topic)
         result['status']='D08_REAL_GAZEBO_WAFFLE_RGBD_NO_GOAL_PASS'
         result['ros_actual']=True
         result['gazebo_actual']=True
@@ -206,5 +294,7 @@ if __name__=='__main__':
     p=argparse.ArgumentParser()
     p.add_argument('--out',type=Path,required=True)
     p.add_argument('--actor',type=Path,required=True)
+    p.add_argument('--positive-contact-once',action='store_true',
+        help='Single non-robot Gazebo Contact positive calibration, no Nav2 Goal')
     a=p.parse_args()
-    raise SystemExit(run(a.out,a.actor))
+    raise SystemExit(run(a.out,a.actor,positive_contact=a.positive_contact_once))
