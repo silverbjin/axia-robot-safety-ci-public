@@ -174,11 +174,13 @@ def main(argv=None):
     args.output.chmod(0o600)
     required = ("ros-jazzy-nav2-bringup",
                 "ros-jazzy-nav2-minimal-tb3-sim",
-                "ros-jazzy-navigation2")
+                "ros-jazzy-navigation2",
+                "ros-jazzy-ros-gz")
     missing = [name for name in required if name not in out["apt_packages"]]
     ready = (out["os"].get("id") == "ubuntu" and
              out["os"].get("version_id") == "24.04" and
-             out["ros"]["distro"] == "jazzy" and not missing)
+             out["ros"]["distro"] == "jazzy" and
+             bool(out["commands"]["gz_sim"]) and not missing)
     print("AXIA_ENV_PROFILE_WRITTEN")
     print("AXIA_ENV_DISTRO=" + out["ros"]["distro"])
     print("AXIA_ENV_GZ_SIM=" + (out["commands"]["gz_sim"] or "UNKNOWN"))
