@@ -101,6 +101,36 @@ gh repo clone "$PRIVATE_REPO" "$SRC/instructor" -- \
 [[ -z "$(git -C "$SRC/instructor" status --porcelain)" ]] || {
   echo 'D08_LIVE_BLOCKED: private checkout has changes' >&2;exit 2;
 }
+# Validate the exact private teacher reference and pure data converters BEFORE
+# starting any ROS/Gazebo or an authorized Goal. No pytest/ROS plugin autoload.
+bash -n "$SRC/instructor/scripts/p2_owner_l3_wsl2.sh"
+env -u PYTHONPATH -u AMENT_PREFIX_PATH -u COLCON_PREFIX_PATH \
+    -u CMAKE_PREFIX_PATH -u LD_LIBRARY_PATH -u BASH_ENV \
+    AXIA_D08_PRIVATE_SRC="$SRC/instructor" /usr/bin/python3 - <<'PY'
+import importlib.util, os, struct, sys
+from pathlib import Path
+from types import SimpleNamespace
+root=Path(os.environ['AXIA_D08_PRIVATE_SRC'])
+targets=('d08_live_world','d08_live_readonly_probe','d08_nav2_path_preflight')
+sys.path.insert(0,str(root/'tools'))
+modules={}
+for name in targets:
+    spec=importlib.util.spec_from_file_location(name,root/'tools'/(name+'.py'))
+    assert spec and spec.loader
+    obj=importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(obj)
+    modules[name]=obj
+data=b''.join(struct.pack('<f',1.65) for _ in range(12*10))
+img=SimpleNamespace(width=12,height=10,step=48,encoding='32FC1',
+ is_bigendian=False,data=data,
+ header=SimpleNamespace(stamp=SimpleNamespace(sec=11,nanosec=0)))
+bbox=dict(x1=3,y1=2,x2=9,y2=8,image_width=12,image_height=10)
+ref=modules['d08_live_readonly_probe'].measure_real_person(img,bbox,11_000_000_000)
+assert ref is not None and abs(ref['distance_m']-1.65)<1e-5
+assert modules['d08_live_readonly_probe'].measure_real_person(
+    img,bbox,10_800_000_000) is None
+print('D08_PRIVATE_PREFLIGHT_STATIC_PASS D05_REFERENCE_32FC1_PASS NO_ROS_NO_GOAL',flush=True)
+PY
 export AXIA_D08_GAZEBO_GUI=1
 export AXIA_P2_OWNER_PINNED_SHA="$PRIVATE_SHA"
 echo '============================================================'
