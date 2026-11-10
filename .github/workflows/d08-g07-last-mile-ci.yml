@@ -34,5 +34,6 @@ jobs:
           PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -q \
             d08/tests/test_g07_mvp_slow_motion_gate.py \
             d08/tests/test_g07_contact_topic_discovery.py \
-            d08/tests/test_g07_cm_shutdown_audit.py
+            d08/tests/test_g07_cm_shutdown_audit.py \
+            d08/tests/test_d08_last_mile_bootstrap.py
           echo 'G07_MVP_SLOW_MOTION_L0_PASS ROS_GAZEBO_NOT_RUN'
