@@ -14,6 +14,7 @@ from pathlib import Path
 import subprocess
 import sys
 import time
+import xml.etree.ElementTree as ET
 
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'scripts'))
@@ -120,9 +121,13 @@ def run(out:Path,actor:Path):
                      env=env,text=True,timeout=15)
             if cp.returncode!=0:
                 raise RuntimeError('D08_XACRO_FAILED:'+cp.stderr[-400:])
-            parsed=_run(['gz','sdf','-p',str(dest)],env,timeout=25)
-            if '<sdf' not in parsed.stdout:
-                raise RuntimeError('D08_GZ_SDF_VALIDATION_FAILED')
+            # The standalone 'gz sdf -p' tool lacks gz-sim's model://
+            # resource find callback, so it reports a false missing-model
+            # error for the stock turtlebot3_world include. Parse XML here,
+            # then require the actual Gazebo server to resolve models.
+            parsed=ET.parse(dest)
+            if parsed.getroot().tag!='sdf':
+                raise RuntimeError('D08_XACRO_OUTPUT_IS_NOT_SDF')
         sim=_start('gazebo_server',
           ['xvfb-run','-a','-s','-screen 0 1280x720x24',
            'gz','sim','-r','-s','-v3',str(gz_world)],
