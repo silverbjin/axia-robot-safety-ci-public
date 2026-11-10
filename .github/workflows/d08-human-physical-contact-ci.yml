@@ -102,9 +102,9 @@ jobs:
           assert v['status']=='D08_REAL_GAZEBO_WAFFLE_RGBD_NO_GOAL_PASS'
           assert v['actual_rgbd']['matched'] is True
           assert v['contact_topic_proven'] is True
-          assert v['pregoad_lidar']['status']=='PASS_ACTUAL_GAZEBO_SET_POSE_PLUS_LIDAR'
-          assert v['pregoad_lidar']['after']['front_m'] > 0.4
-          assert v['pregoad_lidar']['after']['front_m'] < 0.75
+          assert v['pregoal_lidar']['status']=='PASS_ACTUAL_GAZEBO_SET_POSE_PLUS_LIDAR'
+          assert v['pregoal_lidar']['after']['front_m'] > 0.4
+          assert v['pregoal_lidar']['after']['front_m'] < 0.75
           # Positive contact calibration already proven independently
           # in public CI #42831813671; avoid a second calibration.
           assert v['collision_ground_truth'] is False
