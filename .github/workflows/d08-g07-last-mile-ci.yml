@@ -1,7 +1,7 @@
 name: AXIA D08 G07 evidence-replay minimal
 on:
   push:
-    branches: ['fix/d08-g07-acceptance-ci-20261110', 'fix/d08-human-contact-positive-ci-20261110', 'release/d08-g07-lidar-owner-20261110']
+    branches: ['fix/d08-g07-acceptance-ci-20261110', 'fix/d08-human-contact-positive-ci-20261110', 'release/d08-g07-lidar-owner-20261110', 'release/d08-grounded-owner-wsl2-20261111']
     paths:
       - 'd08/harness/**'
       - 'd08/tests/test_g07_*'
@@ -9,6 +9,9 @@ on:
       - 'd08/tests/test_d08_g07_lidar_visible_proxy.py'
       - 'd08/tests/test_d08_rgbd_alignment_evidence.py'
       - 'd08/tests/test_d08_single_human_visual_regression.py'
+      - 'd08/tests/test_d08_grounded_human_visual.py'
+      - 'd08/tests/test_d08_camera_fullbody_framing.py'
+      - 'd08/tests/test_d08_visible_person_frame.py'
       - 'd08/scripts/axia_d08_live_gazebo_wsl2_once.sh'
       - '.github/workflows/d08-g07-last-mile-ci.yml'
   workflow_dispatch:
@@ -41,6 +44,9 @@ jobs:
             d08/tests/test_d08_last_mile_bootstrap.py \
             d08/tests/test_d08_g07_lidar_visible_proxy.py \
             d08/tests/test_d08_rgbd_alignment_evidence.py \
-            d08/tests/test_d08_single_human_visual_regression.py
+            d08/tests/test_d08_single_human_visual_regression.py \
+            d08/tests/test_d08_grounded_human_visual.py \
+            d08/tests/test_d08_camera_fullbody_framing.py \
+            d08/tests/test_d08_visible_person_frame.py
           echo 'G07_MVP_SLOW_MOTION_L0_PASS ROS_GAZEBO_NOT_RUN'
           echo 'D08_G07_OWNER_PIN_LIDAR_MODEL_L0_PASS ROS_GAZEBO_NOT_RUN'
