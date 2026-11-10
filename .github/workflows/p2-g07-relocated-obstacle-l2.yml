@@ -18,14 +18,14 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: b6e902513f208aeb7250a543a1c6f14bb3decf5c
+          ref: 7ba733bc48d0d5224f2ec511a7b04f88408923b5
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Verify exact private SHA + RED-to-GREEN P2 G07 and prior safety regressions
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = b6e902513f208aeb7250a543a1c6f14bb3decf5c
+          test "$(git rev-parse HEAD)" = 7ba733bc48d0d5224f2ec511a7b04f88408923b5
           python3 -m pip install --disable-pip-version-check -q pytest==8.3.5
           python3 -m pytest -q -ra \
             tests/unit/test_p2_g07_demo_corridor_relocation.py \
@@ -42,3 +42,69 @@ jobs:
       - name: Remove private source
         if: always()
         run: rm -rf -- .git tools scripts tests configs ros2_ws docs fixtures results
+
+  physical-gazebo-l2-no-goal:
+    needs: private-l0
+    runs-on: ubuntu-24.04
+    timeout-minutes: 34
+    environment: axia-instructor-sealed
+    container:
+      image: ros:jazzy-ros-base-noble
+    steps:
+      - name: Checkout exact private demo layout candidate
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 7ba733bc48d0d5224f2ec511a7b04f88408923b5
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Install official Nav2 Jazzy / Gazebo Harmonic once for changed L2 fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+            procps git python3-yaml python3-colcon-common-extensions \
+            ros-jazzy-nav2-bringup ros-jazzy-navigation2 ros-jazzy-nav2-minimal-tb3-sim \
+            ros-jazzy-ros-gz ros-jazzy-rclpy ros-jazzy-rosgraph-msgs \
+            ros-jazzy-nav-msgs ros-jazzy-sensor-msgs ros-jazzy-geometry-msgs \
+            ros-jazzy-std-msgs ros-jazzy-std-srvs ros-jazzy-lifecycle-msgs \
+            ros-jazzy-nav2-msgs ros-jazzy-action-msgs ros-jazzy-tf2-ros
+      - name: One actual Gazebo physical relocation plus OFFICIAL static map screening, no Nav2 Goal
+        shell: bash
+        env:
+          ROS_DOMAIN_ID: '76'
+          ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+          AXIA_P2_G07_PHYSICAL_PREFLIGHT: '1'
+          AXIA_P2_G07_DEMO_CORRIDOR_SURVEY: '1'
+          AXIA_P2_SMOKE_RESULTS: results/p2-g07-relocated-l2
+        run: |
+          set -euo pipefail
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '7ba733bc48d0d5224f2ec511a7b04f88408923b5'
+          mkdir -p results
+          timeout --signal=TERM --kill-after=10s 650s bash scripts/p2_no_goal_smoke_ci.sh
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('results/p2-g07-relocated-l2')
+          corridor=json.loads((root/'g07_demo_corridor.json').read_text())
+          physical=json.loads((root/'g07_physical/g07_physical_preflight.json').read_text())
+          reloc=json.loads((root/'g07_relocated_probe.json').read_text())
+          assert corridor['status']=='STATIC_MAP_CLEARANCE_CANDIDATE'
+          assert corridor['path_distance_m']>1.20
+          assert corridor['min_raw_clearance_m']>=.45
+          assert corridor['goal_sent'] is False and corridor['inflated_costmap_checked'] is False
+          assert physical['status']=='G07_PHYSICAL_OBSTACLE_LASER_PROVEN'
+          assert .4 < physical['slowdown_front'] < .75 and .14 <= physical['stopped_front'] < .4
+          assert reloc['status']=='G07_RELOCATED_PHYSICAL_POSE_NO_GOAL'
+          assert reloc['native_set_pose_ack'] and reloc['gazebo_model_readback']
+          assert reloc['error_m']<=.04 and reloc['goal_sent'] is False
+          assert reloc['gate_accepted'] is False and reloc['collision_ground_truth'] is False
+          print('AXIA_G07_LONG_FREE_MAP_CANDIDATE_L2_ONLY length=',corridor['path_distance_m'])
+          print('AXIA_G07_RELOCATED_NATIVE_GAZEBO_POSE_L2_PASS_NO_GOAL',reloc['actual_world_xyz'])
+          print('AXIA_G07_OWNER_MOVING_L3_NOT_RUN_CERTIFIED_ESTOP_FALSE')
+          PY
+      - name: Remove private source and raw Gazebo evidence from public runner
+        if: always()
+        shell: bash
+        run: rm -rf -- ros2_ws tools scripts docs tests configs fixtures results build install log .git
