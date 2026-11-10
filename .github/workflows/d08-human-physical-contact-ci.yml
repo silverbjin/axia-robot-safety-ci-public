@@ -1,0 +1,35 @@
+name: AXIA D08 human/proxy model + one Contact positive (NO GOAL)
+on:
+  push:
+    branches: ['fix/d08-human-contact-positive-ci-20261110']
+    paths:
+      - 'd08/harness/d08_live_world.py'
+      - 'd08/tests/test_d08_collocated_human_proxy.py'
+      - 'd08/tests/test_d08_live_public_harness.py'
+      - 'd08/tests/test_d08_live_field_layout.py'
+      - 'd08/scripts/d08_public_gazebo_l2.py'
+      - '.github/workflows/d08-human-physical-contact-ci.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: axia-d08-model-contact-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  l0-human-proxy-red-green:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - shell: bash
+        name: Human visual must share physical G07 collision + Contact entity
+        run: |
+          set -euo pipefail
+          python -m pip install -q pytest==8.3.5
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -q \
+            d08/tests/test_d08_collocated_human_proxy.py
