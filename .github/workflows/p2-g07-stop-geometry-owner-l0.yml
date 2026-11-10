@@ -15,16 +15,17 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: cf81555650c78a9bf96d30cc94b743650a3101be
+          ref: d73b6170c86e392761b5446253f1f452d0f5c2d1
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - shell: bash
         run: |
           set -euo pipefail
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 'cf81555650c78a9bf96d30cc94b743650a3101be'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 'd73b6170c86e392761b5446253f1f452d0f5c2d1'
           python3 -m pip install -q pytest==8.3.5 PyYAML==6.0.2
           python3 -m pytest -q -ra \
             tests/unit/test_p2_g07_stop_geometry_owner.py \
+            tests/unit/test_p2_g07_physical_preflight_contract.py \
             tests/unit/test_p2_g07_mvp_motion_gate.py \
             tests/unit/test_p2_mvp_one_goal_timing.py \
             tests/unit/test_p2_mvp_one_goal_readiness.py \
