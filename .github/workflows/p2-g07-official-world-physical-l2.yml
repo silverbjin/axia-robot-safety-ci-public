@@ -18,14 +18,14 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: ca438a02980e28721c1040a4189a497dc2b07ec0
+          ref: 33d37489139f178d94436f7301d8b29cae4de1ea
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Exact source SHA and only modified contracts
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 'ca438a02980e28721c1040a4189a497dc2b07ec0'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '33d37489139f178d94436f7301d8b29cae4de1ea'
           python3 -m pip install --quiet --disable-pip-version-check pytest==8.3.5 PyYAML==6.0.2
           python3 -m pytest -q -ra \
             tests/unit/test_p2_g07_official_spawn.py \
@@ -57,7 +57,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: ca438a02980e28721c1040a4189a497dc2b07ec0
+          ref: 33d37489139f178d94436f7301d8b29cae4de1ea
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Install official Jazzy Nav2 and Gazebo Harmonic once
@@ -81,7 +81,7 @@ jobs:
           AXIA_P2_SMOKE_RESULTS: results/g07-official-physical
         run: |
           set -eo pipefail
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 'ca438a02980e28721c1040a4189a497dc2b07ec0'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '33d37489139f178d94436f7301d8b29cae4de1ea'
           mkdir -p results
           set +e
           timeout --signal=TERM --kill-after=10s 650s bash scripts/p2_no_goal_smoke_ci.sh
