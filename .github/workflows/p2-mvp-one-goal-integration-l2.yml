@@ -1,0 +1,106 @@
+name: AXIA P2 MVP one-Goal readiness — actual Jazzy/Harmonic no Goal
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths:
+      - '.github/workflows/p2-mvp-one-goal-integration-l2.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: p2-mvp-one-goal-ready-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  private-l0:
+    runs-on: ubuntu-24.04
+    environment: axia-instructor-sealed
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 7d61bac6f32e7e205942f3f7cda9cde8c34cbb85
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Exact source, RED/GREEN one-Goal readiness and original strict safety oracles
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '7d61bac6f32e7e205942f3f7cda9cde8c34cbb85'
+          python3 -m pip install --quiet --disable-pip-version-check pytest==8.3.5 PyYAML==6.0.2
+          python3 -m pytest -q -ra \
+            tests/unit/test_p2_mvp_one_goal_readiness.py \
+            tests/unit/test_p2_g07_demo_evidence.py \
+            tests/unit/test_p2_g07_live_phase.py \
+            tests/unit/test_p2_g07_physical_preflight_contract.py \
+            tests/unit/test_p2_g07_preloaded_contact_world.py \
+            tests/unit/test_p2_evidence_oracles.py \
+            tests/unit/test_p2_base_guard_policy.py \
+            tests/unit/test_p2_t07_owner_contract.py
+          python3 -m compileall -q tools/p2_*.py
+          bash -n scripts/p2_owner_l3_wsl2.sh scripts/p2_no_goal_smoke_ci.sh
+          echo 'P2_MVP_ONE_GOAL_STATIC_L0_PASS_NO_GOAL_NO_FAULT'
+      - name: Delete private source
+        if: always()
+        shell: bash
+        run: rm -rf -- ros2_ws tools scripts docs configs tests .git
+
+  real-no-goal-gazebo:
+    needs: private-l0
+    runs-on: ubuntu-24.04
+    environment: axia-instructor-sealed
+    timeout-minutes: 32
+    container:
+      image: ros:jazzy-ros-base-noble
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 7d61bac6f32e7e205942f3f7cda9cde8c34cbb85
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Install official Jazzy Nav2 and Harmonic for full P1+P2 no-Goal startup
+        shell: bash
+        run: |
+          set -eo pipefail
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+            procps git python3-yaml python3-colcon-common-extensions \
+            ros-jazzy-nav2-bringup ros-jazzy-navigation2 ros-jazzy-nav2-minimal-tb3-sim \
+            ros-jazzy-ros-gz ros-jazzy-rclpy ros-jazzy-rosgraph-msgs \
+            ros-jazzy-nav-msgs ros-jazzy-sensor-msgs ros-jazzy-geometry-msgs \
+            ros-jazzy-std-msgs ros-jazzy-std-srvs ros-jazzy-lifecycle-msgs \
+            ros-jazzy-nav2-msgs ros-jazzy-action-msgs ros-jazzy-tf2-ros
+      - name: Actual Gazebo 3-zone physical LaserScan, full graph, no Goal or Fault
+        shell: bash
+        env:
+          ROS_DOMAIN_ID: '76'
+          ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+          AXIA_P2_G07_PHYSICAL_PREFLIGHT: '1'
+          AXIA_P2_SMOKE_RESULTS: results/p2-mvp-threezone
+        run: |
+          set -eo pipefail
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '7d61bac6f32e7e205942f3f7cda9cde8c34cbb85'
+          mkdir -p results
+          timeout --signal=TERM --kill-after=10s 650s bash scripts/p2_no_goal_smoke_ci.sh
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('results/p2-mvp-threezone')
+          v=json.loads((root/'g07_physical/g07_physical_preflight.json').read_text())
+          w=json.loads((root/'startup_verdict.json').read_text())
+          assert w['status']=='SMOKE_READY' and w['goal_sent'] is False and w['fault_injected'] is False
+          assert v['status']=='G07_PHYSICAL_OBSTACLE_LASER_PROVEN'
+          assert v['fixture_ack'] is True and v['set_pose_ack'] is True and v['near_pose_ack'] is True
+          a,b,c=v['baseline_front'],v['slowdown_front'],v['stopped_front']
+          assert a>.75 and .4<b<.75 and .14<c<.4 and a>b>c, (a,b,c)
+          assert v['goal_sent'] is False and v['fault_injected'] is False
+          assert v['gate_accepted'] is False and v['certified_estop'] is False
+          assert v['collision_ground_truth_available'] is False
+          print('AXIA_P2_MVP_L2_REAL_GAZEBO_CLEAR_SLOW_STOP_LASER_PASS_NO_GOAL',a,b,c)
+          PY
+      - name: Remove all private source and evidence
+        if: always()
+        shell: bash
+        run: rm -rf -- ros2_ws tools scripts docs configs tests results build install log .git
