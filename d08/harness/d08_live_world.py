@@ -92,6 +92,22 @@ def attach_human_visual_to_fixture(wn, actor_mesh: Path) -> None:
     _sub(mesh,'uri',str(actor_mesh.resolve()))
     _sub(mesh,'scale','0.75 0.75 0.75')
 
+    # Gazebo Harmonic GPU LiDAR (OGRE2) interrogates rendered geometry.
+    # walk.dae has no usable lower-leg rasterized silhouette at scan z~0.2m.
+    # Owner EEUOfVQL recorded 50 real /safety/scan fronts 2.02-2.07m
+    # after a true set_pose ACK, proving Collision alone was insufficient.
+    # This narrow pants-colored shin surface is ONE simple sensor-visible
+    # primitive, not a second humanoid and NOT a changed physics collision.
+    shin=_sub(link,'visual',None,name='axia_d08_lidar_leg_surface')
+    shin_geom=_sub(shin,'geometry')
+    shin_cyl=_sub(shin_geom,'cylinder')
+    _sub(shin_cyl,'radius','0.07')
+    _sub(shin_cyl,'length','0.48')
+    shin_mat=_sub(shin,'material')
+    _sub(shin_mat,'ambient','0.09 0.13 0.22 1')
+    _sub(shin_mat,'diffuse','0.09 0.13 0.22 1')
+
+
     # Exactly ONE human renderer. The previous head/torso/leg fallback
     # overlaid the COLLADA mesh and appeared as two stationary humans.
     # No fallback visuals are added; a mesh rendering error must be
@@ -171,6 +187,8 @@ def build_overlay(world: Path, robot: Path, actor_mesh: Path, output: Path) -> d
       'human_visual_attached_to_physical_model':True,
       'human_visual_name':HUMAN_VISUAL_NAME,
       'human_visual_count':1,
+      'gpu_lidar_leg_surface':True,
+      'rendered_visual_count':2,
       'procedural_fallback_visuals':False,
       'human_visible_collision_proxy':'obstacle_collision',
       'human_visual_animated':False,
