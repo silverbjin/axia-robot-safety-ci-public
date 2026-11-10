@@ -54,7 +54,7 @@ fi
 # one existing SHA-pinned D04 no-Goal verified preparation/demo once.
 CACHE="$HOME/.cache/axia/d04"
 ASSET="$CACHE/assets"
-YOLO_INSTALL="$CACHE/yolo_ws_$YOLO_SHA/install/setup.bash"
+YOLO_INSTALL="$CACHE/yolo_ws_$YOLO_SHA/install/local_setup.bash"
 READY=1
 [[ -f "$YOLO_INSTALL" && -f "$ASSET/yolo26n.onnx" && -f "$ASSET/walk.dae" ]] || READY=0
 if [[ "$READY" == 1 ]];then
@@ -69,7 +69,11 @@ if [[ "$READY" == 0 ]];then
     -o "$PREP"
   bash -n "$PREP"
   AXIA_D04_PUBLIC_SHA="$D04_SOURCE_SHA" AXIA_D04_REPEAT=1 \
-    AXIA_D04_GUI=1 AXIA_D04_DEMO_HOLD_S=5 bash "$PREP"
+    AXIA_D04_GUI=1 AXIA_D04_DEMO_HOLD_S=5 \
+    env -u AMENT_PREFIX_PATH -u COLCON_PREFIX_PATH -u CMAKE_PREFIX_PATH \
+      -u PYTHONPATH -u LD_LIBRARY_PATH -u ROS_DISTRO -u ROS_VERSION \
+      -u ROS_PYTHON_VERSION -u ROS_PACKAGE_PATH -u BASH_ENV \
+      bash --noprofile --norc "$PREP"
   rm -f -- "$PREP"
 fi
 [[ -f "$YOLO_INSTALL" ]] || { echo 'D08_LIVE_BLOCKED: yolo_ros not available after D04' >&2;exit 2; }
@@ -105,4 +109,11 @@ echo 'SIMULATION ONLY: actor is NOT synchronized with LiDAR cylinder.'
 echo 'Moving Goal requires your explicit manual YES-P2-G07-GOAL.'
 echo 'If RGBD/YOLO/D05 is not ready, abort BEFORE moving robot.'
 echo '============================================================'
-bash "$SRC/instructor/scripts/p2_owner_l3_wsl2.sh" --case G07 --mvp-one-goal
+# Only the child interpreter environment is sanitized; no change to
+# the Owner's shell, GUI DISPLAY, files or other independent ROS workspaces.
+# ROS Jazzy and cached YOLO local_setup are sourced anew in the child.
+echo 'D08_CLEAN_ROS_ENV_ENABLED: dropping stale D03 underlay paths in child'
+env -u AMENT_PREFIX_PATH -u COLCON_PREFIX_PATH -u CMAKE_PREFIX_PATH \
+    -u PYTHONPATH -u LD_LIBRARY_PATH -u ROS_DISTRO -u ROS_VERSION \
+    -u ROS_PYTHON_VERSION -u ROS_PACKAGE_PATH -u BASH_ENV \
+    bash --noprofile --norc "$SRC/instructor/scripts/p2_owner_l3_wsl2.sh" --case G07 --mvp-one-goal
