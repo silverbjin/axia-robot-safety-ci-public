@@ -63,6 +63,22 @@ def diagnose_rgbd_alignment(rgb,depth):
     }
 
 
+def diagnostic_blocker(rgb,depth,data:dict)->str:
+    """Classify an actually blocked live probe; never alter its gate.
+
+    A historical count of early unpaired messages does NOT prove that
+    currently registered RGB+Depth is invalid. Owner 3VABpFI1 had valid
+    0ms pairs but YOLO saw only TV, and the earlier generic reason obscured it.
+    """
+    if select_pair(rgb,depth) is None:
+        return 'RGBD_REGISTERED_PAIR_NOT_FOUND'
+    if data.get('detections_count',0)==0:
+        return 'YOLO_DETECTIONS_STREAM_MISSING'
+    if data.get('yolo_person_count',0)==0:
+        return 'YOLO_PERSON_CLASS_NOT_DETECTED'
+    return 'D05_ACTUAL_PERSON_RANGE_NOT_VERIFIED'
+
+
 def bbox_from_real_detection(d,w:int,h:int):
     cx=float(d.bbox.center.position.x)
     cy=float(d.bbox.center.position.y)
@@ -237,11 +253,14 @@ def run(out:Path,timeout_s:float=75):
                 if data['d05_valid_count']:break
             if data['d05_valid_count']:break
         if data['status']=='BLOCKED':
-            data['reason']='D05_ACTUAL_PERSON_RANGE_NOT_VERIFIED'
+            data['reason']=diagnostic_blocker(rgb,depth,data)
             data['ros_actual']=data['rgb_count']>0 or data['depth_count']>0
             data['gazebo_actual']=False
         data['d05_diagnostics']=dict(reasons)
         data['rgbd_alignment_diagnostic']=diagnose_rgbd_alignment(rgb,depth)
+        data['rgbd_alignment_diagnostic']['currently_registered_pair_valid']=(
+            select_pair(rgb,depth) is not None)
+        data['d05_diagnostics_counter_semantics']='transient_loop_attempts_not_final_RGBD_verdict'
         data['observed_yolo_classes']=dict(detection_classes.most_common(12))
         out.write_text(json.dumps(data,indent=2,ensure_ascii=False,allow_nan=False)+'\n')
         print('D08_GAZEBO_SENSOR_PROBE_'+
