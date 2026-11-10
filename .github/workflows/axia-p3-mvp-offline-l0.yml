@@ -1,7 +1,7 @@
 name: AXIA P3 offline fixtures and replay L0 (source-pinned, no Goal)
 on:
   push:
-    branches: [feature/p3-mvp-evidence-ci-20261110]
+    branches: [feature/p3-mvp-evidence-ci-20261110, release/p3-mvp-evidence-ci-20261110]
     paths:
       - '.github/workflows/axia-p3-mvp-offline-l0.yml'
   pull_request:
