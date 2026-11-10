@@ -1,0 +1,161 @@
+name: AXIA P2 G07 PR106 exact Owner profile parity and PRE-GOAL physical L2
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths:
+      - '.github/workflows/axia-p2-g07-pr106-owner-profile-parity-l2.yml'
+permissions:
+  contents: read
+concurrency:
+  group: axia-p2-g07-pr106-owner-25-lock-l2
+  cancel-in-progress: false
+
+jobs:
+  private-l0:
+    runs-on: ubuntu-24.04
+    environment: axia-instructor-sealed
+    timeout-minutes: 10
+    steps:
+      - name: Exact private PR106 source, no public Instructor code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: ac2f3111dc238395dbb5fb8802acdaed97abde8a
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: L0 owner 25 Deb / 5 official file hash contract and existing safety tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = ac2f3111dc238395dbb5fb8802acdaed97abde8a
+          python3 -m pip install --disable-pip-version-check -q pytest==8.3.5
+          python3 -m pytest -q -ra \
+            tests/unit/test_p2_g07_owner_ci_runtime_lock.py \
+            tests/unit/test_p2_g07_owner_prepositioned.py \
+            tests/unit/test_p2_g07_demo_corridor_relocation.py \
+            tests/unit/test_p2_g07_coordinate_frames.py \
+            tests/unit/test_p2_g07_live_phase.py \
+            tests/unit/test_p2_g07_preloaded_contact_world.py \
+            tests/unit/test_p2_g07_mvp_motion_gate.py \
+            tests/unit/test_p2_g07_stop_geometry_owner.py \
+            tests/unit/test_p2_g07_physical_preflight_contract.py \
+            tests/unit/test_p2_t07_owner_contract.py
+          python3 -m compileall -q \
+            tools/p2_g07_owner_env_parity.py \
+            tools/p2_g07_ci_owner_lock_install.py \
+            tools/p2_g07_owner_pregoal_l2.py \
+            tools/p2_l3_live_session.py
+          bash -n scripts/p2_owner_l3_wsl2.sh scripts/p2_no_goal_smoke_ci.sh
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          x=json.loads(Path('configs/p2_g07_owner_ci_runtime_lock_20261111.json').read_text())
+          assert len(x['packages'])==25 and len(x['official_file_sha256'])==5
+          assert x['owner_profile_sha256']=='2e3cede57587e57b262b2f73b28dc1fe1346fcb682faf271e294116b1bdbf3b6'
+          assert 'ros-jazzy-nav2-collision-monitor' in x['packages']
+          assert 'nav2_bringup/maps/tb3_sandbox.pgm' in x['official_file_sha256']
+          print('AXIA_G07_OWNER_PROFILE_LOCK_L0_PASS_PACKAGES_25_FILES_5')
+          PY
+      - name: Remove private solution after tests
+        if: always()
+        shell: bash
+        run: rm -rf -- tools tests scripts configs ros2_ws docs fixtures results .git
+
+  real-harmonic-owner-pregoal-l2:
+    needs: private-l0
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    environment: axia-instructor-sealed
+    container:
+      image: ros:jazzy-ros-base-noble
+    steps:
+      - name: Checkout public OSRF source helper at immutable SHA
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-ci-public
+          ref: c38264d51494a836602fe8c276b120fb7c02bd4e
+          path: ci-tools
+          persist-credentials: false
+      - name: Checkout exact private PR106 branch content
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: ac2f3111dc238395dbb5fb8802acdaed97abde8a
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          path: instructor
+          persist-credentials: false
+      - name: Install signed OSRF Harmonic repo and exactly pin Owner ROS/Nav2/Gazebo core
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = ac2f3111dc238395dbb5fb8802acdaed97abde8a
+          bash ci-tools/scripts/axia_ci_enable_osrf_gazebo_repo.sh
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends procps git
+          cd instructor
+          mkdir -p results/p2-g07-pr106-owner-ci
+          python3 tools/p2_g07_ci_owner_lock_install.py \
+             --report results/p2-g07-pr106-owner-ci/apt_pin_report.json --apply
+      - name: Core 25 package + official five file hash parity BEFORE Gazebo
+        shell: bash
+        env:
+          ROS_DOMAIN_ID: '76'
+          ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+          GZ_PARTITION: axia_p2_pr106_parity_ci
+          AXIA_P0_SIM_ONLY: '1'
+        run: |
+          set -euo pipefail
+          cd instructor
+          set +u
+          source /opt/ros/jazzy/setup.bash
+          set -u
+          python3 tools/p2_g07_owner_env_parity.py --mode ci \
+            --output results/p2-g07-pr106-owner-ci/core_parity.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path('results/p2-g07-pr106-owner-ci/core_parity.json').read_text())
+          assert d['status']=='CORE_PARITY_PASS'
+          assert d['checked_packages']==25 and d['checked_official_files']==5
+          assert d['wsl_kernel_equal_ci'] is False
+          assert not d['goal_sent'] and not d['gate_accepted']
+          print('AXIA_G07_OWNER_25PKG_5FILE_EXACT_CI_PARITY_PASS')
+          PY
+      - name: Actual Gazebo Harmonic PR106 PRE-GOAL fixture plus two fresh physical laser and stationary odom; NO GOAL
+        shell: bash
+        env:
+          ROS_DOMAIN_ID: '76'
+          ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+          GZ_PARTITION: axia_p2_pr106_pregoal_ci
+          AXIA_P0_SIM_ONLY: '1'
+          AXIA_P2_G07_PHYSICAL_PREFLIGHT: '1'
+          AXIA_P2_G07_OWNER_PREGOAL_L2: '1'
+          AXIA_P2_G07_OWNER_PARITY_CHECK: '1'
+          AXIA_P2_SMOKE_RESULTS: results/p2-g07-pr106-pregoal-l2
+        run: |
+          set -euo pipefail
+          cd instructor
+          timeout --signal=TERM --kill-after=10s 700s bash scripts/p2_no_goal_smoke_ci.sh
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('results/p2-g07-pr106-pregoal-l2')
+          check=json.loads((root/'g07_userspace_parity.json').read_text())
+          demo=json.loads((root/'g07_owner_pregoal/owner_pregoal_l2.json').read_text())
+          startup=json.loads((root/'startup_verdict.json').read_text())
+          assert check['status']=='CORE_PARITY_PASS'
+          assert check['checked_packages']==25 and check['checked_official_files']==5
+          assert startup['status']=='SMOKE_READY' and startup['goal_sent'] is False
+          assert demo['status']=='P2_G07_OWNER_PREGOAL_L2_READY_NO_GOAL'
+          assert demo['native_set_pose_ack'] is True
+          assert demo['post_ack_distinct_ros_scan_count']>=2
+          assert .55<=demo['side_m']<=.95 and demo['front_m']>.75
+          assert demo['stationary_odom_checked'] is True
+          assert not demo['goal_sent'] and not demo['gate_accepted']
+          assert demo['physical_moving_stop_verified'] is False
+          print('AXIA_G07_OWNER_MATCHED_PHYSICAL_PREGOAL_L2_PASS_NO_GOAL')
+          print('AXIA_G07_OWNER_MOVING_L3_NOT_RUN_NO_HARDWARE_ESTOP')
+          PY
+      - name: Destroy private runner files, results, and raw trace
+        shell: bash
+        if: always()
+        run: rm -rf -- instructor ci-tools
