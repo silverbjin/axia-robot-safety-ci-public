@@ -1,7 +1,7 @@
 name: AXIA D08 G07 evidence-replay minimal
 on:
   push:
-    branches: ['fix/d08-g07-acceptance-ci-20261110']
+    branches: ['fix/d08-g07-acceptance-ci-20261110', 'fix/d08-human-contact-positive-ci-20261110']
     paths:
       - 'd08/harness/**'
       - 'd08/tests/test_g07_*'
