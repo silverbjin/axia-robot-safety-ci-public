@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Two independent cold Owner L3 simulations: G06 then G07 (never G05).
+# Two independent cold Owner L3 simulations: G06 then G07 only.
 # No unattended Goal or Fault; each child requests its own TTY authorization.
 set -Eeuo pipefail
 umask 077
