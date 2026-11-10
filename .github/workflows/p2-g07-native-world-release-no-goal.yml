@@ -18,14 +18,14 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 72730b5372501bd15a8069244dde087565b367d8
+          ref: 006c66dbd435211b76adad31bb66a3b246abad7c
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Owner coordinate-frame regression and original G07 safety contracts
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '72730b5372501bd15a8069244dde087565b367d8'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '006c66dbd435211b76adad31bb66a3b246abad7c'
           python3 -m pip install --quiet pytest==8.3.5 PyYAML==6.0.2
           python3 -m pytest -q -ra \
             tests/unit/test_p2_g07_coordinate_frames.py \
@@ -56,7 +56,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 72730b5372501bd15a8069244dde087565b367d8
+          ref: 006c66dbd435211b76adad31bb66a3b246abad7c
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Install official Nav2 Waffle Jazzy Gazebo Harmonic once
@@ -75,7 +75,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '72730b5372501bd15a8069244dde087565b367d8'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '006c66dbd435211b76adad31bb66a3b246abad7c'
           export AXIA_P2_G07_FRAME_RESULTS="$PWD/results/p2-g07-frame"
           timeout --signal=TERM --kill-after=20s 600s bash scripts/p2_g07_worldframe_ci.sh
           python3 - <<'PY'
