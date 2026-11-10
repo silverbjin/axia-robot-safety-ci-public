@@ -18,17 +18,18 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 843338cf3338d15658a5486bd15d1aead8e0096c
+          ref: 604ff698a746062d56e4191f78b3f931bae44403
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Verify exact private SHA + RED-to-GREEN P2 G07 and prior safety regressions
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = 843338cf3338d15658a5486bd15d1aead8e0096c
+          test "$(git rev-parse HEAD)" = 604ff698a746062d56e4191f78b3f931bae44403
           python3 -m pip install --disable-pip-version-check -q pytest==8.3.5
           python3 -m pytest -q -ra \
             tests/unit/test_p2_g07_demo_corridor_relocation.py \
+            tests/unit/test_p2_g07_owner_prepositioned.py \
             tests/unit/test_p2_g07_coordinate_frames.py \
             tests/unit/test_p2_g07_live_phase.py \
             tests/unit/test_p2_g07_preloaded_contact_world.py \
@@ -55,7 +56,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 843338cf3338d15658a5486bd15d1aead8e0096c
+          ref: 604ff698a746062d56e4191f78b3f931bae44403
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Install official Nav2 Jazzy / Gazebo Harmonic once for changed L2 fixture
@@ -80,7 +81,7 @@ jobs:
           AXIA_P2_SMOKE_RESULTS: results/p2-g07-relocated-l2
         run: |
           set -euo pipefail
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '843338cf3338d15658a5486bd15d1aead8e0096c'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '604ff698a746062d56e4191f78b3f931bae44403'
           mkdir -p results
           timeout --signal=TERM --kill-after=10s 650s bash scripts/p2_no_goal_smoke_ci.sh
           python3 - <<'PY'
