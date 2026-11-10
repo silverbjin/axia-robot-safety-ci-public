@@ -1,0 +1,39 @@
+name: AXIA D08 G07 evidence-replay minimal
+on:
+  push:
+    branches: ['fix/d08-g07-acceptance-ci-20261110']
+    paths:
+      - 'd08/harness/**'
+      - 'd08/tests/test_g07_*'
+      - 'd08/tests/test_d08_last_mile*'
+      - 'd08/scripts/axia_d08_live_gazebo_wsl2_once.sh'
+      - '.github/workflows/d08-g07-last-mile-ci.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: d08-g07-last-mile-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  l0-safety-logic:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Exact source and sanitized real Owner evidence regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install -q pytest==8.3.5
+          python -m compileall -q d08/harness
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -q \
+            d08/tests/test_g07_mvp_slow_motion_gate.py \
+            d08/tests/test_g07_contact_topic_discovery.py \
+            d08/tests/test_g07_cm_shutdown_audit.py \
+            d08/tests/test_d08_last_mile_bootstrap.py
+          echo 'G07_MVP_SLOW_MOTION_L0_PASS ROS_GAZEBO_NOT_RUN'

@@ -22,6 +22,7 @@ sys.path.insert(0,str(ROOT/'d08/harness'))
 from d04_waffle_pi_rgb_preflight import _start,_stop_all,sync_ros_discovery_environment
 from d08_live_world import build_overlay,RGB_TOPIC,DEPTH_TOPIC
 from d08_live_readonly_probe import select_pair
+from p2_contact_discovery import resolve_g07_contact_topic
 
 TEST_FIXTURE='''<plugin filename="gz-sim-contact-system"
  name="gz::sim::systems::Contact"/>
@@ -34,6 +35,11 @@ TEST_FIXTURE='''<plugin filename="gz-sim-contact-system"
   <visual name="obstacle_visual"><geometry>
    <cylinder><radius>0.07</radius><length>0.48</length></cylinder>
   </geometry></visual>
+  <sensor name="axia_contact" type="contact">
+    <always_on>true</always_on><update_rate>30</update_rate>
+    <topic>/axia_p2_g07/contacts</topic>
+    <contact><collision>obstacle_collision</collision></contact>
+  </sensor>
  </link></model>'''
 
 
@@ -156,7 +162,21 @@ def run(out:Path,actor:Path):
                env,out,processes)
         result['actual_rgbd']=observe_real_pair(timeout_s=80)
         topics=_run(['gz','topic','-l'],env,timeout=15)
+        contact_topic=resolve_g07_contact_topic(topics.stdout)
+        if contact_topic is None:
+            # Gazebo creates sensor topic asynchronously after model load.
+            for _ in range(15):
+                time.sleep(.4)
+                topics=_run(['gz','topic','-l'],env,timeout=15)
+                contact_topic=resolve_g07_contact_topic(topics.stdout)
+                if contact_topic is not None:break
         (out/'gazebo_topics.txt').write_text(topics.stdout)
+        result['resolved_native_contact_topic']=contact_topic
+        result['contact_topic_proven']=contact_topic is not None
+        # Existence != zero collisions or continuous ground truth.
+        result['collision_ground_truth']=False
+        if contact_topic is None:
+            raise RuntimeError('G07_NATIVE_CONTACT_SENSOR_TOPIC_NOT_PUBLISHED')
         if not result['actual_rgbd']['matched']:
             raise RuntimeError('D08_NO_MATCHED_REAL_REGISTERED_RGBD')
         if not all(t in topics.stdout for t in (RGB_TOPIC,DEPTH_TOPIC)):
