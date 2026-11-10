@@ -50,7 +50,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: e29f1d0bcc1b6abd40a7125a64828bb63302ff66
+          ref: 404897cefaebf97495e9fd9a1c276971846a8810
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor-src
           fetch-depth: 0
@@ -61,14 +61,17 @@ jobs:
         run: |
           set -euo pipefail
           cd instructor-src
-          test "$(git rev-parse HEAD)" = 'e29f1d0bcc1b6abd40a7125a64828bb63302ff66'
+          test "$(git rev-parse HEAD)" = '404897cefaebf97495e9fd9a1c276971846a8810'
           git merge-base --is-ancestor 'd73b6170c86e392761b5446253f1f452d0f5c2d1' HEAD
           python3 - <<'PY'
           import pathlib, subprocess
           delta=subprocess.check_output(['git','diff','--name-only','d73b6170c86e392761b5446253f1f452d0f5c2d1','HEAD'],text=True).splitlines()
           permitted=('scenarios/','fixtures/p3/','docs/operations/P3_',
                      'ros2_ws/src/axia_scenario_verifier/axia_scenario_verifier/p3_',
-                     'scripts/run_p3_mvp.py','tests/unit/test_p3_mvp.py')
+                     'scripts/run_p3_mvp.py','tests/unit/test_p3_mvp.py',
+                     'tests/unit/test_p3_owner_probe.py','docs/reports/P3_R01_',
+                     'docs/reports/p3_r01_source_registry.json',
+                     'tools/p3_owner_evidence_probe.py')
           assert delta and all(any(p.startswith(prefix) for prefix in permitted) for p in delta), 'UNEXPECTED_P1_P2_SAFETY_DIFF'
           print('AXIA_P3_SOURCE_SHA_AND_SAFETY_CHANGE_SCOPE_VERIFIED files='+str(len(delta)))
           PY
@@ -81,6 +84,29 @@ jobs:
           export PYTHONPATH="$PWD/ros2_ws/src/axia_scenario_verifier"
           python3 -m unittest discover -s tests/unit -p 'test_p3*.py' -q
           echo 'AXIA_P3_PRIVATE_REAL_RUNNER_L0_TESTS_PASS'
+
+      - name: Verify owner probe is read-only and fails closed with empty test HOME (offline L0)
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd instructor-src
+          mkdir -p "$RUNNER_TEMP/axia-p3-empty-home"
+          python3 tools/p3_owner_evidence_probe.py \
+            --registry docs/reports/p3_r01_source_registry.json \
+            --home "$RUNNER_TEMP/axia-p3-empty-home" \
+            --out-dir "$RUNNER_TEMP/axia-p3-probe"
+          python3 - "$RUNNER_TEMP/axia-p3-probe" <<'PY'
+          import json,sys
+          from pathlib import Path
+          files=list(Path(sys.argv[1]).glob('p3-owner-inventory-*.json'))
+          assert len(files)==1
+          x=json.loads(files[0].read_text())
+          assert x['formal_accepted'] is False and x['raw_reviewed'] is False
+          assert x['goal_sent'] is False and x['fault_injected'] is False
+          assert len(x['records'])==6 and sum(bool(r['anchors']) for r in x['records'])==0
+          assert sum(r['status']=='LOCAL_ANCHORS_NOT_FOUND' for r in x['records'])==4
+          print('AXIA_P3_R01_R02_OWNER_PROBE_FAIL_CLOSED_L0_PASS_NO_RAW')
+          PY
 
       - name: Execute one-command P3 evidence pack, verify hashes without false pass
         shell: bash
@@ -100,7 +126,7 @@ jobs:
           assert x['gates']==dict.fromkeys(['G08','G09','G10','G11'],'NOT_ACCEPTED')
           assert len(x['records'])==5
           assert [z['status'] for z in x['records']]==['NOT_VERIFIED','NOT_VERIFIED','NOT_VERIFIED','OFFLINE_FIXTURE_PASS','NOT_VERIFIED']
-          assert m['runner_source_sha']=='e29f1d0bcc1b6abd40a7125a64828bb63302ff66'
+          assert m['runner_source_sha']=='404897cefaebf97495e9fd9a1c276971846a8810'
           assert m['goal_sent'] is False and m['fault_injected'] is False and m['certified_estop'] is False
           audit=[json.loads(line) for line in (p/'audit_events.jsonl').read_text().splitlines()]
           assert len(audit)==5 and all(e['event']=='SCENARIO_VERDICT' and e['goal_sent'] is False for e in audit)
