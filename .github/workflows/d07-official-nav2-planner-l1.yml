@@ -1,7 +1,7 @@
 name: AXIA D07 official Nav2 Costmap Planner L0 L1
 on:
   push:
-    branches: ['feature/d07-nav2-human-aware-20261110']
+    branches: ['main', 'feature/d07-nav2-human-aware-20261110']
     paths:
       - 'd07/**'
       - '.github/workflows/d07-official-nav2-planner-l1.yml'
