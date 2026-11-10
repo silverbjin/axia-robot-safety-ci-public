@@ -14,6 +14,11 @@ def test_d08_owner_requires_real_terminal_and_private_pinned_checkout():
     assert "gh repo clone" in text
     assert "sha256sum -c" in text
     assert "AXIA_D04_REPEAT=1" in text
+    assert 'install/local_setup.bash' in text
+    assert '-u COLCON_PREFIX_PATH' in text
+    assert 'D08_PRIVATE_PREFLIGHT_STATIC_PASS' in text
+    assert 'D05_REFERENCE_32FC1_PASS' in text
+    assert "measure_real_person" in text
     assert "silverbjin/axia-robot-safety-instructor" in text
     assert "YES-P2-G07-GOAL\n" not in text  # no auto-writing consent response
 
