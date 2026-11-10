@@ -3,8 +3,8 @@
 set -Eeuo pipefail
 umask 077
 readonly PRIVATE_REPO='silverbjin/axia-robot-safety-instructor'
-readonly PRIVATE_BRANCH='fix/d08-grounded-human-visual-20261111'
-readonly PRIVATE_SHA='67eda6a2d36d610d61e05687857c1811be19318e'
+readonly PRIVATE_BRANCH='fix/d08-foot-short-step-owner-20261111'
+readonly PRIVATE_SHA='e7b43f9cdc2a9454dfc5e4b9dd8052f45bb19cfd'
 readonly D04_SOURCE_SHA='c775820077917c4da56c6aa60001b224071664b3'
 readonly YOLO_SHA='94d2dd500cb26027ee9c019f4d3a02029ac615cc'
 readonly ONNX_SHA='4f44c33cea12d4b5785e5e7c0a20c13d0c62a77de607ce96a40d6036c7d7bbcf'
@@ -158,8 +158,8 @@ echo '============================================================'
 # Only the child interpreter environment is sanitized; no change to
 # the Owner's shell, GUI DISPLAY, files or other independent ROS workspaces.
 # ROS Jazzy and cached YOLO local_setup are sourced anew in the child.
-echo 'D08_GROUNDED_FULL_BODY_CAMERA_CI_L2_VERIFIED; OWNER_YOLO_PERSON_AND_D05_STILL_REQUIRED'
-echo 'D08_G07_GPU_LIDAR_SURFACE_OWNER_PINNED: real scan must enter SlowZone before Goal'
+echo 'D08_FOOT_TUNED_SHORT_STEP_L0_CANDIDATE; NEW_GAZEBO_L2_AND_OWNER_GUI_STILL_REQUIRED'
+echo 'D08_GUI_SHORT_STEP_7CM_6CM_FOOT_VISUAL_ONLY: actual scan/foot contact must be reverified'
 echo 'D08_CLEAN_ROS_ENV_ENABLED: dropping stale D03 underlay paths in child'
 env -u AMENT_PREFIX_PATH -u COLCON_PREFIX_PATH -u CMAKE_PREFIX_PATH \
     -u PYTHONPATH -u LD_LIBRARY_PATH -u ROS_DISTRO -u ROS_VERSION \
