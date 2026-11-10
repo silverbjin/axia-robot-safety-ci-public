@@ -50,7 +50,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: f4d4b57743c4d63e96f92639f503b644b3157e7f
+          ref: e29f1d0bcc1b6abd40a7125a64828bb63302ff66
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor-src
           fetch-depth: 0
@@ -61,12 +61,12 @@ jobs:
         run: |
           set -euo pipefail
           cd instructor-src
-          test "$(git rev-parse HEAD)" = 'f4d4b57743c4d63e96f92639f503b644b3157e7f'
+          test "$(git rev-parse HEAD)" = 'e29f1d0bcc1b6abd40a7125a64828bb63302ff66'
           git merge-base --is-ancestor 'd73b6170c86e392761b5446253f1f452d0f5c2d1' HEAD
           python3 - <<'PY'
           import pathlib, subprocess
           delta=subprocess.check_output(['git','diff','--name-only','d73b6170c86e392761b5446253f1f452d0f5c2d1','HEAD'],text=True).splitlines()
-          permitted=('scenarios/','fixtures/p3/','docs/operations/P3_T00_T01_',
+          permitted=('scenarios/','fixtures/p3/','docs/operations/P3_',
                      'ros2_ws/src/axia_scenario_verifier/axia_scenario_verifier/p3_',
                      'scripts/run_p3_mvp.py','tests/unit/test_p3_mvp.py')
           assert delta and all(any(p.startswith(prefix) for prefix in permitted) for p in delta), 'UNEXPECTED_P1_P2_SAFETY_DIFF'
@@ -100,8 +100,10 @@ jobs:
           assert x['gates']==dict.fromkeys(['G08','G09','G10','G11'],'NOT_ACCEPTED')
           assert len(x['records'])==5
           assert [z['status'] for z in x['records']]==['NOT_VERIFIED','NOT_VERIFIED','NOT_VERIFIED','OFFLINE_FIXTURE_PASS','NOT_VERIFIED']
-          assert m['runner_source_sha']=='f4d4b57743c4d63e96f92639f503b644b3157e7f'
+          assert m['runner_source_sha']=='e29f1d0bcc1b6abd40a7125a64828bb63302ff66'
           assert m['goal_sent'] is False and m['fault_injected'] is False and m['certified_estop'] is False
+          audit=[json.loads(line) for line in (p/'audit_events.jsonl').read_text().splitlines()]
+          assert len(audit)==5 and all(e['event']=='SCENARIO_VERDICT' and e['goal_sent'] is False for e in audit)
           for row in (p/'SHA256SUMS').read_text().splitlines():
               h,n=row.split('  ',1)
               assert hashlib.sha256((p/n).read_bytes()).hexdigest()==h
