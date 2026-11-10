@@ -1,0 +1,67 @@
+name: AXIA G07 mandatory WSL2 CI parity FIRST before Owner review (NO GOAL)
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths:
+      - '.github/workflows/axia-p2-g07-sync-first-review.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  g07-review-sync-first:
+    runs-on: ubuntu-24.04
+    environment: axia-instructor-sealed
+    timeout-minutes: 15
+    steps:
+      - name: Pin reviewed PUBLIC fail-closed policy tools
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-ci-public
+          ref: 5730e2b7f7897a794a1cfbc52609dc1e1caa8f2e
+          path: public-review
+          persist-credentials: false
+
+      - name: Fetch PRIVATE owner profile only (no public artifacts)
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: evidence/wsl2-jazzy-harmonic-profile-20261110
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          path: owner-profile
+          sparse-checkout: docs/environment/wsl2_owner_profile.json
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - name: Checkout EXACT private G07 candidate with full history for diff
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: a9a33cc32586e4a30843efcf9172bdaade85d8ea
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          fetch-depth: 0
+          path: instructor-candidate
+          persist-credentials: false
+
+      - name: Install pure regression dependencies (no ROS/Gazebo installation)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install -q pytest==8.3.5 PyYAML==6.0.2
+
+      - name: MANDATORY CI SYNC FIRST, source diff, real-Gazebo L2 proof, then G07 satisfiability regression
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          AXIA_REVIEW_PUBLIC_TOOL_ROOT: ${{ github.workspace }}/public-review
+          AXIA_REVIEW_PRIVATE_SOURCE: ${{ github.workspace }}/instructor-candidate
+          AXIA_REVIEW_OWNER_PROFILE: ${{ github.workspace }}/owner-profile/docs/environment/wsl2_owner_profile.json
+        run: |
+          set -euo pipefail
+          bash public-review/scripts/axia_ci_review_preflight.sh
+
+      - name: Destroy private source/profile and GH run evidence
+        if: always()
+        shell: bash
+        run: |
+          rm -rf -- public-review owner-profile instructor-candidate
