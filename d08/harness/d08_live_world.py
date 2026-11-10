@@ -147,13 +147,16 @@ def build_overlay(world: Path, robot: Path, actor_mesh: Path, output: Path) -> d
     sensor = ET.SubElement(cam, 'sensor', {
         'name':SENSOR_NAME, 'type':'rgbd_camera'
     })
-    _sub(sensor,'pose','0 0 0 0 -0.12 0')
+    # Owner real RGB was cropped to pants (tv=86, person=0).
+    # Wider pinhole RGBD FOV and slight upward aim frame a grounded human.
+    # Neither Nav2 nor LiDAR/CM sensors or thresholds are changed.
+    _sub(sensor,'pose','0 0 0 0 -0.30 0')
     _sub(sensor,'always_on','1')
     _sub(sensor,'update_rate','5')
     _sub(sensor,'topic','axia/d08/rgbd')
     _sub(sensor,'gz_frame_id',OPTICAL_FRAME)
     camera = _sub(sensor, 'camera')
-    _sub(camera, 'horizontal_fov','1.35')
+    _sub(camera, 'horizontal_fov','1.95')
     image = _sub(camera,'image')
     _sub(image,'width','640')
     _sub(image,'height','480')
@@ -200,8 +203,8 @@ def build_overlay(world: Path, robot: Path, actor_mesh: Path, output: Path) -> d
       'human_visual_animated':False,
       'human_model_motion_source':'existing_P2_G07_gz_set_pose',
       'robot_world_spawn':{'x':-2.0,'y':-0.5,'yaw':0.0},
-      'rgbd_horizontal_fov_rad':1.35,
-      'rgbd_sensor_pitch_rad':-0.12,
+      'rgbd_horizontal_fov_rad':1.95,
+      'rgbd_sensor_pitch_rad':-0.30,
       'physical_obstacle_static_gap_not_certified':True,
       'gazebo_physical_fixture':PHYSICAL_NAME,
       'rgb_topic':RGB_TOPIC,
