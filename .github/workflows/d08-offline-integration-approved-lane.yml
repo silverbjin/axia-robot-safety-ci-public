@@ -1,0 +1,98 @@
+name: AXIA D08 sealed instructor reference approved CI lane (L0)
+on:
+  push:
+    branches: ['release/p2-g06-cm-ttl-20261110']
+    paths: ['.github/workflows/d08-offline-integration-approved-lane.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  student-public-scaffold:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: 83017006ae9b767e6ff7a4f6673d91170b62bbb0
+          persist-credentials: false
+      - name: Verify exact public student fixture/ZIP source and TODO RED (not learner GREEN)
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = '83017006ae9b767e6ff7a4f6673d91170b62bbb0'
+          python3 -m pip install --quiet --disable-pip-version-check pytest==8.3.5
+          python3 -m pytest -q \
+            block_B/day08/tests/test_d08_public.py::test_d08_synthetic_fixture_contract \
+            block_B/day08/tests/test_d08_submission_zip.py
+          python3 - <<'PY'
+          import subprocess,sys
+          cmd=[sys.executable,'-m','pytest','-q',
+            'block_B/day08/tests/test_d08_public.py::test_d08_integrated_six_scenarios_expected_red_until_todos_complete']
+          r=subprocess.run(cmd,capture_output=True,text=True,timeout=30)
+          assert r.returncode!=0 and 'TODO_D08_INTEGRATE_CASE' in (r.stdout+r.stderr)
+          print('D08_PUBLIC_STUDENT_EXPECTED_RED_VERIFIED; NO_TEACHER_SOLUTION')
+          PY
+      - name: Remove public checkout
+        if: always()
+        shell: bash
+        run: rm -rf -- block_B .github .git
+  sealed-teacher-python-integration:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    environment: axia-instructor-sealed
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: e9dfb046e667e42722057ecb41a0b2a6326dd977
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Private instructor exact-SHA reference and hidden negative tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = 'e9dfb046e667e42722057ecb41a0b2a6326dd977'
+          python3 -m pip install --quiet --disable-pip-version-check pytest==8.3.5
+          python3 -m pytest -q --tb=line \
+            training/block_B/tests/test_d08_integration.py \
+            training/block_B/tests/test_d08_run_reference.py \
+            training/block_B/instructor/hidden_tests/test_d08_integration_hidden.py
+          echo 'D08_SEALED_INSTRUCTOR_L0_TESTS_PASS'
+      - name: Replay all 6 synthetic cases using actual teacher function, not a fake verdict
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 training/block_B/instructor/d08_run_reference.py --out /tmp/d08_teacher_output
+          python3 - <<'PY'
+          import csv,json,pathlib
+          d=pathlib.Path('/tmp/d08_teacher_output')
+          v=json.loads((d/'summary.json').read_text())
+          assert v['status']=='D08_EDU_PYTHON_L0_COMPLETE'
+          assert v['case_count']==6 and len(v['results'])==6
+          assert not any(v[k] for k in (
+            'ros_verified','gazebo_verified','robot_moved',
+            'collision_free_verified','control_published','safety_certified'))
+          rows=list(csv.DictReader((d/'trace.csv').open()))
+          assert len(rows)==6
+          assert [r['advice'] for r in rows]==[
+            'REPLAN_REVIEW','SLOWDOWN_EXPECTED','STOP_EXPECTED',
+            'UNKNOWN_REVIEW','UNKNOWN_REVIEW','UNKNOWN_REVIEW']
+          print('D08_ACTUAL_TEACHER_PYTHON_OFFLINE_REPLAY_PASS cases=6 ROS_GAZEBO_NOT_RUN')
+          PY
+      - name: Upload synthesized DATA only (no instructor answers/hidden tests)
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d08-offline-six-cases-no-ros
+          path: |
+            /tmp/d08_teacher_output/summary.json
+            /tmp/d08_teacher_output/trace.csv
+          retention-days: 14
+          if-no-files-found: error
+      - name: Delete private checkout and local evidence
+        if: always()
+        shell: bash
+        run: |
+          rm -rf -- training ros2_ws tools tests docs scripts configs .git
+          rm -rf -- /tmp/d08_teacher_output
