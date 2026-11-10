@@ -11,7 +11,15 @@ from d08_live_readonly_probe import select_pair
 
 WORLD='''<sdf version="1.9"><world name="default">
 <plugin filename="gz-sim-contact-system" name="gz::sim::systems::Contact"/>
-<model name="axia_p2_g07_obstacle"><static>true</static><link name="c"/></model>
+<model name="axia_p2_g07_obstacle"><pose>-0.58 -0.5 0.24 0 0 0</pose>
+  <static>true</static><link name="obstacle_link">
+  <collision name="obstacle_collision"><geometry><cylinder>
+    <radius>0.07</radius><length>0.48</length></cylinder></geometry></collision>
+  <visual name="obstacle_visual"><geometry><cylinder>
+    <radius>0.07</radius><length>0.48</length></cylinder></geometry></visual>
+  <sensor name="axia_contact" type="contact">
+    <contact><collision>obstacle_collision</collision></contact></sensor>
+  </link></model>
 </world></sdf>'''
 ROBOT='''<sdf version="1.9"><model name="turtlebot3_waffle">
 <link name="camera_link"><sensor name="depth" type="depth_camera"/></link>
@@ -35,9 +43,11 @@ def test_world_adds_rgbd_visual_person_and_preserves_physical_fixture(tmp_path):
     assert sensor.findtext('topic')=='axia/d08/rgbd'
     assert robot.find(".//plugin[@name='drive']") is not None
     assert world.find(".//model[@name='axia_p2_g07_obstacle']") is not None
-    assert world.find(".//actor[@name='axia_d08_visual_person']") is not None
+    assert world.find(".//actor[@name='axia_d08_visual_person']") is None
+    assert world.find(".//visual[@name='axia_d08_human_mesh']") is not None
     assert (w.read_bytes(),r.read_bytes())==before
-    assert m['visual_person_same_as_physical_obstacle'] is False
+    assert m['visual_person_same_as_physical_obstacle'] is True
+    assert m['human_visual_attached_to_physical_model'] is True
     assert m['actor_physics_collision'] is False
     assert m['robot_drive_model_modified'] is False
     assert m['goal_sent'] is False
