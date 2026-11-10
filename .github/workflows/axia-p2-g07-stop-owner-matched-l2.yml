@@ -106,7 +106,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: cf81555650c78a9bf96d30cc94b743650a3101be
+          ref: d73b6170c86e392761b5446253f1f452d0f5c2d1
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor-src
           persist-credentials: false
@@ -122,7 +122,7 @@ jobs:
         run: |
           set -euo pipefail
           cd instructor-src
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 'cf81555650c78a9bf96d30cc94b743650a3101be'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 'd73b6170c86e392761b5446253f1f452d0f5c2d1'
           export AXIA_P2_SMOKE_RESULTS="$PWD/results/owner-env-parity-g07-stop"
           timeout --signal=TERM --kill-after=10s 650s bash scripts/p2_no_goal_smoke_ci.sh
           python3 - <<'PY'
@@ -138,6 +138,8 @@ jobs:
           assert scan['mvp_dispatch_pose_ack'] is True
           assert scan['mvp_dispatch_target_surface_m'] == 0.43
           assert 0.40 < scan['mvp_dispatch_front'] < 0.60, scan
+          assert 0.14 <= scan['stopped_front'] < 0.40, scan
+          assert scan['mvp_dispatch_front']-scan['stopped_front'] >= 0.05, scan
           print('AXIA_G07_OWNER_STOP_DISPATCH_043_REAL_GAZEBO_PREFLIGHT_PASS front=', scan['mvp_dispatch_front'])
           clear,slow,stop=(scan['baseline_front'],scan['slowdown_front'],scan['stopped_front'])
           assert clear>.75 and .4<slow<.75 and .14<=stop<.4 and clear>slow>stop
