@@ -32,8 +32,14 @@ HUMAN_DAE_MIN_Z_M=-0.859141
 HUMAN_DAE_MAX_Z_M=0.856892
 HUMAN_SCALE=0.75
 HUMAN_MODEL_REST_Z_M=0.24
+# Owner CqYxbyzi: the raw COLLADA min-z geometric estimate left visible
+# toes below Gazebo's rendered ground. D08 visual-only 6cm correction,
+# NEVER applied to model/collision/contact/set_pose z.
+# On-screen toe-to-floor contact still requires owner GUI confirmation.
+HUMAN_FOOT_RENDER_TUNE_M=0.06
 HUMAN_VISUAL_LOCAL_Z_M=round(
-    -HUMAN_MODEL_REST_Z_M-HUMAN_DAE_MIN_Z_M*HUMAN_SCALE,6)
+    -HUMAN_MODEL_REST_Z_M-HUMAN_DAE_MIN_Z_M*HUMAN_SCALE
+    +HUMAN_FOOT_RENDER_TUNE_M,6)
 
 
 
@@ -103,7 +109,7 @@ def attach_human_visual_to_fixture(wn, actor_mesh: Path) -> None:
     _sub(mesh,'scale','0.75 0.75 0.75')
 
     # Do not draw a black support pole inside the visible person.
-    # Grounded COLLADA feet/legs now occupy the 0.2m GPU-LiDAR plane;
+    # Calibrated COLLADA feet/legs should occupy the 0.2m GPU-LiDAR plane;
     # actual LaserScan after native P2 set_pose must prove this in L2.
     # If L2 fails, no Goal is permitted and the model is NOT released.
 
@@ -192,6 +198,8 @@ def build_overlay(world: Path, robot: Path, actor_mesh: Path, output: Path) -> d
       'gpu_lidar_leg_surface':False,
       'rendered_visual_count':1,
       'human_grounded_expected':True,
+      'human_foot_contact_gui_verified':False,
+      'human_render_tune_lift_m':HUMAN_FOOT_RENDER_TUNE_M,
       'human_geometry_min_z_m':HUMAN_DAE_MIN_Z_M,
       'human_geometry_max_z_m':HUMAN_DAE_MAX_Z_M,
       'human_local_pose_z_m':HUMAN_VISUAL_LOCAL_Z_M,
