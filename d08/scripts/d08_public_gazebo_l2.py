@@ -141,7 +141,7 @@ def pregoal_lidar_physical_admission(out:Path,env:dict,processes:list)->dict:
     res=_run(['gz','service','-s','/world/default/set_pose',
               '--reqtype','gz.msgs.Pose','--reptype','gz.msgs.Boolean',
               '--timeout','5000','--req',req],env,timeout=13)
-    (out/'pregoad_lidar_set_pose_ack.txt').write_text(res.stdout+res.stderr)
+    (out/'pregoal_lidar_set_pose_ack.txt').write_text(res.stdout+res.stderr)
     if 'data: true' not in res.stdout:
         raise RuntimeError('D08_PREG0AL_GZ_SET_POSE_NOT_ACKNOWLEDGED')
     after=observe_real_front_scan(timeout_s=35)
@@ -153,7 +153,7 @@ def pregoal_lidar_physical_admission(out:Path,env:dict,processes:list)->dict:
              'no_goal_sent':True,'control_published':False,
              'safety_threshold_modified':False,
              'certified_estop':False,'collision_ground_truth':False}
-    (out/'pregoad_lidar_observation.json').write_text(
+    (out/'pregoal_lidar_observation.json').write_text(
         json.dumps(verdict,indent=2,ensure_ascii=False)+'\n')
     # A successful service response ALONE never proves sensor observation.
     # The closer fixture should move the actual measured front by ~8cm.
@@ -162,7 +162,7 @@ def pregoal_lidar_physical_admission(out:Path,env:dict,processes:list)->dict:
             json.dumps({'before':before['front_m'],'after':after['front_m'],
                         'delta':observed_delta}))
     verdict['status']='PASS_ACTUAL_GAZEBO_SET_POSE_PLUS_LIDAR'
-    (out/'pregoad_lidar_observation.json').write_text(
+    (out/'pregoal_lidar_observation.json').write_text(
         json.dumps(verdict,indent=2,ensure_ascii=False)+'\n')
     print('D08_REAL_GAZEBO_PREGOAL_LIDAR_SLOWZONE_PASS '+json.dumps(
         {'before':before['front_m'],'after':after['front_m'],
@@ -350,7 +350,7 @@ def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=Fals
         # The calibration happens ONCE, only on the actual no-Goal L2 CI
         # path after real RGBD and the native Contact topic were verified.
         if lidar_pre_goal:
-            result['pregoad_lidar']=pregoad_lidar_physical_admission(
+            result['pregoal_lidar']=pregoal_lidar_physical_admission(
                 out,env,processes)
         if positive_contact:
             result['positive_contact_calibration']=positive_contact_once(
