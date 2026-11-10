@@ -18,16 +18,26 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: b1729fd7a00b12288421dff51bf385bfbe6fb1ac
+          ref: 7054d5e79ca0983f4538d0e7fbe67d40dbf65766
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
-      - name: Verify exact SHA and RED corridor regression
+      - name: Verify exact private SHA + RED-to-GREEN P2 G07 and prior safety regressions
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = b1729fd7a00b12288421dff51bf385bfbe6fb1ac
+          test "$(git rev-parse HEAD)" = 7054d5e79ca0983f4538d0e7fbe67d40dbf65766
           python3 -m pip install --disable-pip-version-check -q pytest==8.3.5
-          python3 -m pytest -q -ra tests/unit/test_p2_g07_demo_corridor_relocation.py
+          python3 -m pytest -q -ra \
+            tests/unit/test_p2_g07_demo_corridor_relocation.py \
+            tests/unit/test_p2_g07_coordinate_frames.py \
+            tests/unit/test_p2_g07_live_phase.py \
+            tests/unit/test_p2_g07_preloaded_contact_world.py \
+            tests/unit/test_p2_g07_mvp_motion_gate.py \
+            tests/unit/test_p2_g07_stop_geometry_owner.py \
+            tests/unit/test_p2_g07_physical_preflight_contract.py \
+            tests/unit/test_p2_t07_owner_contract.py
+          python3 -m compileall -q tools/p2_g07_demo_corridor.py tools/p2_l3_live_session.py tools/p2_l3_coordinate_frames.py
+          bash -n scripts/p2_owner_l3_wsl2.sh scripts/p2_no_goal_smoke_ci.sh
           echo 'P2_G07_RELOCATED_CORRIDOR_L0_PASS_GAZEBO_NOT_RUN'
       - name: Remove private source
         if: always()
