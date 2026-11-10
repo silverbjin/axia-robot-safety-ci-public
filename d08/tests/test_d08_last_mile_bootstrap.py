@@ -3,7 +3,7 @@ from pathlib import Path
 import subprocess
 ROOT=Path(__file__).resolve().parents[2]
 WRAPPER=ROOT/'d08/scripts/axia_d08_live_gazebo_wsl2_once.sh'
-SHA='e7b43f9cdc2a9454dfc5e4b9dd8052f45bb19cfd'
+SHA='99a3a26d787a803f77e94023ca7742518d00a992'
 
 def test_exact_private_revision_and_no_auto_consent():
     src=WRAPPER.read_text()
