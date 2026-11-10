@@ -7,10 +7,14 @@ on:
       - 'd08/harness/d08_contact_positive_contract.py'
       - 'd08/tests/test_d08_collocated_human_proxy.py'
       - 'd08/tests/test_d08_single_human_visual_regression.py'
+      - 'd08/tests/test_d08_rgbd_alignment_evidence.py'
       - 'd08/tests/test_d08_native_positive_contact_parser.py'
       - 'd08/tests/test_d08_live_public_harness.py'
       - 'd08/tests/test_d08_live_field_layout.py'
       - 'd08/scripts/d08_public_gazebo_l2.py'
+      - 'd08/harness/d08_live_readonly_probe.py'
+      - 'd08/scripts/axia_d08_live_gazebo_wsl2_once.sh'
+      - 'd08/tests/test_d08_last_mile_bootstrap.py'
       - '.github/workflows/d08-human-physical-contact-ci.yml'
   workflow_dispatch:
 permissions:
@@ -37,6 +41,8 @@ jobs:
           PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -q \
             d08/tests/test_d08_collocated_human_proxy.py \
             d08/tests/test_d08_single_human_visual_regression.py \
+            d08/tests/test_d08_rgbd_alignment_evidence.py \
+            d08/tests/test_d08_last_mile_bootstrap.py \
             d08/tests/test_d08_native_positive_contact_parser.py \
             d08/tests/test_d08_live_public_harness.py \
             d08/tests/test_d08_live_field_layout.py
