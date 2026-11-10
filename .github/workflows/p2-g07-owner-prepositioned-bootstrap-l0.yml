@@ -26,7 +26,7 @@ jobs:
           bash -n "$SCRIPT"
           bash "$SCRIPT" --self-check | tee /tmp/axia_g07_owner_pregoal_selfcheck.txt
           grep -q 'AXIA_G07_PREPOSITIONED_BOOTSTRAP_STATIC_OK' /tmp/axia_g07_owner_pregoal_selfcheck.txt
-          grep -q 'private_sha=89bbff228ca3595eefd68058fa2aa583b2203a0c' /tmp/axia_g07_owner_pregoal_selfcheck.txt
+          grep -q 'private_sha=ac2f3111dc238395dbb5fb8802acdaed97abde8a' /tmp/axia_g07_owner_pregoal_selfcheck.txt
           set +e
           OUT="$(bash "$SCRIPT" </dev/null 2>&1)"
           RC=$?
@@ -36,7 +36,7 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           s=Path('scripts/axia_p2_g07_owner_prepositioned_wsl2_once.sh').read_text()
-          assert "89bbff228ca3595eefd68058fa2aa583b2203a0c" in s
+          assert "ac2f3111dc238395dbb5fb8802acdaed97abde8a" in s
           assert "--case G07 --mvp-relocated-obstacle" in s
           assert "AXIA_P2_OWNER_PINNED_SHA" in s
           assert all(k not in s for k in ("printf 'YES-P2-G07-GOAL", "echo YES-P2-G07-GOAL |", "expect -c"))
