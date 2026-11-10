@@ -93,7 +93,7 @@ def observe_real_pair(timeout_s=65,capture_path=None):
                     width,height,pixels=captured_rgb
                     path=Path(capture_path)
                     path.write_bytes(
-                        ('P6\\n%d %d\\n255\\n'%(width,height)).encode('ascii')+
+                        ('P6\n%d %d\n255\n'%(width,height)).encode('ascii')+
                         pixels)
                 return {'matched':True,'pair':pair,'counts':counts,
                         'rgb_ppm_from_real_ros':str(capture_path) if capture_path else None,
