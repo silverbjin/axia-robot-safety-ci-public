@@ -1,0 +1,44 @@
+name: AXIA P2 G07 MVP Owner timing regression L0, NO GOAL
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/p2-mvp-g07-goal-window-l0.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  sealed-timing-regression-l0:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: axia-instructor-sealed
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 1526fba4675aeaac3c09a23f820cb916e7d4ac1e
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Verify exact source and replay G07 real Owner timing; no ROS Goal
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '1526fba4675aeaac3c09a23f820cb916e7d4ac1e'
+          python3 -m pip install -q pytest==8.3.5 PyYAML==6.0.2
+          python3 -m pytest -q -ra \
+            tests/unit/test_p2_mvp_one_goal_timing.py \
+            tests/unit/test_p2_mvp_one_goal_readiness.py \
+            tests/unit/test_p2_g07_demo_evidence.py \
+            tests/unit/test_p2_g07_live_phase.py \
+            tests/unit/test_p2_g07_coordinate_frames.py \
+            tests/unit/test_p2_g07_preloaded_contact_world.py \
+            tests/unit/test_p2_evidence_oracles.py \
+            tests/unit/test_p2_base_guard_policy.py \
+            tests/unit/test_p2_t07_owner_contract.py \
+            tests/unit/test_p2_launch_contract.py
+          bash -n scripts/p2_owner_l3_wsl2.sh
+          python3 -m py_compile tools/p2_l3_live_session.py tools/p2_mvp_one_goal_oracle.py ros2_ws/src/axia_safety_bringup/launch/axia_p2_launch_policy.py
+          echo AXIA_G07_MVP_OWNER_TRACE_REGRESSION_L0_PASS_NOT_REAL_GAZEBO_NOT_L3
+      - name: Delete all private source
+        if: always()
+        shell: bash
+        run: rm -rf -- ros2_ws tools scripts docs configs tests .git
