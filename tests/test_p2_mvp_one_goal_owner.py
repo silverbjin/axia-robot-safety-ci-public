@@ -9,8 +9,8 @@ from test_p2_remaining_workspace_isolation import simulate, PIN as OLD_SHA, BRAN
 
 ROOT=Path(__file__).resolve().parents[1]
 WRAPPER=ROOT/'scripts/axia_p2_mvp_one_goal_wsl2_once.sh'
-PIN='7d61bac6f32e7e205942f3f7cda9cde8c34cbb85'
-BRANCH='feature/p2-mvp-one-goal-readiness-20261110'
+PIN='167027902234202f7a975333759944b7ddbd8ad7'
+BRANCH='fix/p2-mvp-one-goal-timing-20261110'
 
 
 def run(*args):
@@ -23,7 +23,7 @@ def test_shell_syntax_and_exact_sha():
     src=WRAPPER.read_text()
     assert "readonly SHA='"+PIN+"'" in src
     assert "readonly BRANCH='"+BRANCH+"'" in src
-    assert 'p2_owner_l3_wsl2.sh" --case G07' in src
+    assert 'p2_owner_l3_wsl2.sh" --case G07 --mvp-one-goal' in src
     for required in ('gh auth status','status --porcelain','rev-parse HEAD',
                      'AXIA_P2_OWNER_PINNED_SHA','/dev/tty'):
         assert required in src
