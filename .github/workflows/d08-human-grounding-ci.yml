@@ -1,0 +1,48 @@
+name: D08 human mesh grounding / LiDAR footprint review
+on:
+  push:
+    branches:
+      - fix/d08-grounded-human-ci-20261111
+    paths:
+      - 'd08/scripts/d08_inspect_collada_bounds.py'
+      - 'd08/harness/d08_live_world.py'
+      - 'd08/tests/test_d08_grounded_human_visual.py'
+      - 'd08/tests/test_d08_camera_fullbody_framing.py'
+      - '.github/workflows/d08-human-grounding-ci.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  red-green-human-visual:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - run: python3 -m pip install --quiet pytest==8.3.5
+      - run: PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest -q d08/tests/test_d08_grounded_human_visual.py d08/tests/test_d08_camera_fullbody_framing.py
+
+  mesh-ground-source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Download and hash exact original public D04 mesh
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/axia-grounding
+          curl --fail --location --retry 3 --connect-timeout 15 --max-time 100 \
+            -o /tmp/axia-grounding/walk.dae \
+            'https://fuel.gazebosim.org/1.0/Mingfei/models/actor/tip/files/meshes/walk.dae'
+          echo '49af0df3a319d1cb8ca2cebf02dbd00f625e5d5bec820bc5e109925b18b65c6e  /tmp/axia-grounding/walk.dae' | sha256sum -c -
+          python3 d08/scripts/d08_inspect_collada_bounds.py /tmp/axia-grounding/walk.dae
+          python3 -m compileall -q d08/harness/d08_live_world.py
+          echo 'D08_DAE_SOURCE_BOUNDS_CHECK_PASS_GAZEBO_NOT_RUN'
+      - name: Remove asset from CI runner
+        if: always()
+        shell: bash
+        run: rm -f /tmp/axia-grounding/walk.dae

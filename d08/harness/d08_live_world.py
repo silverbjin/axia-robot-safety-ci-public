@@ -25,6 +25,16 @@ DEPTH_TOPIC = '/axia/d08/rgbd/depth_image'
 OPTICAL_FRAME = 'axia_d08_rgbd_optical'
 HUMAN_VISUAL_NAME='axia_d08_human_mesh'
 HUMAN_VISUAL_FALLBACK='axia_d08_human_torso'
+# Exact pinned D04 walk.dae geometry: Z_UP, unit=1m, min_z=-0.859141m.
+# World fixture's original model base is at z=0.24m, mesh scale=0.75.
+# Original relative z=0.76 floated feet 0.355644m above ground.
+HUMAN_DAE_MIN_Z_M=-0.859141
+HUMAN_DAE_MAX_Z_M=0.856892
+HUMAN_SCALE=0.75
+HUMAN_MODEL_REST_Z_M=0.24
+HUMAN_VISUAL_LOCAL_Z_M=round(
+    -HUMAN_MODEL_REST_Z_M-HUMAN_DAE_MIN_Z_M*HUMAN_SCALE,6)
+
 
 
 
@@ -86,27 +96,16 @@ def attach_human_visual_to_fixture(wn, actor_mesh: Path) -> None:
     # As an SDF <visual><mesh> it is a static pose, not a skeletal
     # animation; the model itself moves along the P2 G07 test trajectory.
     visual=_sub(link,'visual',None,name=HUMAN_VISUAL_NAME)
-    _sub(visual,'pose','0 0 0.76 0 0 3.14159')
+    _sub(visual,'pose',f'0 0 {HUMAN_VISUAL_LOCAL_Z_M:.6f} 0 0 3.14159')
     geom=_sub(visual,'geometry')
     mesh=_sub(geom,'mesh')
     _sub(mesh,'uri',str(actor_mesh.resolve()))
     _sub(mesh,'scale','0.75 0.75 0.75')
 
-    # Gazebo Harmonic GPU LiDAR (OGRE2) interrogates rendered geometry.
-    # walk.dae has no usable lower-leg rasterized silhouette at scan z~0.2m.
-    # Owner EEUOfVQL recorded 50 real /safety/scan fronts 2.02-2.07m
-    # after a true set_pose ACK, proving Collision alone was insufficient.
-    # This narrow pants-colored shin surface is ONE simple sensor-visible
-    # primitive, not a second humanoid and NOT a changed physics collision.
-    shin=_sub(link,'visual',None,name='axia_d08_lidar_leg_surface')
-    shin_geom=_sub(shin,'geometry')
-    shin_cyl=_sub(shin_geom,'cylinder')
-    _sub(shin_cyl,'radius','0.07')
-    _sub(shin_cyl,'length','0.48')
-    shin_mat=_sub(shin,'material')
-    _sub(shin_mat,'ambient','0.09 0.13 0.22 1')
-    _sub(shin_mat,'diffuse','0.09 0.13 0.22 1')
-
+    # Do not draw a black support pole inside the visible person.
+    # Grounded COLLADA feet/legs now occupy the 0.2m GPU-LiDAR plane;
+    # actual LaserScan after native P2 set_pose must prove this in L2.
+    # If L2 fails, no Goal is permitted and the model is NOT released.
 
     # Exactly ONE human renderer. The previous head/torso/leg fallback
     # overlaid the COLLADA mesh and appeared as two stationary humans.
@@ -148,13 +147,16 @@ def build_overlay(world: Path, robot: Path, actor_mesh: Path, output: Path) -> d
     sensor = ET.SubElement(cam, 'sensor', {
         'name':SENSOR_NAME, 'type':'rgbd_camera'
     })
-    _sub(sensor,'pose','0 0 0 0 -0.12 0')
+    # Owner real RGB was cropped to pants (tv=86, person=0).
+    # Wider pinhole RGBD FOV and slight upward aim frame a grounded human.
+    # Neither Nav2 nor LiDAR/CM sensors or thresholds are changed.
+    _sub(sensor,'pose','0 0 0 0 -0.30 0')
     _sub(sensor,'always_on','1')
     _sub(sensor,'update_rate','5')
     _sub(sensor,'topic','axia/d08/rgbd')
     _sub(sensor,'gz_frame_id',OPTICAL_FRAME)
     camera = _sub(sensor, 'camera')
-    _sub(camera, 'horizontal_fov','1.35')
+    _sub(camera, 'horizontal_fov','1.95')
     image = _sub(camera,'image')
     _sub(image,'width','640')
     _sub(image,'height','480')
@@ -187,15 +189,22 @@ def build_overlay(world: Path, robot: Path, actor_mesh: Path, output: Path) -> d
       'human_visual_attached_to_physical_model':True,
       'human_visual_name':HUMAN_VISUAL_NAME,
       'human_visual_count':1,
-      'gpu_lidar_leg_surface':True,
-      'rendered_visual_count':2,
+      'gpu_lidar_leg_surface':False,
+      'rendered_visual_count':1,
+      'human_grounded_expected':True,
+      'human_geometry_min_z_m':HUMAN_DAE_MIN_Z_M,
+      'human_geometry_max_z_m':HUMAN_DAE_MAX_Z_M,
+      'human_local_pose_z_m':HUMAN_VISUAL_LOCAL_Z_M,
+      'human_expected_foot_world_z_m':round(
+          HUMAN_MODEL_REST_Z_M+HUMAN_VISUAL_LOCAL_Z_M+
+          HUMAN_SCALE*HUMAN_DAE_MIN_Z_M,6),
       'procedural_fallback_visuals':False,
       'human_visible_collision_proxy':'obstacle_collision',
       'human_visual_animated':False,
       'human_model_motion_source':'existing_P2_G07_gz_set_pose',
       'robot_world_spawn':{'x':-2.0,'y':-0.5,'yaw':0.0},
-      'rgbd_horizontal_fov_rad':1.35,
-      'rgbd_sensor_pitch_rad':-0.12,
+      'rgbd_horizontal_fov_rad':1.95,
+      'rgbd_sensor_pitch_rad':-0.30,
       'physical_obstacle_static_gap_not_certified':True,
       'gazebo_physical_fixture':PHYSICAL_NAME,
       'rgb_topic':RGB_TOPIC,
