@@ -14,13 +14,13 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: ea57bd0d8457403895a4e3e9a8fc072455132417
+          ref: d94af661b160ab9a3aa90d1817e95a77fa010574
           persist-credentials: false
       - name: Verify exact public student fixture/ZIP source and TODO RED (not learner GREEN)
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = 'ea57bd0d8457403895a4e3e9a8fc072455132417'
+          test "$(git rev-parse HEAD)" = 'd94af661b160ab9a3aa90d1817e95a77fa010574'
           python3 -m pip install --quiet --disable-pip-version-check pytest==8.3.5
           python3 -m pytest -q \
             block_B/day08/tests/test_d08_public.py::test_d08_synthetic_fixture_contract \
