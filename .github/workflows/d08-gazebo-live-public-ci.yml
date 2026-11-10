@@ -1,4 +1,4 @@
-name: AXIA D08 one-world Gazebo live harness (public L0)
+name: AXIA D08 one-world Gazebo live harness L0 + actual L2 no Goal
 on:
   push:
     branches: ['feature/d08-gazebo-live-ci-20261110']
@@ -16,6 +16,9 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: axia-d08-oneworld-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   public-world-and-sensor-contract:
     runs-on: ubuntu-24.04
@@ -33,7 +36,11 @@ jobs:
           set -euo pipefail
           python -m pip install -q pytest==8.3.5
           python -m compileall -q d08/harness
-          PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -q d08/tests/test_d08_live_public_harness.py
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -q \
+            d08/tests/test_d08_live_public_harness.py \
+            d08/tests/test_d08_live_owner_wrapper.py
+          bash -n d08/scripts/axia_d08_live_gazebo_wsl2_once.sh
+          bash d08/scripts/axia_d08_live_gazebo_wsl2_once.sh --self-check
           echo 'D08_PUBLIC_L0_ONLY_ROS_GAZEBO_NOT_RUN'
   real-gazebo-one-world-rgbd:
     needs: public-world-and-sensor-contract
