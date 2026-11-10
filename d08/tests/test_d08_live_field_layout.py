@@ -45,7 +45,8 @@ def test_field_layout_visual_farther_and_p2_physics_unchanged(tmp_path):
     assert proxy.find(".//collision[@name='obstacle_collision']") is not None
     assert len(world.findall(".//model[@name='axia_p2_g07_obstacle']"))==1
     s=robot.find(".//sensor[@name='axia_d08_registered_rgbd']")
-    assert 1.2<=float(s.findtext('camera/horizontal_fov'))<=1.5
+    assert 1.90<=float(s.findtext('camera/horizontal_fov'))<=2.00
+    assert m['rgbd_sensor_pitch_rad']==-0.30
     assert m['rgbd_sensor_pitch_rad']<0
     assert len(robot.findall('.//plugin'))==1
     assert not m['actor_physics_collision']
