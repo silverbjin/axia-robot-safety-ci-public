@@ -1,7 +1,7 @@
 name: AXIA D08 human/proxy model + grounded one-person + real GPU LiDAR (NO GOAL)
 on:
   push:
-    branches: ['fix/d08-human-contact-positive-ci-20261110', 'fix/d08-single-visual-rgbd-ci-20261110', 'fix/d08-g07-lidar-preflight-ci-20261110', 'fix/d08-grounded-human-ci-20261111']
+    branches: ['fix/d08-human-contact-positive-ci-20261110', 'fix/d08-single-visual-rgbd-ci-20261110', 'fix/d08-g07-lidar-preflight-ci-20261110', 'fix/d08-grounded-human-ci-20261111', 'fix/d08-foot-short-step-ci-20261111']
     paths:
       - 'd08/harness/d08_live_world.py'
       - 'd08/harness/d08_contact_positive_contract.py'
@@ -10,6 +10,7 @@ on:
       - 'd08/tests/test_d08_rgbd_alignment_evidence.py'
       - 'd08/tests/test_d08_g07_lidar_visible_proxy.py'
       - 'd08/tests/test_d08_grounded_human_visual.py'
+      - 'd08/tests/test_d08_cqyxbyzi_visual_mvp.py'
       - 'd08/harness/d08_visible_person_frame.py'
       - 'd08/tests/test_d08_visible_person_frame.py'
       - 'd08/tests/test_d08_native_positive_contact_parser.py'
@@ -48,6 +49,7 @@ jobs:
             d08/tests/test_d08_rgbd_alignment_evidence.py \
             d08/tests/test_d08_g07_lidar_visible_proxy.py \
             d08/tests/test_d08_grounded_human_visual.py \
+            d08/tests/test_d08_cqyxbyzi_visual_mvp.py \
             d08/tests/test_d08_visible_person_frame.py \
             d08/tests/test_d08_last_mile_bootstrap.py \
             d08/tests/test_d08_native_positive_contact_parser.py \
