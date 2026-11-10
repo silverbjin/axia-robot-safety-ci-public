@@ -27,15 +27,23 @@ jobs:
           set -euo pipefail
           test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = "e097e6029ef5ce53b861b545a11fd87eb28afa6f"
           python3 -m pip install -q pytest==8.3.5 PyYAML==6.0.2
-          python3 -m pytest -q -ra \
+          python3 -m pytest -q -ra --tb=line \
             tests/unit/test_p2_g07_map_frame_preflight.py \
             tests/unit/test_p2_g07_gz_world_pose.py \
             tests/unit/test_p2_g07_live_phase.py \
             tests/unit/test_p2_t07_owner_contract.py \
-            tests/unit/test_p2_evidence_oracles.py
+            tests/unit/test_p2_evidence_oracles.py 2>&1 | tee g07_l0_summary.txt
           python3 -m py_compile tools/p2_g07_frame_policy.py tools/p2_g07_world_pose.py tools/p2_g07_frame_no_goal_probe.py tools/p2_l3_live_session.py
           bash -n scripts/p2_g07_frame_no_goal_ci.sh scripts/p2_owner_l3_wsl2.sh
           echo "P2_G07_FRAME_OWNER_REPLAY_AND_L0_PASS; NO_GOAL_NO_GAZEBO"
+      - name: Save test names and brief errors only (no private Python sources)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2-g07-frame-l0-test-summary
+          path: g07_l0_summary.txt
+          retention-days: 7
+          if-no-files-found: warn
       - name: Delete private source regardless of outcome
         if: always()
         shell: bash
