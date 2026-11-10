@@ -29,43 +29,7 @@ jobs:
           PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -q d08/tests/test_d08_owner_userspace_parity.py
           python -m compileall -q d08/ci/check_owner_userspace.py
           echo 'AXIA_D08_PARITY_CONTRACT_L0_PASS SYNTHETIC_ONLY'
-
-  private-pr105-l0:
-    needs: public-parity-contract-l0
-    if: github.repository == 'silverbjin/axia-robot-safety-ci-public' && github.event_name == 'push'
-    environment: axia-instructor-sealed
-    runs-on: ubuntu-24.04
-    timeout-minutes: 12
-    env:
-      AXIA_D08_PRIVATE_SHA: '99a3a26d787a803f77e94023ca7742518d00a992'
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          repository: silverbjin/axia-robot-safety-instructor
-          ref: 99a3a26d787a803f77e94023ca7742518d00a992
-          token: ${{ secrets.AXIA_CLOUD_CI }}
-          persist-credentials: false
-          path: private_instructor
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Private exact SHA and PR105 focused RED GREEN regression (no source artifact)
-        shell: bash
-        run: |
-          set -euo pipefail
-          test "$(git -C private_instructor rev-parse HEAD)" = "$AXIA_D08_PRIVATE_SHA"
-          python -m pip install --quiet pytest==8.3.5 PyYAML==6.0.2
-          cd private_instructor
-          PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -q --tb=short \
-            tests/unit/test_d08_owner_manifest_gate_regression.py \
-            tests/unit/test_d08_owner_cqyxbyzi_followup.py \
-            tests/unit/test_d08_live_field_repair.py \
-            tests/unit/test_d08_g07_lidar_preflight_and_teardown.py
-          echo 'AXIA_D08_PR105_EXACT_PRIVATE_L0_PASS NO_GOAL_NO_GAZEBO'
-      - name: Purge ephemeral sealed source and logs
-        if: always()
-        shell: bash
-        run: rm -rf -- private_instructor
+          echo 'AXIA_PR105_PRIVATE_CI_UNAVAILABLE_NOT_CLAIMED'
 
   owner-critical-userspace-gazebo-l2:
     needs: public-parity-contract-l0
@@ -87,6 +51,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # Official OSRF Gazebo Harmonic repo, as on the Owner WSL2.
+          # ros:jazzy-ros-base-noble does not ship this APT source by default.
+          apt-get update -qq
+          apt-get install -y -qq --no-install-recommends curl gnupg lsb-release ca-certificates
+          curl -fL --retry 3 --max-time 60 -sS \
+            'https://packages.osrfoundation.org/gazebo.gpg' \
+            -o /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg
+          chmod 0644 /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg
+          printf 'deb [arch=%s signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] https://packages.osrfoundation.org/gazebo/ubuntu-stable noble main\n' \
+            "$(dpkg --print-architecture)" \
+            > /etc/apt/sources.list.d/gazebo-stable.list
           apt-get update -qq
           mapfile -t pins < <(python3 - <<'PY'
           import json
