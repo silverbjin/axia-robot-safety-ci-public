@@ -104,9 +104,12 @@ def main(argv=None):
     simulation = subprocess.run(["apt-get", "--simulate", "--allow-downgrades",
                                  "--no-install-recommends", "install", *specs],
                                 env=env, timeout=180, check=False,
-                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                                capture_output=True, text=True)
     if simulation.returncode:
         print("AXIA_CI_APT_PIN_DEPENDENCY_CONFLICT_SIMULATION", file=sys.stderr)
+        return 2
+    if any(line.lstrip().startswith("Remv ") for line in simulation.stdout.splitlines()):
+        print("AXIA_CI_APT_PIN_BLOCKED_WOULD_REMOVE_PACKAGES", file=sys.stderr)
         return 2
     install = subprocess.run(["apt-get", "-y", "--allow-downgrades",
                               "--no-install-recommends", "install", *specs],
