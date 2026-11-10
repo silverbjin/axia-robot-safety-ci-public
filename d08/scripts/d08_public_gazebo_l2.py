@@ -153,7 +153,10 @@ def pregoal_lidar_physical_admission(out:Path,env:dict,processes:list)->dict:
          '/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan'],
         env,out,processes)
     before=observe_real_front_scan(timeout_s=35)
-    target=(-1.28,-.5,.24)
+    # D08 GUI Owner: pre-Goal 0.50m dispatch (Waffle world x=-2.0,
+    # obstacle radius=.07), giving a single 7cm jump to the .43m STOP
+    # dispatch. Actual LaserScan must still show SlowZone; never fake data.
+    target=(-1.43,-.5,.24)
     req=('name: "axia_p2_g07_obstacle", '
          'position: {x: %.6f, y: %.6f, z: %.6f}, orientation: {w: 1}'%target)
     res=_run(['gz','service','-s','/world/default/set_pose',
@@ -174,7 +177,7 @@ def pregoal_lidar_physical_admission(out:Path,env:dict,processes:list)->dict:
     (out/'pregoal_lidar_observation.json').write_text(
         json.dumps(verdict,indent=2,ensure_ascii=False)+'\n')
     # A successful service response ALONE never proves sensor observation.
-    # The closer fixture should move the actual measured front by ~8cm.
+    # Real model move must change the scan; amount depends on tuned world pose.
     if not (.4<after['front_m']<.75 and observed_delta>.035):
         raise RuntimeError('D08_PREG0AL_PHYSICAL_LIDAR_SLOWZONE_NOT_OBSERVED:'+
             json.dumps({'before':before['front_m'],'after':after['front_m'],
