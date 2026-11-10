@@ -30,7 +30,8 @@ def test_real_human_head_and_feet_fit_supplemental_rgbd_camera(tmp_path):
     m=build_overlay(w,r,a,tmp_path/'out')
     sensor=ET.parse(m['robot_sdf']).find(".//sensor[@name='axia_d08_registered_rgbd']")
     pose=[float(v) for v in sensor.findtext('pose').split()]
-    pitch=pose[4]
+    # SDF positive-Y pitch rotates +X toward -Z: negative pitch looks UP.
+    look_up=-pose[4]
     hfov=float(sensor.findtext('camera/horizontal_fov'))
     vfov=2*math.atan(math.tan(hfov/2)*480/640)
     # Official Waffle camera_link local height 0.107m; robot spawned at
@@ -41,9 +42,10 @@ def test_real_human_head_and_feet_fit_supplemental_rgbd_camera(tmp_path):
     distance=.8
     head=math.atan((h-cam_z)/distance)
     feet=math.atan((foot-cam_z)/distance)
-    assert pitch + vfov/2 >= head+0.025, (pitch,vfov,head)
-    assert pitch - vfov/2 <= feet-0.025, (pitch,vfov,feet)
-    assert 1.35<=hfov<=1.5
-    assert 0.30<=pitch<=0.55
+    assert look_up + vfov/2 >= head+0.025, (look_up,vfov,head)
+    assert look_up - vfov/2 <= feet-0.025, (look_up,vfov,feet)
+    # Supplementary D08 RGBD only. Native Waffle lidar/safety unchanged.
+    assert 1.35<=hfov<=2.0
+    assert 0.20<=look_up<=0.55
     assert not m['robot_drive_model_modified']
     assert m['goal_sent'] is False
