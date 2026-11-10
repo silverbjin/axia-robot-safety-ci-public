@@ -24,6 +24,7 @@ from d04_waffle_pi_rgb_preflight import _start,_stop_all,sync_ros_discovery_envi
 from d08_live_world import build_overlay,RGB_TOPIC,DEPTH_TOPIC
 from d08_live_readonly_probe import select_pair
 from p2_contact_discovery import resolve_g07_contact_topic
+from d08_contact_positive_contract import count_nonrobot_positive_contacts
 
 TEST_FIXTURE='''<plugin filename="gz-sim-contact-system"
  name="gz::sim::systems::Contact"/>
@@ -141,13 +142,18 @@ def positive_contact_once(out:Path,env:dict,contact_topic:str)->dict:
                 except ProcessLookupError:pass
                 watcher.wait(timeout=3)
     raw=log.read_text(encoding='utf-8',errors='replace')[:200000]
-    positive=('axia_p2_g07_obstacle' in raw and probe_name in raw
-              and ('collision1:' in raw or 'collision2:' in raw))
+    # Gazebo gz.msgs.Contacts text uses 'collision1 { name: ... }', NOT
+    # 'collision1: ...'. The actual Owner-profile CI fixture recorded
+    # 2,978 adjacent collision pairs in its full native log, despite the
+    # legacy literal-colon parser incorrectly reporting BLOCKED.
+    sampled=count_nonrobot_positive_contacts(raw)
+    positive=sampled>0
     verdict={'status':('POSITIVE_CONTACT_VERIFIED' if positive
                        else 'CONTACT_POSITIVE_NOT_OBSERVED'),
              'contact_topic':contact_topic,
              'calibrator_name':probe_name,
              'positive_contact_detected':positive,
+             'sampled_actual_collision_pairs':sampled,
              'calibration_events_are_robot_contacts':False,
              'robot_goal_sent':False,
              'certified_estop':False,
