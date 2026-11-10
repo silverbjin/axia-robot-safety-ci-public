@@ -53,7 +53,7 @@ def _run(cmd,env=None,timeout=15,check=True):
     return cp
 
 
-def observe_real_pair(timeout_s=65):
+def observe_real_pair(timeout_s=65,capture_path=None):
     import rclpy
     from sensor_msgs.msg import Image
     from rclpy.qos import qos_profile_sensor_data
@@ -61,8 +61,17 @@ def observe_real_pair(timeout_s=65):
     node=rclpy.create_node('axia_d08_real_gazebo_rgbd_ci_probe')
     rgb=deque(maxlen=40);depth=deque(maxlen=40)
     counts={'rgb':0,'depth':0}
+    captured_rgb=None
     def handle(msg,kind):
+        nonlocal captured_rgb
         counts[kind]+=1
+        # Capture exactly one ACTUAL registered Gazebo RGB frame for visual
+        # ground/contact/YOLO failure review. Never use placeholder images.
+        if (kind=='rgb' and captured_rgb is None and
+              msg.encoding=='rgb8' and msg.width==640 and msg.height==480
+              and msg.step==msg.width*3 and
+              len(msg.data)==msg.step*msg.height):
+            captured_rgb=(msg.width,msg.height,bytes(msg.data))
         packet={'frame':msg.header.frame_id,
                 'stamp_ns':int(msg.header.stamp.sec)*10**9+msg.header.stamp.nanosec,
                 'width':msg.width,'height':msg.height,'encoding':msg.encoding,
@@ -78,7 +87,16 @@ def observe_real_pair(timeout_s=65):
             rclpy.spin_once(node,timeout_sec=.4)
             pair=select_pair(rgb,depth)
             if pair is not None and counts['rgb']>=3 and counts['depth']>=3:
+                if capture_path is not None:
+                    if captured_rgb is None:
+                        raise RuntimeError('D08_REAL_RGB_FRAME_CAPTURE_MISSING')
+                    width,height,pixels=captured_rgb
+                    path=Path(capture_path)
+                    path.write_bytes(
+                        ('P6\\n%d %d\\n255\\n'%(width,height)).encode('ascii')+
+                        pixels)
                 return {'matched':True,'pair':pair,'counts':counts,
+                        'rgb_ppm_from_real_ros':str(capture_path) if capture_path else None,
                         'real_ros_images':True}
         return {'matched':False,'counts':counts,'real_ros_images':False}
     finally:
@@ -326,7 +344,7 @@ def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=Fals
         # Mirror the Owner's one-process image bridge on real Gazebo L2.
         _start('rgbd_bridge',['ros2','run','ros_gz_image','image_bridge',
               RGB_TOPIC,DEPTH_TOPIC],env,out,processes)
-        result['actual_rgbd']=observe_real_pair(timeout_s=80)
+        result['actual_rgbd']=observe_real_pair(timeout_s=80,capture_path=out/'real_gazebo_rgb.ppm')
         topics=_run(['gz','topic','-l'],env,timeout=15)
         contact_topic=resolve_g07_contact_topic(topics.stdout)
         if contact_topic is None:
