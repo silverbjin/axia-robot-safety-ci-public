@@ -76,13 +76,13 @@ def build_overlay(world: Path, robot: Path, actor_mesh: Path, output: Path) -> d
     sensor = ET.SubElement(cam, 'sensor', {
         'name':SENSOR_NAME, 'type':'rgbd_camera'
     })
-    _sub(sensor,'pose','0 0 0 0 0 0')
+    _sub(sensor,'pose','0 0 0 0 -0.12 0')
     _sub(sensor,'always_on','1')
     _sub(sensor,'update_rate','5')
     _sub(sensor,'topic','axia/d08/rgbd')
     _sub(sensor,'gz_frame_id',OPTICAL_FRAME)
     camera = _sub(sensor, 'camera')
-    _sub(camera, 'horizontal_fov','1.047')
+    _sub(camera, 'horizontal_fov','1.35')
     image = _sub(camera,'image')
     _sub(image,'width','640')
     _sub(image,'height','480')
@@ -94,7 +94,7 @@ def build_overlay(world: Path, robot: Path, actor_mesh: Path, output: Path) -> d
     actor=ET.SubElement(wn,'actor',{'name':ACTOR_NAME})
     skin=_sub(actor,'skin')
     _sub(skin,'filename',str(actor_mesh.resolve()))
-    _sub(skin,'scale','1.0')
+    _sub(skin,'scale','0.75')
     anim=_sub(actor,'animation',None,name='walk')
     _sub(anim,'filename',str(actor_mesh.resolve()))
     _sub(anim,'interpolate_x','true')
@@ -105,10 +105,10 @@ def build_overlay(world: Path, robot: Path, actor_mesh: Path, output: Path) -> d
     trajectory=_sub(script,'trajectory',None,id='0',type='walk')
     # Visual only. This animated person is independently located from the
     # LiDAR physical cylinder, which P2 moves using native Gazebo UserCommands.
-    for t,y in [('0','-0.15'),('6','-0.62'),('12','-0.15')]:
+    for t,y in [('0','-0.32'),('6','-0.68'),('12','-0.32')]:
         waypoint=_sub(trajectory,'waypoint')
         _sub(waypoint,'time',t)
-        _sub(waypoint,'pose',f'-1.25 {y} 1.0 0 0 3.14159')
+        _sub(waypoint,'pose',f'-0.38 {y} 1.0 0 0 3.14159')
 
     if len(r.getroot().findall('.//plugin')) != before_plugins:
         raise ValueError('D08_ROBOT_PLUGIN_MODIFIED')
@@ -128,6 +128,13 @@ def build_overlay(world: Path, robot: Path, actor_mesh: Path, output: Path) -> d
       'result_world_sha256':_sha(world_out),
       'result_robot_sha256':_sha(robot_out),
       'gazebo_visual_actor':ACTOR_NAME,
+      'actor_pose_initial_world':{'x':-0.38,'y':-0.32,'z':1.0},
+      'actor_visual_scale':0.75,
+      'robot_world_spawn':{'x':-2.0,'y':-0.5,'yaw':0.0},
+      'rgbd_horizontal_fov_rad':1.35,
+      'rgbd_sensor_pitch_rad':-0.12,
+      'actor_min_forward_from_robot_m':1.62,
+      'physical_obstacle_static_gap_not_certified':True,
       'gazebo_physical_fixture':PHYSICAL_NAME,
       'rgb_topic':RGB_TOPIC,
       'depth_topic':DEPTH_TOPIC,
