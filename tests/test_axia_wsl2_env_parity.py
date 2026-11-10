@@ -106,3 +106,32 @@ def test_json_roundtrip_in_cli(tmp_path):
         capture_output=True,text=True,timeout=5)
     assert result.returncode==0,result.stderr
     assert json.loads(out.read_text())['status']=='PARITY_READY'
+
+
+def test_real_linux_collector_executes_without_ros_or_network(tmp_path):
+    # Runs on the actual GitHub runner; CI Linux must never claim to be WSL2.
+    out=tmp_path/'ci-profile.json'
+    result=subprocess.run([sys.executable,str(TOOLS/'axia_env_profile.py'),
+                           '--output',str(out)],capture_output=True,text=True,
+                          timeout=35,check=False)
+    assert result.returncode==0,result.stderr
+    document=json.loads(out.read_text())
+    assert document['schema']==cmp.SCHEMA
+    assert isinstance(document['apt_packages'],dict)
+    assert document['privacy']['hostname_username_paths_addresses_tokens_excluded'] is True
+    assert (out.stat().st_mode & 0o077)==0
+    assert 'hostname' not in document and 'username' not in document
+    assert 'all_environment_variables' not in document
+    assert document['profile_kind'] in ('ci_linux','wsl2_owner')
+
+
+def test_linux_wsl2_gate_fails_before_writing_user_profile(tmp_path):
+    if 'microsoft' in __import__('platform').release().lower():
+        return
+    dest=tmp_path/'never-owner-profile.json'
+    result=subprocess.run([sys.executable,str(TOOLS/'axia_env_profile.py'),
+                           '--output',str(dest),'--require-wsl2'],
+                          capture_output=True,text=True,timeout=35)
+    assert result.returncode==2
+    assert 'AXIA_ENV_BLOCKED_NOT_WSL2' in result.stderr
+    assert not dest.exists()
