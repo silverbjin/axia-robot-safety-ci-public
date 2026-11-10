@@ -1,7 +1,7 @@
-name: AXIA D08 human/proxy model + one Contact positive (NO GOAL)
+name: AXIA D08 human/proxy model + grounded one-person + real GPU LiDAR (NO GOAL)
 on:
   push:
-    branches: ['fix/d08-human-contact-positive-ci-20261110', 'fix/d08-single-visual-rgbd-ci-20261110', 'fix/d08-g07-lidar-preflight-ci-20261110']
+    branches: ['fix/d08-human-contact-positive-ci-20261110', 'fix/d08-single-visual-rgbd-ci-20261110', 'fix/d08-g07-lidar-preflight-ci-20261110', 'fix/d08-grounded-human-ci-20261111']
     paths:
       - 'd08/harness/d08_live_world.py'
       - 'd08/harness/d08_contact_positive_contract.py'
@@ -9,6 +9,7 @@ on:
       - 'd08/tests/test_d08_single_human_visual_regression.py'
       - 'd08/tests/test_d08_rgbd_alignment_evidence.py'
       - 'd08/tests/test_d08_g07_lidar_visible_proxy.py'
+      - 'd08/tests/test_d08_grounded_human_visual.py'
       - 'd08/tests/test_d08_native_positive_contact_parser.py'
       - 'd08/tests/test_d08_live_public_harness.py'
       - 'd08/tests/test_d08_live_field_layout.py'
@@ -44,6 +45,7 @@ jobs:
             d08/tests/test_d08_single_human_visual_regression.py \
             d08/tests/test_d08_rgbd_alignment_evidence.py \
             d08/tests/test_d08_g07_lidar_visible_proxy.py \
+            d08/tests/test_d08_grounded_human_visual.py \
             d08/tests/test_d08_last_mile_bootstrap.py \
             d08/tests/test_d08_native_positive_contact_parser.py \
             d08/tests/test_d08_live_public_harness.py \
@@ -84,7 +86,7 @@ jobs:
             -o /tmp/axia-d08-assets/walk.dae \
             'https://fuel.gazebosim.org/1.0/Mingfei/models/actor/tip/files/meshes/walk.dae'
           echo '49af0df3a319d1cb8ca2cebf02dbd00f625e5d5bec820bc5e109925b18b65c6e  /tmp/axia-d08-assets/walk.dae' | sha256sum -c -
-      - name: Real Gazebo positive Contact ONCE between proxy and non-robot calibrator
+      - name: Real Gazebo after grounded-human visual: actual RGBD and native LiDAR set_pose
         shell: bash
         run: |
           set -eo pipefail
@@ -118,7 +120,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: d08-human-proxy-one-contact-positive-no-goal
+          name: d08-grounded-human-real-lidar-no-goal
           path: results/d08-human-contact-calibration/
           retention-days: 7
           if-no-files-found: warn
