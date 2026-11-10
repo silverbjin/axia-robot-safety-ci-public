@@ -48,7 +48,10 @@ def test_single_grounded_person_no_visible_support_pole(tmp_path):
     scale=[float(v) for v in visual.findtext('./geometry/mesh/scale').split()]
     foot_world_z=world_z+pose[2]+scale[2]*DAE_MIN_Z
     head_world_z=world_z+pose[2]+scale[2]*DAE_MAX_Z
-    assert abs(foot_world_z)<.01,foot_world_z
+    # Owner CqYxbyzi: visual-only toe clearance calibration (not physics).
+    assert .04 <= foot_world_z <= .08,foot_world_z
+    assert out['human_render_tune_lift_m'] == .06
+    assert out['human_foot_contact_gui_verified'] is False
     assert 1.20<head_world_z<1.40,head_world_z
     assert abs(pose[0])<.001 and abs(pose[1])<.001
     assert len(root.findall('.//actor'))==0
