@@ -15,7 +15,15 @@ from d08_live_world import build_overlay
 
 WORLD='''<sdf version="1.9"><world name="default">
 <plugin filename="gz-sim-contact-system" name="gz::sim::systems::Contact"/>
-<model name="axia_p2_g07_obstacle"><link name="fixture"/></model>
+<model name="axia_p2_g07_obstacle"><pose>-0.58 -0.5 0.24 0 0 0</pose>
+  <static>true</static><link name="obstacle_link">
+  <collision name="obstacle_collision"><geometry><cylinder>
+    <radius>0.07</radius><length>0.48</length></cylinder></geometry></collision>
+  <visual name="obstacle_visual"><geometry><cylinder>
+    <radius>0.07</radius><length>0.48</length></cylinder></geometry></visual>
+  <sensor name="axia_contact" type="contact">
+    <contact><collision>obstacle_collision</collision></contact></sensor>
+  </link></model>
 </world></sdf>'''
 ROBOT='''<sdf version="1.9"><model name="turtlebot3_waffle">
 <link name="camera_link"/>
@@ -28,21 +36,20 @@ def test_field_layout_visual_farther_and_p2_physics_unchanged(tmp_path):
     m=build_overlay(w,r,actor,tmp_path/'out')
     world=ET.parse(m['world']).getroot()
     robot=ET.parse(m['robot_sdf']).getroot()
-    person=world.find(".//actor[@name='axia_d08_visual_person']")
+    assert world.find(".//actor[@name='axia_d08_visual_person']") is None
+    proxy=world.find(".//model[@name='axia_p2_g07_obstacle']")
+    assert proxy.findtext('./pose')=='-0.58 -0.5 0.24 0 0 0'
+    person=proxy.find(".//visual[@name='axia_d08_human_mesh']")
     assert person is not None
-    poses=[tuple(float(n) for n in p.text.split())
-           for p in person.findall('.//trajectory/waypoint/pose')]
-    assert len(poses)>=3
-    assert all(x>=-0.65 and abs(y+.5)<=.24 for x,y,*_ in poses)
-    assert min(x+2.0 for x,y,*_ in poses)>=1.35
-    assert float(person.findtext('skin/scale'))<=.85
+    assert person.findtext('./geometry/mesh/scale')=='0.75 0.75 0.75'
+    assert proxy.find(".//collision[@name='obstacle_collision']") is not None
     assert len(world.findall(".//model[@name='axia_p2_g07_obstacle']"))==1
     s=robot.find(".//sensor[@name='axia_d08_registered_rgbd']")
     assert 1.2<=float(s.findtext('camera/horizontal_fov'))<=1.5
     assert m['rgbd_sensor_pitch_rad']<0
     assert len(robot.findall('.//plugin'))==1
     assert not m['actor_physics_collision']
-    assert not m['visual_person_same_as_physical_obstacle']
+    assert m['visual_person_same_as_physical_obstacle'] is True
     assert not m['collision_ground_truth_verified']
 
 def test_visual_actor_is_not_collision_obstacle_pass_claim(tmp_path):
@@ -51,5 +58,7 @@ def test_visual_actor_is_not_collision_obstacle_pass_claim(tmp_path):
     actor=tmp_path/'person.dae';actor.write_bytes(b'dummy')
     manifest=build_overlay(w,r,actor,tmp_path/'out')
     assert manifest['physical_obstacle_static_gap_not_certified'] is True
+    assert manifest['human_visual_attached_to_physical_model'] is True
+    assert manifest['collision_ground_truth_verified'] is False
     assert manifest['robot_drive_model_modified'] is False
     assert manifest['goal_sent'] is False
