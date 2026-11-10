@@ -6,6 +6,7 @@ on:
       - 'd08/harness/**'
       - 'd08/tests/test_d08_live_public_harness.py'
       - 'd08/tests/test_d08_live_field_layout.py'
+      - 'd08/tests/test_d08_plan_readonly.py'
       - 'd08/scripts/**'
       - '.github/workflows/d08-gazebo-live-public-ci.yml'
   workflow_dispatch:
@@ -34,6 +35,7 @@ jobs:
           PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -q \
             d08/tests/test_d08_live_public_harness.py \
             d08/tests/test_d08_live_field_layout.py \
+            d08/tests/test_d08_plan_readonly.py \
             d08/tests/test_d08_live_owner_wrapper.py
           bash -n d08/scripts/axia_d08_live_gazebo_wsl2_once.sh
           bash d08/scripts/axia_d08_live_gazebo_wsl2_once.sh --self-check
