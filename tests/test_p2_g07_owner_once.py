@@ -5,7 +5,7 @@ import unittest
 
 ROOT=Path(__file__).resolve().parents[1]
 SCRIPT=ROOT/'scripts/axia_p2_g07_owner_once.sh'
-SHA='0af856dbf5dfcbbce62a6e6bd3242a25c91a343d'
+SHA='65b64dd4509a2067225ce6c44c9b32706abee28b'
 
 class P2G07OwnerContract(unittest.TestCase):
     def test_wrapper_syntax_and_offline_selfcheck(self):
@@ -22,7 +22,7 @@ class P2G07OwnerContract(unittest.TestCase):
 
     def test_only_g07_at_pinned_sha(self):
         s=SCRIPT.read_text()
-        self.assertIn("readonly BRANCH='fix/p2-g07-fresh-zone-observation-20261110'",s)
+        self.assertIn("readonly BRANCH='fix/p2-g07-coordinate-world-20261110'",s)
         self.assertIn("readonly SHA='"+SHA+"'",s)
         self.assertIn('bash "$SRC/instructor/scripts/p2_owner_l3_wsl2.sh" --case G07',s)
         self.assertIn('gh repo clone',s)

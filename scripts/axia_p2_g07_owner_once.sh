@@ -3,8 +3,8 @@
 set -Eeuo pipefail
 umask 077
 readonly REPO='silverbjin/axia-robot-safety-instructor'
-readonly BRANCH='fix/p2-g07-fresh-zone-observation-20261110'
-readonly SHA='0af856dbf5dfcbbce62a6e6bd3242a25c91a343d'
+readonly BRANCH='fix/p2-g07-coordinate-world-20261110'
+readonly SHA='65b64dd4509a2067225ce6c44c9b32706abee28b'
 if [[ "${1:-}" == '--self-check' ]]; then
   [[ $# == 1 && "$SHA" =~ ^[0-9a-f]{40}$ ]] || exit 2
   printf 'P2_L3_OWNER_PUBLIC_BOOTSTRAP_CONTRACT_OK private_sha=%s L3_NOT_RUN\n' "$SHA"

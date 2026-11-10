@@ -1,4 +1,4 @@
-name: AXIA P2 G07 targeted source and Zone L0 (NO Gazebo / NO Goal)
+name: AXIA P2 G07 world-frame targeted L0 (NO Gazebo / NO Goal)
 on:
   push:
     branches: [release/p2-g06-cm-ttl-20261110]
@@ -40,19 +40,19 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 0af856dbf5dfcbbce62a6e6bd3242a25c91a343d
+          ref: 65b64dd4509a2067225ce6c44c9b32706abee28b
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Exact private G07 SHA and impacted pure L0 tests only
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '0af856dbf5dfcbbce62a6e6bd3242a25c91a343d'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '65b64dd4509a2067225ce6c44c9b32706abee28b'
           python3 -m pip install --disable-pip-version-check --quiet pytest==8.3.5 PyYAML==6.0.2
-          python3 -m pytest -q -ra tests/unit/test_p2_g07_live_phase.py tests/unit/test_p2_t07_owner_contract.py tests/unit/test_p2_evidence_oracles.py
-          python3 -m py_compile tools/p2_l3_acceptance_contract.py tools/p2_l3_live_session.py
+          python3 -m pytest -q -ra tests/unit/test_p2_g07_coordinate_frames.py tests/unit/test_p2_g07_live_phase.py tests/unit/test_p2_t07_owner_contract.py tests/unit/test_p2_evidence_oracles.py tests/unit/test_p2_zone_overlay.py
+          python3 -m py_compile tools/p2_l3_coordinate_frames.py tools/p2_l3_gz_fixture.py tools/p2_l3_acceptance_contract.py tools/p2_l3_live_session.py
           bash -n scripts/p2_owner_l3_wsl2.sh
-          echo 'P2_G07_PRIVATE_L0_PASS_GAZEBO_NOT_RUN'
+          echo 'P2_G07_WORLD_FRAMES_PRIVATE_L0_PASS_GAZEBO_NOT_RUN'
       - name: Remove private checkout and any hidden content
         if: always()
         shell: bash
