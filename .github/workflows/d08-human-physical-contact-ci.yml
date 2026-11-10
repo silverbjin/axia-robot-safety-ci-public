@@ -32,4 +32,78 @@ jobs:
           set -euo pipefail
           python -m pip install -q pytest==8.3.5
           PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -q \
-            d08/tests/test_d08_collocated_human_proxy.py
+            d08/tests/test_d08_collocated_human_proxy.py \
+            d08/tests/test_d08_live_public_harness.py \
+            d08/tests/test_d08_live_field_layout.py
+          python -m compileall -q d08/harness/d08_live_world.py \
+            d08/scripts/d08_public_gazebo_l2.py
+
+  gazebo-contact-positive-once:
+    needs: l0-human-proxy-red-green
+    runs-on: ubuntu-24.04
+    timeout-minutes: 22
+    container:
+      image: ros:jazzy-ros-base-noble
+    env:
+      DEBIAN_FRONTEND: noninteractive
+      MAKEFLAGS: -j2
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Install official Waffle/Gazebo RGBD (no modified ROS or Nav2)
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt-get update -qq
+          apt-get install -y -qq --no-install-recommends \
+            git curl ca-certificates python3-yaml \
+            ros-jazzy-nav2-minimal-tb3-sim ros-jazzy-turtlebot3-gazebo \
+            ros-jazzy-ros-gz ros-jazzy-xacro ros-jazzy-rclpy \
+            ros-jazzy-sensor-msgs libgl1-mesa-dri libglx-mesa0 \
+            python3-numpy xvfb xauth
+      - name: Validate the existing D04 human COLLADA asset SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/axia-d08-assets
+          curl --fail --location --retry 3 --connect-timeout 15 --max-time 100 \
+            -o /tmp/axia-d08-assets/walk.dae \
+            'https://fuel.gazebosim.org/1.0/Mingfei/models/actor/tip/files/meshes/walk.dae'
+          echo '49af0df3a319d1cb8ca2cebf02dbd00f625e5d5bec820bc5e109925b18b65c6e  /tmp/axia-d08-assets/walk.dae' | sha256sum -c -
+      - name: Real Gazebo positive Contact ONCE between proxy and non-robot calibrator
+        shell: bash
+        run: |
+          set -euo pipefail
+          source /opt/ros/jazzy/setup.bash
+          python3 -u d08/scripts/d08_public_gazebo_l2.py \
+            --actor /tmp/axia-d08-assets/walk.dae \
+            --out results/d08-human-contact-calibration \
+            --positive-contact-once
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('results/d08-human-contact-calibration')
+          v=json.loads((root/'verdict.json').read_text())
+          p=json.loads((root/'positive_contact_verdict.json').read_text())
+          assert v['status']=='D08_REAL_GAZEBO_WAFFLE_RGBD_NO_GOAL_PASS'
+          assert v['actual_rgbd']['matched'] is True
+          assert v['contact_topic_proven'] is True
+          assert p['positive_contact_detected'] is True
+          assert p['robot_goal_sent'] is False
+          assert p['calibration_events_are_robot_contacts'] is False
+          assert p['robot_collision_free_verified'] is False
+          assert v['goal_sent'] is False and v['cmd_vel_published'] is False
+          print('D08_G07_ONE_NONROBOT_POSITIVE_CONTACT_GAZEBO_L2_PASS')
+          print('D08_G07_ROBOT_NO_COLLISION_NOT_CLAIMED')
+          PY
+      - name: Remove external mesh (not part of artifact)
+        if: always()
+        run: rm -f /tmp/axia-d08-assets/walk.dae
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d08-human-proxy-one-contact-positive-no-goal
+          path: results/d08-human-contact-calibration/
+          retention-days: 7
+          if-no-files-found: warn
