@@ -9,8 +9,8 @@ from test_p2_remaining_workspace_isolation import simulate, PIN as OLD_SHA, BRAN
 
 ROOT=Path(__file__).resolve().parents[1]
 WRAPPER=ROOT/'scripts/axia_p2_mvp_one_goal_wsl2_once.sh'
-PIN='a9a33cc32586e4a30843efcf9172bdaade85d8ea'
-BRANCH='fix/p2-g07-mvp-motion-gate-20261110'
+PIN='d73b6170c86e392761b5446253f1f452d0f5c2d1'
+BRANCH='fix/p2-g07-mvp-stop-geometry-20261110'
 
 
 def run(*args):
