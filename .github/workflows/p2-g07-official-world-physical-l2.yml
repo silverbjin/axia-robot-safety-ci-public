@@ -18,19 +18,20 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 33d37489139f178d94436f7301d8b29cae4de1ea
+          ref: 1216d8589b2a8ac4c7e75aedaa7854eb7b2470b3
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Exact source SHA and only modified contracts
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '33d37489139f178d94436f7301d8b29cae4de1ea'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '1216d8589b2a8ac4c7e75aedaa7854eb7b2470b3'
           python3 -m pip install --quiet --disable-pip-version-check pytest==8.3.5 PyYAML==6.0.2
           python3 -m pytest -q -ra \
             tests/unit/test_p2_g07_official_spawn.py \
             tests/unit/test_p2_g07_physical_preflight_contract.py \
             tests/unit/test_p2_g07_preloaded_contact_world.py \
+            tests/unit/test_p2_g07_demo_evidence.py \
             tests/unit/test_p2_g07_coordinate_frames.py \
             tests/unit/test_p2_g07_live_phase.py \
             tests/unit/test_p2_t07_owner_contract.py \
@@ -57,7 +58,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 33d37489139f178d94436f7301d8b29cae4de1ea
+          ref: 1216d8589b2a8ac4c7e75aedaa7854eb7b2470b3
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Install official Jazzy Nav2 and Gazebo Harmonic once
@@ -81,7 +82,7 @@ jobs:
           AXIA_P2_SMOKE_RESULTS: results/g07-official-physical
         run: |
           set -eo pipefail
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '33d37489139f178d94436f7301d8b29cae4de1ea'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '1216d8589b2a8ac4c7e75aedaa7854eb7b2470b3'
           mkdir -p results
           set +e
           timeout --signal=TERM --kill-after=10s 650s bash scripts/p2_no_goal_smoke_ci.sh
@@ -117,10 +118,14 @@ jobs:
           v=json.loads(Path('results/g07-official-physical/g07_physical/g07_physical_preflight.json').read_text())
           assert v['status']=='G07_PHYSICAL_OBSTACLE_LASER_PROVEN'
           assert v['fixture_ack'] is True and v['set_pose_ack'] is True
-          assert v['contact_topic_ack'] is True
+          # Native Contact topic absent in Harmonic dynamic/preloaded cases.
+          # An actual Gazebo LiDAR obstacle may still be demonstrated, but
+          # formal zero-collision / physical G07 acceptance remains BLOCKED.
+          assert isinstance(v['contact_topic_ack'],bool)
+          assert v['demo_scope']=='SIMULATED_MVP_NO_CONTACT_CERTIFICATION'
           assert v['goal_sent'] is False and v['fault_injected'] is False
           assert v['certified_estop'] is False and v['gate_accepted'] is False
-          print('P2_G07_OFFICIAL_WAFFLE_PHYSICAL_L2_PASS_NO_GOAL_NO_FAULT')
+          print('P2_G07_REAL_GAZEBO_LIDAR_DEMO_L2_PASS_NO_GOAL_NO_CONTACT_CERTIFICATION')
           PY
       - name: Delete all private source and unexported evidence
         if: always()
