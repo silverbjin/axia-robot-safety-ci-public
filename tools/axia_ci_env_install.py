@@ -91,7 +91,7 @@ def main(argv=None):
     print("AXIA_CI_APT_PIN_COUNT=" + str(plan["pin_count"]))
     if plan["unavailable_versions"]:
         for value in plan["unavailable_versions"][:30]:
-            print("AXIA_CI_APT_PIN_UNAVAILABLE=" + value)
+            print("AXIA_CI_APT_PIN_UNAVAILABLE_PACKAGE=" + value.split("=", 1)[0])
         return 2
     if not args.apply or not plan["exact_install_specs"]:
         print("AXIA_CI_APT_PIN_APPLY=" + ("NO_CHANGES" if args.apply else "DRY_RUN"))
@@ -103,13 +103,15 @@ def main(argv=None):
     env = dict(os.environ, DEBIAN_FRONTEND="noninteractive")
     simulation = subprocess.run(["apt-get", "--simulate", "--allow-downgrades",
                                  "--no-install-recommends", "install", *specs],
-                                env=env, timeout=180, check=False)
+                                env=env, timeout=180, check=False,
+                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     if simulation.returncode:
         print("AXIA_CI_APT_PIN_DEPENDENCY_CONFLICT_SIMULATION", file=sys.stderr)
         return 2
     install = subprocess.run(["apt-get", "-y", "--allow-downgrades",
                               "--no-install-recommends", "install", *specs],
-                             env=env, timeout=600, check=False)
+                             env=env, timeout=600, check=False,
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     if install.returncode:
         print("AXIA_CI_APT_PIN_INSTALL_BLOCKED", file=sys.stderr)
         return 2
