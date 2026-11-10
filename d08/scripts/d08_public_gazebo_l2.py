@@ -109,6 +109,9 @@ def run(out:Path,actor:Path):
         testworld.write_text(source.replace('</world>',TEST_FIXTURE+'</world>'))
         m=build_overlay(testworld,robot,actor,out/'overlay')
         result['overlay_manifest']=m
+        # Must resolve model://turtlebot3_world DURING `gz sdf -p`, not
+        # only later when the simulator is started.
+        env['GZ_SIM_RESOURCE_PATH']=str(tb3/'models')+':'+env.get('GZ_SIM_RESOURCE_PATH','')
         gz_world=out/'actual_world.sdf'
         gz_robot=out/'actual_waffle.sdf'
         for src,dest in ((m['world'],gz_world),(m['robot_sdf'],gz_robot)):
@@ -120,7 +123,6 @@ def run(out:Path,actor:Path):
             parsed=_run(['gz','sdf','-p',str(dest)],env,timeout=25)
             if '<sdf' not in parsed.stdout:
                 raise RuntimeError('D08_GZ_SDF_VALIDATION_FAILED')
-        env['GZ_SIM_RESOURCE_PATH']=str(tb3/'models')+':'+env.get('GZ_SIM_RESOURCE_PATH','')
         sim=_start('gazebo_server',
           ['xvfb-run','-a','-s','-screen 0 1280x720x24',
            'gz','sim','-r','-s','-v3',str(gz_world)],
