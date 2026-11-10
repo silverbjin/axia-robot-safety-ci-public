@@ -64,7 +64,18 @@ export AXIA_P2_OWNER_PINNED_SHA="$SHA"
 for CASE in G06 G07; do
   printf '\nP2_REMAINING_OWNER_START_CASE=%s\n' "$CASE"
   echo 'SIMULATION ONLY: each Goal and each Crash require explicit human TTY approval.'
-  bash "$SRC_ROOT/instructor/scripts/p2_owner_l3_wsl2.sh" --case "$CASE" || {
+  # Use a fresh detached Git worktree per cold case. G06 colcon build
+  # generates untracked build/install/log, which must never poison G07.
+  CASE_ROOT="$SRC_ROOT/case_$CASE"
+  if ! git -C "$SRC_ROOT/instructor" worktree add -q --detach "$CASE_ROOT" "$SHA"; then
+    echo "P2_REMAINING_BLOCKED: failed to create clean $CASE workspace" >&2
+    exit 2
+  fi
+  if [[ "$(git -C "$CASE_ROOT" rev-parse HEAD)" != "$SHA" || -n "$(git -C "$CASE_ROOT" status --porcelain)" ]]; then
+    echo "P2_REMAINING_BLOCKED: dirty or mismatched $CASE workspace" >&2
+    exit 2
+  fi
+  bash "$CASE_ROOT/scripts/p2_owner_l3_wsl2.sh" --case "$CASE" || {
     printf 'P2_REMAINING_OWNER_BLOCKED_CASE=%s; preserved raw evidence under $HOME/axia_p2_private_evidence\n' "$CASE" >&2
     exit 2
   }
