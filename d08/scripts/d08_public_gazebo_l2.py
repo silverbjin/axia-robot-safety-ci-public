@@ -200,11 +200,52 @@ def pregoal_lidar_physical_admission(out:Path,env:dict,processes:list)->dict:
             json.dumps({'before':before['front_m'],'after':after['front_m'],
                         'delta':observed_delta}))
     verdict['status']='PASS_ACTUAL_GAZEBO_SET_POSE_PLUS_LIDAR'
+    # Owner ODDlcnNN actual post-ACK /scan 0.46047m at dispatch 0.43m
+    # MISSED official CM StopZone (strict <0.4m). Calibrate ONE bounded
+    # stationary-robot candidate before ever changing the teacher run.
+    # This is no-Goal / no-motor test, cannot imply zero robot contacts.
+    stop_dispatch=.34
+    # Verified official Waffle world spawn x=-2.0; G07 proxy radius=.07m.
+    stop_target=(-2.0+stop_dispatch+.07,-.5,.24)
+    req_stop=('name: "axia_p2_g07_obstacle", '
+              'position: {x: %.6f, y: %.6f, z: %.6f}, orientation: {w: 1}'%stop_target)
+    moved=_run(['gz','service','-s','/world/default/set_pose',
+                '--reqtype','gz.msgs.Pose','--reptype','gz.msgs.Boolean',
+                '--timeout','5000','--req',req_stop],env,timeout=13)
+    (out/'stop_probe_set_pose_ack.txt').write_text(moved.stdout+moved.stderr)
+    if 'data: true' not in moved.stdout:
+        raise RuntimeError('D08_STOP_PROBE_GAZEBO_NATIVE_ACK_MISSING')
+    stop_scan=observe_real_front_scan(timeout_s=35)
+    verdict['stop_probe']={
+      'candidate_dispatch_m':stop_dispatch,
+      'actual_stop_front_m':stop_scan['front_m'],
+      'actual_scan':stop_scan,
+      'slow_front_before_m':after['front_m'],
+      'target_world_xyz_m':list(stop_target),
+      'native_set_pose_ack':True,
+      'actual_robot_moved':False,
+      'owner_goal_sent':False,
+      'collision_ground_truth':False,
+      'certified_estop':False,
+    }
+    (out/'stop_probe_scan_observation.json').write_text(
+        json.dumps(verdict['stop_probe'],indent=2,ensure_ascii=False)+'\n')
+    if not (.14<=stop_scan['front_m']<.4
+            and after['front_m']-stop_scan['front_m']>.07):
+        raise RuntimeError('D08_STOP_PROBE_ACTUAL_LIDAR_THRESHOLD_UNVERIFIED:'+
+                           json.dumps({'slow':after['front_m'],
+                                       'stop':stop_scan['front_m']}))
+    verdict['stop_probe']['status']='PASS_REAL_STATIC_GAZEBO_STOPZONE_SCAN'
+    (out/'stop_probe_scan_observation.json').write_text(
+        json.dumps(verdict['stop_probe'],indent=2,ensure_ascii=False)+'\n')
     (out/'pregoal_lidar_observation.json').write_text(
         json.dumps(verdict,indent=2,ensure_ascii=False)+'\n')
     print('D08_REAL_GAZEBO_PREGOAL_LIDAR_SLOWZONE_PASS '+json.dumps(
         {'before':before['front_m'],'after':after['front_m'],
          'delta':observed_delta}),flush=True)
+    print('D08_REAL_GAZEBO_STATIC_STOPZONE_SCAN_PASS '+json.dumps({
+        'dispatch':stop_dispatch,'observed_front':stop_scan['front_m'],
+        'goal_sent':False,'robot_moved':False}),flush=True)
     return verdict
 
 
