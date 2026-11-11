@@ -163,6 +163,17 @@ jobs:
           assert cm['stop_scan_is_synthetic_replay_of_real_gazebo_front'] is True
           assert cm['measured_static_stop_front_replayed_m']<=.37
           assert cm['stop_output_samples']>=15
+          # Owner l0KClvT6: after a genuine StopZone zero, continued
+          # 20Hz Supervisor input does not ensure CM keeps sending zero.
+          # Official Jazzy stop_pub_timeout=1s then ends output; Guard
+          # must fail-close at its UNCHANGED 150ms input TTL.
+          assert cm['post_stop_supervised_input_count']==100,cm
+          assert cm['post_stop_supervised_input_elapsed_sec']>=4.7,cm
+          assert cm['post_stop_native_cm_stop_pub_timeout_sec']==1.0,cm
+          assert cm['post_stop_guard_cm_ttl_sec_unchanged']==.15,cm
+          assert cm['post_stop_last_cm_output_age_sec']>.15,cm
+          assert cm['post_stop_guard_fail_closed_required'] is True,cm
+          print('D08_REAL_CM_POST_STOP_ZERO_TIMEOUT_5S_FAIL_CLOSED_L2_PASS')
           assert cm['stop_zero_output_samples']>=15
           print('D08_REAL_GAZEBO_SERVICE_DURING_NATIVE_CM_150MS_L2_PASS')
           print('D08_REAL_MEASURED_STOP_FRONT_OFFICIAL_CM_REPLAY_ZERO_L2_PASS')
