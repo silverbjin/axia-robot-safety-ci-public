@@ -57,3 +57,14 @@ def test_real_person_onnx_must_receive_post_ack_slowzone_frame():
         "slowzone_rgbd=observe_real_pair("), (
         'BGYNTV7_CAMERA_FRAME_NOT_AFTER_PHYSICAL_SCAN_ACK')
 
+
+
+def test_ci_apt_dns_failure_must_block_explicitly_before_ros_install():
+    # Actual public L2 #43053264733: archive.ubuntu.com and
+    # security.ubuntu.com DNS failed; apt-get update default returned 0,
+    # followed by a misleading python3-venv "no installation candidate".
+    # This is infrastructure unavailability, NOT a Gazebo/person verdict.
+    workflow=WORKFLOW.read_text()
+    assert 'APT::Update::Error-Mode=any' in workflow, (
+        'BGYNTV7_CI_DNS_MISCLASSIFIED_AS_MISSING_PACKAGE')
+    assert 'D08_CI_APT_REPOSITORY_UNREACHABLE' in workflow
