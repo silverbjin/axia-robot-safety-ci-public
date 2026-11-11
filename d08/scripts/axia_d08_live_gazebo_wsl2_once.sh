@@ -172,7 +172,7 @@ echo '============================================================'
 # the Owner's shell, GUI DISPLAY, files or other independent ROS workspaces.
 # ROS Jazzy and cached YOLO local_setup are sourced anew in the child.
 echo 'D08_FOOT_TUNED_SHORT_STEP_L0_CANDIDATE; NEW_GAZEBO_L2_AND_OWNER_GUI_STILL_REQUIRED'
-echo 'D08_GUI_SHORT_STEP_7CM_6CM_FOOT_VISUAL_ONLY: actual scan/foot contact must be reverified'
+echo 'D08_GUI_REAL_GAZEBO_CALIBRATED_20CM_STOP_STEP_6CM_FOOT_VISUAL_ONLY: actual scan/foot contact must be reverified'
 echo 'D08_CLEAN_ROS_ENV_ENABLED: dropping stale D03 underlay paths in child'
 env -u AMENT_PREFIX_PATH -u COLCON_PREFIX_PATH -u CMAKE_PREFIX_PATH \
     -u PYTHONPATH -u LD_LIBRARY_PATH -u ROS_DISTRO -u ROS_VERSION \
