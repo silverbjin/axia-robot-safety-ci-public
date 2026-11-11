@@ -124,8 +124,8 @@ jobs:
           assert v['pregoal_lidar']['status']=='PASS_ACTUAL_GAZEBO_SET_POSE_PLUS_LIDAR'
           stop=v['pregoal_lidar']['stop_probe']
           assert stop['status']=='PASS_REAL_STATIC_GAZEBO_STOPZONE_SCAN'
-          assert stop['candidate_dispatch_m']==.34
-          assert .14<=stop['actual_stop_front_m']<.4,stop
+          assert stop['candidate_dispatch_m']==.30
+          assert .14<=stop['actual_stop_front_m']<=.37,stop
           assert stop['native_set_pose_ack'] is True
           assert stop['actual_robot_moved'] is False
           assert stop['owner_goal_sent'] is False
