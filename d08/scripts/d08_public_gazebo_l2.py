@@ -204,7 +204,7 @@ def pregoal_lidar_physical_admission(out:Path,env:dict,processes:list)->dict:
     # MISSED official CM StopZone (strict <0.4m). Calibrate ONE bounded
     # stationary-robot candidate before ever changing the teacher run.
     # This is no-Goal / no-motor test, cannot imply zero robot contacts.
-    stop_dispatch=.34
+    stop_dispatch=.30
     # Verified official Waffle world spawn x=-2.0; G07 proxy radius=.07m.
     stop_target=(-2.0+stop_dispatch+.07,-.5,.24)
     req_stop=('name: "axia_p2_g07_obstacle", '
@@ -230,8 +230,8 @@ def pregoal_lidar_physical_admission(out:Path,env:dict,processes:list)->dict:
     }
     (out/'stop_probe_scan_observation.json').write_text(
         json.dumps(verdict['stop_probe'],indent=2,ensure_ascii=False)+'\n')
-    if not (.14<=stop_scan['front_m']<.4
-            and after['front_m']-stop_scan['front_m']>.07):
+    if not (.14<=stop_scan['front_m']<=.37
+            and after['front_m']-stop_scan['front_m']>.09):
         raise RuntimeError('D08_STOP_PROBE_ACTUAL_LIDAR_THRESHOLD_UNVERIFIED:'+
                            json.dumps({'slow':after['front_m'],
                                        'stop':stop_scan['front_m']}))
