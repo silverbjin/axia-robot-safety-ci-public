@@ -25,6 +25,7 @@ jobs:
           python3 -m pip install -q --disable-pip-version-check pytest==8.3.5
           PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest -q \
             d08/tests/test_d08_1c0v_guard_first_failure.py \
+            d08/tests/test_d08_1xzy_first_guard_budget.py \
             d08/tests/test_d08_last_mile_bootstrap.py
           python3 - <<'PY'
           from pathlib import Path
