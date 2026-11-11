@@ -125,8 +125,12 @@ jobs:
                 plugin: yolo_ros/DebugPlugin
                 cameras: ["cam0"]
           YAML
+          # ROS 2 setup scripts read optional environment variables.
+          # Owner UI9 real CI: AMENT_TRACE_SETUP_FILES was unset under -u.
+          set +u
           source /opt/ros/jazzy/setup.bash
           source /tmp/axia_ui9_yolo_ws/install/setup.bash
+          set -u
           setsid ros2 launch yolo_bringup yolo.launch.py \
             params_file:=/tmp/axia_ui9_yolo_model/d08_ui9_yolo.yaml \
             > /tmp/ui9_yolo_runtime.log 2>&1 &
