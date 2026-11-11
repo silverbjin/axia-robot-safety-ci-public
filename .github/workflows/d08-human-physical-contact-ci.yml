@@ -128,6 +128,15 @@ jobs:
           assert .14<=stop['actual_stop_front_m']<=.37,stop
           assert stop['native_set_pose_ack'] is True
           assert stop['actual_robot_moved'] is False
+          # Actual 640x480 registered RGBD AFTER stop set_pose at ~0.35m.
+          # Catch the old Owner pants-only screenshot on real Gazebo pixels.
+          assert v['actual_stop_rgbd']['matched'] is True,v
+          assert v['actual_stop_visual']['status']=='VISUAL_FRAMING_CANDIDATE',v
+          assert v['actual_stop_visual']['sampled_head_skin_pixels']>=50,v
+          assert v['actual_stop_visual']['sampled_shirt_green_pixels']>=150,v
+          assert v['actual_stop_visual']['sampled_navy_pants_pixels']>=150,v
+          assert v['actual_stop_visual']['yolo_person_detection_verified'] is False
+          print('D08_REAL_GAZEBO_STOPZONE_RGBD_FULLBODY_FRAMING_L2_PASS')
           assert stop['owner_goal_sent'] is False
           assert stop['collision_ground_truth'] is False
           print('D08_REAL_GAZEBO_STATIC_STOPZONE_DISTANCE_L2_PASS')
