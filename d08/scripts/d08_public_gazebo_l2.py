@@ -113,9 +113,11 @@ def observe_real_front_scan(timeout_s=30.0):
     rclpy.init()
     node=rclpy.create_node('axia_d08_no_goal_lidar_ci_probe')
     fronts=[]
+    samples=[]
     last_stamp=None
     def scan_cb(m):
         nonlocal last_stamp
+        wall_received=time.monotonic()  # ROS callback arrival, NOT header sim-time.
         stamp=int(m.header.stamp.sec)*10**9+int(m.header.stamp.nanosec)
         if stamp<=0 or stamp==last_stamp:
             return
@@ -123,16 +125,31 @@ def observe_real_front_scan(timeout_s=30.0):
         good=[float(v) for i,v in enumerate(m.ranges)
               if abs(float(m.angle_min)+i*float(m.angle_increment))<=0.18
               and math.isfinite(v) and m.range_min<=v<=m.range_max]
-        if good:fronts.append(min(good))
+        if good:
+            fronts.append(min(good))
+            samples.append((wall_received,stamp))
     node.create_subscription(LaserScan,'/scan',scan_cb,qos_profile_sensor_data)
     try:
         end=time.monotonic()+timeout_s
         while time.monotonic()<end:
-            rclpy.spin_once(node,timeout_sec=.35)
-            if len(fronts)>=6:
+            rclpy.spin_once(node,timeout_sec=.20)
+            # Previous CI accepted six scans regardless of wall-time gaps.
+            # Now require a brief real measured scan stream, not six values.
+            if len(fronts)>=20:
+                import statistics
+                wall_gaps=[b[0]-a[0] for a,b in zip(samples,samples[1:])]
+                sim_gaps=[(b[1]-a[1])/1e9 for a,b in zip(samples,samples[1:])]
+                ordered=sorted(wall_gaps)
+                p=lambda q:ordered[max(0,math.ceil(q*len(ordered))-1)]
                 return {'front_m':round(sorted(fronts[-5:])[2],6),
                         'scan_count':len(fronts),
                         'front_samples_m':[round(v,6) for v in fronts[-5:]],
+                        'wall_gap_max_sec':round(max(wall_gaps),6),
+                        'wall_gap_p95_sec':round(p(.95),6),
+                        'wall_gap_p99_sec':round(p(.99),6),
+                        'sim_stamp_period_median_sec':round(statistics.median(sim_gaps),6),
+                        'observed_rtf':round(sum(sim_gaps)/sum(wall_gaps),4),
+                        'wallclock_measured':True,
                         'source':'actual_ros_sensor_msgs_LaserScan',
                         'no_synthetic_scan':True}
         raise RuntimeError('D08_REAL_GAZEBO_LIDAR_SCAN_MISSING')
