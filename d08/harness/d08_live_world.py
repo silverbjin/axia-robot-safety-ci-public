@@ -170,6 +170,20 @@ def build_overlay(world: Path, robot: Path, actor_mesh: Path, output: Path) -> d
         vis=lidar.find('visualize')
         if vis is not None:
             vis.text='false'  # Gazebo ray visualization is not the actual /scan.
+    # Owner 1XZYehm8: D08 uses its registered 640x480 RGBD. The
+    # upstream Waffle's unused 320x240, 5Hz intel depth sensor adds
+    # redundant GPU rendering under WSLg. Remove ONLY from generated
+    # D08 SDF overlay. Official robot source file remains unchanged.
+    legacy=cam.findall("./sensor[@name='intel_realsense_r200_depth']")
+    if len(legacy)>1:
+        raise ValueError('D08_LEGACY_DEPTH_SENSOR_NOT_UNIQUE')
+    legacy_depth_removed=False
+    if legacy:
+        old=legacy[0]
+        if old.get('type')!='depth' or (old.findtext('update_rate') or '').strip()!='5':
+            raise ValueError('D08_LEGACY_DEPTH_SENSOR_UPSTREAM_UNEXPECTED')
+        cam.remove(old)
+        legacy_depth_removed=True
     before_plugins = len(r.getroot().findall('.//plugin'))
     sensor = ET.SubElement(cam, 'sensor', {
         'name':SENSOR_NAME, 'type':'rgbd_camera'
@@ -238,6 +252,7 @@ def build_overlay(world: Path, robot: Path, actor_mesh: Path, output: Path) -> d
       'd08_original_lidar_sim_rate_hz':lidar_rate_before,
       'd08_gpu_lidar_sim_rate_hz':GPU_LIDAR_SIM_RATE_HZ if lidar_rate_before else None,
       'd08_scan_watchdog_sec_unchanged':0.5,
+      'd08_unused_upstream_depth_sensor_removed':legacy_depth_removed,
       'physical_obstacle_static_gap_not_certified':True,
       'gazebo_physical_fixture':PHYSICAL_NAME,
       'rgb_topic':RGB_TOPIC,
