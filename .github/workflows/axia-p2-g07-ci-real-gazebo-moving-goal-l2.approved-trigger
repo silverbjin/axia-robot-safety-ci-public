@@ -1,10 +1,12 @@
-# INFRA-ONLY retry, same exact GREEN Instructor SHA. Previous runs never sent a Goal:
-# 43041110273 apt blocked; 43042223936 DNS preflight blocked.
-# CI Docker explicit DNS 1.1.1.1/8.8.8.8; required preflight must PASS.
-private_source_sha=7186def36e78f8c764d5d01b63b6d586f4bf0488
-public_l0_red_run=43040702422
-public_l0_green_run=43040932165
-previous_infra_blocked=43042223936
-scope=SIM_ONLY_REAL_HARMONIC_CLEAR_SLOW_REVERSE_STOP_ODOM1S_TTL
+# Public CI-only real Gazebo Harmonic moving Goal, no WSL2 Owner consent bypass.
+# RED #43044500956 (5 failed) -> GREEN #43044930623 (137 passed).
+# Guard CM receives registered first, original QoS depth 10 and CM_TTL_SEC=0.15 intact.
+# Extra timestamps are DIAGNOSTIC; no synthetic CM/scan/fault or safety waiver.
+private_source_sha=efa72d2f60ac1ce7201a0b17c41024147c4697f4
+l0_red_run=43044500956
+l0_green_run=43044930623
+l0_green_sha=2618fb3511ca797459e18b3889c80fa434996f35
+previous_l2_guard_cm_age_ms=155.425255
+scope=REAL_SIM_CLEAR_SLOW_STOP_ODOM1S_ALL_NODE_TTL
 owner_l3_accepted=false
 certified_estop=false
