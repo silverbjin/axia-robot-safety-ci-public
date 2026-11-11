@@ -1,5 +1,9 @@
 name: AXIA D08 DNS parity probe (no ROS, no Goal)
 on:
+  pull_request:
+    branches: ['fix/d08-bgyntv7-actual-person-ci-20261112']
+    paths:
+      - '.github/workflows/d08-dns-parity-20261112.yml'
   push:
     branches: ['ci/d08-dns-parity-20261112']
     paths:
