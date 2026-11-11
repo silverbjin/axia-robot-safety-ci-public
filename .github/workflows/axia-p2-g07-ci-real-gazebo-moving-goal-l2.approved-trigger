@@ -1,10 +1,12 @@
-# Authorized CI-only real Gazebo Harmonic/Nav2 moving Goal, no Owner TTY bypass.
-# Explicitly scoped to simulation and PR #112. No hardware robot, fault or crash.
-private_source_sha=51e410d401752930266060829844bf17ad2de3a6
-public_l0_green_run=42977816072
-public_l0_green_sha=c276c81004725b8a545da1bb80fac7e5ea6d909c
-red_run=42977409261
-scope=CLEAR_SLOW_STOP_ODOM_1S_GUARD_CM_TTL_0.15S
+# Second bounded CI simulation Goal only after a NEW reproducible L0 RED->GREEN.
+# Purpose: isolate first node-to-node delivery TTL breach from previous run.
+# NO change to P2 Guard TTL, Gazebo hardware, Owner TTY or main.
+private_source_sha=eff59a11ef2539f8d7e2b9135559169351470c3f
+public_l0_green_run=42979979266
+public_l0_green_sha=a267118d8fe69ffba0e295481d9379fbd2654765
+previous_real_run=42978878167
+previous_real_blocker=SAFETY_DELIVERY_TTL_BOUNDARY_max_source_interval_sec
+scope=CLEAR_SLOW_STOP_ODOM_1S_AND_FIRST_DELIVERY_TTL_GAP_DIAGNOSTIC
 owner_l3_accepted=false
 hardware_estop_certified=false
 approval=CI_SIMULATION_ONLY_ONE_GOAL
