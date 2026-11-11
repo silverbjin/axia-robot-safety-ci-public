@@ -18,16 +18,26 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: a4dfec3ccd394f8b9fd2d33d68ed5654d4a45d33
+          ref: d087a461e59428f611df0d5929428aff5e8b08de
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Independent actual moving Goal and fail-closed safety oracle
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = 'a4dfec3ccd394f8b9fd2d33d68ed5654d4a45d33'
+          test "$(git rev-parse HEAD)" = 'd087a461e59428f611df0d5929428aff5e8b08de'
           python3 -m pip install -q --disable-pip-version-check pytest==8.3.5
           python3 -m pytest -q -ra tests/unit/test_p2_g07_ci_moving_goal_oracle.py
+          python3 -m py_compile tools/p2_g07_ci_moving_goal.py tools/p2_g07_ci_moving_goal_oracle.py
+          bash -n scripts/p2_no_goal_smoke_ci.sh
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('scripts/p2_no_goal_smoke_ci.sh').read_text()
+          assert 'AXIA_G07_CI_SIM_GOAL_ALLOWED' in s
+          assert 'GITHUB_ACTIONS' in s and '--pregoal' in s
+          assert not any(x in s for x in ('echo YES-P2-G07-GOAL |','expect -c'))
+          print('AXIA_G07_CI_SEPARATE_FROM_OWNER_TTY_CONTRACT_PASS')
+          PY
           echo 'AXIA_G07_CI_REAL_MOVING_GOAL_ORACLE_L0_PASS_ONLY_NO_GAZEBO'
       - name: Remove all private checkout
         if: always()
