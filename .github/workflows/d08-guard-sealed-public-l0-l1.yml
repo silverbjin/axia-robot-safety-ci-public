@@ -37,6 +37,12 @@ jobs:
           assert 'persist-credentials: false' in sealed
           assert ('upload'+'-artifact@') not in sealed
           assert 'YES-P2-G07-GOAL' in wrapper
+          # wZBKMnXa regression: the actual teacher shell and private test
+          # must be included in the exact pinned public sealed job. Existing
+          # Owner Goal consent stays mandatory.
+          assert 'tests/unit/test_d08_wzbk_ordered_teardown.py' in sealed
+          assert 'CM_LIFECYCLE' in sealed or 'wzbk_ordered_teardown' in sealed
+          print('AXIA_D08_WZBK_PRIVATE_CM_SHUTDOWN_TEST_PIN_CONTRACT_PASS')
           # Owner 1C0vNYRe follow-on: old CI in one DDS domain
           # observed apparent AUTO_RESUME_AFTER_LATCH in test two.
           # RED #42951898760; separate-domain GREEN #42952144147.
