@@ -109,6 +109,16 @@ jobs:
           root=Path('results/d08-human-contact-calibration')
           v=json.loads((root/'verdict.json').read_text())
           assert v['status']=='D08_REAL_GAZEBO_WAFFLE_RGBD_NO_GOAL_PASS'
+          # Owner 1XZYehm8: old upstream intel depth + new 640x480 RGBD
+          # rendered concurrently under WSLg. Assert REAL official Waffle
+          # copied model has only D08 camera, without changing /opt/ros.
+          assert v['overlay_manifest']['d08_unused_upstream_depth_sensor_removed'] is True
+          import xml.etree.ElementTree as ET
+          robot=ET.parse(v['overlay_manifest']['robot_sdf']).getroot()
+          assert robot.find(".//sensor[@name='intel_realsense_r200_depth']") is None
+          assert robot.find(".//sensor[@name='axia_d08_registered_rgbd']") is not None
+          assert robot.find(".//sensor[@name='hls_lfcd_lds']/update_rate").text=='10'
+          print('D08_REAL_GAZEBO_SINGLE_RGBD_GPU_LOAD_L2_PASS')
           assert v['actual_rgbd']['matched'] is True
           assert v['contact_topic_proven'] is True
           assert v['pregoal_lidar']['status']=='PASS_ACTUAL_GAZEBO_SET_POSE_PLUS_LIDAR'
