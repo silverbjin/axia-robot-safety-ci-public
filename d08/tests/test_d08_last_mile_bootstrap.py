@@ -12,6 +12,11 @@ def test_exact_private_revision_and_no_auto_consent():
     # A single-branch shallow clone must refer to the branch that actually
     # contains PRIVATE_SHA; otherwise all WSL2 runs fail after checkout.
     assert '--single-branch --branch "$PRIVATE_BRANCH" --depth 1' in src
+    # PR #105 advanced by CI-only commits: branch-tip equality MUST NOT gate
+    # acceptance. Fetch the exact previously validated commit and detach.
+    assert 'git -C "$SRC/instructor" fetch --no-tags --depth 1 origin "$PRIVATE_SHA"' in src
+    assert 'git -C "$SRC/instructor" -c advice.detachedHead=false checkout --detach "$PRIVATE_SHA"' in src
+    assert '"$(git -C "$SRC/instructor" rev-parse HEAD)" == "$PRIVATE_SHA"' in src
     assert "G07_PRIVATE_STOP_043_CONTACT_AND_SHUTDOWN_AUDIT_PREFLIGHT_PASS" in src
     assert "STOP_DISPATCH_M==0.43" in src
     assert "YES-P2-G07-GOAL" in src
