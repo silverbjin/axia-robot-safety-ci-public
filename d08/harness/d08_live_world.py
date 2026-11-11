@@ -36,6 +36,11 @@ HUMAN_MODEL_REST_Z_M=0.24
 # toes below Gazebo's rendered ground. D08 visual-only 6cm correction,
 # NEVER applied to model/collision/contact/set_pose z.
 # On-screen toe-to-floor contact still requires owner GUI confirmation.
+# D08-only upstream Waffle scan is 5 simulated Hz. Owner RTF~0.364 gives
+# ~0.55s wall scan spacing > 0.5s fail-closed Watchdog. At 10 simulated Hz
+# the idealized wall gap is ~0.275s at the SAME RTF (NOT a WSL2 guarantee).
+# Official installed TurtleBot3/Nav2 files and safety timeout stay untouched.
+GPU_LIDAR_SIM_RATE_HZ=10
 HUMAN_FOOT_RENDER_TUNE_M=0.06
 HUMAN_VISUAL_LOCAL_Z_M=round(
     -HUMAN_MODEL_REST_Z_M-HUMAN_DAE_MIN_Z_M*HUMAN_SCALE
@@ -149,13 +154,30 @@ def build_overlay(world: Path, robot: Path, actor_mesh: Path, output: Path) -> d
         raise ValueError('D08_OFFICIAL_WAFFLE_CAMERA_LINK_MISSING')
     if r.getroot().find(".//sensor[@name='" + SENSOR_NAME + "']") is not None:
         raise ValueError('D08_DUPLICATE_RGBD')
+    # Only the ephemeral D08 robot SDF overlay changes LiDAR scheduling;
+    # do not modify /opt/ros, Nav2, Collision Monitor, or Supervisor.
+    lidar_nodes=r.getroot().findall(".//sensor[@name='hls_lfcd_lds']")
+    if len(lidar_nodes)>1:
+        raise ValueError('D08_GPU_LIDAR_NOT_UNIQUE')
+    lidar_rate_before=None
+    if lidar_nodes:
+        lidar=lidar_nodes[0]
+        hz=lidar.find('update_rate')
+        if lidar.get('type')!='gpu_lidar' or hz is None or (hz.text or '').strip()!='5':
+            raise ValueError('D08_UPSTREAM_GPU_LIDAR_RATE_UNEXPECTED')
+        lidar_rate_before=5
+        hz.text=str(GPU_LIDAR_SIM_RATE_HZ)
+        vis=lidar.find('visualize')
+        if vis is not None:
+            vis.text='false'  # Gazebo ray visualization is not the actual /scan.
     before_plugins = len(r.getroot().findall('.//plugin'))
     sensor = ET.SubElement(cam, 'sensor', {
         'name':SENSOR_NAME, 'type':'rgbd_camera'
     })
     # Owner real RGB was cropped to pants (tv=86, person=0).
     # Wider pinhole RGBD FOV and slight upward aim frame a grounded human.
-    # Neither Nav2 nor LiDAR/CM sensors or thresholds are changed.
+    # Official/Nav2 and CM safety thresholds unchanged; only D08 copied
+    # Waffle LiDAR scheduling is retuned above (not an /opt/ros edit).
     _sub(sensor,'pose','0 0 0 0 -0.30 0')
     _sub(sensor,'always_on','1')
     _sub(sensor,'update_rate','5')
@@ -213,6 +235,9 @@ def build_overlay(world: Path, robot: Path, actor_mesh: Path, output: Path) -> d
       'robot_world_spawn':{'x':-2.0,'y':-0.5,'yaw':0.0},
       'rgbd_horizontal_fov_rad':1.95,
       'rgbd_sensor_pitch_rad':-0.30,
+      'd08_original_lidar_sim_rate_hz':lidar_rate_before,
+      'd08_gpu_lidar_sim_rate_hz':GPU_LIDAR_SIM_RATE_HZ if lidar_rate_before else None,
+      'd08_scan_watchdog_sec_unchanged':0.5,
       'physical_obstacle_static_gap_not_certified':True,
       'gazebo_physical_fixture':PHYSICAL_NAME,
       'rgb_topic':RGB_TOPIC,
