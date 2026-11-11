@@ -68,3 +68,14 @@ def test_ui9_pinned_cpp_upstream_vendor_build_dependencies_present():
     txt=(ROOT/'.github/workflows/d08-ui9-yolo-replay-l1.yml').read_text()
     assert 'libcurl4-openssl-dev' in txt, 'UI9_YOLO_VENDOR_CURL_DEV_MISSING'
     assert '-DBUILD_TESTING=OFF' in txt, 'UI9_YOLO_REPLAY_SHOULD_NOT_BUILD_UPSTREAM_TESTS'
+
+
+def test_ui9_avoid_sourcing_ros_jazzy_under_nounset():
+    # Actual UI9 replay CI #43071817571 built pinned C++ YOLO successfully,
+    # then failed on `AMENT_TRACE_SETUP_FILES: unbound variable` BEFORE launch.
+    # ROS environment setup scripts read optional env vars: disable nounset
+    # ONLY across source setup.bash; restore nounset immediately afterwards.
+    text=(ROOT/'.github/workflows/d08-ui9-yolo-replay-l1.yml').read_text()
+    assert 'set +u\n          source /opt/ros/jazzy/setup.bash' in text, (
+        'UI9_ROS_SETUP_UNDER_NOUNSET_REGRESSION')
+    assert 'source /tmp/axia_ui9_yolo_ws/install/setup.bash\n          set -u' in text
