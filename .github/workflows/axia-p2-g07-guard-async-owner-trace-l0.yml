@@ -1,0 +1,40 @@
+name: AXIA P2 G07 Owner async Guard trace RED-to-GREEN L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths:
+      - '.github/workflows/axia-p2-g07-guard-async-owner-trace-l0.yml'
+permissions:
+  contents: read
+concurrency:
+  group: axia-p2-g07-async-guard-owner-trace-l0
+  cancel-in-progress: false
+jobs:
+  actual-owner-trace-l0:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: axia-instructor-sealed
+    steps:
+      - name: Private Instructor exact source from unmerged candidate
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 334bccb1268e8e0ed4e2ac4d0c7caa28d8a34910
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Deterministic real Owner async trace plus Guard safety regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = '334bccb1268e8e0ed4e2ac4d0c7caa28d8a34910'
+          python3 -m pip install --disable-pip-version-check -q pytest==8.3.5
+          python3 -m pytest -q -ra \
+            tests/unit/test_p2_g07_guard_async_owner_trace.py \
+            tests/unit/test_p2_base_guard_policy.py \
+            tests/unit/test_p2_guard_cancel_contract.py \
+            tests/unit/test_p2_guard_parameter_init_contract.py
+          echo 'AXIA_G07_OWNER_ASYNC_GUARD_L0_PASS_REAL_TRACE_NO_GOAL'
+      - name: Clear private source and testing fixture
+        if: always()
+        shell: bash
+        run: rm -rf -- .git tools scripts tests ros2_ws configs docs fixtures results
