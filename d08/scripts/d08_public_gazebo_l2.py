@@ -289,7 +289,7 @@ def positive_contact_once(out:Path,env:dict,contact_topic:str)->dict:
     return verdict
 
 
-def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=False):
+def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=False,cm_cadence_l1:bool=False):
     out=Path(out).resolve()
     if out.exists():raise ValueError('D08_EVIDENCE_EXISTS')
     out.mkdir(parents=True)
@@ -393,6 +393,19 @@ def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=Fals
         if positive_contact:
             result['positive_contact_calibration']=positive_contact_once(
                 out,env,contact_topic)
+        if cm_cadence_l1:
+            # Real OFFICIAL Jazzy CM while Gazebo server + GPU LiDAR/RGBD
+            # are running. Isolated /axia_ci/* commands NEVER reach robot.
+            # This is still NO-GOAL synthetic-command diagnostic, NOT the
+            # Owner WSLg/YOLO/Guard end-to-end acceptance.
+            from d08_real_nav2_cm_l1 import run as cm_run
+            cm_dir=out/'cm_cadence_l1'
+            cm_rc=cm_run(cm_dir)
+            result['cm_cadence_l1']=json.loads(
+                (cm_dir/'verdict.json').read_text())
+            if cm_rc!=0:
+                raise RuntimeError('D08_REAL_GAZEBO_LOADED_CM_L1_FAILED')
+            print('D08_REAL_GAZEBO_CONCURRENT_CM_L1_PASS_NO_GOAL',flush=True)
         result['status']='D08_REAL_GAZEBO_WAFFLE_RGBD_NO_GOAL_PASS'
         result['ros_actual']=True
         result['gazebo_actual']=True
@@ -420,8 +433,10 @@ if __name__=='__main__':
     p.add_argument('--actor',type=Path,required=True)
     p.add_argument('--lidar-pre-goal',action='store_true',
         help='Real /scan before and after G07 set_pose, no Nav2 Goal')
+    p.add_argument('--cm-cadence-l1',action='store_true',
+                   help='Isolated official CM synthetic command test during real GPU Gazebo')
     p.add_argument('--positive-contact-once',action='store_true',
         help='Single non-robot Gazebo Contact positive calibration, no Nav2 Goal')
     a=p.parse_args()
     raise SystemExit(run(a.out,a.actor,positive_contact=a.positive_contact_once,
-                             lidar_pre_goal=a.lidar_pre_goal))
+                             lidar_pre_goal=a.lidar_pre_goal,cm_cadence_l1=a.cm_cadence_l1))
