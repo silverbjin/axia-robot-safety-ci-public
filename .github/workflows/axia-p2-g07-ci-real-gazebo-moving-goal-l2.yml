@@ -1,6 +1,11 @@
 # Exact private source SHA pinned; GREEN L0 111 tests run #42977816072.
 # This real-L2 run must validate live Collision Monitor stop_pub_timeout=5s,
 # unchanged Guard input TTL=150ms and CLEAR/SLOW/STOP plus odom dwell.
+# HOLD: actual moving CI #42989423638 failed at first CM age 194.599ms
+# against immutable 150ms CM TTL despite 40Hz; that trial was reverted.
+# Source below is L0-green rollback #42990244719 (127 PASS), but has NOT
+# passed a new real moving L2. Do not update approved-trigger / deploy WSL2
+# until a separately reproduced CM pipeline fix passes real moving L2.
 name: AXIA G07 CI-only actual Harmonic Nav2 MOVING Goal CLEAR SLOW STOP
 on:
   push:
@@ -33,7 +38,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 53c8bb56f888c78f72d26e38dbfe38ce71d841bf
+          ref: 1bd12e3b98ec887d862d1be23a26c39a8f56a6cc
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -41,7 +46,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '53c8bb56f888c78f72d26e38dbfe38ce71d841bf'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '1bd12e3b98ec887d862d1be23a26c39a8f56a6cc'
           bash ci-tools/scripts/axia_ci_enable_osrf_gazebo_repo.sh
           DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends procps git
           cd instructor
@@ -87,7 +92,7 @@ jobs:
         run: |
           set -euo pipefail
           cd instructor
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '53c8bb56f888c78f72d26e38dbfe38ce71d841bf'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '1bd12e3b98ec887d862d1be23a26c39a8f56a6cc'
           timeout --signal=TERM --kill-after=10s 900s \
             bash scripts/p2_no_goal_smoke_ci.sh || {
             echo 'AXIA_G07_CI_MOVING_GOAL_REAL_GAZEBO_BLOCKED'
