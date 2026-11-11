@@ -74,13 +74,23 @@ def run(args)->int:
         raise ValueError("D08_YOLO_ONNX_INPUT_NOT_OWNER_480x640")
     before=inspect_frame(session,Path(args.frame))
     after=inspect_frame(session,Path(args.stop_frame)) if args.stop_frame else None
+    # Owner UI9iQEzj originally observed only umbrella at the 1.35m
+    # world fixture. A nearby real Gazebo stop-frame class-0 response must
+    # be POSITIVE too. Earlier CI calculated the StopZone diagnostic but
+    # silently allowed it to be person-zero.
+    stop_frame_person_verified=(
+        after is not None and after["pass_real_person_model_canary"])
+    pass_both_frames=(before["pass_real_person_model_canary"]
+                      and stop_frame_person_verified)
     verdict={
         "source":"ACTUAL_PUBLIC_GAZEBO_RGB_FRAME_OFFLINE_ONNX_MODEL",
         "model_sha256":EXPECTED_SHA,
-        "status":"PASS_MODEL_ONLY" if before["pass_real_person_model_canary"]
-                 else "BLOCKED_REAL_FRAME_MODEL_PERSON_ZERO",
+        "status":"PASS_MODEL_ONLY" if pass_both_frames
+                 else "STOPZONE_PERSON_CLASS_ZERO",
         "pre_goal":before,
         "stop_frame_diagnostic_only":after,
+        "stop_frame_person_verified":stop_frame_person_verified,
+        "stop_frame_actual_rgb_required":True,
         "owner_yolo_ros_detection_array_verified":False,
         "private_d05_verified":False,
         "owner_wslg_full_runtime_verified":False,
@@ -93,12 +103,16 @@ def run(args)->int:
             "person_candidates":before["person_candidate_count"],
             "umbrella_candidates":before["umbrella_candidate_count"],
             "person_max":before["highest_person_class_score"],
-            "umbrella_max":before["highest_umbrella_class_score"]}),
+            "umbrella_max":before["highest_umbrella_class_score"],
+            "stop_person_candidates":after["person_candidate_count"] if after else None,
+            "stop_person_max":after["highest_person_class_score"] if after else None}),
             flush=True)
         return 2
     print("D08_ACTUAL_ONNX_PERSON_FRAME_L2_PASS "+
           json.dumps({"person_candidates":before["person_candidate_count"],
-                      "person_max":before["highest_person_class_score"]}),flush=True)
+                      "person_max":before["highest_person_class_score"],
+                      "stop_person_candidates":after["person_candidate_count"],
+                      "stop_person_max":after["highest_person_class_score"]}),flush=True)
     return 0
 
 def main()->None:
