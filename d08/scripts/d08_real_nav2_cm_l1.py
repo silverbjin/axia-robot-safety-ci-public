@@ -94,13 +94,20 @@ def run(out):
             receipts.append(time.monotonic())
             speeds.append(msg.linear.x)
         subscription=node.create_subscription(Twist,'/axia_ci/cm_output',accept,10)
-        # Allow real CM DDS subscriptions time to discover the publishers.
-        first=time.monotonic()
-        while time.monotonic()-first<1.2:
-            rclpy.spin_once(node,timeout_sec=.04)
-        sent=[]
-        for i in range(82):
-            start=time.monotonic()
+        # Owner 1XZYehm8: previous L2 accepted 57/82 CM outputs while
+        # evaluating only 47 interior gaps. Verify DDS discovery AND real
+        # CM warm-up before the 20Hz steady-state sample window. Startup
+        # silence must not be misclassified as steady-state delivery loss.
+        ready_deadline=time.monotonic()+8.0
+        while time.monotonic()<ready_deadline:
+            if (pub.get_subscription_count()>0
+                    and scan_pub.get_subscription_count()>0
+                    and node.count_publishers('/axia_ci/cm_output')>0):
+                break
+            rclpy.spin_once(node,timeout_sec=.05)
+        else:
+            raise RuntimeError('NATIVE_CM_L1_DDS_DISCOVERY_UNREADY')
+        def publish_pair():
             stamp=node.get_clock().now().to_msg()
             scan=LaserScan();scan.header.stamp=stamp
             scan.header.frame_id='base_scan'
@@ -111,13 +118,24 @@ def run(out):
             scan_pub.publish(scan)
             twist=Twist();twist.linear.x=.08
             pub.publish(twist)
-            sent.append(start)
+        def publish_period():
+            start=time.monotonic()
+            publish_pair()
             while time.monotonic()-start<.05:
                 rclpy.spin_once(node,timeout_sec=.008)
+            return start
         for _ in range(20):
+            publish_period()
+        warmup_output_count=len(receipts)
+        if warmup_output_count<10:
+            raise RuntimeError('NATIVE_CM_L1_WARMUP_OUTPUT_MISSING:'+str(warmup_output_count))
+        receipts.clear();speeds.clear()
+        sent=[publish_period() for _ in range(82)]
+        for _ in range(12):
             rclpy.spin_once(node,timeout_sec=.02)
-        if len(receipts)<40:
-            raise RuntimeError('NATIVE_CM_L1_INSUFFICIENT_OUTPUT:'+str(len(receipts)))
+        if len(receipts)<74:
+            raise RuntimeError('NATIVE_CM_L1_STEADY_STATE_DELIVERY_INSUFFICIENT:'+
+                               str(len(receipts))+'/82')
         # Exclude startup/discovery and shutdown portions; require actual
         # continuous output while messages are being delivered.
         used=receipts[5:-5]
@@ -126,6 +144,9 @@ def run(out):
             status='REAL_NAV2_CM_L1_CADENCE_PASS',
             output_count=len(receipts),
             input_count=len(sent),
+            warmup_output_count=warmup_output_count,
+            steady_delivery_ratio=round(len(receipts)/len(sent),4),
+            scan_qos_discovery_verified=True,
             callback_wall_max_sec=round(max(gaps),6),
             callback_wall_p95_sec=_pct(gaps,.95),
             callback_wall_p99_sec=_pct(gaps,.99),
