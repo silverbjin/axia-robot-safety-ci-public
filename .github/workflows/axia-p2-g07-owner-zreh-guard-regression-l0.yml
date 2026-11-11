@@ -37,7 +37,35 @@ jobs:
             tests/unit/test_p2_guard_parameter_init_contract.py
           python3 -m py_compile ros2_ws/src/axia_safety_supervisor/axia_safety_supervisor/p2_base_guard_policy.py
           bash -n scripts/p2_guard_ros_smoke_ci.sh
-          echo 'AXIA_G07_KCA1_OWNER_CM_SLOWDOWN_L0_GREEN_PASS_NO_GOAL'
+          echo 'AXIA_G07_ZREH_OWNER_CM_SLOWDOWN_L0_GREEN_PASS_NO_GOAL'
+      - name: Mutation safety gate - old historical origin magnitude bound must break Owner regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          TARGET=ros2_ws/src/axia_safety_supervisor/axia_safety_supervisor/p2_base_guard_policy.py
+          cp "$TARGET" /tmp/zreh_policy_original.py
+          trap 'cp /tmp/zreh_policy_original.py "$TARGET"' EXIT
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('ros2_ws/src/axia_safety_supervisor/axia_safety_supervisor/p2_base_guard_policy.py')
+          s=p.read_text()
+          old='and origin.linear_x != 0'
+          assert s.count(old)==1
+          p.write_text(s.replace(old,'and 0 < abs(origin.linear_x) <= 0.01'))
+          PY
+          set +e
+          python3 -m pytest -q \
+            tests/unit/test_p2_g07_guard_zreh_owner_cm_skew.py::test_zreh_actual_30pct_delayed_cm_direction_change_no_false_latch \
+            >/tmp/zreh_expected_mutation_red.log 2>&1
+          RC=$?
+          set -e
+          if [[ "$RC" -eq 0 ]];then
+            echo AXIA_ZREH_MUTATION_GATE_BLOCKED_REGRESSION_TEST_BLIND
+            exit 2
+          fi
+          grep -q 'a real matching old 30pct CM output must not permanently cancel Nav2 Goal' \
+            /tmp/zreh_expected_mutation_red.log || { cat /tmp/zreh_expected_mutation_red.log;exit 2; }
+          echo AXIA_ZREH_MUTATION_EXPECTED_RED_CAUGHT_PASS
       - name: Purge sealed private source
         if: always()
         shell: bash
