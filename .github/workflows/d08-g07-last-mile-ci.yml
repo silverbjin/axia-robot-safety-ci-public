@@ -7,6 +7,7 @@ on:
       - 'd08/tests/test_g07_*'
       - 'd08/tests/test_d08_last_mile*'
       - 'd08/tests/test_d08_axvm_scan_timing.py'
+      - 'd08/tests/test_d08_1c0v_guard_first_failure.py'
       - 'd08/tests/test_d08_g07_lidar_visible_proxy.py'
       - 'd08/tests/test_d08_rgbd_alignment_evidence.py'
       - 'd08/tests/test_d08_single_human_visual_regression.py'
@@ -44,6 +45,7 @@ jobs:
             d08/tests/test_g07_cm_shutdown_audit.py \
             d08/tests/test_d08_last_mile_bootstrap.py \
             d08/tests/test_d08_axvm_scan_timing.py \
+            d08/tests/test_d08_1c0v_guard_first_failure.py \
             d08/tests/test_d08_g07_lidar_visible_proxy.py \
             d08/tests/test_d08_rgbd_alignment_evidence.py \
             d08/tests/test_d08_single_human_visual_regression.py \
