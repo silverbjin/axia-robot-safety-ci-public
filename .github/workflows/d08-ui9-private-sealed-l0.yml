@@ -1,0 +1,67 @@
+name: AXIA D08 UI9 sealed instructor reversible vision L0 (NO GOAL)
+on:
+  pull_request:
+    branches: ['fix/d08-bgyntv7-actual-person-ci-20261112']
+    paths:
+      - '.github/workflows/d08-ui9-private-sealed-l0.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  public-pin-and-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: UI9 public field negative case and sealed SHA pin
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = 'silverbjin/axia-robot-safety-ci-public'
+          grep -F '053102abacd724f40db9ea22a38904ce398f8dcd' \
+            .github/workflows/d08-ui9-private-sealed-l0.yml >/dev/null
+          grep -F 'tests/unit/test_d08_ui9_reversible_vision.py' \
+            .github/workflows/d08-ui9-private-sealed-l0.yml >/dev/null
+          echo 'D08_UI9_PUBLIC_PIN_CONTRACT_PASS PRIVATE_L0_NOT_RUN'
+  private-instructor-pre-goal-l0:
+    needs: public-pin-and-contract
+    # Never run private checkout for an arbitrary fork or untrusted PR.
+    if: github.repository == 'silverbjin/axia-robot-safety-ci-public' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == 'silverbjin/axia-robot-safety-ci-public' && github.event.pull_request.head.ref == 'fix/d08-ui9-pre-goal-vision-ci-20261112'
+    environment: axia-instructor-sealed
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Exact read-only teacher code checkout, never expose private source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 053102abacd724f40db9ea22a38904ce398f8dcd
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          path: .axia_private_runtime
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Native contract + safety regressions of EXACT private SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          SRC="$PWD/.axia_private_runtime"
+          test "$(git -C "$SRC" rev-parse HEAD)" = '053102abacd724f40db9ea22a38904ce398f8dcd'
+          bash -n "$SRC/scripts/p2_owner_l3_wsl2.sh"
+          python3 -m py_compile "$SRC/tools/d08_pre_goal_vision_stage.py"
+          python3 -m pip install -q --disable-pip-version-check 'pytest==8.3.5'
+          if ! (cd "$SRC" && PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest -q --tb=no \
+             tests/unit/test_d08_ui9_reversible_vision.py \
+             tests/unit/test_d08_l0k_camera_debug_only.py \
+             tests/unit/test_d08_l0k_poststop_guard_ttl.py \
+             > /tmp/axia_d08_ui9_private_l0.log 2>&1);then
+            echo 'D08_UI9_PRIVATE_L0_BLOCKED_PRIVATE_LOG_NOT_PUBLISHED'
+            exit 2
+          fi
+          echo 'D08_UI9_PRIVATE_REVERSIBLE_VISION_L0_PASS NO_ROS_NO_GOAL'
+      - name: Destroy checkout and private logs
+        if: always()
+        shell: bash
+        run: |
+          rm -rf -- .axia_private_runtime /tmp/axia_d08_ui9_private_l0.log
+          echo 'D08_UI9_PRIVATE_CI_WORKTREE_ERASED'
