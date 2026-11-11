@@ -1,11 +1,10 @@
-# CI-only G07 real Harmonic moving Goal, exact SHA, NO Owner bypass.
-# Native service two-CLI contention RED→GREEN, 127 tests PASS.
-# Preserve official Nav2 code, Guard CM TTL .15s, STOP 0.4m, SLOW 0.75m.
-private_source_sha=7a414e12b485b526d3d3147ef9955aa55a0d3515
-public_l0_green_run=42986718740
-public_l0_green_sha=01f66b85030bf7d4b4c7ce1e46690529490e6acd
-red_run=42986412363
-previous_l2_failed_run=42985579114
-scope=SIM_ONLY_CLEAR_SLOW_STOP_ODOM1S_TIMING_AND_NATIVE_STOP_SINGLE_CALL
+# Simulation-only CI one Goal after explicit RED->GREEN on CM low-speed scan correction.
+# 142 green tests, unchanged CM TTL 150ms, polygon/rate/official Nav2 code.
+private_source_sha=a612c3b5210a45721e87da2c1b622f7cc68ab1a9
+public_l0_green_run=42987961143
+public_l0_green_sha=0e8c31300daea4cace1d4f93e3fff493f6a9f827
+red_run=42987790248
+previous_l2_failure=42986831438
+scope=CI_SIMULATION_ONLY_CLEAR_SLOW_STOP_ODOM1S_FIXED_TTL_BASE_SHIFT_FALSE
 owner_l3_accepted=false
-hardware_estop_certified=false
+certified_estop=false
