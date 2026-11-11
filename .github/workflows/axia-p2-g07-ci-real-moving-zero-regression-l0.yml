@@ -19,14 +19,14 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: a612c3b5210a45721e87da2c1b622f7cc68ab1a9
+          ref: ccb27f5c1fcdf334c4a0ed85a067e4ea0ad81221
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Actual Gazebo moving Goal first Guard latch regression including STOP negative controls
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = 'a612c3b5210a45721e87da2c1b622f7cc68ab1a9'
+          test "$(git rev-parse HEAD)" = 'ccb27f5c1fcdf334c4a0ed85a067e4ea0ad81221'
           python3 -m pip install -q --disable-pip-version-check pytest==8.3.5
           python3 -m pytest -q -ra \
             tests/unit/test_p2_g07_guard_authorized_transient_zero.py \
@@ -41,7 +41,7 @@ jobs:
             tests/unit/test_p2_g07_cm_stop_zero_delivery.py \
             tests/unit/test_p2_g07_ci_graph_poll_budget.py \
             tests/unit/test_p2_g07_ci_stop_native_service_budget.py \
-            tests/unit/test_p2_g07_ci_cm_scan_transform_budget.py \
+            tests/unit/test_p2_g07_supervisor_cadence.py \
             tests/unit/test_p2_g07_guard_normal_turn_reverse_latency.py \
             tests/unit/test_p2_g07_guard_cm_stale_on_physical_stop.py
           python3 -m py_compile \
