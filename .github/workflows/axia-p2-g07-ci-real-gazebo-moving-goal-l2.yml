@@ -1,4 +1,4 @@
-# Exact private source SHA pinned; GREEN L0 111 tests run #42977816072.
+# Exact private source SHA pinned; conservative rollback L0 #42990244719 (127/127).
 # This real-L2 run must validate live Collision Monitor stop_pub_timeout=5s,
 # unchanged Guard input TTL=150ms and CLEAR/SLOW/STOP plus odom dwell.
 # HOLD: actual moving CI #42989423638 failed at first CM age 194.599ms
