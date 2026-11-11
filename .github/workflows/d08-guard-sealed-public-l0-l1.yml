@@ -116,7 +116,7 @@ jobs:
         run: |
           set -eo pipefail
           SRC="$PWD/.axia_private_runtime"
-          if ! timeout --signal=TERM --kill-after=5s 45s \
+          if ! ROS_DOMAIN_ID=57 timeout --signal=TERM --kill-after=5s 45s \
               bash "$SRC/scripts/p2_guard_ros_smoke_ci.sh" \
               --drop-source collision_monitor \
               >/tmp/axia_d08_private_l1_cm.log 2>&1; then
@@ -124,7 +124,9 @@ jobs:
             exit 2
           fi
           echo 'AXIA_D08_PRIVATE_GUARD_L1_CM_150MS_LATCH_ZERO_PASS'
-          if ! timeout --signal=TERM --kill-after=5s 45s \
+          # Separate DDS domain avoids false "auto resume" from a prior
+          # integration test's still-visible ROS graph or child publishers.
+          if ! ROS_DOMAIN_ID=58 timeout --signal=TERM --kill-after=5s 45s \
               bash "$SRC/scripts/p2_guard_ros_smoke_ci.sh" \
               --drop-source supervisor \
               >/tmp/axia_d08_private_l1_supervisor.log 2>&1; then
