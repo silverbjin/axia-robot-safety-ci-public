@@ -110,6 +110,15 @@ jobs:
           assert v['actual_rgbd']['matched'] is True
           assert v['contact_topic_proven'] is True
           assert v['pregoal_lidar']['status']=='PASS_ACTUAL_GAZEBO_SET_POSE_PLUS_LIDAR'
+          # Owner AxvMA7TI: real /scan wall callback gaps reached 0.55s
+          # despite valid simulated sensor stamps. Monitor ACTUAL wall-time.
+          for phase in ('before','after'):
+              m=v['pregoal_lidar'][phase]
+              assert m['scan_count']>=20
+              assert m['wallclock_measured'] is True
+              assert m['wall_gap_max_sec'] < .5, (phase, m)
+              assert m['sim_stamp_period_median_sec'] <= .13, (phase, m)
+          print('D08_REAL_WALLCLOCK_SCAN_WATCHDOG_MARGIN_L2_PASS')
           assert v['pregoal_lidar']['after']['front_m'] > 0.4
           assert v['pregoal_lidar']['after']['front_m'] < 0.75
           # Positive contact calibration already proven independently
