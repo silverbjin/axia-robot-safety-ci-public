@@ -18,14 +18,14 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: ec02637f0f0dcb9d20a7a3033f03911935ce005c
+          ref: 449025a3eb49343aaab72bc973e25b70462ce431
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Deterministic actual WSL2 owner trace and all existing safety guards
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = 'ec02637f0f0dcb9d20a7a3033f03911935ce005c'
+          test "$(git rev-parse HEAD)" = '449025a3eb49343aaab72bc973e25b70462ce431'
           python3 -m pip install -q --disable-pip-version-check pytest==8.3.5
           python3 -m pytest -q -ra \
             tests/unit/test_p2_g07_guard_zreh_owner_cm_skew.py \
