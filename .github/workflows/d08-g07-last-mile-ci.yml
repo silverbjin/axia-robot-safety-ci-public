@@ -13,6 +13,7 @@ on:
       - 'd08/tests/test_d08_wzbk_cm_teardown.py'
       - 'd08/tests/test_d08_fisqm_nav_startup.py'
       - 'd08/tests/test_d08_yxgmdwto_post_stop_dwell.py'
+      - 'd08/tests/test_d08_l0k_poststop_cm_camera.py'
       - 'd08/tests/test_d08_g07_lidar_visible_proxy.py'
       - 'd08/tests/test_d08_rgbd_alignment_evidence.py'
       - 'd08/tests/test_d08_single_human_visual_regression.py'
@@ -56,6 +57,7 @@ jobs:
             d08/tests/test_d08_wzbk_cm_teardown.py \
             d08/tests/test_d08_fisqm_nav_startup.py \
             d08/tests/test_d08_yxgmdwto_post_stop_dwell.py \
+            d08/tests/test_d08_l0k_poststop_cm_camera.py \
             d08/tests/test_d08_g07_lidar_visible_proxy.py \
             d08/tests/test_d08_rgbd_alignment_evidence.py \
             d08/tests/test_d08_single_human_visual_regression.py \
