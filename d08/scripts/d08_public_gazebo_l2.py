@@ -257,6 +257,90 @@ def pregoal_lidar_physical_admission(out:Path,env:dict,processes:list)->dict:
     return verdict
 
 
+def ui9_reversible_pose_admission(out:Path,env:dict)->dict:
+    """Real Gazebo G07 human-only near/restore visual test; strictly NO Goal.
+
+    The Owner preloaded fixture at x=-0.58 is ~1.35m in front of Waffle.
+    During pre-Goal visibility admission it should temporarily move into
+    the real StopZone at x=-1.63 and restore x=-0.58 afterwards. Both
+    moves must have native Gazebo ACK and an actual new /scan sequence.
+    This public harness does not execute private instructor or D05 code.
+    """
+    verdict={
+        'status':'BLOCKED_UI9_NEAR_RESTORE',
+        'near_world_xyz_m':[-1.63,-.5,.24],
+        'far_world_xyz_m':[-.58,-.5,.24],
+        'goal_sent':False,'robot_moved':False,'robot_cmd_vel_published':False,
+        'private_d05_verified':False,'owner_yolo_ros_live_verified':False,
+        'certified_estop':False,'safety_ttl_modified':False,
+        'source':'actual_public_ros_gazebo_native_set_pose_and_scan',
+    }
+    def move_fixture(phase):
+        xyz=verdict[phase+'_world_xyz_m']
+        request=('name: "axia_p2_g07_obstacle", '
+                 'position: {x: %.6f, y: %.6f, z: %.6f}, '
+                 'orientation: {w: 1}'%tuple(xyz))
+        cp=_run(['gz','service','-s','/world/default/set_pose',
+                 '--reqtype','gz.msgs.Pose','--reptype','gz.msgs.Boolean',
+                 '--timeout','5000','--req',request],env,timeout=13,check=False)
+        (out/('ui9_'+phase+'_native_ack.txt')).write_text(cp.stdout+cp.stderr)
+        ack=cp.returncode==0 and 'data: true' in cp.stdout
+        verdict[phase+'_native_ack']=ack
+        if not ack:
+            raise RuntimeError('UI9_GAZEBO_'+phase.upper()+'_NATIVE_ACK_MISSING')
+        scan=observe_real_front_scan(timeout_s=35)
+        verdict[phase+'_actual_scan']=scan
+        if (scan['scan_count']<20
+                or scan['wall_gap_max_sec']>=.5
+                or not scan['no_synthetic_scan']):
+            raise RuntimeError('UI9_GAZEBO_'+phase.upper()+'_SCAN_TTL_UNVERIFIED')
+        front=scan['front_m']
+        if phase=='near':
+            if not (.14<=front<.4):
+                raise RuntimeError('UI9_GAZEBO_NEAR_STOPZONE_NOT_OBSERVED')
+            pair=observe_real_pair(timeout_s=45,
+                 capture_path=out/'real_gazebo_ui9_near_rgb.ppm')
+            verdict['near_actual_registered_rgbd']=pair
+            if not pair['matched']:
+                raise RuntimeError('UI9_NEAR_REGISTERED_RGBD_PAIR_MISSING')
+        elif not (.75<front<8.):
+            raise RuntimeError('UI9_GAZEBO_FAR_RESTORE_SCAN_NOT_OBSERVED')
+        return scan
+
+    error=None
+    try:
+        move_fixture('near')
+    except Exception as exc:
+        error='NEAR:'+type(exc).__name__+':'+str(exc)
+    # Best-effort original restoration is ALWAYS attempted, even if the
+    # near-pose scan/camera failed. Never mark the sequence PASS without
+    # a fully verified restore, and never send any robot commands.
+    try:
+        move_fixture('far')
+    except Exception as exc:
+        error=(error+' | ' if error else '')+(
+            'FAR:'+type(exc).__name__+':'+str(exc))
+    if error is None:
+        n=verdict['near_actual_scan']['front_m']
+        f=verdict['far_actual_scan']['front_m']
+        if f-n<=.35:
+            error='UI9_NEAR_FAR_ACTUAL_SCAN_CHANGE_TOO_SMALL'
+    if error is None:
+        verdict['status']='PASS_ACTUAL_GAZEBO_UI9_NEAR_AND_RESTORE_NO_GOAL'
+    else:
+        verdict['reason']=error
+    (out/'ui9_reversible_pose_observation.json').write_text(
+        json.dumps(verdict,indent=2,ensure_ascii=False)+'\n')
+    if error:
+        raise RuntimeError('D08_UI9_REAL_GAZEBO_NEAR_RESTORE_BLOCKED:'+error)
+    print('D08_UI9_REAL_GAZEBO_NEAR_RESTORE_L2_PASS '+json.dumps({
+        'near_front_m':verdict['near_actual_scan']['front_m'],
+        'far_front_m':verdict['far_actual_scan']['front_m'],
+        'near_ack':True,'far_ack':True,
+        'goal_sent':False,'no_ttl_change':True}),flush=True)
+    return verdict
+
+
 def positive_contact_once(out:Path,env:dict,contact_topic:str)->dict:
     """One isolated NON-ROBOT calibration contact. Never send a Nav2 Goal.
 
@@ -491,6 +575,12 @@ def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=Fals
             if cm_rc!=0:
                 raise RuntimeError('D08_REAL_GAZEBO_LOADED_CM_L1_FAILED')
             print('D08_REAL_GAZEBO_CONCURRENT_CM_L1_PASS_NO_GOAL',flush=True)
+        if lidar_pre_goal:
+            # Owner Ui9iQEzj: the far fixture caused person=0/umbrella=64.
+            # Real no-Goal near person + registered RGBD, then native
+            # far restoration is mandatory BEFORE claiming this CI pass.
+            result['ui9_reversible_pose']=ui9_reversible_pose_admission(
+                out,env)
         result['status']='D08_REAL_GAZEBO_WAFFLE_RGBD_NO_GOAL_PASS'
         result['ros_actual']=True
         result['gazebo_actual']=True

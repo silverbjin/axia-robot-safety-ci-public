@@ -1,0 +1,170 @@
+name: AXIA D08 UI9 upstream yolo_ros real Gazebo RGB replay L1 (NO GOAL)
+on:
+  pull_request:
+    branches: ['fix/d08-bgyntv7-actual-person-ci-20261112']
+    paths:
+      - 'd08/scripts/d08_ui9_yolo_replay_probe.py'
+      - 'd08/tests/test_d08_ui9_pregoal_person_gate.py'
+      - '.github/workflows/d08-ui9-yolo-replay-l1.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  real-gazebo-rgb-pinned-upstream-yolo-ros:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 24
+    container:
+      image: ros:jazzy-ros-base-noble
+    env:
+      DEBIAN_FRONTEND: noninteractive
+      ROS_DOMAIN_ID: '69'
+      ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Download original real Gazebo L2 RGB evidence from pinned successful CI
+        uses: actions/download-artifact@v4
+        with:
+          name: d08-grounded-human-real-lidar-no-goal
+          run-id: 43117842587
+          github-token: ${{ github.token }}
+          path: /tmp/d08-real-gazebo-evidence
+      - name: Verify real Gazebo frame and immutable upstream/model pins
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd /tmp/d08-real-gazebo-evidence
+          test -s real_gazebo_stop_rgb.ppm
+          test -s real_gazebo_slowzone_rgb.ppm
+          test -s real_gazebo_ui9_near_rgb.ppm
+          sha256sum -c SHA256SUMS
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          v=json.loads(Path('verdict.json').read_text())
+          assert v['status']=='D08_REAL_GAZEBO_WAFFLE_RGBD_NO_GOAL_PASS',v.get('status')
+          assert v['actual_stop_rgbd']['matched'] is True
+          assert v['pregoal_lidar']['stop_probe']['actual_stop_front_m']<.4
+          assert v['goal_sent'] is False
+          ui9=v['ui9_reversible_pose']
+          assert ui9['status']=='PASS_ACTUAL_GAZEBO_UI9_NEAR_AND_RESTORE_NO_GOAL'
+          assert ui9['near_native_ack'] is True and ui9['far_native_ack'] is True
+          assert ui9['near_actual_registered_rgbd']['matched'] is True
+          assert .14<=ui9['near_actual_scan']['front_m']<.4
+          assert ui9['far_actual_scan']['front_m']>.75
+          assert ui9['goal_sent'] is False and ui9['safety_ttl_modified'] is False
+          print('UI9_REAL_GAZEBO_NEAR_RESTORED_FRAME_SOURCE_VERIFIED')
+          PY
+      - name: Install exact ROS Jazzy C++ YOLO engine build dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! apt-get update -qq -o APT::Update::Error-Mode=any;then
+            echo 'UI9_INFRA_APT_DNS_BLOCKED'
+            exit 2
+          fi
+          apt-get install -y -qq --no-install-recommends \
+            git curl ca-certificates build-essential cmake python3-pip \
+            python3-colcon-common-extensions python3-rosdep python3-opencv \
+            libopencv-dev libyaml-cpp-dev libcurl4-openssl-dev libjpeg-dev \
+            ros-jazzy-rclpy ros-jazzy-rclcpp ros-jazzy-rclcpp-lifecycle \
+            ros-jazzy-sensor-msgs ros-jazzy-std-msgs \
+            ros-jazzy-geometry-msgs ros-jazzy-visualization-msgs \
+            ros-jazzy-message-filters ros-jazzy-tf2-ros \
+            ros-jazzy-cv-bridge ros-jazzy-image-transport \
+            ros-jazzy-vision-msgs ros-jazzy-pluginlib ros-jazzy-launch-ros \
+            ros-jazzy-ament-index-cpp ros-jazzy-ament-cmake \
+            ros-jazzy-ament-cmake-python
+      - name: Build upstream yolo_ros immutable SHA, no teacher code
+        shell: bash
+        run: |
+          set -eo pipefail
+          mkdir -p /tmp/axia_ui9_yolo_ws/src
+          git clone -q https://github.com/mgonzs13/yolo_ros.git \
+            /tmp/axia_ui9_yolo_ws/src/yolo_ros
+          git -C /tmp/axia_ui9_yolo_ws/src/yolo_ros checkout -q --detach \
+            94d2dd500cb26027ee9c019f4d3a02029ac615cc
+          test "$(git -C /tmp/axia_ui9_yolo_ws/src/yolo_ros rev-parse HEAD)" = \
+            94d2dd500cb26027ee9c019f4d3a02029ac615cc
+          cd /tmp/axia_ui9_yolo_ws
+          source /opt/ros/jazzy/setup.bash
+          if ! colcon build --merge-install --executor sequential \
+               --packages-up-to yolo_bringup \
+               --cmake-args -DBUILD_TESTING=OFF \
+               --event-handlers console_cohesion+ > /tmp/ui9_yolo_build.log 2>&1;then
+            tail -n 50 /tmp/ui9_yolo_build.log
+            echo 'UI9_PINNED_UPSTREAM_YOLO_BUILD_BLOCKED'
+            exit 2
+          fi
+          echo 'UI9_PINNED_UPSTREAM_YOLO_BUILD_PASS'
+      - name: Replay ACTUAL Gazebo Stop RGB into real ROS DetectionArray
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/axia_ui9_yolo_model
+          curl -fLsS --retry 3 --max-time 160 \
+            'https://huggingface.co/unileon-robotics/YOLO26-ONNX/resolve/main/yolo26n.onnx' \
+            -o /tmp/axia_ui9_yolo_model/yolo26n.onnx
+          echo '4f44c33cea12d4b5785e5e7c0a20c13d0c62a77de607ce96a40d6036c7d7bbcf  /tmp/axia_ui9_yolo_model/yolo26n.onnx' | sha256sum -c -
+          cat > /tmp/axia_ui9_yolo_model/d08_ui9_yolo.yaml <<'YAML'
+          /yolo/yolo_node:
+            ros__parameters:
+              use_sim_time: false
+              plugins: ["detection", "debug"]
+              cameras: ["cam0"]
+              cam0:
+                rgb_topic: /axia/d08/rgbd/image
+                image_reliability: 2
+              detection:
+                plugin: yolo_ros/DetectionPlugin
+                cameras: ["cam0"]
+                model_path: "/tmp/axia_ui9_yolo_model/yolo26n.onnx"
+                model_repo: ""
+                model_filename: ""
+                model_type: auto
+                provider: cpu
+                threshold: 0.25
+                iou: 0.45
+                n_threads: 2
+                max_fps: 5
+              debug:
+                plugin: yolo_ros/DebugPlugin
+                cameras: ["cam0"]
+          YAML
+          # ROS 2 setup scripts read optional environment variables.
+          # Owner UI9 real CI: AMENT_TRACE_SETUP_FILES was unset under -u.
+          set +u
+          source /opt/ros/jazzy/setup.bash
+          source /tmp/axia_ui9_yolo_ws/install/setup.bash
+          set -u
+          setsid ros2 launch yolo_bringup yolo.launch.py \
+            params_file:=/tmp/axia_ui9_yolo_model/d08_ui9_yolo.yaml \
+            > /tmp/ui9_yolo_runtime.log 2>&1 &
+          PID=$!
+          trap 'kill -- -"$PID" 2>/dev/null || true' EXIT
+          sleep 3
+          timeout --signal=TERM --kill-after=5s 65s \
+            python3 d08/scripts/d08_ui9_yolo_replay_probe.py \
+            --ppm /tmp/d08-real-gazebo-evidence/real_gazebo_ui9_near_rgb.ppm \
+            --out /tmp/axia_ui9_yolo_model/replay_verdict.json \
+            --timeout-s 55
+          echo 'UI9_REAL_YOLO_ROS_PERSON_DETECTION_L1_PASS'
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          v=json.loads(Path('/tmp/axia_ui9_yolo_model/replay_verdict.json').read_text())
+          assert v['status']=='PASS_REAL_YOLO_ROS_DETECTIONARRAY_REPLAY'
+          assert v['person_count']>=1 and v['person_max_score']>=.25
+          assert v['moving_goal_sent'] is False and v['roi_depth_d05_verified'] is False
+          print('UI9_EXACT_YOLO_ROS_REPLAY_L1_ONLY_D05_AND_WSLG_UNVERIFIED')
+          PY
+      - name: Upload only public-source, replay classification verdict
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d08-ui9-public-yolo-ros-replay-l1
+          path: /tmp/axia_ui9_yolo_model/replay_verdict.json
+          retention-days: 7
+          if-no-files-found: warn
