@@ -5,8 +5,6 @@ The first test INTENTIONALLY expects healthy motion and must fail on the raw
 event. The later GREEN revision will retain this field incident as negative
 regression and independently require real successful workload evidence.
 """
-from statistics import median
-
 # Actual Owner actual_ros_events.jsonl observer host monotonic receipts.
 CM_RX = [4223.803651443, 4223.982629269, 4224.101661995,
          4224.149982234, 4224.41772451, 4224.420519096]
