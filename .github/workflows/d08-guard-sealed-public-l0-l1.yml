@@ -29,7 +29,7 @@ jobs:
             d08/tests/test_d08_last_mile_bootstrap.py
           python3 - <<'PY'
           from pathlib import Path
-          expected='fa2aecf3806dbef15f1ee6dbdd089ef2935e885e'
+          expected='52b00334ed5f6d5b6a955a68cdcbad995ad8b36e'
           wrapper=Path('d08/scripts/axia_d08_live_gazebo_wsl2_once.sh').read_text()
           sealed=Path('.github/workflows/d08-guard-sealed-public-l0-l1.yml').read_text()
           assert expected in wrapper and expected in sealed
@@ -41,6 +41,10 @@ jobs:
           # must be included in the exact pinned public sealed job. Existing
           # Owner Goal consent stays mandatory.
           assert 'tests/unit/test_d08_wzbk_ordered_teardown.py' in sealed
+          assert 'tests/unit/test_d08_fisqm_nav_lifecycle.py' in sealed
+          assert 'd08_nav_manager_startup_real_l1.py' in sealed
+          assert 'ros-jazzy-nav2-lifecycle-manager' in sealed
+          print('AXIA_FISQMVZZ_NAV_LIFECYCLE_REAL_L1_CI_INCLUDED')
           assert 'CM_LIFECYCLE' in sealed or 'wzbk_ordered_teardown' in sealed
           print('AXIA_D08_WZBK_PRIVATE_CM_SHUTDOWN_TEST_PIN_CONTRACT_PASS')
           # Owner 1C0vNYRe follow-on: old CI in one DDS domain
@@ -67,13 +71,17 @@ jobs:
       DEBIAN_FRONTEND: noninteractive
       ROS_DOMAIN_ID: '57'
       ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
-      AXIA_EXPECTED_TEACHER_SHA: 'fa2aecf3806dbef15f1ee6dbdd089ef2935e885e'
+      AXIA_EXPECTED_TEACHER_SHA: '52b00334ed5f6d5b6a955a68cdcbad995ad8b36e'
     steps:
+      - name: Checkout public no-Goal official manager L1 harness
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
       - name: Exact sealed private instructor checkout (never publish source)
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: fa2aecf3806dbef15f1ee6dbdd089ef2935e885e
+          ref: 52b00334ed5f6d5b6a955a68cdcbad995ad8b36e
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: .axia_private_runtime
           fetch-depth: 1
@@ -90,7 +98,9 @@ jobs:
             python3-pytest python3-colcon-common-extensions \
             ros-jazzy-rclpy ros-jazzy-geometry-msgs ros-jazzy-std-msgs \
             ros-jazzy-action-msgs ros-jazzy-nav2-msgs ros-jazzy-lifecycle-msgs \
-            ros-jazzy-sensor-msgs ros-jazzy-std-srvs >/dev/null
+            ros-jazzy-sensor-msgs ros-jazzy-std-srvs \
+            ros-jazzy-nav2-lifecycle-manager ros-jazzy-nav2-collision-monitor \
+            ros-jazzy-rcl-interfaces >/dev/null
       - name: Actual private Guard policy L0 + D08 manifest/vision priority
         shell: bash
         run: |
@@ -106,6 +116,7 @@ jobs:
               tests/unit/test_d08_1xzy_resource_and_service.py \
               tests/unit/test_d08_oddl_stop_dispatch.py \
               tests/unit/test_d08_wzbk_ordered_teardown.py \
+              tests/unit/test_d08_fisqm_nav_lifecycle.py \
               > /tmp/axia_d08_private_l0.log 2>&1); then
             echo 'AXIA_D08_PRIVATE_GUARD_L0_BLOCKED_PRIVATE_LOG_NOT_PUBLISHED'
             exit 2
@@ -120,7 +131,9 @@ jobs:
           SRC="$PWD/.axia_private_runtime"
           python3 -m compileall -q \
             "$SRC/ros2_ws/src/axia_safety_supervisor/axia_safety_supervisor" \
-            "$SRC/tools/p2_guard_ros_smoke.py"
+            "$SRC/tools/p2_guard_ros_smoke.py" \
+            "$SRC/tools/p2_nav_lifecycle_preflight.py" \
+            "$SRC/tools/p2_staged_no_goal.py"
           source /opt/ros/jazzy/setup.bash
           if ! colcon --log-base "$SRC/log" build \
               --base-paths "$SRC/ros2_ws/src" \
@@ -176,6 +189,33 @@ jobs:
           fi
           echo 'AXIA_D08_PRIVATE_GUARD_L1_SUPERVISOR_LATCH_ZERO_PASS'
           echo 'AXIA_D08_PRIVATE_L0_L1_PUBLIC_SEALED_PASS_GAZEBO_AND_MOVING_GOAL_NOT_RUN'
+      - name: REAL Jazzy Nav2 Lifecycle Manager missing-node RED / CM STARTUP GREEN (NO GOAL)
+        shell: bash
+        run: |
+          set -eo pipefail
+          source /opt/ros/jazzy/setup.bash
+          SRC="$PWD/.axia_private_runtime"
+          if ! timeout --signal=TERM --kill-after=5s 130s \
+               python3 -u d08/scripts/d08_nav_manager_startup_real_l1.py \
+                --preflight "$SRC/tools/p2_nav_lifecycle_preflight.py" \
+                --out /tmp/axia_fisqm_nav_real_l1 \
+                >/tmp/axia_fisqm_nav_real_l1.log 2>&1; then
+            # Show only allowlisted result categories; never private source.
+            python3 - <<'PY'
+          from pathlib import Path
+          import json
+          p=Path('/tmp/axia_fisqm_nav_real_l1/verdict.json')
+          if p.is_file():
+              v=json.loads(p.read_text())
+              print('AXIA_FISQMVZZ_REAL_MANAGER_L1_BLOCKER_CLASS='+str(v.get('failure_class','NONE')))
+              print('AXIA_FISQMVZZ_REAL_MANAGER_L1_STATUS='+str(v.get('status')))
+          else:
+              print('AXIA_FISQMVZZ_REAL_MANAGER_L1_BLOCKER_CLASS=NO_VERDICT')
+          PY
+            echo 'AXIA_FISQMVZZ_PUBLIC_SEALED_REAL_MANAGER_L1_BLOCKED'
+            exit 2
+          fi
+          echo 'AXIA_FISQMVZZ_PUBLIC_SEALED_REAL_MANAGER_L1_GREEN_NO_GOAL'
       - name: Erase private source, test log and build artifacts
         if: always()
         shell: bash
@@ -184,5 +224,7 @@ jobs:
             /tmp/axia_d08_private_l0.log \
             /tmp/axia_d08_private_build.log \
             /tmp/axia_d08_private_l1_cm.log \
-            /tmp/axia_d08_private_l1_supervisor.log
+            /tmp/axia_d08_private_l1_supervisor.log \
+            /tmp/axia_fisqm_nav_real_l1 \
+            /tmp/axia_fisqm_nav_real_l1.log
           echo 'AXIA_D08_PRIVATE_CI_WORKTREE_ERASED'
