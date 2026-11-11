@@ -19,14 +19,14 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: c06b20f5c4a1dd3708dd59c7683fd341b1583757
+          ref: 08d820c421a9df9eab6ad2de13b62adb83a879eb
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Actual Gazebo moving Goal first Guard latch regression including STOP negative controls
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = 'c06b20f5c4a1dd3708dd59c7683fd341b1583757'
+          test "$(git rev-parse HEAD)" = '08d820c421a9df9eab6ad2de13b62adb83a879eb'
           python3 -m pip install -q --disable-pip-version-check pytest==8.3.5
           python3 -m pytest -q -ra \
             tests/unit/test_p2_g07_guard_authorized_transient_zero.py \
@@ -36,7 +36,8 @@ jobs:
             tests/unit/test_p2_base_guard_policy.py \
             tests/unit/test_p2_guard_cancel_contract.py \
             tests/unit/test_p2_guard_parameter_init_contract.py \
-            tests/unit/test_p2_g07_ci_moving_goal_oracle.py
+            tests/unit/test_p2_g07_ci_moving_goal_oracle.py \
+            tests/unit/test_p2_g07_ci_stop_stage.py
           python3 -m py_compile \
             ros2_ws/src/axia_safety_supervisor/axia_safety_supervisor/p2_base_guard_policy.py \
             ros2_ws/src/axia_safety_supervisor/axia_safety_supervisor/p2_base_guard_node.py
