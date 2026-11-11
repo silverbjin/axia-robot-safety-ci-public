@@ -42,6 +42,13 @@ HUMAN_MODEL_REST_Z_M=0.24
 # Official installed TurtleBot3/Nav2 files and safety timeout stay untouched.
 GPU_LIDAR_SIM_RATE_HZ=10
 HUMAN_FOOT_RENDER_TUNE_M=0.06
+# Owner l0KClvT6 screenshot: near 0.35m StopZone, old RGBD 1.95rad/-0.30
+# cropped the head. Camera changes ONLY generated D08 Waffle copy.
+D08_RGBD_HFOV_RAD=2.20
+D08_RGBD_PITCH_RAD=-0.45
+# Hide the known bench .150 false positive from D08 YOLO debug only.
+D08_YOLO_DEBUG_CONFIDENCE=0.25
+
 HUMAN_VISUAL_LOCAL_Z_M=round(
     -HUMAN_MODEL_REST_Z_M-HUMAN_DAE_MIN_Z_M*HUMAN_SCALE
     +HUMAN_FOOT_RENDER_TUNE_M,6)
@@ -70,7 +77,11 @@ def make_yolo_params(model: Path) -> str:
     old = 'rgb_topic: /camera/image_raw'
     if data.count(old) != 1:
         raise ValueError('D04_YOLO_CONFIG_UNEXPECTED')
-    return data.replace(old, 'rgb_topic: ' + RGB_TOPIC)
+    baseline='threshold: 0.15'
+    if data.count(baseline)!=1:
+        raise ValueError('D04_YOLO_THRESHOLD_BASELINE_UNEXPECTED')
+    return (data.replace(old,'rgb_topic: '+RGB_TOPIC)
+                .replace(baseline,f'threshold: {D08_YOLO_DEBUG_CONFIDENCE:.2f}'))
 
 
 def attach_human_visual_to_fixture(wn, actor_mesh: Path) -> None:
@@ -192,13 +203,13 @@ def build_overlay(world: Path, robot: Path, actor_mesh: Path, output: Path) -> d
     # Wider pinhole RGBD FOV and slight upward aim frame a grounded human.
     # Official/Nav2 and CM safety thresholds unchanged; only D08 copied
     # Waffle LiDAR scheduling is retuned above (not an /opt/ros edit).
-    _sub(sensor,'pose','0 0 0 0 -0.30 0')
+    _sub(sensor,'pose',f'0 0 0 0 {D08_RGBD_PITCH_RAD:.2f} 0')
     _sub(sensor,'always_on','1')
     _sub(sensor,'update_rate','5')
     _sub(sensor,'topic','axia/d08/rgbd')
     _sub(sensor,'gz_frame_id',OPTICAL_FRAME)
     camera = _sub(sensor, 'camera')
-    _sub(camera, 'horizontal_fov','1.95')
+    _sub(camera, 'horizontal_fov',f'{D08_RGBD_HFOV_RAD:.2f}')
     image = _sub(camera,'image')
     _sub(image,'width','640')
     _sub(image,'height','480')
@@ -247,8 +258,9 @@ def build_overlay(world: Path, robot: Path, actor_mesh: Path, output: Path) -> d
       'human_visual_animated':False,
       'human_model_motion_source':'existing_P2_G07_gz_set_pose',
       'robot_world_spawn':{'x':-2.0,'y':-0.5,'yaw':0.0},
-      'rgbd_horizontal_fov_rad':1.95,
-      'rgbd_sensor_pitch_rad':-0.30,
+      'rgbd_horizontal_fov_rad':D08_RGBD_HFOV_RAD,
+      'rgbd_sensor_pitch_rad':D08_RGBD_PITCH_RAD,
+      'd08_yolo_debug_confidence_threshold':D08_YOLO_DEBUG_CONFIDENCE,
       'd08_original_lidar_sim_rate_hz':lidar_rate_before,
       'd08_gpu_lidar_sim_rate_hz':GPU_LIDAR_SIM_RATE_HZ if lidar_rate_before else None,
       'd08_scan_watchdog_sec_unchanged':0.5,
