@@ -1,0 +1,35 @@
+name: AXIA G07 public CI moving Goal independent oracle RED GREEN L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-p2-g07-ci-moving-goal-oracle-l0.yml']
+permissions:
+  contents: read
+concurrency:
+  group: axia-g07-ci-moving-goal-l0
+  cancel-in-progress: false
+jobs:
+  simulation-only-oracle:
+    runs-on: ubuntu-24.04
+    environment: axia-instructor-sealed
+    timeout-minutes: 8
+    steps:
+      - name: Checkout private Instructor exact source only in sealed runner
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: a4dfec3ccd394f8b9fd2d33d68ed5654d4a45d33
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Independent actual moving Goal and fail-closed safety oracle
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = 'a4dfec3ccd394f8b9fd2d33d68ed5654d4a45d33'
+          python3 -m pip install -q --disable-pip-version-check pytest==8.3.5
+          python3 -m pytest -q -ra tests/unit/test_p2_g07_ci_moving_goal_oracle.py
+          echo 'AXIA_G07_CI_REAL_MOVING_GOAL_ORACLE_L0_PASS_ONLY_NO_GAZEBO'
+      - name: Remove all private checkout
+        if: always()
+        shell: bash
+        run: rm -rf -- .git tests tools scripts ros2_ws configs docs fixtures results
