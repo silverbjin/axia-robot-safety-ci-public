@@ -20,14 +20,14 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: da2622101065bab0433f8e698ae218d830a9e05f
+          ref: e444a3c89314b4d9c13d166cd662d0b31a728b88
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Install only Guard ROS Jazzy dependencies, match relevant Owner Debian package versions
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 'da2622101065bab0433f8e698ae218d830a9e05f'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 'e444a3c89314b4d9c13d166cd662d0b31a728b88'
           apt-get update -qq
           DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
             python3-colcon-common-extensions ros-jazzy-rclpy \
