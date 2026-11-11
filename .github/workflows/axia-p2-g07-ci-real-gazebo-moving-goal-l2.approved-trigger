@@ -1,11 +1,14 @@
-# CI-only simulation, no Owner consent bypass or certified E-Stop.
-# Frozen exact source with 158/158 GREEN L0 #43055911244.
-# Previously actual CLEAR SLOW STOP odom was blocked by scan interval 304.36ms
-# vs immutable <=300ms. New tests cover callback timestamp, evidence write
-# budget, strict post-ACK odom dwell. Fail closed for ALL first timing breaches.
-private_source_sha=62c0683497f24700224bc3f4a6c66309425ba527
-l0_green_run=43055911244
-previous_l2_failed_run=43053267825
-scope=CI_SIM_GAZEBO_CLEAR_SLOW_STOP_ODOM_1SEC_CM_TTL_150MS_SCAN_300MS
+# Simulation-only CI one moving Goal; strict original Guard/CM TTL and odom dwell.
+# RED #43070001966 (2 failures), GREEN #43070460808 (163/163 PASS).
+# Reproduce Owner WSL2 native crash at 14.997s after run begin while the
+# exact original Owner Observer uses TWO executor workers and unbuffered
+# callback evidence; periodic faulthandler 15s trigger removed (fatal-only).
+# No Owner TTY bypass: distinct CI-only authorized Goal; full Owner L3 NOT RUN.
+private_source_sha=e3ec605058938fe89eac3091d26293e123f00772
+public_l0_red_run=43070001966
+public_l0_green_run=43070460808
+previous_actual_gazebo_l2_pass=43060492901
+owner_raw_wsl2_first_error=rc139_after_14.996845s
+scope=CI_REAL_HARMONIC_GOAL_OWNER_OBSERVER_2_WORKERS_UNBUFFERED_15S_STABILITY_AND_TTL
 owner_l3_accepted=false
 hardware_estop_certified=false
