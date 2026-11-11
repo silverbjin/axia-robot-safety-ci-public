@@ -1,11 +1,11 @@
-# CI SIMULATION ONLY: one authorized real Gazebo/Nav2 moving Goal; no Owner L3 consent bypass.
-# STOP reverse motion oracle corrected, retaining actual 2 post-ACK LiDAR samples,
-# official Nav2 CM ZERO and Guard ZERO, 150ms chain TTL + 1s odom dwell.
+# Bounded INFRA retry ONLY: previous L2 #43041110273 ran NO GOAL.
+# Reason: GitHub Docker DNS could not resolve archive.ubuntu.com/security.ubuntu.com.
+# Same Instructor source as 131/131 GREEN L0; no product source changes.
+# Preflight DNS before apt, fail fast NO_GOAL for resolver failure.
 private_source_sha=7186def36e78f8c764d5d01b63b6d586f4bf0488
 public_l0_red_run=43040702422
 public_l0_green_run=43040932165
-public_l0_green_sha=6babb4f13b2e14c43ebf6ce37f9291c07d456dd6
-previous_real_blocker=42989423638
+previous_l2_dns_blocked=43041110273
 scope=CI_REAL_HARMONIC_CLEAR_SLOW_REVERSE_STOP_ODOM1S_ALL_TTL
 owner_l3_accepted=false
 certified_estop=false
