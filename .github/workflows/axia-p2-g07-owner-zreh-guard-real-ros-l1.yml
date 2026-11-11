@@ -1,0 +1,75 @@
+name: AXIA P2 G07 zreh4rQQ actual ROS Guard 30pct slowdown L1
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-p2-g07-owner-zreh-cm-skew-guard-l1.yml']
+permissions:
+  contents: read
+concurrency:
+  group: axia-p2-g07-guard-real-ros-zreh-l1
+  cancel-in-progress: false
+jobs:
+  real-ros-guard-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 22
+    environment: axia-instructor-sealed
+    container:
+      image: ros:jazzy-ros-base-noble
+    steps:
+      - name: Checkout exact private Instructor stack, never merge main
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: eae9e562a1e83d59d35fdad5b303e122afaf5ef8
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Install only Guard ROS Jazzy dependencies, match relevant Owner Debian package versions
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 'eae9e562a1e83d59d35fdad5b303e122afaf5ef8'
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+            python3-colcon-common-extensions ros-jazzy-rclpy \
+            ros-jazzy-geometry-msgs ros-jazzy-std-msgs ros-jazzy-std-srvs \
+            ros-jazzy-nav2-msgs ros-jazzy-action-msgs ros-jazzy-lifecycle-msgs >/dev/null
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,subprocess
+          lock=json.loads(Path('configs/p2_g07_owner_ci_runtime_lock_20261111.json').read_text())
+          needed=('python3-colcon-common-extensions','ros-jazzy-rclpy',
+                  'ros-jazzy-geometry-msgs','ros-jazzy-std-msgs','ros-jazzy-action-msgs')
+          for name in needed:
+            expected=lock['packages'].get(name)
+            if expected is None:
+              # Non-critical ROS action/geometry deps may be outside 25 scope;
+              # no false claim those packages were checked against Owner.
+              continue
+            value=subprocess.check_output(
+              ['dpkg-query','-W','-f='+'$'+'{Version}',name],text=True).strip()
+            assert value==expected,(name,value,expected)
+          print('AXIA_G07_GUARD_ROS_L1_OWNER_RELEVANT_VERSION_CHECK_PASS')
+          PY
+      - name: Build original Safety Supervisor Guard only and run actual ROS topic async trace
+        shell: bash
+        env:
+          ROS_DOMAIN_ID: '62'
+          ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+        run: |
+          set -euo pipefail
+          set +u
+          source /opt/ros/jazzy/setup.bash
+          set -u
+          colcon build --base-paths ros2_ws/src \
+            --packages-select axia_safety_supervisor \
+            --event-handlers console_cohesion+ >/tmp/g07_async_l1_build.log 2>&1 || {
+            tail -n 65 /tmp/g07_async_l1_build.log
+            exit 2
+          }
+          timeout --signal=TERM --kill-after=8s 90s \
+            bash scripts/p2_guard_ros_smoke_ci.sh --trace-zreh-g07
+          echo 'AXIA_G07_OWNER_ZREH_REAL_ROS_GUARD_L1_PASS_NO_GOAL_NO_GAZEBO'
+      - name: Purge private source and temp logs from public runner
+        if: always()
+        shell: bash
+        run: rm -rf -- ros2_ws tools scripts tests docs configs fixtures results build install log .git /tmp/g07_async_l1_build.log
