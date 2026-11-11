@@ -232,11 +232,42 @@ def run(out, *, set_pose_while_publishing=None, stop_front_m=None):
     finally:
         if node is not None:
             node.destroy_node();rclpy.shutdown()
+        # Owner wZBKMnXa: *numerical G07 was successful*, but real official
+        # CM died -11 when simultaneous launch SIGINT raced its Scan and
+        # TF cleanup. Test real lifecycle finalization BEFORE process signal
+        # under already-running real Gazebo (still NO robot Goal).
+        status['cm_lifecycle_finalized_before_signal']=False
+        status['cm_exit_code']=None
+        if proc.poll() is None and status['status']=='REAL_NAV2_CM_L1_CADENCE_PASS':
+            try:
+                for transition in ('deactivate','cleanup','shutdown'):
+                    r=_cmd(['ros2','lifecycle','set','/collision_monitor',transition],timeout=12)
+                    if r.returncode!=0 or 'success' not in r.stdout.lower():
+                        raise RuntimeError('CM_LIFECYCLE_'+transition.upper()+'_NO_ACK')
+                state=_cmd(['ros2','lifecycle','get','/collision_monitor'],timeout=8)
+                if state.returncode!=0 or 'finalized' not in state.stdout.lower():
+                    raise RuntimeError('CM_LIFECYCLE_FINALIZED_UNVERIFIED')
+                status['cm_lifecycle_finalized_before_signal']=True
+                print('D08_REAL_NATIVE_CM_LIFECYCLE_FINALIZED_BEFORE_SIGTERM',flush=True)
+            except Exception as e:
+                status['status']='BLOCKED_CM_ORDERED_LIFECYCLE'
+                status['teardown_blocker']=str(e)[:230]
+                print('D08_NATIVE_CM_ORDERED_TEARDOWN_BLOCKED '+status['teardown_blocker'],flush=True)
         if proc.poll() is None:
             os.killpg(proc.pid,signal.SIGTERM)
-            try:proc.wait(timeout=4)
+            try:proc.wait(timeout=5)
             except subprocess.TimeoutExpired:
                 os.killpg(proc.pid,signal.SIGKILL);proc.wait(timeout=3)
+                status['status']='BLOCKED_CM_FORCED_TEARDOWN'
+        else:
+            proc.wait(timeout=1)
+        status['cm_exit_code']=proc.returncode
+        status['cm_sigsegv_observed']=proc.returncode==-11
+        if proc.returncode!=0 or not status['cm_lifecycle_finalized_before_signal']:
+            status['status']='BLOCKED_CM_TEARDOWN_EXIT_OR_LIFECYCLE'
+            print('D08_REAL_NAV2_CM_TEARDOWN_BLOCKED exit_code='+str(proc.returncode),flush=True)
+        else:
+            print('D08_REAL_NAV2_CM_TEARDOWN_EXIT_ZERO_PASS',flush=True)
         log.close()
         (out/'verdict.json').write_text(json.dumps(status,indent=2,sort_keys=True)+'\n')
     return 0 if status['status']=='REAL_NAV2_CM_L1_CADENCE_PASS' else 2
