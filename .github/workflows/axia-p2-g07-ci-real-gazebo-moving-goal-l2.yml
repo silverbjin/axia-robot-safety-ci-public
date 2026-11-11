@@ -43,6 +43,28 @@ jobs:
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
+      # GitHub-hosted Docker DNS failed before any Goal in run #43041110273.
+      # Fail fast with INFRA evidence rather than misclassifying a missing
+      # Ubuntu/ROS package as a G07 safety regression. No safety gate is relaxed.
+      - name: Preflight container DNS - no Goal on infra failure
+        shell: bash
+        run: |
+          set -euo pipefail
+          for host in archive.ubuntu.com security.ubuntu.com; do
+            resolved=0
+            for attempt in 1 2 3; do
+              if timeout 6 getent ahostsv4 "$host" >/dev/null; then
+                resolved=1
+                break
+              fi
+              sleep 2
+            done
+            if [[ "$resolved" -ne 1 ]]; then
+              echo "AXIA_G07_CI_DNS_INFRA_BLOCKED_NO_GOAL host=$host" >&2
+              exit 86
+            fi
+          done
+          echo 'AXIA_G07_CI_DNS_INFRA_READY_BEFORE_APT'
       - name: Install Owner exact 25 ROS Nav2 Gazebo runtime lock + headless tools
         shell: bash
         run: |
