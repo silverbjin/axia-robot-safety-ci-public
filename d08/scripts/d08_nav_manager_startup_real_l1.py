@@ -119,6 +119,8 @@ def run(preflight:Path,out:Path):
                            '--params-file',str(missing_yaml)],env,
                           out/'manager_missing.log')
             rc,negative=invoke_preflight(preflight,out/'negative',env,deadline=9)
+            verdict['negative_probe_rc']=rc
+            verdict['negative_probe_reason']=negative.get('reason','NONE')
             if (rc!=2 or negative.get('reason')!='NAV_LIFECYCLE_SERVICE_MISSING'
                     or '/axia_ci_missing_navigation_node/get_state'
                     not in negative.get('missing',[])):
@@ -152,6 +154,8 @@ def run(preflight:Path,out:Path):
                            '--params-file',str(good_yaml)],env,
                           out/'manager_real.log')
             rc,positive=invoke_preflight(preflight,out/'positive',env,deadline=22)
+            verdict['positive_probe_rc']=rc
+            verdict['positive_probe_reason']=positive.get('reason','NONE')
             if rc!=0 or positive.get('status')!='READY' or not (
                 positive.get('managed_nodes')==['collision_monitor']):
                 raise RuntimeError('REAL_NAV_MANAGER_VALID_SERVICE_NOT_READY:'+
@@ -172,6 +176,21 @@ def run(preflight:Path,out:Path):
         print('AXIA_FISQMVZZ_REAL_NAV_MANAGER_L1_GREEN_NO_GOAL',flush=True)
     except Exception as exc:
         verdict['failure_class']=type(exc).__name__
+        # Public error code only; never output private runtime/source text.
+        code=str(exc).split(':',1)[0]
+        allowed={'REAL_NATIVE_FILE_MISSING',
+                 'REAL_MISSING_ENDPOINT_RED_NOT_REPRODUCED',
+                 'REAL_NAV_MANAGER_VALID_SERVICE_NOT_READY',
+                 'NAV_MANAGER_MANAGE_NODES_SERVICE_MISSING',
+                 'NAV_MANAGER_MANAGE_NODES_NO_REPLY',
+                 'NAV_MANAGER_MANAGE_NODES_REJECTED',
+                 'NATIVE_CM_GET_STATE_NOT_AVAILABLE',
+                 'NATIVE_CM_GET_STATE_UNRESPONSIVE',
+                 'NATIVE_CM_STATE_MISMATCH',
+                 'NATIVE_ROS_PROCESS_NONZERO',
+                 'NATIVE_ROS_PROCESS_SHUTDOWN_FORCED',
+                 'NAV_MANAGER_PREFLIGHT_NO_EVIDENCE'}
+        verdict['failure_code']=code if code in allowed else 'UNCLASSIFIED'
         verdict['status']='BLOCKED_REAL_NAV_MANAGER_L1'
         print('AXIA_FISQMVZZ_REAL_NAV_MANAGER_L1_BLOCKED class='+
               type(exc).__name__,flush=True)
