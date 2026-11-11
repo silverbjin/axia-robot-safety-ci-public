@@ -1,3 +1,6 @@
+# Exact private source SHA pinned; GREEN L0 111 tests run #42977816072.
+# This real-L2 run must validate live Collision Monitor stop_pub_timeout=5s,
+# unchanged Guard input TTL=150ms and CLEAR/SLOW/STOP plus odom dwell.
 name: AXIA G07 CI-only actual Harmonic Nav2 MOVING Goal CLEAR SLOW STOP
 on:
   push:
