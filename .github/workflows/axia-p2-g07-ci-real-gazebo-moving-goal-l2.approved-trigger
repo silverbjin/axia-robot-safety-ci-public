@@ -1,11 +1,13 @@
-# Simulation-only ONE real Gazebo Goal; no Owner L3 TTY bypass.
-# CI cold-start CLOCK_MISSING #43045143910 RED -> #43051298024 143 GREEN.
-# Scoped 90s initial /clock only; Guard 150ms TTL, polygon STOP, 1s odom unchanged.
-private_source_sha=c971e3eeec54dd6b56f7dd7954913d2cfda45ba2
-public_l0_red_run=43046480951
-public_l0_green_run=43051298024
-public_l0_green_sha=9dcf643534f932237dd19532898229a25d6340d2
-previous_l2_clock_blocked_run=43045143910
-scope=REAL_GAZEBO_SIM_ONLY_CLEAR_SLOW_STOP_ODOM1S_TTL
+# CI SIMULATION ONLY one real Harmonic/Nav2 Goal, no Owner approval bypass.
+# RED observer Docker filesystem per-message flush: L0 #43052693200 (3 FAIL).
+# GREEN buffered CI evidence 147/147 #43052950933, owner default unchanged.
+# Actual prior L2 #43051459519 passed CLEAR/SLOW/STOP and 1s odom
+# but FSM/Guard callback intervals exceeded immutable 150ms boundary.
+private_source_sha=6b6b50dbd57991ca6a6fa85a3056b28996d9e2b7
+public_l0_red_run=43052693200
+public_l0_green_run=43052950933
+public_l0_green_sha=920423fb645af3ab7e254db15ca46e120455afb1
+previous_l2_timing_failure=43051459519
+scope=SIM_ONLY_REAL_GAZEBO_CLEAR_SLOW_STOP_ODOM1S_MAX_150MS
 owner_l3_accepted=false
 hardware_estop_certified=false
