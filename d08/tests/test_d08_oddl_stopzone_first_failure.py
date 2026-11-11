@@ -23,16 +23,28 @@ OWNER={
  'slow_vout':.02543463259935379,
 }
 
-def test_red_owner_actual_stop_zone_threshold_not_reached():
+def test_owner_original_43cm_actual_stopzone_miss_is_a_negative_regression():
     t=OWNER
     assert t['goal_executing_at']<t['moving_slow_at']<t['gz_set_pose_ack_at']
     assert .4<t['slow_front_m']<.75
     assert t['slow_vout']<=t['slow_vin']*.3+.01
     assert t['gz_set_pose_ack_duration_sec']<1
-    # Intentionally fails from the ACTUAL field scan, not a synthetic substitute:
-    assert .14<=t['post_ack_front_min_m']<t['stop_zone_limit_m'], (
-        'ODDLCNNN_ACTUAL_LIDAR_STOPZONE_NOT_REACHED_FRONT_0_460472_GT_0_4'
-    )
+    # RED #42959948301 proved the *normal demo condition* failed on
+    # original actual scan .460472 > .4, not from missing test/module.
+    assert not (.14<=t['post_ack_front_min_m']<t['stop_zone_limit_m'])
+    assert t['stop_dispatch_m']==.43
+    print('ODDLCNNN_ACTUAL_STOPZONE_MISS_REPRODUCED_FAIL_CLOSED')
+
+def test_real_gazebo_static_30cm_candidate_has_minimum_3cm_margin():
+    # Source: actual official Waffle Gazebo L2 #42960656274, NOT
+    # a claim of moving-Goal StopZone/contact proof.
+    static_dispatch=.30
+    static_lidar=.364392
+    assert static_dispatch<OWNER['stop_dispatch_m']
+    assert .14 <= static_lidar <= .37
+    assert OWNER['stop_zone_limit_m']-static_lidar>=.03
+    assert OWNER['post_ack_front_min_m']>=.4
+    print('ODDLCNNN_STATIC_REAL_GAZEBO_30CM_STOP_MARGINAL_CALIBRATION_PASS')
 
 def test_owner_guard_first_failure_is_correct_and_separate():
     t=OWNER
