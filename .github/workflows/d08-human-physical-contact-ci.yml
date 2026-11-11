@@ -151,6 +151,17 @@ jobs:
           assert cm['warmup_output_count']>=10
           assert cm['output_count']>=74 and cm['input_count']==82,cm
           assert cm['steady_delivery_ratio']>=.90,cm
+          # Owner ODDlcnNN: original test measured CM AFTER physical set_pose.
+          # This probe now mutates actual Gazebo while official CM is sending.
+          assert cm['gazebo_set_pose_during_cm'] is True,cm
+          assert cm['gazebo_concurrent_service_ack'] is True,cm
+          assert cm['cm_max_gap_during_gazebo_service_sec']<.15,cm
+          assert cm['stop_scan_is_synthetic_replay_of_real_gazebo_front'] is True
+          assert cm['measured_static_stop_front_replayed_m']<=.37
+          assert cm['stop_output_samples']>=15
+          assert cm['stop_zero_output_samples']>=15
+          print('D08_REAL_GAZEBO_SERVICE_DURING_NATIVE_CM_150MS_L2_PASS')
+          print('D08_REAL_MEASURED_STOP_FRONT_OFFICIAL_CM_REPLAY_ZERO_L2_PASS')
           assert cm['output_speed_nonzero_count']>=20
           print('D08_REAL_GAZEBO_CONCURRENT_CM_L1_PASS_NO_GOAL')
           assert v['pregoal_lidar']['after']['front_m'] > 0.4
