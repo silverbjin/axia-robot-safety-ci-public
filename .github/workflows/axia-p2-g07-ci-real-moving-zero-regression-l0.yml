@@ -33,9 +33,35 @@ jobs:
             tests/unit/test_p2_g07_guard_zreh_owner_cm_skew.py \
             tests/unit/test_p2_g07_guard_kca1_cm_slowdown.py \
             tests/unit/test_p2_g07_guard_nearzero_owner_trace.py \
-            tests/unit/test_p2_base_guard_policy.py
-          python3 -m py_compile ros2_ws/src/axia_safety_supervisor/axia_safety_supervisor/p2_base_guard_policy.py
+            tests/unit/test_p2_base_guard_policy.py \
+            tests/unit/test_p2_guard_cancel_contract.py \
+            tests/unit/test_p2_guard_parameter_init_contract.py
+          python3 -m py_compile \
+            ros2_ws/src/axia_safety_supervisor/axia_safety_supervisor/p2_base_guard_policy.py \
+            ros2_ws/src/axia_safety_supervisor/axia_safety_supervisor/p2_base_guard_node.py
           echo 'AXIA_G07_REAL_MOVING_NORMAL_ZERO_SAFETY_L0_PASS'
+      - name: Mutation guard - removing normal controller-zero permission reintroduces actual Goal cancel
+        shell: bash
+        run: |
+          set -euo pipefail
+          TARGET=ros2_ws/src/axia_safety_supervisor/axia_safety_supervisor/p2_base_guard_policy.py
+          cp "$TARGET" /tmp/g07_normal_zero_guard_original.py
+          trap 'cp /tmp/g07_normal_zero_guard_original.py "$TARGET"' EXIT
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('ros2_ws/src/axia_safety_supervisor/axia_safety_supervisor/p2_base_guard_policy.py')
+          s=p.read_text()
+          needle='if authorized_controller_zero:'
+          assert s.count(needle)==1
+          p.write_text(s.replace(needle,'if False and authorized_controller_zero:'))
+          PY
+          set +e
+          python3 -m pytest -q tests/unit/test_p2_g07_guard_authorized_transient_zero.py::test_actual_gazebo_normal_goal_zero_blocks_old_cm_without_false_cancel > /tmp/g07_moving_expected_red.log 2>&1
+          RC=$?
+          set -e
+          if [[ "$RC" -eq 0 ]];then echo AXIA_G07_NORMAL_ZERO_MUTATION_NOT_DETECTED;exit 2;fi
+          grep -q 'Healthy NORMAL goal pause must not falsely cancel' /tmp/g07_moving_expected_red.log || { cat /tmp/g07_moving_expected_red.log;exit 2; }
+          echo AXIA_G07_NORMAL_ZERO_MUTATION_REINTRODUCED_ERROR_CAUGHT_PASS
       - name: Destroy private solution
         if: always()
         shell: bash
