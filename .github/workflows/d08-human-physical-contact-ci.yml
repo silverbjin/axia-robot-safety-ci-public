@@ -92,7 +92,7 @@ jobs:
             ros-jazzy-ros-gz ros-jazzy-xacro ros-jazzy-rclpy \
             ros-jazzy-nav2-collision-monitor \
             ros-jazzy-sensor-msgs libgl1-mesa-dri libglx-mesa0 \
-            python3-numpy xvfb xauth
+            python3-numpy python3-venv xvfb xauth
       - name: Validate the existing D04 human COLLADA asset SHA
         shell: bash
         run: |
@@ -209,6 +209,30 @@ jobs:
           # This asserts real camera *framing* only, not YOLO inference.
           python3 d08/harness/d08_visible_person_frame.py \
             results/d08-human-contact-calibration/real_gazebo_rgb.ppm
+      - name: BgYnTVv7 real Gazebo RGB -> exact pinned ONNX person class (NO GOAL)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m venv /tmp/axia_d08_onnx_venv
+          /tmp/axia_d08_onnx_venv/bin/pip install -q --disable-pip-version-check \
+            'onnxruntime==1.20.1' 'numpy==1.26.4' 'pillow==11.1.0'
+          curl --fail --location --retry 3 --connect-timeout 15 --max-time 160 \
+            -o /tmp/axia-d08-assets/yolo26n.onnx \
+            'https://huggingface.co/unileon-robotics/YOLO26-ONNX/resolve/main/yolo26n.onnx'
+          echo '4f44c33cea12d4b5785e5e7c0a20c13d0c62a77de607ce96a40d6036c7d7bbcf  /tmp/axia-d08-assets/yolo26n.onnx' | sha256sum -c -
+          source /tmp/axia_d08_onnx_venv/bin/activate
+          # No synthetic frame: these PPM files came from the earlier real
+          # Gazebo/Jazzy ROS Image callbacks in THIS job. Pre-Goal person class
+          # must be positive; RGB pixel counts alone are insufficient.
+          python3 d08/scripts/d08_actual_rgb_onnx_probe.py \
+            --frame results/d08-human-contact-calibration/real_gazebo_rgb.ppm \
+            --stop-frame results/d08-human-contact-calibration/real_gazebo_stop_rgb.ppm \
+            --model /tmp/axia-d08-assets/yolo26n.onnx \
+            --report results/d08-human-contact-calibration/onnx_real_frame_verdict.json \
+            | tee /tmp/d08_bgyntv7_real_onnx.log
+          grep -F 'D08_ACTUAL_ONNX_PERSON_FRAME_L2_PASS' /tmp/d08_bgyntv7_real_onnx.log
+          ( cd results/d08-human-contact-calibration
+            sha256sum onnx_real_frame_verdict.json >> SHA256SUMS )
       - name: Remove external mesh (not part of artifact)
         if: always()
         run: rm -f /tmp/axia-d08-assets/walk.dae
