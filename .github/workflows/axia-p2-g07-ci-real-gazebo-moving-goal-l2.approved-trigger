@@ -1,12 +1,11 @@
-# Public CI-only real Gazebo Harmonic moving Goal, no WSL2 Owner consent bypass.
-# RED #43044500956 (5 failed) -> GREEN #43044930623 (137 passed).
-# Guard CM receives registered first, original QoS depth 10 and CM_TTL_SEC=0.15 intact.
-# Extra timestamps are DIAGNOSTIC; no synthetic CM/scan/fault or safety waiver.
-private_source_sha=efa72d2f60ac1ce7201a0b17c41024147c4697f4
-l0_red_run=43044500956
-l0_green_run=43044930623
-l0_green_sha=2618fb3511ca797459e18b3889c80fa434996f35
-previous_l2_guard_cm_age_ms=155.425255
-scope=REAL_SIM_CLEAR_SLOW_STOP_ODOM1S_ALL_NODE_TTL
+# Simulation-only ONE real Gazebo Goal; no Owner L3 TTY bypass.
+# CI cold-start CLOCK_MISSING #43045143910 RED -> #43051298024 143 GREEN.
+# Scoped 90s initial /clock only; Guard 150ms TTL, polygon STOP, 1s odom unchanged.
+private_source_sha=c971e3eeec54dd6b56f7dd7954913d2cfda45ba2
+public_l0_red_run=43046480951
+public_l0_green_run=43051298024
+public_l0_green_sha=9dcf643534f932237dd19532898229a25d6340d2
+previous_l2_clock_blocked_run=43045143910
+scope=REAL_GAZEBO_SIM_ONLY_CLEAR_SLOW_STOP_ODOM1S_TTL
 owner_l3_accepted=false
-certified_estop=false
+hardware_estop_certified=false
