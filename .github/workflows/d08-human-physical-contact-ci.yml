@@ -1,7 +1,14 @@
 name: AXIA D08 human/proxy model + grounded one-person + real GPU LiDAR (NO GOAL)
 on:
+  # Narrow PR branch: RED L0 first, then only GREEN gets actual Gazebo L2.
+  pull_request:
+    branches: ['fix/d08-foot-short-step-ci-20261111']
+    paths:
+      - 'd08/tests/test_d08_bgyntv7_real_person_ci.py'
+      - 'd08/scripts/d08_actual_rgb_onnx_probe.py'
+      - '.github/workflows/d08-human-physical-contact-ci.yml'
   push:
-    branches: ['fix/d08-human-contact-positive-ci-20261110', 'fix/d08-single-visual-rgbd-ci-20261110', 'fix/d08-g07-lidar-preflight-ci-20261110', 'fix/d08-grounded-human-ci-20261111', 'fix/d08-foot-short-step-ci-20261111', 'fix/d08-bgyntv7-actual-person-ci-20261112']
+    branches: ['fix/d08-human-contact-positive-ci-20261110', 'fix/d08-single-visual-rgbd-ci-20261110', 'fix/d08-g07-lidar-preflight-ci-20261110', 'fix/d08-grounded-human-ci-20261111', 'fix/d08-foot-short-step-ci-20261111']
     paths:
       - 'd08/harness/d08_live_world.py'
       - 'd08/harness/d08_contact_positive_contract.py'
