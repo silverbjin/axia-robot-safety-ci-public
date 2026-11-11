@@ -1,11 +1,11 @@
-# Exact CI-only G07 simulation Goal, last bounded regression trial before Owner WSL2.
-# GREEN test 139/139, official Nav2 CM unchanged, Guard CM_TTL_SEC=.15 intact.
-# P1 / ordinary P2 tick remains 20Hz, G07 sim-only at 40Hz.
-private_source_sha=53c8bb56f888c78f72d26e38dbfe38ce71d841bf
-public_l0_green_run=42989301470
-public_l0_green_sha=8aa337d6133b05e435faa2ef06fa46d765b76c66
-red_run=42989086729
-previous_l2_failed_run=42988070782
-scope=SIM_ONLY_CLEAR_SLOW_STOP_ODOM_1S_ALL_DELIVERY_PERIODS_UNCHANGED_TTL
+# CI SIMULATION ONLY: one authorized real Gazebo/Nav2 moving Goal; no Owner L3 consent bypass.
+# STOP reverse motion oracle corrected, retaining actual 2 post-ACK LiDAR samples,
+# official Nav2 CM ZERO and Guard ZERO, 150ms chain TTL + 1s odom dwell.
+private_source_sha=7186def36e78f8c764d5d01b63b6d586f4bf0488
+public_l0_red_run=43040702422
+public_l0_green_run=43040932165
+public_l0_green_sha=6babb4f13b2e14c43ebf6ce37f9291c07d456dd6
+previous_real_blocker=42989423638
+scope=CI_REAL_HARMONIC_CLEAR_SLOW_REVERSE_STOP_ODOM1S_ALL_TTL
 owner_l3_accepted=false
 certified_estop=false
