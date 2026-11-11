@@ -19,14 +19,14 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 68f97d43f44440428464af217e8c44360351b799
+          ref: 38cb745ead5d6feb409d85d629958f791e804803
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Real Owner near-ZERO sign-flip + existing Guard trace + STOP TTL and cancel
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = '68f97d43f44440428464af217e8c44360351b799'
+          test "$(git rev-parse HEAD)" = '38cb745ead5d6feb409d85d629958f791e804803'
           python3 -m pip install --disable-pip-version-check -q pytest==8.3.5
           python3 -m pytest -q -ra \
             tests/unit/test_p2_g07_guard_nearzero_owner_trace.py \
