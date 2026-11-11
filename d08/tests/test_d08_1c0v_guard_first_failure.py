@@ -27,15 +27,46 @@ POSE_ACK_AT = 4226.381276
 def gaps(values):
     return [b-a for a,b in zip(values,values[1:])]
 
-def test_normal_owner_demo_must_keep_cm_delivery_within_guard_ttl_RED():
-    max_gap=max(gaps(CM_RX))
-    print('FIELD_1C0V_CM_WALL_GAP_SEC',round(max_gap,6),
-          'GUARD_CM_TTL_SEC',CM_TTL_SEC,
-          'OWNER_FIRST_BLOCK',GUARD_LATCH_AT)
-    assert max(gaps(SUP_RX)) < SUP_TTL_SEC
-    # This MUST FAIL on actual field evidence (not ImportError):
-    assert max_gap < CM_TTL_SEC, (
-        f'FIELD_REPRODUCED_CM_GAP={max_gap:.6f}s > GUARD_TTL={CM_TTL_SEC:.3f}s')
+def test_actual_field_normal_demo_failed_and_guard_was_first():
+    # RED baseline was 1 failed, 32 passed:
+    # FIELD_REPRODUCED_CM_GAP=0.267742s > GUARD_TTL=0.150s
+    from d08.harness.d08_guard_first_failure import classify_first_failure
+    out=classify_first_failure(
+        cm_receipts=CM_RX,supervisor_receipts=SUP_RX,
+        guard_latch_at=GUARD_LATCH_AT,action_canceling_at=ACTION_CANCELING_AT,
+        action_canceled_at=ACTION_CANCELED_AT,
+        scan_timeout_at=SUPERVISOR_SCAN_TIMEOUT_AT,set_pose_ack_at=POSE_ACK_AT,
+        cm_ttl_sec=CM_TTL_SEC,supervisor_ttl_sec=SUP_TTL_SEC)
+    print('FIELD_1C0V_GUARD_FIRST_FAILURE_REPRODUCED',out)
+    assert round(out['observed_cm_max_gap_sec'],6)==.267742
+    assert out['observed_cm_gap_exceeds_budget'] is True
+    assert out['observed_supervisor_gap_exceeds_budget'] is False
+    assert out['guard_internal_callback_ages_verified'] is False
+    assert out['normal_g07_accepted'] is False
+    assert out['cancel_before_scan_timeout'] is True
+    assert out['certified_estop'] is False
+
+def test_healthy_diagnostic_input_is_not_mislabeled_as_field_failure():
+    from d08.harness.d08_guard_first_failure import classify_first_failure
+    out=classify_first_failure(
+        cm_receipts=[10.0,10.07,10.14,10.21],
+        supervisor_receipts=[10.0,10.05,10.10,10.15],
+        guard_latch_at=11.,action_canceling_at=11.01,
+        action_canceled_at=11.02,scan_timeout_at=11.03,set_pose_ack_at=11.5)
+    assert out['observed_cm_gap_exceeds_budget'] is False
+    assert out['marker']=='NO_CM_OBSERVER_DEADLINE_VIOLATION'
+
+def test_invalid_or_order_reversed_record_cannot_claim_success():
+    import pytest
+    from d08.harness.d08_guard_first_failure import classify_first_failure
+    common=dict(cm_receipts=CM_RX,supervisor_receipts=SUP_RX,
+        guard_latch_at=GUARD_LATCH_AT,action_canceling_at=ACTION_CANCELING_AT,
+        action_canceled_at=ACTION_CANCELED_AT,
+        scan_timeout_at=SUPERVISOR_SCAN_TIMEOUT_AT,set_pose_ack_at=POSE_ACK_AT)
+    with pytest.raises(ValueError):
+        classify_first_failure(**dict(common,cm_receipts=[10.0,9.9]))
+    with pytest.raises(ValueError):
+        classify_first_failure(**dict(common,scan_timeout_at=4224.3))
 
 def test_field_order_is_guard_first_not_later_scan_timeout():
     assert ACTION_EXECUTING_AT < GUARD_LATCH_AT < ACTION_CANCELING_AT
