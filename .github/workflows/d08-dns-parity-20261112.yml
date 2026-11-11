@@ -1,0 +1,62 @@
+name: AXIA D08 DNS parity probe (no ROS, no Goal)
+on:
+  push:
+    branches: ['ci/d08-dns-parity-20261112']
+    paths:
+      - '.github/workflows/d08-dns-parity-20261112.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  dns-host-container-isolation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - name: DNS host vs bridge vs host-network inside exact ROS image
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'D08_DNS_ISOLATION_FIXED_SOURCE_SHA=0468ca1f5837f63ef9859cb7a7dc615e358889d9'
+          echo 'D08_DNS_READONLY_PRECONDITION_NO_ROS_NO_GAZEBO_NO_GOAL'
+          echo '=== host resolver ==='
+          cat /etc/resolv.conf
+          host_ok=1
+          for domain in archive.ubuntu.com security.ubuntu.com huggingface.co; do
+            if timeout 12 getent ahostsv4 "$domain" | head -n 2; then
+              echo "D08_HOST_DNS_OK domain=$domain"
+            else
+              echo "D08_HOST_DNS_FAILED domain=$domain"
+              host_ok=0
+            fi
+          done
+          echo '=== Docker bridge resolver ==='
+          bridge_ok=0
+          if timeout 110 docker run --pull=always --rm ros:jazzy-ros-base-noble \
+             bash -c "cat /etc/resolv.conf; getent ahostsv4 archive.ubuntu.com && getent ahostsv4 security.ubuntu.com"; then
+            bridge_ok=1
+          fi
+          echo "D08_DOCKER_BRIDGE_DNS_PASS=$bridge_ok"
+          echo '=== Docker host-network resolver ==='
+          net_host_ok=0
+          if timeout 100 docker run --rm --network host ros:jazzy-ros-base-noble \
+             bash -c "cat /etc/resolv.conf; getent ahostsv4 archive.ubuntu.com && getent ahostsv4 security.ubuntu.com"; then
+            net_host_ok=1
+          fi
+          echo "D08_DOCKER_HOST_NETWORK_DNS_PASS=$net_host_ok"
+          echo "D08_HOST_DNS_ALL_PASS=$host_ok"
+          {
+            echo '## D08 DNS isolation (no Gazebo, no Goal)'
+            echo "- Pinned application SHA: \`0468ca1f5837f63ef9859cb7a7dc615e358889d9\`"
+            echo "- Host 3-domain DNS: $host_ok"
+            echo "- Docker bridge Ubuntu APT DNS: $bridge_ok"
+            echo "- Docker host-network Ubuntu APT DNS: $net_host_ok"
+            echo '- This diagnostics-only job does not qualify as real Gazebo L2.'
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [[ "$net_host_ok" == 1 ]]; then
+            echo 'D08_DNS_RECOVERY_PATH_HOST_NETWORK_CONFIRMED'
+          elif [[ "$bridge_ok" == 1 ]]; then
+            echo 'D08_DNS_RECOVERED_ON_STANDARD_DOCKER_NETWORK'
+          else
+            echo 'D08_DNS_NOT_RECOVERED_GAZEBO_L2_MUST_STAY_BLOCKED'
+            exit 2
+          fi
