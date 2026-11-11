@@ -95,9 +95,22 @@ trap 'exit 130' INT
 trap 'exit 143' TERM
 gh repo clone "$PRIVATE_REPO" "$SRC/instructor" -- \
   --single-branch --branch "$PRIVATE_BRANCH" --depth 1
-[[ "$(git -C "$SRC/instructor" rev-parse HEAD)" == "$PRIVATE_SHA" ]] || {
-  echo 'D08_LIVE_BLOCKED: private source SHA changed; stop instead of silently using untested code' >&2;exit 2;
+# A branch HEAD may advance for documentation or CI-only commits.
+# Retrieve the immutable, reviewed instructor commit from GitHub and detach;
+# never silently execute the new PR tip or skip source identity verification.
+git -C "$SRC/instructor" fetch --no-tags --depth 1 origin "$PRIVATE_SHA" || {
+  echo 'D08_LIVE_BLOCKED: exact reviewed instructor commit unavailable' >&2
+  exit 2
 }
+git -C "$SRC/instructor" -c advice.detachedHead=false checkout --detach "$PRIVATE_SHA" || {
+  echo 'D08_LIVE_BLOCKED: exact reviewed instructor checkout failed' >&2
+  exit 2
+}
+[[ "$(git -C "$SRC/instructor" rev-parse HEAD)" == "$PRIVATE_SHA" ]] || {
+  echo 'D08_LIVE_BLOCKED: source identity differs from exact reviewed commit' >&2
+  exit 2
+}
+echo "D08_PRIVATE_IMMUTABLE_SHA_CHECKOUT_PASS private_sha=$PRIVATE_SHA"
 [[ -z "$(git -C "$SRC/instructor" status --porcelain)" ]] || {
   echo 'D08_LIVE_BLOCKED: private checkout has changes' >&2;exit 2;
 }
