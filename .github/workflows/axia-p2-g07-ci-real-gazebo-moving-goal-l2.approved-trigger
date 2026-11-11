@@ -1,11 +1,10 @@
-# Bounded INFRA retry ONLY: previous L2 #43041110273 ran NO GOAL.
-# Reason: GitHub Docker DNS could not resolve archive.ubuntu.com/security.ubuntu.com.
-# Same Instructor source as 131/131 GREEN L0; no product source changes.
-# Preflight DNS before apt, fail fast NO_GOAL for resolver failure.
+# INFRA-ONLY retry, same exact GREEN Instructor SHA. Previous runs never sent a Goal:
+# 43041110273 apt blocked; 43042223936 DNS preflight blocked.
+# CI Docker explicit DNS 1.1.1.1/8.8.8.8; required preflight must PASS.
 private_source_sha=7186def36e78f8c764d5d01b63b6d586f4bf0488
 public_l0_red_run=43040702422
 public_l0_green_run=43040932165
-previous_l2_dns_blocked=43041110273
-scope=CI_REAL_HARMONIC_CLEAR_SLOW_REVERSE_STOP_ODOM1S_ALL_TTL
+previous_infra_blocked=43042223936
+scope=SIM_ONLY_REAL_HARMONIC_CLEAR_SLOW_REVERSE_STOP_ODOM1S_TTL
 owner_l3_accepted=false
 certified_estop=false
