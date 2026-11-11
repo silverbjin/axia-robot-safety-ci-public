@@ -128,6 +128,26 @@ jobs:
               bash "$SRC/scripts/p2_guard_ros_smoke_ci.sh" \
               --drop-source supervisor \
               >/tmp/axia_d08_private_l1_supervisor.log 2>&1; then
+            # Only emit known public test verdict classes, never raw private stdout.
+            python3 - <<'PY'
+          from pathlib import Path
+          import re
+          raw=Path('/tmp/axia_d08_private_l1_supervisor.log').read_text(errors='replace')
+          signals=[
+              'P2_GUARD_L1_BLOCKED: SYNTHETIC_TWO_SOURCE_NO_FORWARD',
+              'P2_GUARD_L1_BLOCKED: WATCHDOG_NOT_LATCHED',
+              'P2_GUARD_L1_BLOCKED: AUTO_RESUME_AFTER_LATCH',
+              'P2_L1_FORCED_SIGKILL',
+              'P2_L1_TEARDOWN_SIGTERM_AFTER_INT_TIMEOUT',
+              'P2_L1_GUARD_PROCESS=EXITED',
+              'P2_L1_GUARD_PROCESS=ALIVE',
+              'P2_GUARD_L1_SYNTHETIC_PASS',
+              'P2_GUARD_L1_DIAGNOSTIC',
+          ]
+          selected=[m for m in signals if m in raw]
+          print('AXIA_D08_PRIVATE_SUPERVISOR_L1_FAILURE_CLASS=' +
+                (','.join(selected) if selected else 'UNKNOWN_NO_KNOWN_MARKER'))
+          PY
             echo 'AXIA_D08_PRIVATE_GUARD_L1_SUPERVISOR_LOSS_BLOCKED_PRIVATE_LOG_NOT_PUBLISHED'
             exit 2
           fi
