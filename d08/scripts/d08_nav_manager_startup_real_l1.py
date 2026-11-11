@@ -57,6 +57,13 @@ def call_manager(command,domain,timeout=40):
     import rclpy
     from nav2_msgs.srv import ManageLifecycleNodes
     from lifecycle_msgs.srv import GetState
+    # The manager/CM subprocesses use env ROS_DOMAIN_ID=66. This
+    # in-process client inherited sealed job Domain=57 and saw NO
+    # manage_nodes even though the real 66 preflight was READY.
+    # Use the same isolated DDS domain BEFORE initializing rclpy.
+    if rclpy.ok():
+        raise RuntimeError('NAV_MANAGER_RCLPY_CONTEXT_ALREADY_INITIALIZED')
+    os.environ['ROS_DOMAIN_ID']=str(domain)
     rclpy.init()
     node=rclpy.create_node('axia_ci_nav_manager_startup_client')
     try:
@@ -201,7 +208,8 @@ def run(preflight:Path,out:Path):
                  'NATIVE_CM_STATE_MISMATCH',
                  'NATIVE_ROS_PROCESS_NONZERO',
                  'NATIVE_ROS_PROCESS_SHUTDOWN_FORCED',
-                 'NAV_MANAGER_PREFLIGHT_NO_EVIDENCE'}
+                 'NAV_MANAGER_PREFLIGHT_NO_EVIDENCE',
+                 'NAV_MANAGER_RCLPY_CONTEXT_ALREADY_INITIALIZED'}
         verdict['failure_code']=code if code in allowed else 'UNCLASSIFIED'
         verdict['status']='BLOCKED_REAL_NAV_MANAGER_L1'
         print('AXIA_FISQMVZZ_REAL_NAV_MANAGER_L1_BLOCKED class='+
