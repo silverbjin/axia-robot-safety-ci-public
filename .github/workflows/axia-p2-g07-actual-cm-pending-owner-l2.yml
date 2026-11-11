@@ -20,14 +20,14 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: c0bccd506ad4a74fe71742e4ef3d2d03ec739325
+          ref: a48aba8a7179e9fa2f2f2a86a85360ce06583f07
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Install only real CM Guard dependencies; exact Owner CM version
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 'c0bccd506ad4a74fe71742e4ef3d2d03ec739325'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 'a48aba8a7179e9fa2f2f2a86a85360ce06583f07'
           apt-get update -qq
           python3 - <<'PY'
           from pathlib import Path
@@ -55,14 +55,19 @@ jobs:
           python3 - <<'PY'
           import yaml
           from pathlib import Path
-          params=yaml.safe_load(Path('configs/p2_g07_guard_real_cm_no_goal_ci.yaml').read_text())
-          p=params['collision_monitor']['ros__parameters']
-          assert p['cmd_vel_in_topic']=='cmd_vel_supervised'
+          base=yaml.safe_load(Path('configs/p2_g07_guard_real_cm_no_goal_ci.yaml').read_text())
+          changed=yaml.safe_load(Path('configs/p2_g07_guard_real_cm_delayed_output_ci.yaml').read_text())
+          p=base['collision_monitor']['ros__parameters']
+          q=changed['collision_monitor']['ros__parameters']
           assert p['cmd_vel_out_topic']=='cmd_vel_pre_guard'
+          assert q['cmd_vel_out_topic']=='/axia_ci/cm_raw'
+          assert {k:v for k,v in q.items() if k!='cmd_vel_out_topic'} == {
+              k:v for k,v in p.items() if k!='cmd_vel_out_topic'}
+          assert p['AXIA_SlowFront']['slowdown_ratio']==.30
           assert p['polygons']==['AXIA_StopFront','AXIA_SlowFront']
-          print('AXIA_G07_REAL_CM_OWNER_VERSION_AND_ZONE_PARAMS_PASS_NO_GOAL')
+          print('AXIA_G07_REAL_CM_UNCHANGED_ZONES_ONLY_CI_RELAY_OUTPUT_PASS')
           PY
-      - name: Build actual AXIA Guard and run real Nav2 CM lifecycle with simulated clear scan
+      - name: Actual Nav2 CM raw->delay-only relay->Guard must enter pending ZERO and recover
         shell: bash
         env:
           ROS_DOMAIN_ID: '67'
@@ -78,8 +83,9 @@ jobs:
             exit 2
           }
           bash -n scripts/p2_g07_guard_real_cm_no_goal_ci.sh
-          AXIA_G07_REQUIRE_ACTUAL_CM_PENDING=1 timeout --signal=TERM --kill-after=9s 100s \
-            bash scripts/p2_g07_guard_real_cm_no_goal_ci.sh --zreh-30pct-slowdown
+          python3 -m py_compile tools/p2_g07_actual_cm_delayed_relay_ci.py
+          timeout --signal=TERM --kill-after=9s 100s \
+            bash scripts/p2_g07_guard_real_cm_no_goal_ci.sh --zreh-actual-cm-delayed
           echo 'AXIA_G07_ACTUAL_CM_PENDING_L2_PASS_DELAYED_REAL_CM_NO_GOAL'
       - name: Destroy private checkout
         if: always()
