@@ -1,10 +1,11 @@
-# Simulation-only CI one Goal after explicit RED->GREEN on CM low-speed scan correction.
-# 142 green tests, unchanged CM TTL 150ms, polygon/rate/official Nav2 code.
-private_source_sha=a612c3b5210a45721e87da2c1b622f7cc68ab1a9
-public_l0_green_run=42987961143
-public_l0_green_sha=0e8c31300daea4cace1d4f93e3fff493f6a9f827
-red_run=42987790248
-previous_l2_failure=42986831438
-scope=CI_SIMULATION_ONLY_CLEAR_SLOW_STOP_ODOM1S_FIXED_TTL_BASE_SHIFT_FALSE
+# Exact CI-only G07 simulation Goal, last bounded regression trial before Owner WSL2.
+# GREEN test 139/139, official Nav2 CM unchanged, Guard CM_TTL_SEC=.15 intact.
+# P1 / ordinary P2 tick remains 20Hz, G07 sim-only at 40Hz.
+private_source_sha=53c8bb56f888c78f72d26e38dbfe38ce71d841bf
+public_l0_green_run=42989301470
+public_l0_green_sha=8aa337d6133b05e435faa2ef06fa46d765b76c66
+red_run=42989086729
+previous_l2_failed_run=42988070782
+scope=SIM_ONLY_CLEAR_SLOW_STOP_ODOM_1S_ALL_DELIVERY_PERIODS_UNCHANGED_TTL
 owner_l3_accepted=false
 certified_estop=false
