@@ -6,8 +6,8 @@
 set -Eeuo pipefail
 umask 077
 readonly PRIVATE_REPO='silverbjin/axia-robot-safety-instructor'
-readonly PRIVATE_BRANCH='fix/p2-g07-nearzero-guard-regression-20261111'
-readonly PRIVATE_SHA='4cec24c1787934375569f9ff37b1cb3922fede43'
+readonly PRIVATE_BRANCH='fix/p2-g07-cm-slowdown-delayed-direction-20261111'
+readonly PRIVATE_SHA='a15dbd7b2fb962d5d006c4944faac933bf4b19ca'
 
 if [[ "${1:-}" == '--self-check' ]]; then
   [[ $# == 1 && "$PRIVATE_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 2
