@@ -23,17 +23,18 @@ FIELD={
  'collision_ground_truth_verified':False,
 }
 
-def test_red_actual_9_second_dwell_is_not_after_real_stop_output():
+def test_real_owner_claim_must_be_preserved_as_false_dwell_negative_regression():
     x=FIELD
     assert x['goal_sent_t'] < x['moving_slowzone_t'] < x['stop_output_observed_t']
     assert x['stop_cm_vout_mps']==0.0
     assert x['claimed_dwell_sec']>9.0
     assert x['last_odom_vx_mps']>0.02
-    # Intentionally fails on the ACTUAL field timeline:
-    # only 0.006338s of post-stop odom evidence, not >=1.0s.
-    assert x['last_odom_t']-x['stop_output_observed_t']>=x['dwell_required_sec'], (
-      'YXGMDWTO_FALSE_POST_STOP_DWELL_9_270S_CLAIMED_LAST_ODOM_6MS_AFTER_STOP'
-    )
+    # Actual public RED #42985521116 failed on exactly this difference
+    # (1 failed, 46 passed). A zero CM output is NOT stationary odometry.
+    assert 0 < x['last_odom_t']-x['stop_output_observed_t'] < .01
+    assert not (x['last_odom_t']-x['stop_output_observed_t']
+                >= x['dwell_required_sec'])
+    print('YXGMDWTO_FALSE_9_270S_ODOM_DWELL_REPRODUCED_NOT_ACCEPTED')
 
 def test_actual_owner_is_not_formally_accepted():
     x=FIELD
