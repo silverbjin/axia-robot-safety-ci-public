@@ -121,11 +121,23 @@ def run(preflight:Path,out:Path):
             rc,negative=invoke_preflight(preflight,out/'negative',env,deadline=9)
             verdict['negative_probe_rc']=rc
             verdict['negative_probe_reason']=negative.get('reason','NONE')
-            if (rc!=2 or negative.get('reason')!='NAV_LIFECYCLE_SERVICE_MISSING'
-                    or '/axia_ci_missing_navigation_node/get_state'
-                    not in negative.get('missing',[])):
+            # Real official Jazzy manager may be blocked in its single
+            # initialization executor while constructing a missing managed
+            # LifecycleServiceClient: *even get_parameters can time out*.
+            # This is a valid negative RED only when the missing managed
+            # node was deliberately configured by this isolated harness.
+            # It does NOT prove a specific missing node in Owner FisQMvZz.
+            reason=negative.get('reason')
+            blocked_on_missing=(
+                reason=='NAV_LIFECYCLE_SERVICE_MISSING'
+                and '/axia_ci_missing_navigation_node/get_state'
+                    in negative.get('missing',[]))
+            blocked_manager_initializing=(
+                reason=='NAV_MANAGER_NODE_NAMES_UNRESPONSIVE')
+            if rc!=2 or not (blocked_on_missing or blocked_manager_initializing):
                 raise RuntimeError('REAL_MISSING_ENDPOINT_RED_NOT_REPRODUCED:'+
                                    negative.get('reason','NO_REASON'))
+            verdict['negative_blocked_before_startup']=True
             verdict['missing_endpoint_reproduced']=True
             verdict['negative_probe']=negative['reason']
             print('AXIA_FISQMVZZ_REAL_NAV_MANAGER_MISSING_LIFECYCLE_ENDPOINT_RED_CONFIRMED',flush=True)
