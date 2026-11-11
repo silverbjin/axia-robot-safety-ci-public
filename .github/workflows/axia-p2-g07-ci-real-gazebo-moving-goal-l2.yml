@@ -43,7 +43,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 62c0683497f24700224bc3f4a6c66309425ba527
+          ref: e3ec605058938fe89eac3091d26293e123f00772
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -73,7 +73,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '62c0683497f24700224bc3f4a6c66309425ba527'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 'e3ec605058938fe89eac3091d26293e123f00772'
           bash ci-tools/scripts/axia_ci_enable_osrf_gazebo_repo.sh
           DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends procps git
           cd instructor
@@ -115,11 +115,12 @@ jobs:
           AXIA_P0_SIM_ONLY: '1'
           AXIA_P2_G07_PHYSICAL_PREFLIGHT: '1'
           AXIA_G07_CI_SIM_GOAL_ALLOWED: '1'
+          AXIA_G07_CI_OWNER_OBSERVER_PARITY: '1'
           AXIA_P2_SMOKE_RESULTS: results/p2-g07-ci-moving/real-l2
         run: |
           set -euo pipefail
           cd instructor
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '62c0683497f24700224bc3f4a6c66309425ba527'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 'e3ec605058938fe89eac3091d26293e123f00772'
           timeout --signal=TERM --kill-after=10s 900s \
             bash scripts/p2_no_goal_smoke_ci.sh || {
             echo 'AXIA_G07_CI_MOVING_GOAL_REAL_GAZEBO_BLOCKED'
@@ -142,6 +143,8 @@ jobs:
           assert all(data['goal_status_at_'+k]==2 for k in ('clear','slow','stop'))
           assert data['odom_stopped_dwell_sec']>=1
           assert data['guard_latched'] is False
+          assert data['owner_observer_parity_survived_15s'] is True
+          print('AXIA_G07_CI_OWNER_OBSERVER_PARITY_L2_VALIDATED_2_WORKERS_NO_SIGSEGV')
           assert data['certified_estop'] is False and data['gate_accepted'] is False
           assert data['owner_l3_accepted'] is False
           print('AXIA_G07_CI_REAL_HARMONIC_NAV2_MOVING_GOAL_CLEAR_SLOW_STOP_L2_PASS_OWNER_L3_NOT_RUN')
