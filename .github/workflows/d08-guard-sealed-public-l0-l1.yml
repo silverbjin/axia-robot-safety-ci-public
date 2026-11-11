@@ -214,6 +214,9 @@ jobs:
               v=json.loads(p.read_text())
               print('AXIA_FISQMVZZ_REAL_MANAGER_L1_BLOCKER_CLASS='+str(v.get('failure_class','NONE')))
               print('AXIA_FISQMVZZ_REAL_MANAGER_L1_STATUS='+str(v.get('status')))
+              print('AXIA_FISQMVZZ_REAL_MANAGER_L1_FAILURE_CODE='+str(v.get('failure_code','NONE')))
+              print('AXIA_FISQMVZZ_REAL_MANAGER_L1_NEGATIVE_PROBE='+str(v.get('negative_probe_reason','NONE')))
+              print('AXIA_FISQMVZZ_REAL_MANAGER_L1_POSITIVE_PROBE='+str(v.get('positive_probe_reason','NONE')))
           else:
               print('AXIA_FISQMVZZ_REAL_MANAGER_L1_BLOCKER_CLASS=NO_VERDICT')
           PY
