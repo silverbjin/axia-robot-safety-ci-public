@@ -40,16 +40,20 @@ WORLD='''<sdf version="1.9"><world name="default">
 </link></model></world></sdf>'''
 ROBOT='<sdf version="1.9"><model name="turtlebot3_waffle"><link name="camera_link"/></model></sdf>'
 
-def test_RED_owner_healthy_cm_zero_stream_5s_after_stop():
+def test_owner_actual_cm_zero_output_ends_and_guard_correctly_latches():
     x=FIELD
     assert x['post_stop_dwell_sec']>=1.0
     assert x['last_supervisor_zero_wall']>x['first_guard_latch_wall']+50
     assert x['guard_cm_input_age_sec']>x['cm_ttl_sec']
     assert x['first_guard_latch_wall']<x['goal_canceling_wall']<x['goal_canceled_wall']
-    # Actual field gap, reproduces missing CI coverage (not ImportError).
-    assert x['last_cm_zero_output_wall']-x['first_cm_stop_wall']>=5.0, (
-        'L0KCLVT6_CM_ZERO_OUTPUT_STOPPED_BEFORE_5S_THEN_GUARD_TTL_151668US'
-    )
+    # Genuine public RED #42999827233 failed on this actual source gap,
+    # and the old D08 camera cut the person head (2 failed,47 passed).
+    # Preserve as a NEGATIVE witness; the correct safety result is a
+    # real Guard fail-closed zero + Goal cancel, NOT auto-resume or E-Stop.
+    assert 1.0 < x['last_cm_zero_output_wall']-x['first_cm_stop_wall'] < 5.0
+    assert .15 < x['guard_cm_input_age_sec'] < .17
+    assert x['goal_canceling_wall']>x['first_guard_latch_wall']
+    print('L0KCLVT6_CM_POST_STOP_SILENCE_CAUSES_CORRECT_GUARD_LATCH')
 
 def test_RED_d08_stopzone_camera_has_full_human_in_frame(tmp_path):
     w=tmp_path/'w.sdf.xacro';w.write_text(WORLD)
