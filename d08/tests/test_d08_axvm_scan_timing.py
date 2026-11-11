@@ -71,3 +71,37 @@ def test_missing_or_out_of_order_trace_is_not_claimed_as_safety_pass():
     assert out['status']=='INCOMPLETE_TRACE'
     out=timing.assess_owner_trace(dict(RAW,gazebo_set_pose_ack_mono=1084.15))
     assert out['status']=='UNEXPECTED_TRACE_ORDER'
+
+
+def test_d08_transient_robot_sdf_only_retunes_existing_gpu_lidar(tmp_path):
+    import xml.etree.ElementTree as ET
+    from d08.harness.d08_live_world import build_overlay
+    world='''<sdf version="1.9"><world name="default">
+    <plugin name="gz::sim::systems::Contact" filename="gz-sim-contact-system"/>
+    <model name="axia_p2_g07_obstacle"><link name="obstacle_link">
+    <collision name="obstacle_collision"><geometry><cylinder>
+    <radius>0.07</radius><length>0.48</length></cylinder></geometry></collision>
+    <visual name="obstacle_visual"/><sensor name="axia_contact" type="contact">
+    <contact><collision>obstacle_collision</collision></contact></sensor>
+    </link></model></world></sdf>'''
+    robot='''<sdf version="1.9"><model name="turtlebot3_waffle">
+    <link name="camera_link"/><link name="base_scan">
+    <sensor name="hls_lfcd_lds" type="gpu_lidar">
+    <visualize>true</visualize><update_rate>5</update_rate>
+    </sensor></link></model></sdf>'''
+    w=tmp_path/'w.sdf.xacro';w.write_text(world)
+    r=tmp_path/'r.sdf.xacro';r.write_text(robot)
+    a=tmp_path/'walk.dae';a.write_text('dummy')
+    m=build_overlay(w,r,a,tmp_path/'overlay')
+    source=ET.parse(r).getroot()
+    result=ET.parse(m['robot_sdf']).getroot()
+    old=source.find(".//sensor[@name='hls_lfcd_lds']")
+    lidar=result.find(".//sensor[@name='hls_lfcd_lds']")
+    assert old.findtext('update_rate')=='5'
+    assert lidar.findtext('update_rate')=='10'
+    assert lidar.findtext('visualize')=='false'
+    assert m['d08_original_lidar_sim_rate_hz']==5
+    assert m['d08_gpu_lidar_sim_rate_hz']==10
+    assert m['d08_scan_watchdog_sec_unchanged']==.5
+    assert m['goal_sent'] is False
+    assert m['collision_ground_truth_verified'] is False
