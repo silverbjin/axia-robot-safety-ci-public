@@ -45,7 +45,18 @@ def test_real_human_head_and_feet_fit_supplemental_rgbd_camera(tmp_path):
     assert look_up + vfov/2 >= head+0.025, (look_up,vfov,head)
     assert look_up - vfov/2 <= feet-0.025, (look_up,vfov,feet)
     # Supplementary D08 RGBD only. Native Waffle lidar/safety unchanged.
-    assert 1.35<=hfov<=2.0
-    assert 0.20<=look_up<=0.55
+    assert 2.15<=hfov<=2.25
+    assert 0.40<=look_up<=0.50
+    # l0KClvT6 actual StopZone 0.3466m placed a full grounded human
+    # too close for the former 1.95rad, -0.30rad copied camera.
+    # This is a pinhole geometry calculation, NOT rendered GUI evidence.
+    distance=.35
+    stop_head=math.atan((h-cam_z)/distance)
+    stop_feet=math.atan((foot-cam_z)/distance)
+    assert look_up+vfov/2>=stop_head+.09
+    assert look_up-vfov/2<=stop_feet-.09
+    assert m['rgbd_horizontal_fov_rad']==2.20
+    assert m['rgbd_sensor_pitch_rad']==-.45
+    assert m['d08_yolo_debug_confidence_threshold']==.25
     assert not m['robot_drive_model_modified']
     assert m['goal_sent'] is False

@@ -32,8 +32,26 @@ HUMAN_DAE_MIN_Z_M=-0.859141
 HUMAN_DAE_MAX_Z_M=0.856892
 HUMAN_SCALE=0.75
 HUMAN_MODEL_REST_Z_M=0.24
+# Owner CqYxbyzi: the raw COLLADA min-z geometric estimate left visible
+# toes below Gazebo's rendered ground. D08 visual-only 6cm correction,
+# NEVER applied to model/collision/contact/set_pose z.
+# On-screen toe-to-floor contact still requires owner GUI confirmation.
+# D08-only upstream Waffle scan is 5 simulated Hz. Owner RTF~0.364 gives
+# ~0.55s wall scan spacing > 0.5s fail-closed Watchdog. At 10 simulated Hz
+# the idealized wall gap is ~0.275s at the SAME RTF (NOT a WSL2 guarantee).
+# Official installed TurtleBot3/Nav2 files and safety timeout stay untouched.
+GPU_LIDAR_SIM_RATE_HZ=10
+HUMAN_FOOT_RENDER_TUNE_M=0.06
+# Owner l0KClvT6 screenshot: near 0.35m StopZone, old RGBD 1.95rad/-0.30
+# cropped the head. Camera changes ONLY generated D08 Waffle copy.
+D08_RGBD_HFOV_RAD=2.20
+D08_RGBD_PITCH_RAD=-0.45
+# Hide the known bench .150 false positive from D08 YOLO debug only.
+D08_YOLO_DEBUG_CONFIDENCE=0.25
+
 HUMAN_VISUAL_LOCAL_Z_M=round(
-    -HUMAN_MODEL_REST_Z_M-HUMAN_DAE_MIN_Z_M*HUMAN_SCALE,6)
+    -HUMAN_MODEL_REST_Z_M-HUMAN_DAE_MIN_Z_M*HUMAN_SCALE
+    +HUMAN_FOOT_RENDER_TUNE_M,6)
 
 
 
@@ -59,7 +77,11 @@ def make_yolo_params(model: Path) -> str:
     old = 'rgb_topic: /camera/image_raw'
     if data.count(old) != 1:
         raise ValueError('D04_YOLO_CONFIG_UNEXPECTED')
-    return data.replace(old, 'rgb_topic: ' + RGB_TOPIC)
+    baseline='threshold: 0.15'
+    if data.count(baseline)!=1:
+        raise ValueError('D04_YOLO_THRESHOLD_BASELINE_UNEXPECTED')
+    return (data.replace(old,'rgb_topic: '+RGB_TOPIC)
+                .replace(baseline,f'threshold: {D08_YOLO_DEBUG_CONFIDENCE:.2f}'))
 
 
 def attach_human_visual_to_fixture(wn, actor_mesh: Path) -> None:
@@ -103,7 +125,7 @@ def attach_human_visual_to_fixture(wn, actor_mesh: Path) -> None:
     _sub(mesh,'scale','0.75 0.75 0.75')
 
     # Do not draw a black support pole inside the visible person.
-    # Grounded COLLADA feet/legs now occupy the 0.2m GPU-LiDAR plane;
+    # Calibrated COLLADA feet/legs should occupy the 0.2m GPU-LiDAR plane;
     # actual LaserScan after native P2 set_pose must prove this in L2.
     # If L2 fails, no Goal is permitted and the model is NOT released.
 
@@ -143,20 +165,51 @@ def build_overlay(world: Path, robot: Path, actor_mesh: Path, output: Path) -> d
         raise ValueError('D08_OFFICIAL_WAFFLE_CAMERA_LINK_MISSING')
     if r.getroot().find(".//sensor[@name='" + SENSOR_NAME + "']") is not None:
         raise ValueError('D08_DUPLICATE_RGBD')
+    # Only the ephemeral D08 robot SDF overlay changes LiDAR scheduling;
+    # do not modify /opt/ros, Nav2, Collision Monitor, or Supervisor.
+    lidar_nodes=r.getroot().findall(".//sensor[@name='hls_lfcd_lds']")
+    if len(lidar_nodes)>1:
+        raise ValueError('D08_GPU_LIDAR_NOT_UNIQUE')
+    lidar_rate_before=None
+    if lidar_nodes:
+        lidar=lidar_nodes[0]
+        hz=lidar.find('update_rate')
+        if lidar.get('type')!='gpu_lidar' or hz is None or (hz.text or '').strip()!='5':
+            raise ValueError('D08_UPSTREAM_GPU_LIDAR_RATE_UNEXPECTED')
+        lidar_rate_before=5
+        hz.text=str(GPU_LIDAR_SIM_RATE_HZ)
+        vis=lidar.find('visualize')
+        if vis is not None:
+            vis.text='false'  # Gazebo ray visualization is not the actual /scan.
+    # Owner 1XZYehm8: D08 uses its registered 640x480 RGBD. The
+    # upstream Waffle's unused 320x240, 5Hz intel depth sensor adds
+    # redundant GPU rendering under WSLg. Remove ONLY from generated
+    # D08 SDF overlay. Official robot source file remains unchanged.
+    legacy=cam.findall("./sensor[@name='intel_realsense_r200_depth']")
+    if len(legacy)>1:
+        raise ValueError('D08_LEGACY_DEPTH_SENSOR_NOT_UNIQUE')
+    legacy_depth_removed=False
+    if legacy:
+        old=legacy[0]
+        if old.get('type')!='depth' or (old.findtext('update_rate') or '').strip()!='5':
+            raise ValueError('D08_LEGACY_DEPTH_SENSOR_UPSTREAM_UNEXPECTED')
+        cam.remove(old)
+        legacy_depth_removed=True
     before_plugins = len(r.getroot().findall('.//plugin'))
     sensor = ET.SubElement(cam, 'sensor', {
         'name':SENSOR_NAME, 'type':'rgbd_camera'
     })
     # Owner real RGB was cropped to pants (tv=86, person=0).
     # Wider pinhole RGBD FOV and slight upward aim frame a grounded human.
-    # Neither Nav2 nor LiDAR/CM sensors or thresholds are changed.
-    _sub(sensor,'pose','0 0 0 0 -0.30 0')
+    # Official/Nav2 and CM safety thresholds unchanged; only D08 copied
+    # Waffle LiDAR scheduling is retuned above (not an /opt/ros edit).
+    _sub(sensor,'pose',f'0 0 0 0 {D08_RGBD_PITCH_RAD:.2f} 0')
     _sub(sensor,'always_on','1')
     _sub(sensor,'update_rate','5')
     _sub(sensor,'topic','axia/d08/rgbd')
     _sub(sensor,'gz_frame_id',OPTICAL_FRAME)
     camera = _sub(sensor, 'camera')
-    _sub(camera, 'horizontal_fov','1.95')
+    _sub(camera, 'horizontal_fov',f'{D08_RGBD_HFOV_RAD:.2f}')
     image = _sub(camera,'image')
     _sub(image,'width','640')
     _sub(image,'height','480')
@@ -192,6 +245,8 @@ def build_overlay(world: Path, robot: Path, actor_mesh: Path, output: Path) -> d
       'gpu_lidar_leg_surface':False,
       'rendered_visual_count':1,
       'human_grounded_expected':True,
+      'human_foot_contact_gui_verified':False,
+      'human_render_tune_lift_m':HUMAN_FOOT_RENDER_TUNE_M,
       'human_geometry_min_z_m':HUMAN_DAE_MIN_Z_M,
       'human_geometry_max_z_m':HUMAN_DAE_MAX_Z_M,
       'human_local_pose_z_m':HUMAN_VISUAL_LOCAL_Z_M,
@@ -203,8 +258,13 @@ def build_overlay(world: Path, robot: Path, actor_mesh: Path, output: Path) -> d
       'human_visual_animated':False,
       'human_model_motion_source':'existing_P2_G07_gz_set_pose',
       'robot_world_spawn':{'x':-2.0,'y':-0.5,'yaw':0.0},
-      'rgbd_horizontal_fov_rad':1.95,
-      'rgbd_sensor_pitch_rad':-0.30,
+      'rgbd_horizontal_fov_rad':D08_RGBD_HFOV_RAD,
+      'rgbd_sensor_pitch_rad':D08_RGBD_PITCH_RAD,
+      'd08_yolo_debug_confidence_threshold':D08_YOLO_DEBUG_CONFIDENCE,
+      'd08_original_lidar_sim_rate_hz':lidar_rate_before,
+      'd08_gpu_lidar_sim_rate_hz':GPU_LIDAR_SIM_RATE_HZ if lidar_rate_before else None,
+      'd08_scan_watchdog_sec_unchanged':0.5,
+      'd08_unused_upstream_depth_sensor_removed':legacy_depth_removed,
       'physical_obstacle_static_gap_not_certified':True,
       'gazebo_physical_fixture':PHYSICAL_NAME,
       'rgb_topic':RGB_TOPIC,

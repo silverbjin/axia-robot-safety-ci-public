@@ -1,11 +1,19 @@
 name: AXIA D08 G07 evidence-replay minimal
 on:
   push:
-    branches: ['fix/d08-g07-acceptance-ci-20261110', 'fix/d08-human-contact-positive-ci-20261110', 'release/d08-g07-lidar-owner-20261110', 'release/d08-grounded-owner-wsl2-20261111']
+    branches: ['fix/d08-g07-acceptance-ci-20261110', 'fix/d08-human-contact-positive-ci-20261110', 'release/d08-g07-lidar-owner-20261110', 'release/d08-grounded-owner-wsl2-20261111', 'fix/d08-foot-short-step-ci-20261111']
     paths:
       - 'd08/harness/**'
       - 'd08/tests/test_g07_*'
       - 'd08/tests/test_d08_last_mile*'
+      - 'd08/tests/test_d08_axvm_scan_timing.py'
+      - 'd08/tests/test_d08_1c0v_guard_first_failure.py'
+      - 'd08/tests/test_d08_1xzy_first_guard_budget.py'
+      - 'd08/tests/test_d08_oddl_stopzone_first_failure.py'
+      - 'd08/tests/test_d08_wzbk_cm_teardown.py'
+      - 'd08/tests/test_d08_fisqm_nav_startup.py'
+      - 'd08/tests/test_d08_yxgmdwto_post_stop_dwell.py'
+      - 'd08/tests/test_d08_l0k_poststop_cm_camera.py'
       - 'd08/tests/test_d08_g07_lidar_visible_proxy.py'
       - 'd08/tests/test_d08_rgbd_alignment_evidence.py'
       - 'd08/tests/test_d08_single_human_visual_regression.py'
@@ -42,6 +50,14 @@ jobs:
             d08/tests/test_g07_contact_topic_discovery.py \
             d08/tests/test_g07_cm_shutdown_audit.py \
             d08/tests/test_d08_last_mile_bootstrap.py \
+            d08/tests/test_d08_axvm_scan_timing.py \
+            d08/tests/test_d08_1c0v_guard_first_failure.py \
+            d08/tests/test_d08_1xzy_first_guard_budget.py \
+            d08/tests/test_d08_oddl_stopzone_first_failure.py \
+            d08/tests/test_d08_wzbk_cm_teardown.py \
+            d08/tests/test_d08_fisqm_nav_startup.py \
+            d08/tests/test_d08_yxgmdwto_post_stop_dwell.py \
+            d08/tests/test_d08_l0k_poststop_cm_camera.py \
             d08/tests/test_d08_g07_lidar_visible_proxy.py \
             d08/tests/test_d08_rgbd_alignment_evidence.py \
             d08/tests/test_d08_single_human_visual_regression.py \

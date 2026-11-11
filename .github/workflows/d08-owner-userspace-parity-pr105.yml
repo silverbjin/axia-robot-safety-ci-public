@@ -1,0 +1,126 @@
+name: AXIA D08 owner critical userspace parity + sealed PR105
+on:
+  push:
+    branches: ['fix/d08-foot-short-step-ci-20261111']
+    paths:
+      - '.github/workflows/d08-owner-userspace-parity-pr105.yml'
+      - 'd08/ci/**'
+      - 'd08/tests/test_d08_owner_userspace_parity.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: axia-d08-owner-pr105-parity
+  cancel-in-progress: true
+jobs:
+  public-parity-contract-l0:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: |
+          set -euo pipefail
+          python -m pip install --quiet pytest==8.3.5
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -q d08/tests/test_d08_owner_userspace_parity.py
+          python -m compileall -q d08/ci/check_owner_userspace.py
+          echo 'AXIA_D08_PARITY_CONTRACT_L0_PASS SYNTHETIC_ONLY'
+          echo 'AXIA_PR105_PRIVATE_CI_UNAVAILABLE_NOT_CLAIMED'
+
+  owner-critical-userspace-gazebo-l2:
+    needs: public-parity-contract-l0
+    runs-on: ubuntu-24.04
+    timeout-minutes: 26
+    container:
+      image: ros:jazzy-ros-base-noble
+    env:
+      DEBIAN_FRONTEND: noninteractive
+      MAKEFLAGS: -j2
+      ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+      ROS_DOMAIN_ID: '56'
+      GZ_PARTITION: axia_d08_parity_ci
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Install exact owner core APT versions; never fall back silently
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Official OSRF Gazebo Harmonic repo, as on the Owner WSL2.
+          # ros:jazzy-ros-base-noble does not ship this APT source by default.
+          apt-get update -qq
+          apt-get install -y -qq --no-install-recommends curl gnupg lsb-release ca-certificates
+          curl -fL --retry 3 --max-time 60 -sS \
+            'https://packages.osrfoundation.org/gazebo.gpg' \
+            -o /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg
+          chmod 0644 /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg
+          printf 'deb [arch=%s signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] https://packages.osrfoundation.org/gazebo/ubuntu-stable noble main\n' \
+            "$(dpkg --print-architecture)" \
+            > /etc/apt/sources.list.d/gazebo-stable.list
+          apt-get update -qq
+          mapfile -t pins < <(python3 - <<'PY'
+          import json
+          from pathlib import Path
+          contract=json.loads(Path('d08/ci/owner_userspace_contract_20261111.json').read_text())
+          for name,version in sorted(contract['critical_packages'].items()):
+              print(name+'='+version)
+          PY
+          )
+          printf 'AXIA_OWNER_PIN_COUNT=%s\n' "${#pins[@]}"
+          # An unavailable version must BLOCK parity, never upgrade owner software.
+          apt-get install -y -qq --no-install-recommends --allow-downgrades \
+            "${pins[@]}" git curl ca-certificates python3-yaml \
+            ros-jazzy-xacro ros-jazzy-sensor-msgs ros-jazzy-nav-msgs \
+            ros-jazzy-geometry-msgs ros-jazzy-std-msgs \
+            python3-numpy xvfb xauth libgl1-mesa-dri libglx-mesa0
+      - name: Exact user-space version + original Nav2 world/map checksum gate
+        shell: bash
+        run: |
+          set -eo pipefail
+          source /opt/ros/jazzy/setup.bash
+          python3 d08/ci/check_owner_userspace.py --strict \
+            --report results/owner-critical-userspace-parity.json
+          echo 'AXIA_D08_OWNER_CRITICAL_USERSPACE_PARITY_PASS_WSL_KERNEL_UNVERIFIED'
+      - name: ONE real headless Gazebo Harmonic/Waffle no-Goal physical scan
+        shell: bash
+        run: |
+          set -eo pipefail
+          source /opt/ros/jazzy/setup.bash
+          mkdir -p /tmp/axia-d08-assets
+          curl --fail --location --retry 3 --connect-timeout 15 --max-time 100 \
+            -o /tmp/axia-d08-assets/walk.dae \
+            'https://fuel.gazebosim.org/1.0/Mingfei/models/actor/tip/files/meshes/walk.dae'
+          echo '49af0df3a319d1cb8ca2cebf02dbd00f625e5d5bec820bc5e109925b18b65c6e  /tmp/axia-d08-assets/walk.dae' | sha256sum -c -
+          python3 -u d08/scripts/d08_public_gazebo_l2.py \
+            --actor /tmp/axia-d08-assets/walk.dae \
+            --out results/d08-owner-parity-gazebo \
+            --lidar-pre-goal
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          v=json.loads(Path('results/d08-owner-parity-gazebo/verdict.json').read_text())
+          assert v['status']=='D08_REAL_GAZEBO_WAFFLE_RGBD_NO_GOAL_PASS'
+          assert v['actual_rgbd']['matched'] is True
+          assert v['pregoal_lidar']['status']=='PASS_ACTUAL_GAZEBO_SET_POSE_PLUS_LIDAR'
+          assert 0.4 < v['pregoal_lidar']['after']['front_m'] < 0.75
+          assert v['goal_sent'] is False and v['cmd_vel_published'] is False
+          assert v['collision_ground_truth'] is False
+          print('AXIA_D08_OWNER_PINNED_USERSPACE_GAZEBO_L2_PASS_NO_GOAL')
+          PY
+      - name: Remove original D04 asset and keep ONLY public no-Goal proof
+        if: always()
+        run: rm -f /tmp/axia-d08-assets/walk.dae
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d08-owner-userspace-parity-public-no-goal
+          path: |
+            results/owner-critical-userspace-parity.json
+            results/d08-owner-parity-gazebo/
+          retention-days: 7
+          if-no-files-found: warn

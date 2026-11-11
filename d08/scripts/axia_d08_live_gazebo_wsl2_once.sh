@@ -3,8 +3,8 @@
 set -Eeuo pipefail
 umask 077
 readonly PRIVATE_REPO='silverbjin/axia-robot-safety-instructor'
-readonly PRIVATE_BRANCH='fix/d08-grounded-human-visual-20261111'
-readonly PRIVATE_SHA='67eda6a2d36d610d61e05687857c1811be19318e'
+readonly PRIVATE_BRANCH='fix/d08-foot-short-step-owner-20261111'
+readonly PRIVATE_SHA='3e1d22139be6413a082898313d618446d83e5981'
 readonly D04_SOURCE_SHA='c775820077917c4da56c6aa60001b224071664b3'
 readonly YOLO_SHA='94d2dd500cb26027ee9c019f4d3a02029ac615cc'
 readonly ONNX_SHA='4f44c33cea12d4b5785e5e7c0a20c13d0c62a77de607ce96a40d6036c7d7bbcf'
@@ -95,9 +95,22 @@ trap 'exit 130' INT
 trap 'exit 143' TERM
 gh repo clone "$PRIVATE_REPO" "$SRC/instructor" -- \
   --single-branch --branch "$PRIVATE_BRANCH" --depth 1
-[[ "$(git -C "$SRC/instructor" rev-parse HEAD)" == "$PRIVATE_SHA" ]] || {
-  echo 'D08_LIVE_BLOCKED: private source SHA changed; stop instead of silently using untested code' >&2;exit 2;
+# A branch HEAD may advance for documentation or CI-only commits.
+# Retrieve the immutable, reviewed instructor commit from GitHub and detach;
+# never silently execute the new PR tip or skip source identity verification.
+git -C "$SRC/instructor" -c credential.helper='!gh auth git-credential' fetch --no-tags --depth 1 origin "$PRIVATE_SHA" || {
+  echo 'D08_LIVE_BLOCKED: exact reviewed instructor commit unavailable' >&2
+  exit 2
 }
+git -C "$SRC/instructor" -c advice.detachedHead=false checkout --detach "$PRIVATE_SHA" || {
+  echo 'D08_LIVE_BLOCKED: exact reviewed instructor checkout failed' >&2
+  exit 2
+}
+[[ "$(git -C "$SRC/instructor" rev-parse HEAD)" == "$PRIVATE_SHA" ]] || {
+  echo 'D08_LIVE_BLOCKED: source identity differs from exact reviewed commit' >&2
+  exit 2
+}
+echo "D08_PRIVATE_IMMUTABLE_SHA_CHECKOUT_PASS private_sha=$PRIVATE_SHA"
 [[ -z "$(git -C "$SRC/instructor" status --porcelain)" ]] || {
   echo 'D08_LIVE_BLOCKED: private checkout has changes' >&2;exit 2;
 }
@@ -158,8 +171,8 @@ echo '============================================================'
 # Only the child interpreter environment is sanitized; no change to
 # the Owner's shell, GUI DISPLAY, files or other independent ROS workspaces.
 # ROS Jazzy and cached YOLO local_setup are sourced anew in the child.
-echo 'D08_GROUNDED_FULL_BODY_CAMERA_CI_L2_VERIFIED; OWNER_YOLO_PERSON_AND_D05_STILL_REQUIRED'
-echo 'D08_G07_GPU_LIDAR_SURFACE_OWNER_PINNED: real scan must enter SlowZone before Goal'
+echo 'D08_FOOT_TUNED_SHORT_STEP_L0_CANDIDATE; NEW_GAZEBO_L2_AND_OWNER_GUI_STILL_REQUIRED'
+echo 'D08_GUI_REAL_GAZEBO_CALIBRATED_20CM_STOP_STEP_6CM_FOOT_VISUAL_ONLY: actual scan/foot contact must be reverified'
 echo 'D08_CLEAN_ROS_ENV_ENABLED: dropping stale D03 underlay paths in child'
 env -u AMENT_PREFIX_PATH -u COLCON_PREFIX_PATH -u CMAKE_PREFIX_PATH \
     -u PYTHONPATH -u LD_LIBRARY_PATH -u ROS_DISTRO -u ROS_VERSION \

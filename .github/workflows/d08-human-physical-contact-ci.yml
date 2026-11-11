@@ -1,7 +1,7 @@
 name: AXIA D08 human/proxy model + grounded one-person + real GPU LiDAR (NO GOAL)
 on:
   push:
-    branches: ['fix/d08-human-contact-positive-ci-20261110', 'fix/d08-single-visual-rgbd-ci-20261110', 'fix/d08-g07-lidar-preflight-ci-20261110', 'fix/d08-grounded-human-ci-20261111']
+    branches: ['fix/d08-human-contact-positive-ci-20261110', 'fix/d08-single-visual-rgbd-ci-20261110', 'fix/d08-g07-lidar-preflight-ci-20261110', 'fix/d08-grounded-human-ci-20261111', 'fix/d08-foot-short-step-ci-20261111']
     paths:
       - 'd08/harness/d08_live_world.py'
       - 'd08/harness/d08_contact_positive_contract.py'
@@ -10,12 +10,14 @@ on:
       - 'd08/tests/test_d08_rgbd_alignment_evidence.py'
       - 'd08/tests/test_d08_g07_lidar_visible_proxy.py'
       - 'd08/tests/test_d08_grounded_human_visual.py'
+      - 'd08/tests/test_d08_cqyxbyzi_visual_mvp.py'
       - 'd08/harness/d08_visible_person_frame.py'
       - 'd08/tests/test_d08_visible_person_frame.py'
       - 'd08/tests/test_d08_native_positive_contact_parser.py'
       - 'd08/tests/test_d08_live_public_harness.py'
       - 'd08/tests/test_d08_live_field_layout.py'
       - 'd08/scripts/d08_public_gazebo_l2.py'
+      - 'd08/scripts/d08_real_nav2_cm_l1.py'
       - 'd08/harness/d08_live_readonly_probe.py'
       - 'd08/scripts/axia_d08_live_gazebo_wsl2_once.sh'
       - 'd08/tests/test_d08_last_mile_bootstrap.py'
@@ -48,6 +50,7 @@ jobs:
             d08/tests/test_d08_rgbd_alignment_evidence.py \
             d08/tests/test_d08_g07_lidar_visible_proxy.py \
             d08/tests/test_d08_grounded_human_visual.py \
+            d08/tests/test_d08_cqyxbyzi_visual_mvp.py \
             d08/tests/test_d08_visible_person_frame.py \
             d08/tests/test_d08_last_mile_bootstrap.py \
             d08/tests/test_d08_native_positive_contact_parser.py \
@@ -78,6 +81,7 @@ jobs:
             git curl ca-certificates python3-yaml \
             ros-jazzy-nav2-minimal-tb3-sim ros-jazzy-turtlebot3-gazebo \
             ros-jazzy-ros-gz ros-jazzy-xacro ros-jazzy-rclpy \
+            ros-jazzy-nav2-collision-monitor \
             ros-jazzy-sensor-msgs libgl1-mesa-dri libglx-mesa0 \
             python3-numpy xvfb xauth
       - name: Validate the existing D04 human COLLADA asset SHA
@@ -98,16 +102,92 @@ jobs:
           python3 -u d08/scripts/d08_public_gazebo_l2.py \
             --actor /tmp/axia-d08-assets/walk.dae \
             --out results/d08-human-contact-calibration \
-            --lidar-pre-goal
+            --lidar-pre-goal --cm-cadence-l1
           python3 - <<'PY'
           import json
           from pathlib import Path
           root=Path('results/d08-human-contact-calibration')
           v=json.loads((root/'verdict.json').read_text())
           assert v['status']=='D08_REAL_GAZEBO_WAFFLE_RGBD_NO_GOAL_PASS'
+          # Owner 1XZYehm8: old upstream intel depth + new 640x480 RGBD
+          # rendered concurrently under WSLg. Assert REAL official Waffle
+          # copied model has only D08 camera, without changing /opt/ros.
+          assert v['overlay_manifest']['d08_unused_upstream_depth_sensor_removed'] is True
+          import xml.etree.ElementTree as ET
+          robot=ET.parse(v['overlay_manifest']['robot_sdf']).getroot()
+          assert robot.find(".//sensor[@name='intel_realsense_r200_depth']") is None
+          assert robot.find(".//sensor[@name='axia_d08_registered_rgbd']") is not None
+          assert robot.find(".//sensor[@name='hls_lfcd_lds']/update_rate").text=='10'
+          print('D08_REAL_GAZEBO_SINGLE_RGBD_GPU_LOAD_L2_PASS')
           assert v['actual_rgbd']['matched'] is True
           assert v['contact_topic_proven'] is True
           assert v['pregoal_lidar']['status']=='PASS_ACTUAL_GAZEBO_SET_POSE_PLUS_LIDAR'
+          stop=v['pregoal_lidar']['stop_probe']
+          assert stop['status']=='PASS_REAL_STATIC_GAZEBO_STOPZONE_SCAN'
+          assert stop['candidate_dispatch_m']==.30
+          assert .14<=stop['actual_stop_front_m']<=.37,stop
+          assert stop['native_set_pose_ack'] is True
+          assert stop['actual_robot_moved'] is False
+          # Actual 640x480 registered RGBD AFTER stop set_pose at ~0.35m.
+          # Catch the old Owner pants-only screenshot on real Gazebo pixels.
+          assert v['actual_stop_rgbd']['matched'] is True,v
+          assert v['actual_stop_visual']['status']=='VISUAL_FRAMING_CANDIDATE',v
+          assert v['actual_stop_visual']['sampled_head_skin_pixels']>=50,v
+          assert v['actual_stop_visual']['sampled_shirt_green_pixels']>=150,v
+          assert v['actual_stop_visual']['sampled_navy_pants_pixels']>=150,v
+          assert v['actual_stop_visual']['yolo_person_detection_verified'] is False
+          print('D08_REAL_GAZEBO_STOPZONE_RGBD_FULLBODY_FRAMING_L2_PASS')
+          assert stop['owner_goal_sent'] is False
+          assert stop['collision_ground_truth'] is False
+          print('D08_REAL_GAZEBO_STATIC_STOPZONE_DISTANCE_L2_PASS')
+          # Owner AxvMA7TI: real /scan wall callback gaps reached 0.55s
+          # despite valid simulated sensor stamps. Monitor ACTUAL wall-time.
+          for phase in ('before','after'):
+              m=v['pregoal_lidar'][phase]
+              assert m['scan_count']>=20
+              assert m['wallclock_measured'] is True
+              assert m['wall_gap_max_sec'] < .5, (phase, m)
+              assert m['sim_stamp_period_median_sec'] <= .13, (phase, m)
+          print('D08_REAL_WALLCLOCK_SCAN_WATCHDOG_MARGIN_L2_PASS')
+          cm=v['cm_cadence_l1']
+          assert cm['status']=='REAL_NAV2_CM_L1_CADENCE_PASS',cm
+          assert cm['cm_lifecycle_finalized_before_signal'] is True,cm
+          assert cm['cm_exit_code']==0,cm
+          assert cm['cm_sigsegv_observed'] is False,cm
+          print('D08_REAL_NAV2_CM_ORDERED_LIFECYCLE_EXIT_ZERO_L2_PASS')
+          assert cm['synthetic_scan'] is True
+          assert cm['no_goal'] is True
+          assert cm['cmd_vel_robot_published'] is False
+          assert cm['private_guard_executed'] is False
+          assert cm['callback_wall_max_sec']<.15
+          assert cm['scan_qos_discovery_verified'] is True
+          assert cm['warmup_output_count']>=10
+          assert cm['output_count']>=74 and cm['input_count']==82,cm
+          assert cm['steady_delivery_ratio']>=.90,cm
+          # Owner ODDlcnNN: original test measured CM AFTER physical set_pose.
+          # This probe now mutates actual Gazebo while official CM is sending.
+          assert cm['gazebo_set_pose_during_cm'] is True,cm
+          assert cm['gazebo_concurrent_service_ack'] is True,cm
+          assert cm['cm_max_gap_during_gazebo_service_sec']<.15,cm
+          assert cm['stop_scan_is_synthetic_replay_of_real_gazebo_front'] is True
+          assert cm['measured_static_stop_front_replayed_m']<=.37
+          assert cm['stop_output_samples']>=15
+          # Owner l0KClvT6: after a genuine StopZone zero, continued
+          # 20Hz Supervisor input does not ensure CM keeps sending zero.
+          # Official Jazzy stop_pub_timeout=1s then ends output; Guard
+          # must fail-close at its UNCHANGED 150ms input TTL.
+          assert cm['post_stop_supervised_input_count']==100,cm
+          assert cm['post_stop_supervised_input_elapsed_sec']>=4.7,cm
+          assert cm['post_stop_native_cm_stop_pub_timeout_sec']==1.0,cm
+          assert cm['post_stop_guard_cm_ttl_sec_unchanged']==.15,cm
+          assert cm['post_stop_last_cm_output_age_sec']>.15,cm
+          assert cm['post_stop_guard_fail_closed_required'] is True,cm
+          print('D08_REAL_CM_POST_STOP_ZERO_TIMEOUT_5S_FAIL_CLOSED_L2_PASS')
+          assert cm['stop_zero_output_samples']>=15
+          print('D08_REAL_GAZEBO_SERVICE_DURING_NATIVE_CM_150MS_L2_PASS')
+          print('D08_REAL_MEASURED_STOP_FRONT_OFFICIAL_CM_REPLAY_ZERO_L2_PASS')
+          assert cm['output_speed_nonzero_count']>=20
+          print('D08_REAL_GAZEBO_CONCURRENT_CM_L1_PASS_NO_GOAL')
           assert v['pregoal_lidar']['after']['front_m'] > 0.4
           assert v['pregoal_lidar']['after']['front_m'] < 0.75
           # Positive contact calibration already proven independently

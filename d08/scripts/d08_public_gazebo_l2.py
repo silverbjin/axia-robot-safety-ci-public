@@ -113,9 +113,11 @@ def observe_real_front_scan(timeout_s=30.0):
     rclpy.init()
     node=rclpy.create_node('axia_d08_no_goal_lidar_ci_probe')
     fronts=[]
+    samples=[]
     last_stamp=None
     def scan_cb(m):
         nonlocal last_stamp
+        wall_received=time.monotonic()  # ROS callback arrival, NOT header sim-time.
         stamp=int(m.header.stamp.sec)*10**9+int(m.header.stamp.nanosec)
         if stamp<=0 or stamp==last_stamp:
             return
@@ -123,16 +125,31 @@ def observe_real_front_scan(timeout_s=30.0):
         good=[float(v) for i,v in enumerate(m.ranges)
               if abs(float(m.angle_min)+i*float(m.angle_increment))<=0.18
               and math.isfinite(v) and m.range_min<=v<=m.range_max]
-        if good:fronts.append(min(good))
+        if good:
+            fronts.append(min(good))
+            samples.append((wall_received,stamp))
     node.create_subscription(LaserScan,'/scan',scan_cb,qos_profile_sensor_data)
     try:
         end=time.monotonic()+timeout_s
         while time.monotonic()<end:
-            rclpy.spin_once(node,timeout_sec=.35)
-            if len(fronts)>=6:
+            rclpy.spin_once(node,timeout_sec=.20)
+            # Previous CI accepted six scans regardless of wall-time gaps.
+            # Now require a brief real measured scan stream, not six values.
+            if len(fronts)>=20:
+                import statistics
+                wall_gaps=[b[0]-a[0] for a,b in zip(samples,samples[1:])]
+                sim_gaps=[(b[1]-a[1])/1e9 for a,b in zip(samples,samples[1:])]
+                ordered=sorted(wall_gaps)
+                p=lambda q:ordered[max(0,math.ceil(q*len(ordered))-1)]
                 return {'front_m':round(sorted(fronts[-5:])[2],6),
                         'scan_count':len(fronts),
                         'front_samples_m':[round(v,6) for v in fronts[-5:]],
+                        'wall_gap_max_sec':round(max(wall_gaps),6),
+                        'wall_gap_p95_sec':round(p(.95),6),
+                        'wall_gap_p99_sec':round(p(.99),6),
+                        'sim_stamp_period_median_sec':round(statistics.median(sim_gaps),6),
+                        'observed_rtf':round(sum(sim_gaps)/sum(wall_gaps),4),
+                        'wallclock_measured':True,
                         'source':'actual_ros_sensor_msgs_LaserScan',
                         'no_synthetic_scan':True}
         raise RuntimeError('D08_REAL_GAZEBO_LIDAR_SCAN_MISSING')
@@ -153,7 +170,10 @@ def pregoal_lidar_physical_admission(out:Path,env:dict,processes:list)->dict:
          '/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan'],
         env,out,processes)
     before=observe_real_front_scan(timeout_s=35)
-    target=(-1.28,-.5,.24)
+    # D08 GUI Owner: pre-Goal 0.50m dispatch (Waffle world x=-2.0,
+    # obstacle radius=.07), giving a single 7cm jump to the .43m STOP
+    # dispatch. Actual LaserScan must still show SlowZone; never fake data.
+    target=(-1.43,-.5,.24)
     req=('name: "axia_p2_g07_obstacle", '
          'position: {x: %.6f, y: %.6f, z: %.6f}, orientation: {w: 1}'%target)
     res=_run(['gz','service','-s','/world/default/set_pose',
@@ -174,17 +194,58 @@ def pregoal_lidar_physical_admission(out:Path,env:dict,processes:list)->dict:
     (out/'pregoal_lidar_observation.json').write_text(
         json.dumps(verdict,indent=2,ensure_ascii=False)+'\n')
     # A successful service response ALONE never proves sensor observation.
-    # The closer fixture should move the actual measured front by ~8cm.
+    # Real model move must change the scan; amount depends on tuned world pose.
     if not (.4<after['front_m']<.75 and observed_delta>.035):
         raise RuntimeError('D08_PREG0AL_PHYSICAL_LIDAR_SLOWZONE_NOT_OBSERVED:'+
             json.dumps({'before':before['front_m'],'after':after['front_m'],
                         'delta':observed_delta}))
     verdict['status']='PASS_ACTUAL_GAZEBO_SET_POSE_PLUS_LIDAR'
+    # Owner ODDlcnNN actual post-ACK /scan 0.46047m at dispatch 0.43m
+    # MISSED official CM StopZone (strict <0.4m). Calibrate ONE bounded
+    # stationary-robot candidate before ever changing the teacher run.
+    # This is no-Goal / no-motor test, cannot imply zero robot contacts.
+    stop_dispatch=.30
+    # Verified official Waffle world spawn x=-2.0; G07 proxy radius=.07m.
+    stop_target=(-2.0+stop_dispatch+.07,-.5,.24)
+    req_stop=('name: "axia_p2_g07_obstacle", '
+              'position: {x: %.6f, y: %.6f, z: %.6f}, orientation: {w: 1}'%stop_target)
+    moved=_run(['gz','service','-s','/world/default/set_pose',
+                '--reqtype','gz.msgs.Pose','--reptype','gz.msgs.Boolean',
+                '--timeout','5000','--req',req_stop],env,timeout=13)
+    (out/'stop_probe_set_pose_ack.txt').write_text(moved.stdout+moved.stderr)
+    if 'data: true' not in moved.stdout:
+        raise RuntimeError('D08_STOP_PROBE_GAZEBO_NATIVE_ACK_MISSING')
+    stop_scan=observe_real_front_scan(timeout_s=35)
+    verdict['stop_probe']={
+      'candidate_dispatch_m':stop_dispatch,
+      'actual_stop_front_m':stop_scan['front_m'],
+      'actual_scan':stop_scan,
+      'slow_front_before_m':after['front_m'],
+      'target_world_xyz_m':list(stop_target),
+      'native_set_pose_ack':True,
+      'actual_robot_moved':False,
+      'owner_goal_sent':False,
+      'collision_ground_truth':False,
+      'certified_estop':False,
+    }
+    (out/'stop_probe_scan_observation.json').write_text(
+        json.dumps(verdict['stop_probe'],indent=2,ensure_ascii=False)+'\n')
+    if not (.14<=stop_scan['front_m']<=.37
+            and after['front_m']-stop_scan['front_m']>.09):
+        raise RuntimeError('D08_STOP_PROBE_ACTUAL_LIDAR_THRESHOLD_UNVERIFIED:'+
+                           json.dumps({'slow':after['front_m'],
+                                       'stop':stop_scan['front_m']}))
+    verdict['stop_probe']['status']='PASS_REAL_STATIC_GAZEBO_STOPZONE_SCAN'
+    (out/'stop_probe_scan_observation.json').write_text(
+        json.dumps(verdict['stop_probe'],indent=2,ensure_ascii=False)+'\n')
     (out/'pregoal_lidar_observation.json').write_text(
         json.dumps(verdict,indent=2,ensure_ascii=False)+'\n')
     print('D08_REAL_GAZEBO_PREGOAL_LIDAR_SLOWZONE_PASS '+json.dumps(
         {'before':before['front_m'],'after':after['front_m'],
          'delta':observed_delta}),flush=True)
+    print('D08_REAL_GAZEBO_STATIC_STOPZONE_SCAN_PASS '+json.dumps({
+        'dispatch':stop_dispatch,'observed_front':stop_scan['front_m'],
+        'goal_sent':False,'robot_moved':False}),flush=True)
     return verdict
 
 
@@ -269,7 +330,7 @@ def positive_contact_once(out:Path,env:dict,contact_topic:str)->dict:
     return verdict
 
 
-def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=False):
+def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=False,cm_cadence_l1:bool=False):
     out=Path(out).resolve()
     if out.exists():raise ValueError('D08_EVIDENCE_EXISTS')
     out.mkdir(parents=True)
@@ -370,9 +431,58 @@ def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=Fals
         if lidar_pre_goal:
             result['pregoal_lidar']=pregoal_lidar_physical_admission(
                 out,env,processes)
+            # Owner l0KClvT6 GUI screenshot had only legs at the REAL
+            # ~0.35m StopZone, despite a full human at pre-Goal distance.
+            # Check an actual registered RGB-D camera frame AFTER moving
+            # the physical person to StopZone, not an estimated FOV alone.
+            # Does NOT run YOLO, owner consent, robot Goal or new control.
+            stop_rgb=out/'real_gazebo_stop_rgb.ppm'
+            result['actual_stop_rgbd']=observe_real_pair(
+                timeout_s=45,capture_path=stop_rgb)
+            from d08_visible_person_frame import assess_rgb_ppm
+            result['actual_stop_visual']=assess_rgb_ppm(stop_rgb)
+            if (not result['actual_stop_rgbd']['matched']
+                    or result['actual_stop_visual']['status']!='VISUAL_FRAMING_CANDIDATE'):
+                raise RuntimeError('D08_REAL_STOPZONE_FULLBODY_RGBD_FRAMING_UNVERIFIED')
+            print('D08_REAL_GAZEBO_STOPZONE_HEAD_SHIRT_LEGS_VISUAL_L2_PASS '
+                  +json.dumps(result['actual_stop_visual'],sort_keys=True),flush=True)
         if positive_contact:
             result['positive_contact_calibration']=positive_contact_once(
                 out,env,contact_topic)
+        if cm_cadence_l1:
+            # Real OFFICIAL Jazzy CM while Gazebo server + GPU LiDAR/RGBD
+            # are running. Isolated /axia_ci/* commands NEVER reach robot.
+            # This is still NO-GOAL synthetic-command diagnostic, NOT the
+            # Owner WSLg/YOLO/Guard end-to-end acceptance.
+            from d08_real_nav2_cm_l1 import run as cm_run
+            cm_dir=out/'cm_cadence_l1'
+            measured_stop=None
+            pose_worker=None
+            if lidar_pre_goal:
+                measured_stop=result['pregoal_lidar']['stop_probe']['actual_stop_front_m']
+                def pose_worker():
+                    # Actual Gazebo UserCommands while OFFICIAL Nav2 CM is
+                    # publishing at 20Hz. Human fixture only; NO robot Goal.
+                    # Bring STOP probe back to real preloaded SlowZone after
+                    # actual static STOP lidar calibration. This mimics the
+                    # Owner service-load boundary, not the Owner's WSLg GPU.
+                    request=('name: "axia_p2_g07_obstacle", '
+                             'position: {x: -1.43, y: -0.5, z: 0.24}, '
+                             'orientation: {w: 1}')
+                    response=_run(['gz','service','-s','/world/default/set_pose',
+                                   '--reqtype','gz.msgs.Pose',
+                                   '--reptype','gz.msgs.Boolean',
+                                   '--timeout','5000','--req',request],env,timeout=13)
+                    (out/'cm_concurrent_set_pose_ack.txt').write_text(
+                        response.stdout+response.stderr)
+                    return 'data: true' in response.stdout
+            cm_rc=cm_run(cm_dir,set_pose_while_publishing=pose_worker,
+                         stop_front_m=measured_stop)
+            result['cm_cadence_l1']=json.loads(
+                (cm_dir/'verdict.json').read_text())
+            if cm_rc!=0:
+                raise RuntimeError('D08_REAL_GAZEBO_LOADED_CM_L1_FAILED')
+            print('D08_REAL_GAZEBO_CONCURRENT_CM_L1_PASS_NO_GOAL',flush=True)
         result['status']='D08_REAL_GAZEBO_WAFFLE_RGBD_NO_GOAL_PASS'
         result['ros_actual']=True
         result['gazebo_actual']=True
@@ -400,8 +510,10 @@ if __name__=='__main__':
     p.add_argument('--actor',type=Path,required=True)
     p.add_argument('--lidar-pre-goal',action='store_true',
         help='Real /scan before and after G07 set_pose, no Nav2 Goal')
+    p.add_argument('--cm-cadence-l1',action='store_true',
+                   help='Isolated official CM synthetic command test during real GPU Gazebo')
     p.add_argument('--positive-contact-once',action='store_true',
         help='Single non-robot Gazebo Contact positive calibration, no Nav2 Goal')
     a=p.parse_args()
     raise SystemExit(run(a.out,a.actor,positive_contact=a.positive_contact_once,
-                             lidar_pre_goal=a.lidar_pre_goal))
+                             lidar_pre_goal=a.lidar_pre_goal,cm_cadence_l1=a.cm_cadence_l1))
