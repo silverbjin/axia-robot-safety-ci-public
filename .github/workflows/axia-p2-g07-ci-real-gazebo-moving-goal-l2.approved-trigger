@@ -1,13 +1,11 @@
-# CI SIMULATION ONLY one real Harmonic/Nav2 Goal, no Owner approval bypass.
-# RED observer Docker filesystem per-message flush: L0 #43052693200 (3 FAIL).
-# GREEN buffered CI evidence 147/147 #43052950933, owner default unchanged.
-# Actual prior L2 #43051459519 passed CLEAR/SLOW/STOP and 1s odom
-# but FSM/Guard callback intervals exceeded immutable 150ms boundary.
-private_source_sha=6b6b50dbd57991ca6a6fa85a3056b28996d9e2b7
-public_l0_red_run=43052693200
-public_l0_green_run=43052950933
-public_l0_green_sha=920423fb645af3ab7e254db15ca46e120455afb1
-previous_l2_timing_failure=43051459519
-scope=SIM_ONLY_REAL_GAZEBO_CLEAR_SLOW_STOP_ODOM1S_MAX_150MS
+# CI-only simulation, no Owner consent bypass or certified E-Stop.
+# Frozen exact source with 158/158 GREEN L0 #43055911244.
+# Previously actual CLEAR SLOW STOP odom was blocked by scan interval 304.36ms
+# vs immutable <=300ms. New tests cover callback timestamp, evidence write
+# budget, strict post-ACK odom dwell. Fail closed for ALL first timing breaches.
+private_source_sha=62c0683497f24700224bc3f4a6c66309425ba527
+l0_green_run=43055911244
+previous_l2_failed_run=43053267825
+scope=CI_SIM_GAZEBO_CLEAR_SLOW_STOP_ODOM_1SEC_CM_TTL_150MS_SCAN_300MS
 owner_l3_accepted=false
 hardware_estop_certified=false
