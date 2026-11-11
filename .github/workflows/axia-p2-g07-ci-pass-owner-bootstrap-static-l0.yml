@@ -1,0 +1,38 @@
+name: AXIA G07 exact-source WSL2 Owner bootstrap static L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths:
+      - 'scripts/axia_p2_g07_ci_pass_owner_wsl2_once.sh'
+      - '.github/workflows/axia-p2-g07-ci-pass-owner-bootstrap-static-l0.yml'
+permissions:
+  contents: read
+jobs:
+  owner-bootstrap-static:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Validate exact CI-GREEN source owner wrapper; NO GOAL
+        shell: bash
+        run: |
+          set -euo pipefail
+          B=scripts/axia_p2_g07_ci_pass_owner_wsl2_once.sh
+          bash -n "$B"
+          OUTPUT="$(bash "$B" --self-check)"
+          [[ "$OUTPUT" == 'AXIA_G07_CI_PASS_OWNER_BOOTSTRAP_STATIC_PASS private_sha=62c0683497f24700224bc3f4a6c66309425ba527 ci_l2=43060492901 OWNER_L3_NOT_RUN' ]]
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('scripts/axia_p2_g07_ci_pass_owner_wsl2_once.sh').read_text()
+          assert "gh auth status" in s and "git -C \"$WORK/instructor\" fetch" in s
+          assert 'checkout --detach "$PRIVATE_SHA"' in s
+          assert '[[ -t 0 && -t 1 && -r /dev/tty ]]' in s
+          assert '--case G07 --mvp-relocated-obstacle' in s
+          assert 'bash "$WORK/instructor/scripts/p2_owner_l3_wsl2.sh"' in s
+          assert 'AXIA_P2_OWNER_PINNED_SHA' in s
+          assert 'YES-P2-G07-GOAL' in s and 'echo YES-P2-G07-GOAL' not in s
+          print('AXIA_G07_CI_PASS_OWNER_WRAPPER_CONTRACT_PASS_NO_GOAL')
+          PY
+          echo 'AXIA_G07_CI_PASS_OWNER_BOOTSTRAP_L0_PASS_NO_ROS_NO_GOAL'
