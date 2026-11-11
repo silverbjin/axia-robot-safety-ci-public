@@ -142,6 +142,10 @@ jobs:
           print('D08_REAL_WALLCLOCK_SCAN_WATCHDOG_MARGIN_L2_PASS')
           cm=v['cm_cadence_l1']
           assert cm['status']=='REAL_NAV2_CM_L1_CADENCE_PASS',cm
+          assert cm['cm_lifecycle_finalized_before_signal'] is True,cm
+          assert cm['cm_exit_code']==0,cm
+          assert cm['cm_sigsegv_observed'] is False,cm
+          print('D08_REAL_NAV2_CM_ORDERED_LIFECYCLE_EXIT_ZERO_L2_PASS')
           assert cm['synthetic_scan'] is True
           assert cm['no_goal'] is True
           assert cm['cmd_vel_robot_published'] is False
