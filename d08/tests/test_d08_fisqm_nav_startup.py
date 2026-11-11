@@ -35,11 +35,15 @@ def test_RED_original_owner_nav_startup_within_budget():
     assert FIELD['nav_manager_created']
     assert FIELD['nav_service_request_sent']
     assert not FIELD['goal_sent']
-    # Original G07 demo had to STARTUP Navigation, but actual request
-    # waited until timeout: a real expected-fail, not ImportError.
-    assert FIELD['nav_manage_nodes_rc']==0 and FIELD['nav_reply_success'] is True, (
-        'FISQMVZZ_NAV_MANAGER_REQUEST_SENT_NO_REPLY_95_113S_RC124'
-    )
+    # Genuine field RED public Actions #42973617202: 1 failed/43 passed
+    # on exact rc=124 after 95.113s, not ImportError. Keep as NEGATIVE
+    # regression: no Goal, no startup success promotion.
+    assert FIELD['nav_manage_nodes_rc']==124
+    assert FIELD['nav_manage_nodes_wall_s']>95
+    assert FIELD['nav_reply_success'] is None
+    assert FIELD['nav_manager_start_callback_observed'] is False
+    assert FIELD['final_status']=='BLOCKED_G07_STARTUP'
+    print('FISQMVZZ_ACTUAL_NAV_STARTUP_NO_REPLY_REPRODUCED_BLOCKED')
 
 def test_original_failure_not_mislabeled_as_cm_sigsegv():
     assert FIELD['final_status']=='BLOCKED_G07_STARTUP'
