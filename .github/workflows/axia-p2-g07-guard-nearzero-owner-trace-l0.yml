@@ -1,0 +1,41 @@
+name: AXIA G07 Owner nearzero Guard trace RED GREEN L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths:
+      - '.github/workflows/axia-p2-g07-guard-nearzero-owner-trace-l0.yml'
+permissions:
+  contents: read
+concurrency:
+  group: axia-p2-g07-nearzero-owner-trace-l0
+  cancel-in-progress: false
+jobs:
+  actual-owner-nearzero-l0:
+    runs-on: ubuntu-24.04
+    environment: axia-instructor-sealed
+    timeout-minutes: 10
+    steps:
+      - name: Checkout private exact source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 0b1fad796e252de73744031b27543d8c8603fa62
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Real Owner near-ZERO sign-flip + existing Guard trace + STOP TTL and cancel
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = '0b1fad796e252de73744031b27543d8c8603fa62'
+          python3 -m pip install --disable-pip-version-check -q pytest==8.3.5
+          python3 -m pytest -q -ra \
+            tests/unit/test_p2_g07_guard_nearzero_owner_trace.py \
+            tests/unit/test_p2_g07_guard_async_owner_trace.py \
+            tests/unit/test_p2_base_guard_policy.py \
+            tests/unit/test_p2_guard_cancel_contract.py \
+            tests/unit/test_p2_guard_parameter_init_contract.py
+          echo 'AXIA_G07_OWNER_NEARZERO_GUARD_L0_PASS_NO_GOAL'
+      - name: Clear sealed private checkout
+        if: always()
+        shell: bash
+        run: rm -rf -- .git tools scripts tests ros2_ws configs docs fixtures results
