@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # AXIA G07 Owner WSL2 final acceptance bootstrap; SIMULATION ONLY.
-# Public actual Jazzy/Harmonic/Nav2 moving Goal L2 #43060492901 PASS.
+# Public Jazzy/Harmonic/Nav2 Owner-observer parity real Goal L2 #43072749608 PASS.
 # Instructor source SHA pinned byte-for-byte. Owner L3 NOT RUN here.
 # Never auto-answer any Owner TTY consent. No hardware E-Stop certification.
 set -Eeuo pipefail
 umask 077
 readonly PRIVATE_REPO='silverbjin/axia-robot-safety-instructor'
-readonly PRIVATE_SHA='62c0683497f24700224bc3f4a6c66309425ba527'
-readonly CI_L2_RUN='43060492901'
+readonly PRIVATE_SHA='cc92327d1ae4a17d331d06e845437760ca2bdafe'
+readonly CI_L2_RUN='43072749608'
 if [[ "${1:-}" == '--self-check' ]]; then
   [[ $# -eq 1 && "$PRIVATE_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 2
   printf 'AXIA_G07_CI_PASS_OWNER_BOOTSTRAP_STATIC_PASS private_sha=%s ci_l2=%s OWNER_L3_NOT_RUN\n' "$PRIVATE_SHA" "$CI_L2_RUN"
