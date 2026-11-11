@@ -20,14 +20,14 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: a48aba8a7179e9fa2f2f2a86a85360ce06583f07
+          ref: e01b27b9c60c7b374c6773e10e971f9a9e8e85ad
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Install only real CM Guard dependencies; exact Owner CM version
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 'a48aba8a7179e9fa2f2f2a86a85360ce06583f07'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 'e01b27b9c60c7b374c6773e10e971f9a9e8e85ad'
           apt-get update -qq
           python3 - <<'PY'
           from pathlib import Path
