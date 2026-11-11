@@ -1,0 +1,42 @@
+name: AXIA G07 real moving Guard normal ZERO vs safety STOP L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths:
+      - '.github/workflows/axia-p2-g07-ci-real-moving-zero-regression-l0.yml'
+permissions:
+  contents: read
+concurrency:
+  group: axia-g07-real-moving-normal-zero-l0
+  cancel-in-progress: false
+jobs:
+  owner-sim-real-trace-unit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: axia-instructor-sealed
+    steps:
+      - name: Exact private Instructor commit in sealed environment
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: e849a04d9e9c653ddb315d38c109acf872c4950d
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Actual Gazebo moving Goal first Guard latch regression including STOP negative controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = 'e849a04d9e9c653ddb315d38c109acf872c4950d'
+          python3 -m pip install -q --disable-pip-version-check pytest==8.3.5
+          python3 -m pytest -q -ra \
+            tests/unit/test_p2_g07_guard_authorized_transient_zero.py \
+            tests/unit/test_p2_g07_guard_zreh_owner_cm_skew.py \
+            tests/unit/test_p2_g07_guard_kca1_cm_slowdown.py \
+            tests/unit/test_p2_g07_guard_nearzero_owner_trace.py \
+            tests/unit/test_p2_base_guard_policy.py
+          python3 -m py_compile ros2_ws/src/axia_safety_supervisor/axia_safety_supervisor/p2_base_guard_policy.py
+          echo 'AXIA_G07_REAL_MOVING_NORMAL_ZERO_SAFETY_L0_PASS'
+      - name: Destroy private solution
+        if: always()
+        shell: bash
+        run: rm -rf -- .git tests tools scripts configs ros2_ws docs fixtures results
