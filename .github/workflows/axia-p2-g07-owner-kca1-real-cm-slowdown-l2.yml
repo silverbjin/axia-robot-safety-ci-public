@@ -1,0 +1,87 @@
+name: AXIA G07 Owner KcA1lXOe real Nav2 CM 30pct SLOW STOP L2
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-p2-g07-owner-kca1-real-cm-slowdown-l2.yml']
+permissions:
+  contents: read
+concurrency:
+  group: axia-g07-kca1-real-cm-slow-no-goal-l2
+  cancel-in-progress: false
+jobs:
+  real-nav2-cm-guard-no-goal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 23
+    environment: axia-instructor-sealed
+    container:
+      image: ros:jazzy-ros-base-noble
+    steps:
+      - name: Checkout pinned private Instructor code, no public solution or Owner TTY
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 46e0d85b650352d591db6ec039da9aa7716690c7
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Install only real CM Guard dependencies; exact Owner CM version
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '46e0d85b650352d591db6ec039da9aa7716690c7'
+          apt-get update -qq
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,subprocess
+          lock=json.loads(Path('configs/p2_g07_owner_ci_runtime_lock_20261111.json').read_text())
+          pkg='ros-jazzy-nav2-collision-monitor'
+          expected=lock['packages'][pkg]
+          available=subprocess.check_output(['apt-cache','madison',pkg],text=True)
+          assert expected in available, (pkg,expected,available)
+          print('AXIA_G07_REAL_CM_OWNER_APT_CANDIDATE_PIN_VERIFIED',expected)
+          PY
+          CM_VERSION="$(python3 - <<'PY'
+          from pathlib import Path
+          import json
+          print(json.loads(Path('configs/p2_g07_owner_ci_runtime_lock_20261111.json').read_text())['packages']['ros-jazzy-nav2-collision-monitor'])
+          PY
+          )"
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+            "ros-jazzy-nav2-collision-monitor=$CM_VERSION" \
+            ros-jazzy-ros2lifecycle python3-colcon-common-extensions \
+            ros-jazzy-rclpy ros-jazzy-geometry-msgs ros-jazzy-sensor-msgs \
+            ros-jazzy-std-msgs ros-jazzy-std-srvs \
+            ros-jazzy-nav2-msgs ros-jazzy-action-msgs ros-jazzy-lifecycle-msgs >/dev/null
+          test "$(dpkg-query -W -f='${Version}' ros-jazzy-nav2-collision-monitor)" = "$CM_VERSION"
+          python3 - <<'PY'
+          import yaml
+          from pathlib import Path
+          params=yaml.safe_load(Path('configs/p2_g07_guard_real_cm_no_goal_ci.yaml').read_text())
+          p=params['collision_monitor']['ros__parameters']
+          assert p['cmd_vel_in_topic']=='cmd_vel_supervised'
+          assert p['cmd_vel_out_topic']=='cmd_vel_pre_guard'
+          assert p['polygons']==['AXIA_StopFront','AXIA_SlowFront']
+          print('AXIA_G07_REAL_CM_OWNER_VERSION_AND_ZONE_PARAMS_PASS_NO_GOAL')
+          PY
+      - name: Build actual AXIA Guard and run real Nav2 CM lifecycle with simulated clear scan
+        shell: bash
+        env:
+          ROS_DOMAIN_ID: '67'
+          ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+        run: |
+          set -euo pipefail
+          set +u
+          source /opt/ros/jazzy/setup.bash
+          set -u
+          colcon build --base-paths ros2_ws/src --packages-select axia_safety_supervisor \
+            --event-handlers console_cohesion+ >/tmp/g07_real_cm_build.log 2>&1 || {
+            tail -n 80 /tmp/g07_real_cm_build.log
+            exit 2
+          }
+          bash -n scripts/p2_g07_guard_real_cm_no_goal_ci.sh
+          timeout --signal=TERM --kill-after=9s 100s \
+            bash scripts/p2_g07_guard_real_cm_no_goal_ci.sh --kca1-30pct-slowdown
+          echo 'AXIA_G07_KCA1_REAL_CM_30PCT_SLOW_STOP_L2_CI_PASS_NO_GOAL_NO_GAZEBO'
+      - name: Destroy private checkout
+        if: always()
+        shell: bash
+        run: rm -rf -- .git ros2_ws scripts tools docs tests configs fixtures results build install log /tmp/g07_real_cm_build.log
