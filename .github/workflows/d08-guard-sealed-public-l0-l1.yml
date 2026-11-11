@@ -36,6 +36,15 @@ jobs:
           assert 'persist-credentials: false' in sealed
           assert ('upload'+'-artifact@') not in sealed
           assert 'YES-P2-G07-GOAL' in wrapper
+          # Owner 1C0vNYRe follow-on: old CI in one DDS domain
+          # observed apparent AUTO_RESUME_AFTER_LATCH in test two.
+          # RED #42951898760; separate-domain GREEN #42952144147.
+          import re
+          assert re.search(r'ROS_DOMAIN_ID=57 timeout.*?--drop-source collision_monitor',
+                           sealed,re.S)
+          assert re.search(r'ROS_DOMAIN_ID=58 timeout.*?--drop-source supervisor',
+                           sealed,re.S)
+          print('AXIA_D08_PUBLIC_GUARD_L1_DDS_DOMAIN_ISOLATION_CONTRACT_PASS')
           print('AXIA_D08_PUBLIC_GUARD_CONTRACT_PASS_PRIVATE_L0_L1_NOT_RUN')
           PY
   private-guard-l0-l1:
