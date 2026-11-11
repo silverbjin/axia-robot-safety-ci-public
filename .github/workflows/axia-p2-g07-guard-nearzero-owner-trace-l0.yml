@@ -19,14 +19,14 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: bb339d864bcaa116d686a2caf261b2eff4696265
+          ref: 68f97d43f44440428464af217e8c44360351b799
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Real Owner near-ZERO sign-flip + existing Guard trace + STOP TTL and cancel
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = 'bb339d864bcaa116d686a2caf261b2eff4696265'
+          test "$(git rev-parse HEAD)" = '68f97d43f44440428464af217e8c44360351b799'
           python3 -m pip install --disable-pip-version-check -q pytest==8.3.5
           python3 -m pytest -q -ra \
             tests/unit/test_p2_g07_guard_nearzero_owner_trace.py \
@@ -35,6 +35,37 @@ jobs:
             tests/unit/test_p2_guard_cancel_contract.py \
             tests/unit/test_p2_guard_parameter_init_contract.py
           echo 'AXIA_G07_OWNER_NEARZERO_GUARD_L0_PASS_NO_GOAL'
+      - name: Negative-control mutation must make the actual Owner regression FAIL
+        shell: bash
+        run: |
+          set -euo pipefail
+          TARGET='ros2_ws/src/axia_safety_supervisor/axia_safety_supervisor/p2_base_guard_policy.py'
+          cp -- "$TARGET" /tmp/g07_owner_policy_original.py
+          trap 'cp -- /tmp/g07_owner_policy_original.py "$TARGET"' EXIT
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('ros2_ws/src/axia_safety_supervisor/axia_safety_supervisor/p2_base_guard_policy.py')
+          s=p.read_text()
+          a='and (not reversed_linear or near_zero_linear_crossing)'
+          b='and not reversed_linear'
+          assert s.count(a)==1
+          p.write_text(s.replace(a,b))
+          PY
+          set +e
+          python3 -m pytest -q \
+            tests/unit/test_p2_g07_guard_nearzero_owner_trace.py::test_owner_nearzero_sign_flip_must_hold_zero_without_false_goal_cancel \
+            >/tmp/g07_nearzero_mutation_expected_red.log 2>&1
+          RC=$?
+          set -e
+          if [[ "$RC" -eq 0 ]]; then
+            echo 'AXIA_G07_NEARZERO_MUTATION_GATE_FAIL_TEST_DID_NOT_DETECT_REGRESSION'
+            exit 2
+          fi
+          grep -q 'owner G07 near-zero jitter must not immediately CANCEL Goal' \
+            /tmp/g07_nearzero_mutation_expected_red.log || {
+            cat /tmp/g07_nearzero_mutation_expected_red.log; exit 2;
+          }
+          echo 'AXIA_G07_NEARZERO_MUTATION_EXPECTED_RED_CAUGHT_PASS'
       - name: Clear sealed private checkout
         if: always()
         shell: bash
