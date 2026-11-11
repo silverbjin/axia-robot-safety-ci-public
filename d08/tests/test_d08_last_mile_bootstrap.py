@@ -24,7 +24,7 @@ def test_exact_private_revision_and_no_auto_consent():
     assert "echo YES-P2-G07-GOAL" not in src
     assert "AXIA_D08_GAZEBO_GUI=1" in src
     assert "human mesh and G07 Contact proxy share ONE SDF model" in src
-    assert "D08_GUI_SHORT_STEP_7CM_6CM_FOOT_VISUAL_ONLY" in src
+    assert "D08_GUI_REAL_GAZEBO_CALIBRATED_20CM_STOP_STEP_6CM_FOOT_VISUAL_ONLY" in src
     assert "D08_FOOT_TUNED_SHORT_STEP_L0_CANDIDATE" in src
     assert "NEW_GAZEBO_L2_AND_OWNER_GUI_STILL_REQUIRED" in src
     assert 'p2_l3_live_session.py' in src
