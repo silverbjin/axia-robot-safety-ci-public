@@ -40,7 +40,8 @@ def test_stop_frame_real_onnx_person_is_mandatory_not_diagnostic_only():
 
 def test_ci_reuses_real_stop_set_pose_and_actual_ros_rgb_frame():
     code=(ROOT/'d08/scripts/d08_public_gazebo_l2.py').read_text()
-    assert "capture_path=out/'real_gazebo_stop_rgb.ppm'" in code
+    assert "stop_rgb=out/'real_gazebo_stop_rgb.ppm'" in code
+    assert "capture_path=stop_rgb" in code
     workflow=WORKFLOW.read_text()
     assert '--stop-frame results/d08-human-contact-calibration/real_gazebo_stop_rgb.ppm' in workflow
     assert 'D08_ACTUAL_ONNX_PERSON_FRAME_L2_PASS' in workflow
