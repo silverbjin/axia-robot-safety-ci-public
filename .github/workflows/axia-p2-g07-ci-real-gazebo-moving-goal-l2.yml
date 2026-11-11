@@ -1,6 +1,7 @@
 # Exact private source SHA pinned; conservative rollback L0 #42990244719 (127/127).
 # This real-L2 run must validate live Collision Monitor stop_pub_timeout=5s,
 # unchanged Guard input TTL=150ms and CLEAR/SLOW/STOP plus odom dwell.
+# VERIFIED L0 RED #43040702422 -> GREEN #43040932165 (131 PASS); L2 must still prove actual STOP and TTL.
 # HOLD: actual moving CI #42989423638 failed at first CM age 194.599ms
 # against immutable 150ms CM TTL despite 40Hz; that trial was reverted.
 # Source below is L0-green rollback #42990244719 (127 PASS), but has NOT
@@ -38,7 +39,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 1bd12e3b98ec887d862d1be23a26c39a8f56a6cc
+          ref: 7186def36e78f8c764d5d01b63b6d586f4bf0488
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -46,7 +47,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '1bd12e3b98ec887d862d1be23a26c39a8f56a6cc'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '7186def36e78f8c764d5d01b63b6d586f4bf0488'
           bash ci-tools/scripts/axia_ci_enable_osrf_gazebo_repo.sh
           DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends procps git
           cd instructor
@@ -92,7 +93,7 @@ jobs:
         run: |
           set -euo pipefail
           cd instructor
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '1bd12e3b98ec887d862d1be23a26c39a8f56a6cc'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '7186def36e78f8c764d5d01b63b6d586f4bf0488'
           timeout --signal=TERM --kill-after=10s 900s \
             bash scripts/p2_no_goal_smoke_ci.sh || {
             echo 'AXIA_G07_CI_MOVING_GOAL_REAL_GAZEBO_BLOCKED'
