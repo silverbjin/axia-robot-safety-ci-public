@@ -45,3 +45,17 @@ def test_ci_reuses_real_stop_set_pose_and_actual_ros_rgb_frame():
     workflow=WORKFLOW.read_text()
     assert '--stop-frame results/d08-human-contact-calibration/real_gazebo_stop_rgb.ppm' in workflow
     assert 'D08_ACTUAL_ONNX_PERSON_FRAME_L2_PASS' in workflow
+
+
+def test_ci_uses_real_yolo_ros_detection_array_on_recorded_gazebo_stop_frame():
+    # Existing CI L2 ONNX check counts raw [1,84,6300] candidates, NOT
+    # the actual C++ yolo_ros post-NMS DetectionArray. UI9 field sees
+    # 64 umbrella and zero person while raw ONNX sees person near Stop.
+    replay=ROOT/'.github/workflows/d08-ui9-yolo-replay-l1.yml'
+    assert replay.is_file(), 'UI9_REAL_YOLO_ROS_REPLAY_CI_MISSING'
+    txt=replay.read_text()
+    assert '94d2dd500cb26027ee9c019f4d3a02029ac615cc' in txt
+    assert '4f44c33cea12d4b5785e5e7c0a20c13d0c62a77de607ce96a40d6036c7d7bbcf' in txt
+    assert 'real_gazebo_stop_rgb.ppm' in txt
+    assert 'UI9_REAL_YOLO_ROS_PERSON_DETECTION_L1_PASS' in txt
+    assert 'd08_ui9_yolo_replay_probe.py' in txt
