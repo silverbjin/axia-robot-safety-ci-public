@@ -2,7 +2,7 @@ name: AXIA P2 G07 zreh4rQQ actual ROS Guard 30pct slowdown L1
 on:
   push:
     branches: [release/p2-g06-cm-ttl-20261110]
-    paths: ['.github/workflows/axia-p2-g07-owner-zreh-cm-skew-guard-l1.yml']
+    paths: ['.github/workflows/axia-p2-g07-owner-zreh-guard-real-ros-l1.yml']
 permissions:
   contents: read
 concurrency:
