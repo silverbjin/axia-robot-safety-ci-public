@@ -57,8 +57,17 @@ def _cmd(args,timeout=7):
     return subprocess.run(args,text=True,capture_output=True,timeout=timeout)
 
 def _ready():
+    # FisQMvZz public L2 #42974610916: CM get_state reported
+    # unconfigured but immediate configure did not complete. Discovery
+    # of the *change_state* service is a separate prerequisite.
+    # Do NOT retry a failed lifecycle transition or loosen safety TTL.
     status=_cmd(['ros2','lifecycle','get','/collision_monitor'],timeout=6)
-    return status.returncode==0 and 'unconfigured' in status.stdout.lower()
+    if status.returncode!=0 or 'unconfigured' not in status.stdout.lower():
+        return False
+    change=_cmd(['ros2','service','type',
+                 '/collision_monitor/change_state'],timeout=6)
+    return (change.returncode==0
+            and 'lifecycle_msgs/srv/ChangeState' in change.stdout)
 
 def _pct(values,percent):
     v=sorted(values)
@@ -97,7 +106,13 @@ def run(out, *, set_pose_while_publishing=None, stop_front_m=None):
         for step in ['configure','activate']:
             resp=_cmd(['ros2','lifecycle','set','/collision_monitor',step],timeout=15)
             if resp.returncode!=0 or 'success' not in resp.stdout.lower():
-                raise RuntimeError('NATIVE_CM_LIFECYCLE_'+step.upper()+'_FAILED:'+resp.stdout[-150:])
+                # Public native ROS diagnostics only, never private source.
+                note=(resp.stderr or resp.stdout or '').strip().replace('\\n',' ')
+                status['lifecycle_transition_failed']=step
+                status['lifecycle_transition_rc']=resp.returncode
+                raise RuntimeError('NATIVE_CM_LIFECYCLE_'+step.upper()+
+                                   '_FAILED:rc='+str(resp.returncode)+
+                                   ' stderr='+note[-140:])
         rclpy.init()
         node=rclpy.create_node('axia_ci_nav2_cm_l1_cadence')
         pub=node.create_publisher(Twist,'/axia_ci/cm_input',10)
