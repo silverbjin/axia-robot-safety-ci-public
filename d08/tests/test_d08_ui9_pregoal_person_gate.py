@@ -79,3 +79,32 @@ def test_ui9_avoid_sourcing_ros_jazzy_under_nounset():
     assert 'set +u\n          source /opt/ros/jazzy/setup.bash' in text, (
         'UI9_ROS_SETUP_UNDER_NOUNSET_REGRESSION')
     assert 'source /tmp/axia_ui9_yolo_ws/install/setup.bash\n          set -u' in text
+
+
+def test_ui9_only_public_actions_no_sealed_private_job_or_private_checkout():
+    # Public repo is the ONLY CI runner for this user. The previous
+    # private-instructor-pre-goal-l0 job was blocked before any job steps.
+    # Do not bypass secret/environment restrictions, and do not commit
+    # instructor code to the public repo.
+    path=ROOT/'.github/workflows/d08-ui9-private-sealed-l0.yml'
+    content=path.read_text()
+    assert 'environment: axia-instructor-sealed' not in content, (
+        'UI9_CI_DEPENDS_ON_BLOCKED_PROTECTED_PRIVATE_ENVIRONMENT')
+    assert 'secrets.AXIA_CLOUD_CI' not in content
+    assert 'repository: silverbjin/axia-robot-safety-instructor' not in content
+    assert 'UI9_PUBLIC_NO_GOAL_SOURCE_CONTRACT_PASS' in content
+
+
+def test_ui9_real_gazebo_near_then_restore_initial_far_requires_scan():
+    # RED: old public Gazebo L2 moved only Slow and Stop; never restored
+    # the actual WSL2 Owner preloaded initial x=-0.58 position before Goal.
+    source=(ROOT/'d08/scripts/d08_public_gazebo_l2.py').read_text()
+    flow=WORKFLOW.read_text()
+    assert 'def ui9_reversible_pose_admission(' in source, (
+        'UI9_GAZEBO_L2_NO_NEAR_TO_FAR_RESTORATION_TEST')
+    assert "'near_world_xyz_m':[-1.63,-.5,.24]" in source
+    assert "'far_world_xyz_m':[-.58,-.5,.24]" in source
+    assert "D08_UI9_REAL_GAZEBO_NEAR_RESTORE_L2_PASS" in source
+    assert "ui9_reversible_pose_admission(" in source
+    assert "ui9_reversible_pose" in flow
+    assert "D08_UI9_REAL_GAZEBO_NEAR_RESTORE_L2_PASS" in flow
