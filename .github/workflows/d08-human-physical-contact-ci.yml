@@ -17,6 +17,7 @@ on:
       - 'd08/tests/test_d08_live_public_harness.py'
       - 'd08/tests/test_d08_live_field_layout.py'
       - 'd08/scripts/d08_public_gazebo_l2.py'
+      - 'd08/scripts/d08_real_nav2_cm_l1.py'
       - 'd08/harness/d08_live_readonly_probe.py'
       - 'd08/scripts/axia_d08_live_gazebo_wsl2_once.sh'
       - 'd08/tests/test_d08_last_mile_bootstrap.py'
@@ -80,6 +81,7 @@ jobs:
             git curl ca-certificates python3-yaml \
             ros-jazzy-nav2-minimal-tb3-sim ros-jazzy-turtlebot3-gazebo \
             ros-jazzy-ros-gz ros-jazzy-xacro ros-jazzy-rclpy \
+            ros-jazzy-nav2-collision-monitor \
             ros-jazzy-sensor-msgs libgl1-mesa-dri libglx-mesa0 \
             python3-numpy xvfb xauth
       - name: Validate the existing D04 human COLLADA asset SHA
@@ -131,6 +133,13 @@ jobs:
           # This asserts real camera *framing* only, not YOLO inference.
           python3 d08/harness/d08_visible_person_frame.py \
             results/d08-human-contact-calibration/real_gazebo_rgb.ppm
+      - name: Isolated real ROS Nav2 Collision Monitor 150ms cadence diagnostic (NO GOAL)
+        shell: bash
+        run: |
+          set -eo pipefail
+          source /opt/ros/jazzy/setup.bash
+          python3 -u d08/scripts/d08_real_nav2_cm_l1.py --out results/d08-cm-cadence-l1
+          echo 'D08_REAL_NAV2_CM_L1_NO_GOAL_ONLY_PASS'
       - name: Remove external mesh (not part of artifact)
         if: always()
         run: rm -f /tmp/axia-d08-assets/walk.dae
@@ -138,6 +147,8 @@ jobs:
         if: always()
         with:
           name: d08-grounded-human-real-lidar-no-goal
-          path: results/d08-human-contact-calibration/
+          path: |
+            results/d08-human-contact-calibration/
+            results/d08-cm-cadence-l1/
           retention-days: 7
           if-no-files-found: warn
