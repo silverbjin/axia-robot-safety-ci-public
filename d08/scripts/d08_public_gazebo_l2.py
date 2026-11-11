@@ -431,6 +431,21 @@ def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=Fals
         if lidar_pre_goal:
             result['pregoal_lidar']=pregoal_lidar_physical_admission(
                 out,env,processes)
+            # Owner l0KClvT6 GUI screenshot had only legs at the REAL
+            # ~0.35m StopZone, despite a full human at pre-Goal distance.
+            # Check an actual registered RGB-D camera frame AFTER moving
+            # the physical person to StopZone, not an estimated FOV alone.
+            # Does NOT run YOLO, owner consent, robot Goal or new control.
+            stop_rgb=out/'real_gazebo_stop_rgb.ppm'
+            result['actual_stop_rgbd']=observe_real_pair(
+                timeout_s=45,capture_path=stop_rgb)
+            from d08_visible_person_frame import assess_rgb_ppm
+            result['actual_stop_visual']=assess_rgb_ppm(stop_rgb)
+            if (not result['actual_stop_rgbd']['matched']
+                    or result['actual_stop_visual']['status']!='VISUAL_FRAMING_CANDIDATE'):
+                raise RuntimeError('D08_REAL_STOPZONE_FULLBODY_RGBD_FRAMING_UNVERIFIED')
+            print('D08_REAL_GAZEBO_STOPZONE_HEAD_SHIRT_LEGS_VISUAL_L2_PASS '
+                  +json.dumps(result['actual_stop_visual'],sort_keys=True),flush=True)
         if positive_contact:
             result['positive_contact_calibration']=positive_contact_once(
                 out,env,contact_topic)
