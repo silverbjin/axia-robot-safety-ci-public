@@ -2,7 +2,10 @@ name: AXIA G07 CI-only actual Harmonic Nav2 MOVING Goal CLEAR SLOW STOP
 on:
   push:
     branches: [release/p2-g06-cm-ttl-20261110]
-    paths: ['.github/workflows/axia-p2-g07-ci-real-gazebo-moving-goal-l2.yml']
+    # HOLD: only an explicit source-reviewed CI trigger after the CM
+    # STOP-period cause has a GREEN regression may authorize the costly
+    # simulation Goal. Editing this workflow alone never auto-moves a robot.
+    paths: ['.github/workflows/axia-p2-g07-ci-real-gazebo-moving-goal-l2.approved-trigger']
 permissions:
   contents: read
 concurrency:
@@ -27,7 +30,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 185d33242ac1bb51a65e40ea4d1e6ce7ef40160d
+          ref: 7a4cba2a0367f8c7578b965cf6b776e0b45aabc0
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -35,7 +38,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '185d33242ac1bb51a65e40ea4d1e6ce7ef40160d'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '7a4cba2a0367f8c7578b965cf6b776e0b45aabc0'
           bash ci-tools/scripts/axia_ci_enable_osrf_gazebo_repo.sh
           DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends procps git
           cd instructor
@@ -81,7 +84,7 @@ jobs:
         run: |
           set -euo pipefail
           cd instructor
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '185d33242ac1bb51a65e40ea4d1e6ce7ef40160d'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '7a4cba2a0367f8c7578b965cf6b776e0b45aabc0'
           timeout --signal=TERM --kill-after=10s 900s \
             bash scripts/p2_no_goal_smoke_ci.sh || {
             echo 'AXIA_G07_CI_MOVING_GOAL_REAL_GAZEBO_BLOCKED'
