@@ -34,7 +34,7 @@ jobs:
             d08/tests/test_d08_last_mile_bootstrap.py
           python3 - <<'PY'
           from pathlib import Path
-          expected='52b00334ed5f6d5b6a955a68cdcbad995ad8b36e'
+          expected='6370cfc8985bdbf5b803fa23fb86b3c2647aef47'
           wrapper=Path('d08/scripts/axia_d08_live_gazebo_wsl2_once.sh').read_text()
           sealed=Path('.github/workflows/d08-guard-sealed-public-l0-l1.yml').read_text()
           assert expected in wrapper and expected in sealed
@@ -47,6 +47,7 @@ jobs:
           # Owner Goal consent stays mandatory.
           assert 'tests/unit/test_d08_wzbk_ordered_teardown.py' in sealed
           assert 'tests/unit/test_d08_fisqm_nav_lifecycle.py' in sealed
+          assert 'tests/unit/test_d08_yxgmdwto_post_stop_dwell.py' in sealed
           assert 'd08_nav_manager_startup_real_l1.py' in sealed
           assert 'ros-jazzy-nav2-lifecycle-manager' in sealed
           print('AXIA_FISQMVZZ_NAV_LIFECYCLE_REAL_L1_CI_INCLUDED')
@@ -76,7 +77,7 @@ jobs:
       DEBIAN_FRONTEND: noninteractive
       ROS_DOMAIN_ID: '57'
       ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
-      AXIA_EXPECTED_TEACHER_SHA: '52b00334ed5f6d5b6a955a68cdcbad995ad8b36e'
+      AXIA_EXPECTED_TEACHER_SHA: '6370cfc8985bdbf5b803fa23fb86b3c2647aef47'
     steps:
       - name: Checkout public no-Goal official manager L1 harness
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -86,7 +87,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 52b00334ed5f6d5b6a955a68cdcbad995ad8b36e
+          ref: 6370cfc8985bdbf5b803fa23fb86b3c2647aef47
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: .axia_private_runtime
           fetch-depth: 1
@@ -122,11 +123,13 @@ jobs:
               tests/unit/test_d08_oddl_stop_dispatch.py \
               tests/unit/test_d08_wzbk_ordered_teardown.py \
               tests/unit/test_d08_fisqm_nav_lifecycle.py \
+              tests/unit/test_d08_yxgmdwto_post_stop_dwell.py \
               > /tmp/axia_d08_private_l0.log 2>&1); then
             echo 'AXIA_D08_PRIVATE_GUARD_L0_BLOCKED_PRIVATE_LOG_NOT_PUBLISHED'
             exit 2
           fi
           echo 'AXIA_D08_PRIVATE_GUARD_L0_PASS_PRIVATE_CODE_NOT_PRINTED'
+          echo 'AXIA_D08_YXGMDWTO_POST_CM_STOP_ODOM_ONLY_L0_PASS'
           echo 'AXIA_D08_PRIVATE_1XZY_RENDER_LOAD_AND_SETPOSE_CACHE_L0_PASS'
           echo 'AXIA_D08_NATIVE_CM_G07_SUCCESS_SHUTDOWN_ORDER_L0_PASS'
       - name: Compile and build actual private ROS Jazzy Base Guard
