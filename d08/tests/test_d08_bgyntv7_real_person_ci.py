@@ -46,3 +46,14 @@ def test_public_real_gazebo_ci_exercises_actual_pinned_onnx_on_rgb():
         'BGYNTV7_CI_PERSON_POSITIVE_VERDICT_MISSING')
     assert '4f44c33cea12d4b5785e5e7c0a20c13d0c62a77de607ce96a40d6036c7d7bbcf' in workflow, (
         'BGYNTV7_CI_ONNX_MODEL_SHA_NOT_PINNED')
+
+def test_real_person_onnx_must_receive_post_ack_slowzone_frame():
+    workflow=WORKFLOW.read_text()
+    script=(ROOT/'d08/scripts/d08_public_gazebo_l2.py').read_text()
+    assert '--frame results/d08-human-contact-calibration/real_gazebo_slowzone_rgb.ppm' in workflow, (
+        'BGYNTV7_CI_USED_PRE_POSITION_1_4M_FRAME_NOT_OWNER_SLOWZONE')
+    assert "capture_path=out/'real_gazebo_slowzone_rgb.ppm'" in script
+    assert script.index("after=observe_real_front_scan(timeout_s=35)") < script.index(
+        "slowzone_rgbd=observe_real_pair("), (
+        'BGYNTV7_CAMERA_FRAME_NOT_AFTER_PHYSICAL_SCAN_ACK')
+
