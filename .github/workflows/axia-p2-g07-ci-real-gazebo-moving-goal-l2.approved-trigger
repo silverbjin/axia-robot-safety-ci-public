@@ -1,0 +1,10 @@
+# Authorized CI-only real Gazebo Harmonic/Nav2 moving Goal, no Owner TTY bypass.
+# Explicitly scoped to simulation and PR #112. No hardware robot, fault or crash.
+private_source_sha=51e410d401752930266060829844bf17ad2de3a6
+public_l0_green_run=42977816072
+public_l0_green_sha=c276c81004725b8a545da1bb80fac7e5ea6d909c
+red_run=42977409261
+scope=CLEAR_SLOW_STOP_ODOM_1S_GUARD_CM_TTL_0.15S
+owner_l3_accepted=false
+hardware_estop_certified=false
+approval=CI_SIMULATION_ONLY_ONE_GOAL
