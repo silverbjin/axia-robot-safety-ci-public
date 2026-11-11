@@ -1,0 +1,18 @@
+name: D03 mirror cache regression (synthetic)
+on:
+  push:
+    branches: [test/d03-mirror-cache-regression-20261111]
+  pull_request:
+    paths:
+      - 'scripts/d03_mirror_compare.sh'
+      - 'tests/test_d03_mirror_diff_contract.py'
+      - '.github/workflows/d03-mirror-cache-regression.yml'
+jobs:
+  synthetic-mirror-contract:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Exercise generated-cache and real-source-drift cases
+        run: python3 tests/test_d03_mirror_diff_contract.py -v
