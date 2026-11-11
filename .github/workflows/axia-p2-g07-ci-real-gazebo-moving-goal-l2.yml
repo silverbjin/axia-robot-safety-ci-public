@@ -60,16 +60,14 @@ jobs:
           assert d['wsl_kernel_equal_ci'] is False
           print('AXIA_G07_CI_MOVING_GOAL_OWNER_CORE_25_5_PARITY_PASS_WSL2_KERNEL_NOT_EQUAL')
           PY
-      - name: Independently verify moving-Goal safety oracle before any physical Goal
+      - name: Use independently GREEN L0 oracle; syntax-check actual runner without pip
         shell: bash
         run: |
           set -euo pipefail
           cd instructor
-          python3 -m pip install -q --disable-pip-version-check pytest==8.3.5
-          python3 -m pytest -q -ra tests/unit/test_p2_g07_ci_moving_goal_oracle.py
           python3 -m py_compile tools/p2_g07_ci_moving_goal.py tools/p2_g07_ci_moving_goal_oracle.py
           bash -n scripts/p2_no_goal_smoke_ci.sh
-          echo 'AXIA_G07_CI_MOVING_GOAL_L0_PASS_BEFORE_REAL_GAZEBO'
+          echo 'AXIA_G07_CI_MOVING_GOAL_RUNNER_STATIC_PASS_L0_VERIFIED_SEPARATELY'
       - name: Real Harmonic official TB3 Waffle and Nav2 ONE bounded simulation Goal
         shell: bash
         env:
