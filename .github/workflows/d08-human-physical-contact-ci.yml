@@ -102,7 +102,7 @@ jobs:
           python3 -u d08/scripts/d08_public_gazebo_l2.py \
             --actor /tmp/axia-d08-assets/walk.dae \
             --out results/d08-human-contact-calibration \
-            --lidar-pre-goal
+            --lidar-pre-goal --cm-cadence-l1
           python3 - <<'PY'
           import json
           from pathlib import Path
@@ -121,6 +121,12 @@ jobs:
               assert m['wall_gap_max_sec'] < .5, (phase, m)
               assert m['sim_stamp_period_median_sec'] <= .13, (phase, m)
           print('D08_REAL_WALLCLOCK_SCAN_WATCHDOG_MARGIN_L2_PASS')
+          cm=v['cm_cadence_l1']
+          assert cm['status']=='REAL_NAV2_CM_L1_CADENCE_PASS',cm
+          assert cm['synthetic_scan'] and not cm['no_goal'] is False
+          assert cm['callback_wall_max_sec']<.15
+          assert cm['output_speed_nonzero_count']>=20
+          print('D08_REAL_GAZEBO_CONCURRENT_CM_L1_PASS_NO_GOAL')
           assert v['pregoal_lidar']['after']['front_m'] > 0.4
           assert v['pregoal_lidar']['after']['front_m'] < 0.75
           # Positive contact calibration already proven independently
@@ -133,13 +139,6 @@ jobs:
           # This asserts real camera *framing* only, not YOLO inference.
           python3 d08/harness/d08_visible_person_frame.py \
             results/d08-human-contact-calibration/real_gazebo_rgb.ppm
-      - name: Isolated real ROS Nav2 Collision Monitor 150ms cadence diagnostic (NO GOAL)
-        shell: bash
-        run: |
-          set -eo pipefail
-          source /opt/ros/jazzy/setup.bash
-          python3 -u d08/scripts/d08_real_nav2_cm_l1.py --out results/d08-cm-cadence-l1
-          echo 'D08_REAL_NAV2_CM_L1_NO_GOAL_ONLY_PASS'
       - name: Remove external mesh (not part of artifact)
         if: always()
         run: rm -f /tmp/axia-d08-assets/walk.dae
@@ -147,8 +146,6 @@ jobs:
         if: always()
         with:
           name: d08-grounded-human-real-lidar-no-goal
-          path: |
-            results/d08-human-contact-calibration/
-            results/d08-cm-cadence-l1/
+          path: results/d08-human-contact-calibration/
           retention-days: 7
           if-no-files-found: warn
