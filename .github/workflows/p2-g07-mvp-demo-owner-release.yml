@@ -1,0 +1,33 @@
+name: P2 G07 MVP Owner WSL2 wrapper public release L0
+on:
+  push:
+    branches: ['release/p2-g07-mvp-demo-wsl2-20261110']
+    paths:
+      - 'scripts/axia_p2_g07_mvp_demo_once.sh'
+      - 'tests/test_p2_g07_mvp_demo_owner_once.py'
+      - '.github/workflows/p2-g07-mvp-demo-owner-release.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  owner-wrapper-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Public-only bash and immutable private SHA / real TTY contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n scripts/axia_p2_g07_mvp_demo_once.sh
+          bash scripts/axia_p2_g07_mvp_demo_once.sh --self-check
+          python3 -m unittest discover -s tests -p 'test_p2_g07_mvp_demo_owner_once.py' -v
+          echo 'P2_G07_MVP_RELEASE_L0_PASS; ACTUAL_GAZEBO_AND_OWNER_GOAL_NOT_RUN_IN_THIS_JOB'
+      - name: Explicit verification scope
+        shell: bash
+        run: |
+          echo 'ACTUAL_JAZZY_GAZEBO_NO_GOAL_LIDAR_L2_SUCCESS_RUN=42754104452'
+          echo 'SOURCE_PRIVATE_SHA=1216d8589b2a8ac4c7e75aedaa7854eb7b2470b3'
+          echo 'CERTIFIED_ESTOP=false; CONTACT_GROUND_TRUTH_UNVERIFIED'
