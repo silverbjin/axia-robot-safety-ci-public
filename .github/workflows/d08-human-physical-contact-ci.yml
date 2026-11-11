@@ -86,7 +86,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          apt-get update -qq
+          # Actual #43053264733: apt-get update returned 0 despite
+          # archive.ubuntu.com/security.ubuntu.com DNS errors, then
+          # 'python3-venv has no installation candidate' obscured cause.
+          # Treat missing APT indices as INFRA BLOCKED, never Gazebo failed.
+          if ! apt-get update -qq \
+               -o APT::Update::Error-Mode=any \
+               -o Acquire::Retries=1; then
+            echo 'D08_CI_APT_REPOSITORY_UNREACHABLE: network/DNS prerequisite failed before ROS/Gazebo L2' >&2
+            exit 2
+          fi
           apt-get install -y -qq --no-install-recommends \
             git curl ca-certificates python3-yaml \
             ros-jazzy-nav2-minimal-tb3-sim ros-jazzy-turtlebot3-gazebo \
