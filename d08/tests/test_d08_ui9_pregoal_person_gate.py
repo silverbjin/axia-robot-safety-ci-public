@@ -59,3 +59,12 @@ def test_ci_uses_real_yolo_ros_detection_array_on_recorded_gazebo_stop_frame():
     assert 'real_gazebo_stop_rgb.ppm' in txt
     assert 'UI9_REAL_YOLO_ROS_PERSON_DETECTION_L1_PASS' in txt
     assert 'd08_ui9_yolo_replay_probe.py' in txt
+
+
+def test_ui9_pinned_cpp_upstream_vendor_build_dependencies_present():
+    # Actual CI run #43071254144 reached the exact pinned upstream source
+    # but CMake yolo_hfhub_vendor failed because libcurl header/library
+    # were missing from the otherwise functional ROS Jazzy container.
+    txt=(ROOT/'.github/workflows/d08-ui9-yolo-replay-l1.yml').read_text()
+    assert 'libcurl4-openssl-dev' in txt, 'UI9_YOLO_VENDOR_CURL_DEV_MISSING'
+    assert '-DBUILD_TESTING=OFF' in txt, 'UI9_YOLO_REPLAY_SHOULD_NOT_BUILD_UPSTREAM_TESTS'
