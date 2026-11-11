@@ -1,14 +1,12 @@
-# Simulation-only CI one moving Goal; strict original Guard/CM TTL and odom dwell.
-# RED #43070001966 (2 failures), GREEN #43070460808 (163/163 PASS).
-# Reproduce Owner WSL2 native crash at 14.997s after run begin while the
-# exact original Owner Observer uses TWO executor workers and unbuffered
-# callback evidence; periodic faulthandler 15s trigger removed (fatal-only).
-# No Owner TTY bypass: distinct CI-only authorized Goal; full Owner L3 NOT RUN.
-private_source_sha=e3ec605058938fe89eac3091d26293e123f00772
-public_l0_red_run=43070001966
-public_l0_green_run=43070460808
-previous_actual_gazebo_l2_pass=43060492901
-owner_raw_wsl2_first_error=rc139_after_14.996845s
-scope=CI_REAL_HARMONIC_GOAL_OWNER_OBSERVER_2_WORKERS_UNBUFFERED_15S_STABILITY_AND_TTL
+# Public CI-only real Harmonic/Nav2 Goal; Owner manual TTY remains separate.
+# User WSL2 rc139 correlated to old 15.0s faulthandler periodic stack dump.
+# RED #43071882786 (4 failed) -> GREEN #43072551636 (168/168).
+# Original CI parity L2 #43070688993 failed scan 312.77ms >300ms.
+# Source now G07 Owner and CI parity: 2 worker executor, buffered callback
+# journal, periodic 0.75s flush, fatal-only traceback, strict original TTL.
+private_source_sha=cc92327d1ae4a17d331d06e845437760ca2bdafe
+l0_green_run=43072551636
+last_l2_failed_run=43070688993
+scope=SIM_ONLY_REAL_GAZEBO_ONE_GOAL_15S_OWNER_OBSERVER_PARITY_CM_GUARD_SCAN_ODOM
 owner_l3_accepted=false
-hardware_estop_certified=false
+certified_estop=false
