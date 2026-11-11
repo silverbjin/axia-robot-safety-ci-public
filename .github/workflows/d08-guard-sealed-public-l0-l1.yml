@@ -1,0 +1,117 @@
+name: AXIA D08 G07 public CI sealed instructor Guard L0 L1 (NO GOAL)
+on:
+  push:
+    branches: ['fix/d08-foot-short-step-ci-20261111']
+    paths:
+      - '.github/workflows/d08-guard-sealed-public-l0-l1.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: axia-d08-sealed-guard-public-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  private-guard-l0-l1:
+    # Only the author-controlled exact CI feature branch. Never untrusted PRs.
+    if: github.repository == 'silverbjin/axia-robot-safety-ci-public' && github.event_name == 'push' && github.ref == 'refs/heads/fix/d08-foot-short-step-ci-20261111'
+    environment: axia-instructor-sealed
+    runs-on: ubuntu-24.04
+    timeout-minutes: 24
+    container:
+      image: ros:jazzy-ros-base-noble
+    env:
+      DEBIAN_FRONTEND: noninteractive
+      ROS_DOMAIN_ID: '57'
+      ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+      AXIA_EXPECTED_TEACHER_SHA: '5d20b32633747b551d005a944ae3356224cbffbc'
+    steps:
+      - name: Exact sealed private instructor checkout (never publish source)
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 5d20b32633747b551d005a944ae3356224cbffbc
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          path: .axia_private_runtime
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Verify immutable teacher SHA and install only Guard L0/L1 runtime
+        shell: bash
+        run: |
+          set -eo pipefail
+          SRC="$PWD/.axia_private_runtime"
+          test "$(git -C "$SRC" rev-parse HEAD)" = "$AXIA_EXPECTED_TEACHER_SHA"
+          echo 'AXIA_D08_PRIVATE_SOURCE_SHA_LOCKED_PUBLIC_CI'
+          apt-get update -qq >/dev/null
+          apt-get install -y -qq --no-install-recommends \
+            python3-pytest python3-colcon-common-extensions \
+            ros-jazzy-rclpy ros-jazzy-geometry-msgs ros-jazzy-std-msgs \
+            ros-jazzy-action-msgs ros-jazzy-nav2-msgs ros-jazzy-lifecycle-msgs \
+            ros-jazzy-sensor-msgs ros-jazzy-std-srvs >/dev/null
+      - name: Actual private Guard policy L0 + D08 manifest/vision priority
+        shell: bash
+        run: |
+          set -eo pipefail
+          SRC="$PWD/.axia_private_runtime"
+          bash -n "$SRC/scripts/p2_owner_l3_wsl2.sh"
+          if ! (cd "$SRC" && PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 \
+              python3 -m pytest -q --tb=no --disable-warnings \
+              tests/unit/test_d08_1c0v_guard_stale.py \
+              tests/unit/test_d08_1c0v_sidecar_priority.py \
+              tests/unit/test_d08_axvm_gpu_lidar_rate.py \
+              tests/unit/test_d08_owner_manifest_gate_regression.py \
+              > /tmp/axia_d08_private_l0.log 2>&1); then
+            echo 'AXIA_D08_PRIVATE_GUARD_L0_BLOCKED_PRIVATE_LOG_NOT_PUBLISHED'
+            exit 2
+          fi
+          echo 'AXIA_D08_PRIVATE_GUARD_L0_PASS_PRIVATE_CODE_NOT_PRINTED'
+      - name: Compile and build actual private ROS Jazzy Base Guard
+        shell: bash
+        run: |
+          set -eo pipefail
+          SRC="$PWD/.axia_private_runtime"
+          python3 -m compileall -q \
+            "$SRC/ros2_ws/src/axia_safety_supervisor/axia_safety_supervisor" \
+            "$SRC/tools/p2_guard_ros_smoke.py"
+          source /opt/ros/jazzy/setup.bash
+          if ! colcon --log-base "$SRC/log" build \
+              --base-paths "$SRC/ros2_ws/src" \
+              --build-base "$SRC/build" --install-base "$SRC/install" \
+              --packages-select axia_safety_supervisor \
+              --executor sequential --event-handlers console_cohesion+ \
+              > /tmp/axia_d08_private_build.log 2>&1; then
+            echo 'AXIA_D08_PRIVATE_GUARD_ROS_BUILD_BLOCKED_PRIVATE_LOG_NOT_PUBLISHED'
+            exit 2
+          fi
+          echo 'AXIA_D08_PRIVATE_JAZZY_GUARD_BUILD_PASS_NO_GOAL'
+      - name: Live ROS Guard actual node CM 150ms TTL fail-closed and no auto-rearm
+        shell: bash
+        run: |
+          set -eo pipefail
+          SRC="$PWD/.axia_private_runtime"
+          if ! timeout --signal=TERM --kill-after=5s 45s \
+              bash "$SRC/scripts/p2_guard_ros_smoke_ci.sh" \
+              --drop-source collision_monitor \
+              >/tmp/axia_d08_private_l1_cm.log 2>&1; then
+            echo 'AXIA_D08_PRIVATE_GUARD_L1_CM_LOSS_BLOCKED_PRIVATE_LOG_NOT_PUBLISHED'
+            exit 2
+          fi
+          echo 'AXIA_D08_PRIVATE_GUARD_L1_CM_150MS_LATCH_ZERO_PASS'
+          if ! timeout --signal=TERM --kill-after=5s 45s \
+              bash "$SRC/scripts/p2_guard_ros_smoke_ci.sh" \
+              --drop-source supervisor \
+              >/tmp/axia_d08_private_l1_supervisor.log 2>&1; then
+            echo 'AXIA_D08_PRIVATE_GUARD_L1_SUPERVISOR_LOSS_BLOCKED_PRIVATE_LOG_NOT_PUBLISHED'
+            exit 2
+          fi
+          echo 'AXIA_D08_PRIVATE_GUARD_L1_SUPERVISOR_LATCH_ZERO_PASS'
+          echo 'AXIA_D08_PRIVATE_L0_L1_PUBLIC_SEALED_PASS_GAZEBO_AND_MOVING_GOAL_NOT_RUN'
+      - name: Erase private source, test log and build artifacts
+        if: always()
+        shell: bash
+        run: |
+          rm -rf -- .axia_private_runtime \
+            /tmp/axia_d08_private_l0.log \
+            /tmp/axia_d08_private_build.log \
+            /tmp/axia_d08_private_l1_cm.log \
+            /tmp/axia_d08_private_l1_supervisor.log
+          echo 'AXIA_D08_PRIVATE_CI_WORKTREE_ERASED'
