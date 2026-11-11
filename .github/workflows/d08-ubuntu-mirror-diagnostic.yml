@@ -1,0 +1,96 @@
+name: AXIA D08 Ubuntu mirror recovery diagnostic (NO ROS, NO GOAL)
+on:
+  push:
+    branches: ['ci/d08-ubuntu-mirror-20261112']
+    paths: ['.github/workflows/d08-ubuntu-mirror-diagnostic.yml']
+  pull_request:
+    branches: ['fix/d08-bgyntv7-actual-person-ci-20261112']
+    paths: ['.github/workflows/d08-ubuntu-mirror-diagnostic.yml']
+permissions:
+  contents: read
+jobs:
+  trusted-ubuntu-mirror-signed-apt:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    steps:
+      - name: Check Ubuntu mirror DNS and InRelease HTTPS on runner host
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'D08_FIXED_APPLICATION_SHA=0468ca1f5837f63ef9859cb7a7dc615e358889d9'
+          echo 'D08_INFRA_DIAGNOSTIC_NO_GAZEBO_NO_ROS_NO_GOAL'
+          for target in archive.ubuntu.com security.ubuntu.com; do
+            if timeout 8 getent ahostsv4 "$target" >/dev/null 2>&1; then
+              echo "D08_ORIGINAL_DOMAIN_DNS_PASS domain=$target"
+            else
+              echo "D08_ORIGINAL_DOMAIN_DNS_BLOCKED domain=$target"
+            fi
+          done
+          cat > /tmp/axia_ubuntu_mirror_candidates.txt <<'MIRRORS'
+          https://mirrors.edge.kernel.org/ubuntu
+          https://mirror.math.princeton.edu/pub/ubuntu/ubuntu
+          https://mirror.units.it/ubuntu/ubuntu
+          https://mirrors.huaweicloud.com/ubuntu/ubuntu
+          MIRRORS
+          echo 'D08_TRUSTED_MIRROR_PROBE_START'
+          image=ros:jazzy-ros-base-noble
+          resolved=0
+          while IFS= read -r uri; do
+            host="${uri#https://}";host="${host%%/*}"
+            echo "D08_MIRROR_CANDIDATE uri=$uri"
+            if ! timeout 8 getent ahostsv4 "$host" >/dev/null 2>&1;then
+              echo "D08_MIRROR_DNS_FAIL uri=$uri"
+              continue
+            fi
+            status=0
+            for pocket in noble noble-security; do
+              if ! curl -fsSL --connect-timeout 7 --max-time 12 --retry 0 \
+                    "$uri/dists/$pocket/InRelease" -o /dev/null;then
+                echo "D08_MIRROR_HTTPS_FAIL uri=$uri pocket=$pocket"
+                status=1;break
+              fi
+            done
+            if [[ "$status" -ne 0 ]];then continue;fi
+            echo "D08_MIRROR_HTTPS_PASS uri=$uri"
+            # Exact same container image family as Gazebo L2. Do NOT allow
+            # unauthenticated repositories: apt must verify Canonical GPG.
+            if timeout 185 docker run --pull=missing --rm -e MIRROR_URI="$uri" "$image" \
+               bash -euc '
+                 host="${MIRROR_URI#https://}";host="${host%%/*}"
+                 getent ahostsv4 "$host" >/dev/null
+                 cat > /tmp/axia-ubuntu.sources <<EOF
+          Types: deb
+          URIs: $MIRROR_URI
+          Suites: noble noble-updates noble-security
+          Components: main universe restricted multiverse
+          Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+          EOF
+                 apt-get update -qq \
+                   -o Dir::Etc::sourcelist=/tmp/axia-ubuntu.sources \
+                   -o Dir::Etc::sourceparts=- \
+                   -o APT::Update::Error-Mode=any \
+                   -o Acquire::Retries=0
+                 echo "D08_MIRROR_APT_SIGNED_RELEASES_PASS uri=$MIRROR_URI"
+               ';then
+              echo "D08_MIRROR_DNS_HTTPS_SIGNED_APT_PASS uri=$uri"
+              echo "verified_mirror=$uri" >> "$GITHUB_ENV"
+              resolved=1;break
+            else
+              echo "D08_MIRROR_APT_SIGNED_UPDATE_FAILED uri=$uri"
+            fi
+          done < /tmp/axia_ubuntu_mirror_candidates.txt
+          if [[ "$resolved" -ne 1 ]];then
+            echo 'D08_MIRROR_RECOVERY_INFRA_BLOCKED'
+            exit 2
+          fi
+      - name: Report DNS repair candidate, still NO Gazebo
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "D08_UBUNTU_MIRROR_RECOVERY_CANDIDATE_OK uri=$verified_mirror"
+          {
+            echo '## AXIA D08 isolated Ubuntu mirror recovery'
+            echo '- App SHA pinned: 0468ca1f5837f63ef9859cb7a7dc615e358889d9'
+            echo "- Signed APT candidate: $verified_mirror"
+            echo '- No Gazebo, no ONNX, no Goal, no Owner acceptance.'
+          } >> "$GITHUB_STEP_SUMMARY"
