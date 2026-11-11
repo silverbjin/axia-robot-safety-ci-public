@@ -29,7 +29,7 @@ jobs:
             d08/tests/test_d08_last_mile_bootstrap.py
           python3 - <<'PY'
           from pathlib import Path
-          expected='7d704d28667c79292f8b6d6a86c27bbacf32e6a7'
+          expected='fa2aecf3806dbef15f1ee6dbdd089ef2935e885e'
           wrapper=Path('d08/scripts/axia_d08_live_gazebo_wsl2_once.sh').read_text()
           sealed=Path('.github/workflows/d08-guard-sealed-public-l0-l1.yml').read_text()
           assert expected in wrapper and expected in sealed
@@ -61,13 +61,13 @@ jobs:
       DEBIAN_FRONTEND: noninteractive
       ROS_DOMAIN_ID: '57'
       ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
-      AXIA_EXPECTED_TEACHER_SHA: '7d704d28667c79292f8b6d6a86c27bbacf32e6a7'
+      AXIA_EXPECTED_TEACHER_SHA: 'fa2aecf3806dbef15f1ee6dbdd089ef2935e885e'
     steps:
       - name: Exact sealed private instructor checkout (never publish source)
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 7d704d28667c79292f8b6d6a86c27bbacf32e6a7
+          ref: fa2aecf3806dbef15f1ee6dbdd089ef2935e885e
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: .axia_private_runtime
           fetch-depth: 1
@@ -99,12 +99,14 @@ jobs:
               tests/unit/test_d08_owner_manifest_gate_regression.py \
               tests/unit/test_d08_1xzy_resource_and_service.py \
               tests/unit/test_d08_oddl_stop_dispatch.py \
+              tests/unit/test_d08_wzbk_ordered_teardown.py \
               > /tmp/axia_d08_private_l0.log 2>&1); then
             echo 'AXIA_D08_PRIVATE_GUARD_L0_BLOCKED_PRIVATE_LOG_NOT_PUBLISHED'
             exit 2
           fi
           echo 'AXIA_D08_PRIVATE_GUARD_L0_PASS_PRIVATE_CODE_NOT_PRINTED'
           echo 'AXIA_D08_PRIVATE_1XZY_RENDER_LOAD_AND_SETPOSE_CACHE_L0_PASS'
+          echo 'AXIA_D08_NATIVE_CM_G07_SUCCESS_SHUTDOWN_ORDER_L0_PASS'
       - name: Compile and build actual private ROS Jazzy Base Guard
         shell: bash
         run: |
