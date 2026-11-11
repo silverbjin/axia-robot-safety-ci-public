@@ -98,7 +98,7 @@ gh repo clone "$PRIVATE_REPO" "$SRC/instructor" -- \
 # A branch HEAD may advance for documentation or CI-only commits.
 # Retrieve the immutable, reviewed instructor commit from GitHub and detach;
 # never silently execute the new PR tip or skip source identity verification.
-git -C "$SRC/instructor" fetch --no-tags --depth 1 origin "$PRIVATE_SHA" || {
+git -C "$SRC/instructor" -c credential.helper='!gh auth git-credential' fetch --no-tags --depth 1 origin "$PRIVATE_SHA" || {
   echo 'D08_LIVE_BLOCKED: exact reviewed instructor commit unavailable' >&2
   exit 2
 }
