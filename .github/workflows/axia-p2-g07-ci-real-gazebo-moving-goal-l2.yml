@@ -1,0 +1,116 @@
+name: AXIA G07 CI-only actual Harmonic Nav2 MOVING Goal CLEAR SLOW STOP
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-p2-g07-ci-real-gazebo-moving-goal-l2.yml']
+permissions:
+  contents: read
+concurrency:
+  group: axia-g07-ci-real-gazebo-moving-goal-l2
+  cancel-in-progress: false
+jobs:
+  real-gazebo-nav2-moving-simulation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 48
+    environment: axia-instructor-sealed
+    container:
+      image: ros:jazzy-ros-base-noble
+    steps:
+      - name: Checkout signed public OSRF helper at frozen SHA
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-ci-public
+          ref: c38264d51494a836602fe8c276b120fb7c02bd4e
+          path: ci-tools
+          persist-credentials: false
+      - name: Private Instructor exact commit sealed
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: d087a461e59428f611df0d5929428aff5e8b08de
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          path: instructor
+          persist-credentials: false
+      - name: Install Owner exact 25 ROS Nav2 Gazebo runtime lock + headless tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 'd087a461e59428f611df0d5929428aff5e8b08de'
+          bash ci-tools/scripts/axia_ci_enable_osrf_gazebo_repo.sh
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends procps git
+          cd instructor
+          mkdir -p results/p2-g07-ci-moving
+          python3 tools/p2_g07_ci_owner_lock_install.py --apply \
+            --report results/p2-g07-ci-moving/apt_pin_report.json
+          set +u
+          source /opt/ros/jazzy/setup.bash
+          set -u
+          export ROS_DOMAIN_ID=83
+          export ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
+          export GZ_PARTITION=axia_p2_ci_moving_83
+          export AXIA_P0_SIM_ONLY=1
+          python3 tools/p2_g07_owner_env_parity.py --mode ci \
+            --output results/p2-g07-ci-moving/core_parity.json
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          d=json.loads(Path('results/p2-g07-ci-moving/core_parity.json').read_text())
+          assert d['status']=='CORE_PARITY_PASS'
+          assert d['checked_packages']==25 and d['checked_official_files']==5
+          assert d['wsl_kernel_equal_ci'] is False
+          print('AXIA_G07_CI_MOVING_GOAL_OWNER_CORE_25_5_PARITY_PASS_WSL2_KERNEL_NOT_EQUAL')
+          PY
+      - name: Independently verify moving-Goal safety oracle before any physical Goal
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd instructor
+          python3 -m pip install -q --disable-pip-version-check pytest==8.3.5
+          python3 -m pytest -q -ra tests/unit/test_p2_g07_ci_moving_goal_oracle.py
+          python3 -m py_compile tools/p2_g07_ci_moving_goal.py tools/p2_g07_ci_moving_goal_oracle.py
+          bash -n scripts/p2_no_goal_smoke_ci.sh
+          echo 'AXIA_G07_CI_MOVING_GOAL_L0_PASS_BEFORE_REAL_GAZEBO'
+      - name: Real Harmonic official TB3 Waffle and Nav2 ONE bounded simulation Goal
+        shell: bash
+        env:
+          ROS_DOMAIN_ID: '83'
+          ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+          GZ_PARTITION: axia_p2_ci_moving_83
+          AXIA_P0_SIM_ONLY: '1'
+          AXIA_P2_G07_PHYSICAL_PREFLIGHT: '1'
+          AXIA_G07_CI_SIM_GOAL_ALLOWED: '1'
+          AXIA_P2_SMOKE_RESULTS: results/p2-g07-ci-moving/real-l2
+        run: |
+          set -euo pipefail
+          cd instructor
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 'd087a461e59428f611df0d5929428aff5e8b08de'
+          timeout --signal=TERM --kill-after=10s 900s \
+            bash scripts/p2_no_goal_smoke_ci.sh || {
+            echo 'AXIA_G07_CI_MOVING_GOAL_REAL_GAZEBO_BLOCKED'
+            for f in results/p2-g07-ci-moving/real-l2/{staged_startup,launch,g07_ci_pregoal,g07_ci_moving}.log;do
+              if [[ -f "$f" ]];then echo "--- $(basename "$f") ---";tail -n 80 "$f";fi
+            done
+            exit 2
+          }
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          root=Path('results/p2-g07-ci-moving/real-l2')
+          startup=json.loads((root/'startup_verdict.json').read_text())
+          preg=json.loads((root/'g07_ci_pregoal/owner_pregoal_l2.json').read_text())
+          data=json.loads((root/'g07_ci_moving/ci_moving_goal_result.json').read_text())
+          assert startup['status']=='SMOKE_READY' and startup['goal_sent'] is False
+          assert preg['status']=='P2_G07_OWNER_PREGOAL_L2_READY_NO_GOAL'
+          assert data['status']=='CI_GAZEBO_MOVING_GOAL_CANDIDATE'
+          assert data['goal_sent'] is True and data['goal_status_executing'] is True
+          assert all(data['goal_status_at_'+k]==2 for k in ('clear','slow','stop'))
+          assert data['odom_stopped_dwell_sec']>=1
+          assert data['guard_latched'] is False
+          assert data['certified_estop'] is False and data['gate_accepted'] is False
+          assert data['owner_l3_accepted'] is False
+          print('AXIA_G07_CI_REAL_HARMONIC_NAV2_MOVING_GOAL_CLEAR_SLOW_STOP_L2_PASS_OWNER_L3_NOT_RUN')
+          PY
+      - name: Delete all Instructor source and raw ROS / Gazebo evidence
+        if: always()
+        shell: bash
+        run: rm -rf -- instructor ci-tools
