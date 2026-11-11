@@ -1,0 +1,43 @@
+name: AXIA G07 Owner KcA1lXOe CM slowdown direction skew RED GREEN L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-p2-g07-owner-kca1-cm-slowdown-skew-l0.yml']
+permissions:
+  contents: read
+concurrency:
+  group: axia-g07-owner-kca1-real-trace-l0
+  cancel-in-progress: false
+jobs:
+  real-owner-trace-l0:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: axia-instructor-sealed
+    steps:
+      - name: Checkout pinned exact Instructor source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 77d94c79bc1dd9abf11fb799bb35aca09c694f44
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Deterministic actual WSL2 owner trace and all existing safety guards
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = '77d94c79bc1dd9abf11fb799bb35aca09c694f44'
+          python3 -m pip install -q --disable-pip-version-check pytest==8.3.5
+          python3 -m pytest -q -ra \
+            tests/unit/test_p2_g07_guard_kca1_cm_slowdown.py \
+            tests/unit/test_p2_g07_guard_nearzero_owner_trace.py \
+            tests/unit/test_p2_g07_guard_async_owner_trace.py \
+            tests/unit/test_p2_base_guard_policy.py \
+            tests/unit/test_p2_guard_cancel_contract.py \
+            tests/unit/test_p2_guard_parameter_init_contract.py
+          python3 -m py_compile ros2_ws/src/axia_safety_supervisor/axia_safety_supervisor/p2_base_guard_policy.py
+          bash -n scripts/p2_guard_ros_smoke_ci.sh
+          echo 'AXIA_G07_KCA1_OWNER_CM_SLOWDOWN_L0_GREEN_PASS_NO_GOAL'
+      - name: Purge private checkout
+        if: always()
+        shell: bash
+        run: rm -rf -- .git tests ros2_ws tools scripts configs docs fixtures results
