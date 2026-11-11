@@ -19,14 +19,14 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 25ed70da595711302c7683fb8d5a03d1879a2082
+          ref: c971e3eeec54dd6b56f7dd7954913d2cfda45ba2
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Actual Gazebo moving Goal first Guard latch regression including STOP negative controls
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = '25ed70da595711302c7683fb8d5a03d1879a2082'
+          test "$(git rev-parse HEAD)" = 'c971e3eeec54dd6b56f7dd7954913d2cfda45ba2'
           python3 -m pip install -q --disable-pip-version-check pytest==8.3.5
           python3 -m pytest -q -ra \
             tests/unit/test_p2_g07_guard_authorized_transient_zero.py \
