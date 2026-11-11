@@ -138,6 +138,10 @@ jobs:
           assert cm['cmd_vel_robot_published'] is False
           assert cm['private_guard_executed'] is False
           assert cm['callback_wall_max_sec']<.15
+          assert cm['scan_qos_discovery_verified'] is True
+          assert cm['warmup_output_count']>=10
+          assert cm['output_count']>=74 and cm['input_count']==82,cm
+          assert cm['steady_delivery_ratio']>=.90,cm
           assert cm['output_speed_nonzero_count']>=20
           print('D08_REAL_GAZEBO_CONCURRENT_CM_L1_PASS_NO_GOAL')
           assert v['pregoal_lidar']['after']['front_m'] > 0.4
