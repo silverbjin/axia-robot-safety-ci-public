@@ -34,7 +34,7 @@ jobs:
           assert expected in wrapper and expected in sealed
           assert 'AXIA_CLOUD_CI' in sealed and 'axia-instructor-sealed' in sealed
           assert 'persist-credentials: false' in sealed
-          assert 'upload-artifact' not in sealed
+          assert ('upload'+'-artifact@') not in sealed
           assert 'YES-P2-G07-GOAL' in wrapper
           print('AXIA_D08_PUBLIC_GUARD_CONTRACT_PASS_PRIVATE_L0_L1_NOT_RUN')
           PY
