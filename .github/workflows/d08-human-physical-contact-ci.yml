@@ -162,6 +162,24 @@ jobs:
           assert stop['owner_goal_sent'] is False
           assert stop['collision_ground_truth'] is False
           print('D08_REAL_GAZEBO_STATIC_STOPZONE_DISTANCE_L2_PASS')
+          # UI9 Owner fail at 1.35m: verify REAL Gazebo contact/human
+          # near-to-original restoration on native set_pose ACK + /scan.
+          ui9=v['ui9_reversible_pose']
+          assert ui9['status']=='PASS_ACTUAL_GAZEBO_UI9_NEAR_AND_RESTORE_NO_GOAL',ui9
+          assert ui9['near_world_xyz_m']==[-1.63,-.5,.24],ui9
+          assert ui9['far_world_xyz_m']==[-.58,-.5,.24],ui9
+          assert ui9['near_native_ack'] and ui9['far_native_ack'],ui9
+          assert ui9['near_actual_registered_rgbd']['matched'] is True,ui9
+          assert .14<=ui9['near_actual_scan']['front_m']<.4,ui9
+          assert ui9['far_actual_scan']['front_m']>.75,ui9
+          for key in ('near_actual_scan','far_actual_scan'):
+              assert ui9[key]['scan_count']>=20,ui9
+              assert ui9[key]['wall_gap_max_sec']<.5,ui9
+              assert ui9[key]['no_synthetic_scan'] is True,ui9
+          assert ui9['goal_sent'] is False and ui9['robot_moved'] is False
+          assert ui9['private_d05_verified'] is False
+          assert ui9['safety_ttl_modified'] is False
+          print('D08_UI9_REAL_GAZEBO_NEAR_RESTORE_L2_PASS')
           # Owner AxvMA7TI: real /scan wall callback gaps reached 0.55s
           # despite valid simulated sensor stamps. Monitor ACTUAL wall-time.
           for phase in ('before','after'):
@@ -243,9 +261,19 @@ jobs:
             --model /tmp/axia-d08-assets/yolo26n.onnx \
             --report results/d08-human-contact-calibration/onnx_real_frame_verdict.json \
             | tee /tmp/d08_bgyntv7_real_onnx.log
+          # New UI9 pre-Goal near frame MUST independently classify as
+          # person on exact pinned model, not just reused old Stop image.
+          python3 d08/scripts/d08_actual_rgb_onnx_probe.py \
+            --frame results/d08-human-contact-calibration/real_gazebo_ui9_near_rgb.ppm \
+            --stop-frame results/d08-human-contact-calibration/real_gazebo_stop_rgb.ppm \
+            --model /tmp/axia-d08-assets/yolo26n.onnx \
+            --report results/d08-human-contact-calibration/onnx_ui9_near_real_frame_verdict.json \
+            | tee /tmp/d08_ui9_near_real_onnx.log
+          grep -F 'D08_ACTUAL_ONNX_PERSON_FRAME_L2_PASS' /tmp/d08_ui9_near_real_onnx.log
+          echo 'D08_UI9_NEAR_ACTUAL_RGB_ONNX_PERSON_L2_PASS'
           grep -F 'D08_ACTUAL_ONNX_PERSON_FRAME_L2_PASS' /tmp/d08_bgyntv7_real_onnx.log
           ( cd results/d08-human-contact-calibration
-            sha256sum onnx_real_frame_verdict.json >> SHA256SUMS )
+            sha256sum onnx_real_frame_verdict.json onnx_ui9_near_real_frame_verdict.json >> SHA256SUMS )
       - name: Remove external mesh (not part of artifact)
         if: always()
         run: rm -f /tmp/axia-d08-assets/walk.dae
