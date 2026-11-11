@@ -28,7 +28,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: d08-grounded-human-real-lidar-no-goal
-          run-id: 43069001795
+          run-id: 43117842587
           github-token: ${{ github.token }}
           path: /tmp/d08-real-gazebo-evidence
       - name: Verify real Gazebo frame and immutable upstream/model pins
@@ -38,6 +38,7 @@ jobs:
           cd /tmp/d08-real-gazebo-evidence
           test -s real_gazebo_stop_rgb.ppm
           test -s real_gazebo_slowzone_rgb.ppm
+          test -s real_gazebo_ui9_near_rgb.ppm
           sha256sum -c SHA256SUMS
           python3 - <<'PY'
           import json
@@ -47,7 +48,14 @@ jobs:
           assert v['actual_stop_rgbd']['matched'] is True
           assert v['pregoal_lidar']['stop_probe']['actual_stop_front_m']<.4
           assert v['goal_sent'] is False
-          print('UI9_REAL_GAZEBO_STOPZONE_FRAME_SOURCE_SHA_VERIFIED')
+          ui9=v['ui9_reversible_pose']
+          assert ui9['status']=='PASS_ACTUAL_GAZEBO_UI9_NEAR_AND_RESTORE_NO_GOAL'
+          assert ui9['near_native_ack'] is True and ui9['far_native_ack'] is True
+          assert ui9['near_actual_registered_rgbd']['matched'] is True
+          assert .14<=ui9['near_actual_scan']['front_m']<.4
+          assert ui9['far_actual_scan']['front_m']>.75
+          assert ui9['goal_sent'] is False and ui9['safety_ttl_modified'] is False
+          print('UI9_REAL_GAZEBO_NEAR_RESTORED_FRAME_SOURCE_VERIFIED')
           PY
       - name: Install exact ROS Jazzy C++ YOLO engine build dependencies
         shell: bash
@@ -139,7 +147,7 @@ jobs:
           sleep 3
           timeout --signal=TERM --kill-after=5s 65s \
             python3 d08/scripts/d08_ui9_yolo_replay_probe.py \
-            --ppm /tmp/d08-real-gazebo-evidence/real_gazebo_stop_rgb.ppm \
+            --ppm /tmp/d08-real-gazebo-evidence/real_gazebo_ui9_near_rgb.ppm \
             --out /tmp/axia_ui9_yolo_model/replay_verdict.json \
             --timeout-s 55
           echo 'UI9_REAL_YOLO_ROS_PERSON_DETECTION_L1_PASS'
