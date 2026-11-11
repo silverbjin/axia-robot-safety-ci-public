@@ -18,14 +18,14 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 9fdd8c28b0c4ca9f4dc16ec85b3f04927a884a08
+          ref: a15dbd7b2fb962d5d006c4944faac933bf4b19ca
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Deterministic actual WSL2 owner trace and all existing safety guards
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = '9fdd8c28b0c4ca9f4dc16ec85b3f04927a884a08'
+          test "$(git rev-parse HEAD)" = 'a15dbd7b2fb962d5d006c4944faac933bf4b19ca'
           python3 -m pip install -q --disable-pip-version-check pytest==8.3.5
           python3 -m pytest -q -ra \
             tests/unit/test_p2_g07_guard_kca1_cm_slowdown.py \
