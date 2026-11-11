@@ -183,10 +183,18 @@ def pregoal_lidar_physical_admission(out:Path,env:dict,processes:list)->dict:
     if 'data: true' not in res.stdout:
         raise RuntimeError('D08_PREG0AL_GZ_SET_POSE_NOT_ACKNOWLEDGED')
     after=observe_real_front_scan(timeout_s=35)
+    # Capture actual RGB at the SAME native set_pose SlowZone boundary as
+    # Owner pre-Goal admission. The earlier initial 1.4m screenshot is NOT
+    # representative of the Owner's ~0.6m slow-zone person classifier.
+    slowzone_rgbd=observe_real_pair(
+        timeout_s=45,capture_path=out/'real_gazebo_slowzone_rgb.ppm')
+    if not slowzone_rgbd['matched']:
+        raise RuntimeError('D08_BGYNTV7_SLOWZONE_ACTUAL_RGBD_PAIR_MISSING')
     observed_delta=round(before['front_m']-after['front_m'],6)
     verdict={'status':'BLOCKED','before':before,'after':after,
              'expected_pose_world_m':list(target),
              'native_set_pose_ack':True,
+             'slowzone_actual_rgbd':slowzone_rgbd,
              'measured_distance_change_m':observed_delta,
              'no_goal_sent':True,'control_published':False,
              'safety_threshold_modified':False,
