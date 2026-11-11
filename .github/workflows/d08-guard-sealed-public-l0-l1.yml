@@ -223,6 +223,30 @@ jobs:
             echo 'AXIA_FISQMVZZ_PUBLIC_SEALED_REAL_MANAGER_L1_BLOCKED'
             exit 2
           fi
+          # Only fixed PUBLIC verdict fields: never print teacher checkout/log.
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          v=json.loads(Path('/tmp/axia_fisqm_nav_real_l1/verdict.json').read_text())
+          assert v['status']=='PASS_REAL_NAV_MANAGER_L1_NO_GOAL',v.get('status')
+          assert v['missing_endpoint_reproduced'] is True
+          assert v['negative_blocked_before_startup'] is True
+          assert v['valid_lifecycle_get_state_preflight'] is True
+          assert v['nav_startup']['command']==0
+          assert v['nav_startup']['ack'] is True
+          assert v['nav_startup']['cm_state_id']==3
+          assert v['nav_shutdown']['command']==4
+          assert v['nav_shutdown']['ack'] is True
+          assert v['nav_shutdown']['cm_state_id']==4
+          assert v['native_cm_exit']==0 and v['manager_exit']==0
+          assert v['goal_sent'] is False
+          assert v['cmd_vel_robot_published'] is False
+          print('AXIA_FISQMVZZ_REAL_MANAGER_NEGATIVE_MISSING_NODE_BLOCKED_BEFORE_GOAL')
+          print('AXIA_FISQMVZZ_REAL_MANAGER_STARTUP_ACK_CM_ACTIVE_3')
+          print('AXIA_FISQMVZZ_REAL_MANAGER_SHUTDOWN_ACK_CM_FINALIZED_4')
+          print('AXIA_FISQMVZZ_REAL_MANAGER_NATIVE_CM_MANAGER_EXIT_ZERO')
+          print('AXIA_FISQMVZZ_REAL_MANAGER_NO_GOAL_L1_SCOPE_ONLY')
+          PY
           echo 'AXIA_FISQMVZZ_PUBLIC_SEALED_REAL_MANAGER_L1_GREEN_NO_GOAL'
       - name: Erase private source, test log and build artifacts
         if: always()
