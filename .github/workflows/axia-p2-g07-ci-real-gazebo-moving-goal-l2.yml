@@ -27,7 +27,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: d087a461e59428f611df0d5929428aff5e8b08de
+          ref: 357f28919352715d1644451081633ce75b1ff602
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -35,7 +35,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 'd087a461e59428f611df0d5929428aff5e8b08de'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '357f28919352715d1644451081633ce75b1ff602'
           bash ci-tools/scripts/axia_ci_enable_osrf_gazebo_repo.sh
           DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends procps git
           cd instructor
@@ -81,7 +81,7 @@ jobs:
         run: |
           set -euo pipefail
           cd instructor
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 'd087a461e59428f611df0d5929428aff5e8b08de'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '357f28919352715d1644451081633ce75b1ff602'
           timeout --signal=TERM --kill-after=10s 900s \
             bash scripts/p2_no_goal_smoke_ci.sh || {
             echo 'AXIA_G07_CI_MOVING_GOAL_REAL_GAZEBO_BLOCKED'
