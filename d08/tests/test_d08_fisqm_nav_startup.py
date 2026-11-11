@@ -50,3 +50,15 @@ def test_original_failure_not_mislabeled_as_cm_sigsegv():
     assert FIELD['cm_lifecycle_finalized_during_teardown']
     assert FIELD['nav_shutdown_reply_success']
     assert FIELD['certified_estop'] is False
+
+def test_official_manager_runtime_client_must_use_same_isolated_dds_domain():
+    # RED on public CI #42975493487: the real Manager and CM were running
+    # Domain=66, while rclpy manage_nodes client inherited Domain=57.
+    # The normal preflight passed but client couldn't see manage_nodes.
+    from pathlib import Path
+    source=Path('d08/scripts/d08_nav_manager_startup_real_l1.py').read_text()
+    block=source[source.index('def call_manager('):source.index('def run(')]
+    assert "os.environ['ROS_DOMAIN_ID']=str(domain)" in block
+    assert block.index("os.environ['ROS_DOMAIN_ID']=str(domain)") < block.index("rclpy.init()")
+    assert "NAV_MANAGER_MANAGE_NODES_SERVICE_MISSING" in block
+    # No test Goal, motor command or certified E-Stop.
