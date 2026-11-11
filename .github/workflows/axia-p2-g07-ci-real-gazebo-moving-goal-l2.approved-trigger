@@ -1,12 +1,11 @@
-# Second bounded CI simulation Goal only after a NEW reproducible L0 RED->GREEN.
-# Purpose: isolate first node-to-node delivery TTL breach from previous run.
-# NO change to P2 Guard TTL, Gazebo hardware, Owner TTY or main.
-private_source_sha=eff59a11ef2539f8d7e2b9135559169351470c3f
-public_l0_green_run=42979979266
-public_l0_green_sha=a267118d8fe69ffba0e295481d9379fbd2654765
-previous_real_run=42978878167
-previous_real_blocker=SAFETY_DELIVERY_TTL_BOUNDARY_max_source_interval_sec
-scope=CLEAR_SLOW_STOP_ODOM_1S_AND_FIRST_DELIVERY_TTL_GAP_DIAGNOSTIC
+# Authorized one GOAL in GitHub Actions only, isolated ROS_DOMAIN_ID/GZ_PARTITION.
+# RED -> GREEN: #42985321646 -> #42985467837 (119 PASS).
+# Root-cause experiment: stop repeated expensive graph discovery in CI observer,
+# without changing Guard CM_TTL_SEC=0.15 or official Nav2 behavior.
+private_source_sha=f94267bd2f615eecd2b38c67250ca7ce2e0126dd
+l0_green_run=42985467837
+l0_green_sha=3bad69ec18d3d00c204535f410a33706d0f3a824
+previous_l2_first_guard_cm_age_sec=0.159524905
+scope=CI_SIMULATION_ONLY_CLEAR_SLOW_STOP_ODOM_1S_ALL_NODE_DELIVERY_TTL
 owner_l3_accepted=false
 hardware_estop_certified=false
-approval=CI_SIMULATION_ONLY_ONE_GOAL
