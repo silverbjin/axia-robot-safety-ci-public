@@ -19,7 +19,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$GITHUB_REPOSITORY" = 'silverbjin/axia-robot-safety-ci-public'
-          grep -F '053102abacd724f40db9ea22a38904ce398f8dcd' \
+          grep -F 'c04951d88b7cc1cf7bd58e79f23a66a37e6dc37e' \
             .github/workflows/d08-ui9-private-sealed-l0.yml >/dev/null
           grep -F 'tests/unit/test_d08_ui9_reversible_vision.py' \
             .github/workflows/d08-ui9-private-sealed-l0.yml >/dev/null
@@ -36,7 +36,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 053102abacd724f40db9ea22a38904ce398f8dcd
+          ref: c04951d88b7cc1cf7bd58e79f23a66a37e6dc37e
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: .axia_private_runtime
           fetch-depth: 1
@@ -46,7 +46,7 @@ jobs:
         run: |
           set -euo pipefail
           SRC="$PWD/.axia_private_runtime"
-          test "$(git -C "$SRC" rev-parse HEAD)" = '053102abacd724f40db9ea22a38904ce398f8dcd'
+          test "$(git -C "$SRC" rev-parse HEAD)" = 'c04951d88b7cc1cf7bd58e79f23a66a37e6dc37e'
           bash -n "$SRC/scripts/p2_owner_l3_wsl2.sh"
           python3 -m py_compile "$SRC/tools/d08_pre_goal_vision_stage.py"
           python3 -m pip install -q --disable-pip-version-check 'pytest==8.3.5'
