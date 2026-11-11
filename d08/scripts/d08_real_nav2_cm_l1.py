@@ -232,19 +232,46 @@ def run(out, *, set_pose_while_publishing=None, stop_front_m=None):
             # label it a true ROS bridge / moving Nav2 Goal integration.
             if type(stop_front_m) not in (int,float) or not .14<=stop_front_m<.4:
                 raise RuntimeError('NATIVE_CM_NO_REAL_STOP_FRONT_TO_REPLAY')
+            # Owner l0KClvT6: CM receives a continuing 20Hz supervised
+            # input while a STOP polygon keeps returning ZERO. Native Jazzy
+            # stop_pub_timeout=1s intentionally ceases output ZERO even
+            # though input continues. Guard's immutable CM_TTL_SEC=.15
+            # then fail-closes and cancels Goal. Test the REAL official CM
+            # for 5s after STOP, not just the first 1s that always passes.
+            # No actual robot Goal or private Guard in this isolated L2.
             prior=len(receipts)
-            for _ in range(20):
+            stop_started=time.monotonic()
+            post_stop_sent=100
+            for _ in range(post_stop_sent):
                 publish_period(stop_front_m)
-            for _ in range(5):
-                rclpy.spin_once(node,timeout_sec=.02)
+            stop_ended=time.monotonic()
+            for _ in range(3):
+                rclpy.spin_once(node,timeout_sec=.01)
             stopped=speeds[prior:]
             status['measured_static_stop_front_replayed_m']=round(stop_front_m,6)
             status['stop_output_samples']=len(stopped)
             status['stop_zero_output_samples']=sum(abs(x)<.001 for x in stopped)
             status['stop_scan_is_synthetic_replay_of_real_gazebo_front']=True
-            if len(stopped)<15 or any(abs(x)>.001 for x in stopped[4:]):
-                status['status']='BLOCKED_CM_STOP_ZONE_REPLAY'
-                raise RuntimeError('NATIVE_CM_REAL_GAZEBO_RANGE_REPLAY_NO_ZERO')
+            status['post_stop_supervised_input_count']=post_stop_sent
+            status['post_stop_supervised_input_elapsed_sec']=round(stop_ended-stop_started,6)
+            status['post_stop_native_cm_stop_pub_timeout_sec']=1.0
+            status['post_stop_guard_cm_ttl_sec_unchanged']=.15
+            status['post_stop_last_cm_output_age_sec']=round(
+                time.monotonic()-receipts[-1],6)
+            # Continuously supplied ZERO input is not proof of continuing
+            # CM output. After stop_pub_timeout the official node becomes
+            # quiet; Guard MUST latch safe if its 150ms input TTL expires.
+            status['post_stop_guard_fail_closed_required']=True
+            if (len(stopped)<15 or any(abs(x)>.001 for x in stopped[4:])
+                    or status['post_stop_supervised_input_elapsed_sec']<4.7
+                    or status['post_stop_last_cm_output_age_sec']<=.15
+                    or len(stopped)>=post_stop_sent):
+                status['status']='BLOCKED_CM_STOP_ZERO_TIMEOUT_CONTRACT'
+                raise RuntimeError('NATIVE_CM_POST_STOP_5S_SILENCE_NOT_MEASURED')
+            print('D08_REAL_NATIVE_CM_STOP_ZERO_TIMEOUT_5S_OBSERVED '+json.dumps({
+                'input_count':post_stop_sent,'output_count':len(stopped),
+                'cm_last_output_age_sec':status['post_stop_last_cm_output_age_sec'],
+                'guard_cm_ttl_sec':.15,'goal_sent':False},sort_keys=True),flush=True)
         print('D08_REAL_NAV2_CM_L1_TIMING_PASS '+json.dumps(status,sort_keys=True),flush=True)
     except Exception as e:
         status['blocker']=type(e).__name__+':'+str(e)[:250]
