@@ -441,7 +441,28 @@ def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=Fals
             # Owner WSLg/YOLO/Guard end-to-end acceptance.
             from d08_real_nav2_cm_l1 import run as cm_run
             cm_dir=out/'cm_cadence_l1'
-            cm_rc=cm_run(cm_dir)
+            measured_stop=None
+            pose_worker=None
+            if lidar_pre_goal:
+                measured_stop=result['pregoal_lidar']['stop_probe']['actual_stop_front_m']
+                def pose_worker():
+                    # Actual Gazebo UserCommands while OFFICIAL Nav2 CM is
+                    # publishing at 20Hz. Human fixture only; NO robot Goal.
+                    # Bring STOP probe back to real preloaded SlowZone after
+                    # actual static STOP lidar calibration. This mimics the
+                    # Owner service-load boundary, not the Owner's WSLg GPU.
+                    request=('name: "axia_p2_g07_obstacle", '
+                             'position: {x: -1.43, y: -0.5, z: 0.24}, '
+                             'orientation: {w: 1}')
+                    response=_run(['gz','service','-s','/world/default/set_pose',
+                                   '--reqtype','gz.msgs.Pose',
+                                   '--reptype','gz.msgs.Boolean',
+                                   '--timeout','5000','--req',request],env,timeout=13)
+                    (out/'cm_concurrent_set_pose_ack.txt').write_text(
+                        response.stdout+response.stderr)
+                    return 'data: true' in response.stdout
+            cm_rc=cm_run(cm_dir,set_pose_while_publishing=pose_worker,
+                         stop_front_m=measured_stop)
             result['cm_cadence_l1']=json.loads(
                 (cm_dir/'verdict.json').read_text())
             if cm_rc!=0:
