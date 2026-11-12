@@ -16,7 +16,7 @@ import time
 
 
 def _members(session_id: int) -> list[dict]:
-    """Live /proc processes whose both process group AND session equal D04 ID."""
+    """Live /proc processes in one D04-owned Linux session (any child PGID)."""
     found = []
     for item in Path("/proc").iterdir():
         if not item.name.isdigit():
@@ -25,8 +25,8 @@ def _members(session_id: int) -> list[dict]:
             # comm may contain spaces/parentheses; split after last ')'.
             rest = (item / "stat").read_text().rsplit(")", 1)[1].split()
             state, pgrp, sid = rest[0], int(rest[2]), int(rest[3])
-            if state not in ("Z", "X") and pgrp == session_id and sid == session_id:
-                found.append({"pid": int(item.name), "state": state})
+            if state not in ("Z", "X") and sid == session_id:
+                found.append({"pid": int(item.name), "state": state, "pgrp": pgrp})
         except (OSError, ValueError, IndexError):
             continue
     return sorted(found, key=lambda x: x["pid"])
@@ -42,13 +42,65 @@ def _wait_empty(session_id: int, timeout_s: float) -> list[dict]:
 
 
 def _signal_owned(session_id: int, which: signal.Signals) -> bool:
-    if not _members(session_id):
+    members = _members(session_id)
+    if not members:
         return False
-    try:
-        os.killpg(session_id, which)
-        return True
-    except ProcessLookupError:
-        return False
+    any_sent = False
+    # ROS launch descendants can open a different PROCESS group but stay
+    # in the same owned SESSION. Signal their unique groups, not other apps.
+    for group in sorted({row["pgrp"] for row in members}):
+        try:
+            os.killpg(group, which)
+            any_sent = True
+        except ProcessLookupError:
+            pass
+    return any_sent
+
+
+def _gazebo_gui_pids(session_id: int) -> set[int]:
+    """Best-effort WSLg/Gazebo GUI process identity; no external X11 dependency."""
+    result = set()
+    for row in _members(session_id):
+        try:
+            raw = Path(f"/proc/{row['pid']}/cmdline").read_bytes()
+            args = [x.decode(errors="replace") for x in raw.split(b"\0") if x]
+            joined = " ".join(args)
+            if ("gz-sim-gui" in joined
+                    or ("-g" in args and "sim" in args
+                        and any(x.endswith("/gz") or x == "gz" for x in args))):
+                result.add(row["pid"])
+        except OSError:
+            pass
+    return result
+
+
+def wait_for_gui_hold(session_id: int, seconds: float, *,
+                      poll_interval: float = 0.4) -> dict:
+    """Return early if a Gazebo GUI observed during HOLD is closed/restarted.
+
+    If no owned Gazebo GUI is discoverable, retain the original fixed-duration
+    hold rather than claiming a false GUI-close event. No ROS/Qt dependencies.
+    """
+    end = time.monotonic() + max(0.0, seconds)
+    first_pids: set[int] = set()
+    while time.monotonic() < end:
+        current = _gazebo_gui_pids(session_id)
+        if not first_pids and current:
+            first_pids = current
+        elif first_pids and not (first_pids & current):
+            return {
+                "reason": "GAZEBO_GUI_EXITED_OR_RESTARTED",
+                "observed_gazebo_gui": True, "original_pids": sorted(first_pids),
+                "last_gui_pids": sorted(current),
+                "held_seconds_requested": seconds,
+            }
+        time.sleep(min(poll_interval, max(0.01, end - time.monotonic())))
+    return {
+        "reason": "HOLD_COMPLETE",
+        "observed_gazebo_gui": bool(first_pids),
+        "original_pids": sorted(first_pids),
+        "held_seconds_requested": seconds,
+    }
 
 
 def stop_owned(processes: list, evidence: dict, *,
