@@ -13,6 +13,7 @@ import threading
 import hashlib
 import json
 import os
+import signal
 from pathlib import Path
 import subprocess
 import sys
@@ -143,6 +144,12 @@ def run(a) -> int:
     env.pop("EGL_PLATFORM", None)
     sync_ros_discovery_environment(env)
     proc = []
+    owner_stop_signal = {"name": None}
+    def _owner_stop(signum, _frame):
+        owner_stop_signal["name"] = signal.Signals(signum).name
+        raise RuntimeError("D04_OWNER_STOP_REQUESTED_" + owner_stop_signal["name"])
+    signal.signal(signal.SIGINT, _owner_stop)
+    signal.signal(signal.SIGTERM, _owner_stop)
     try:
         p1root = a.instructor.resolve()
         sha = subprocess.check_output(
@@ -222,13 +229,23 @@ def run(a) -> int:
         verdict["blocker"] = type(exc).__name__ + ":" + str(exc)[:500]
         print(f"[D04][BLOCKED] {verdict['blocker']}", flush=True)
     finally:
+        # Prevent a second Ctrl+C/SIGTERM from aborting owned-group cleanup.
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
+        signal.signal(signal.SIGTERM, signal.SIG_IGN)
+        if owner_stop_signal["name"]:
+            verdict["owner_stop_signal"] = owner_stop_signal["name"]
+            verdict["status"] = "BLOCKED_OWNER_INTERRUPTED"
         print("[D04][SHUTDOWN] Requesting Nav2 managed lifecycle Shutdown before SIGINT",flush=True)
         if verdict["status"]=="PASS_P1_AND_YOLO_PACKAGE_RUNTIME" and proc:
             verdict["shutdown_service"] = request_nav2_shutdown(env,out,timeout_s=65)
         else:
             verdict["shutdown_service"] = {"passed":False,"skipped":"NOT_RUNTIME_ACCEPTED"}
         print("[D04][SHUTDOWN] Stopping launch process group",flush=True)
-        stop_owned(proc, verdict)
+        if owner_stop_signal["name"]:
+            stop_owned(proc, verdict, interrupt_timeout=4.0,
+                       terminate_timeout=3.0, kill_timeout=2.0)
+        else:
+            stop_owned(proc, verdict)
         log=out/"package_launch.log"
         lines=log.read_text(errors="replace") if log.exists() else ""
         sigabrt=bool("exit code -6" in lines or "SIGABRT" in lines)
