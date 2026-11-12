@@ -4,6 +4,24 @@
 
 ## 1. 열기: 자동 표시 + 클릭 바로가기
 
+**WSL2 Ubuntu 24.04에서 한 번에 실행 (공개 CI 검증 고정 SHA):**
+
+~~~bash
+(
+  set -Eeuo pipefail
+  SHA='228b4f1555e8eb7c9c341607c1dcae417ddeede3'
+  SCRIPT="$(mktemp)"
+  trap 'rm -f -- "$SCRIPT"' EXIT
+  curl -fsSL --retry 3 \
+    "https://raw.githubusercontent.com/silverbjin/axia-robot-safety-ci-public/$SHA/scripts/axia_d04_classroom_wsl2_once.sh" \
+    -o "$SCRIPT"
+  bash -n "$SCRIPT"
+  bash "$SCRIPT" --run
+)
+~~~
+
+**원샷의 원본 P1/Nav2/YOLO 실행 SHA는 기존 `c775820077917c4da56c6aa60001b224071664b3` 그대로**이며, RViz 설정·표시 감시만 추가했다. **비공개 강사 저장소에 대한 기존 접근 권한은 필요하다.** 학생의 단일 이미지 Python YOLO 실습만 실행했다면 로봇·TF·LaserScan 토픽이 없으므로 RViz에도 표시되지 않는다.
+
 **강사용 D04 WSL2 원샷 실행기** `scripts/axia_d04_classroom_wsl2_once.sh`를 사용한다. 기존 D04 사람 검출·안전 그래프 검사를 마치고 `[D04][GUI_DEMO_HOLD] START`에 진입하면 **RViz가 자동으로 열린다**. 기존 P1·Nav2·YOLO 원본과 검증 조건은 바꾸지 않는다. D04 정상 종료 때 이번 실행에서 자동으로 띄운 RViz만 정리한다.
 
 원샷은 아래 두 파일을 자동으로 설치한다.
