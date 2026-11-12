@@ -19,7 +19,7 @@ import sys
 import time
 
 from d04_waffle_pi_rgb_preflight import _start, sync_ros_discovery_environment
-from d04_owned_gui_shutdown import stop_owned
+from d04_owned_gui_shutdown import stop_owned, wait_for_gui_hold
 from d04_p1_yolo_live import graph_oracle, core_chain, sensor_sample
 from d04_yolo_person_runtime import _watch_detections_and_images, valid_person, valid_rgb
 from d04_nav2_orderly_shutdown import request_nav2_shutdown
@@ -213,7 +213,11 @@ def run(a) -> int:
             print("[D04][GUI] Check Gazebo and 'axia_d04_yolo_preview' video windows; "
                   "human actor is VISUAL-ONLY and robot stays stationary.", flush=True)
             with visible_stage("GUI_DEMO_HOLD", interval_s=10):
-                time.sleep(min(max(a.hold_seconds, 0), 120))
+                verdict["gui_hold"] = wait_for_gui_hold(
+                    launch_process.pid, min(max(a.hold_seconds, 0), 120))
+                if verdict["gui_hold"]["reason"] == "GAZEBO_GUI_EXITED_OR_RESTARTED":
+                    print("[D04][GUI] First Gazebo GUI exit/restart detected; "
+                          "closing owned preview and launch group now", flush=True)
     except Exception as exc:
         verdict["blocker"] = type(exc).__name__ + ":" + str(exc)[:500]
         print(f"[D04][BLOCKED] {verdict['blocker']}", flush=True)
