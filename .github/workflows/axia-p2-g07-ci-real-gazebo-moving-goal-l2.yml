@@ -1,7 +1,7 @@
-# Exact frame mismatch identified: preflight map->base_link but Goal map->base_footprint.
-# Public actual TF source cross-check RED #43246479231 -> GREEN #43246677534.
-# New G07 source asks map->base_link in shared CI+Owner Goal runner.
-# Same official Nav2 map + world, no synthetic pose; safety TTL unchanged.
+# Dynamic TF late subscriber missing map after staging, even with canonical base_link.
+# Same readiness-proven official Nav2 AMCL /amcl_pose TRANSIENT_LOCAL as
+# actual G07 map pose; no synthetic TF or odom/map fallback.
+# Public AMCL-contract RED #43247967776 -> GREEN #43248752446 (36 PASS).
 name: AXIA G07 CI-only actual Harmonic Nav2 MOVING Goal CLEAR SLOW STOP
 on:
   push:
@@ -31,7 +31,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 48dc302c4fcc0a45f5572497017344b6bb462803
+          ref: 57252d61dd6c3f78e30db5e1f61c566bc2669ffd
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -39,7 +39,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '48dc302c4fcc0a45f5572497017344b6bb462803'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '57252d61dd6c3f78e30db5e1f61c566bc2669ffd'
           test "$ROS_DISTRO" = jazzy
           cd instructor
           mkdir -p results/p2-g07-ci-moving
@@ -82,7 +82,7 @@ jobs:
         run: |
           set -euo pipefail
           cd instructor
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '48dc302c4fcc0a45f5572497017344b6bb462803'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '57252d61dd6c3f78e30db5e1f61c566bc2669ffd'
           timeout --signal=TERM --kill-after=10s 900s \
             bash scripts/p2_no_goal_smoke_ci.sh || {
             echo 'AXIA_G07_CI_MOVING_GOAL_REAL_GAZEBO_BLOCKED'
