@@ -1,16 +1,18 @@
 #!/usr/bin/env bash
 # AXIA G07 Owner WSL2 final acceptance bootstrap; SIMULATION ONLY.
-# Public Jazzy/Harmonic/Nav2 Owner-observer parity real Goal L2 #43072749608 PASS.
+# Previous exact-source moving Goal L2 #43186070186 PASS at Instructor 9f12d758.\n# New exact-source NO-GOAL real shutdown L2 #43234191360 PASS at Instructor 21d658fa.\n# WSL2 GUI after-Goal shutdown remains Owner L3 NOT RUN. No certified E-Stop.
 # Instructor source SHA pinned byte-for-byte. Owner L3 NOT RUN here.
 # Never auto-answer any Owner TTY consent. No hardware E-Stop certification.
 set -Eeuo pipefail
 umask 077
 readonly PRIVATE_REPO='silverbjin/axia-robot-safety-instructor'
-readonly PRIVATE_SHA='cc92327d1ae4a17d331d06e845437760ca2bdafe'
-readonly CI_L2_RUN='43072749608'
+readonly PRIVATE_SHA='21d658fac03396c9f30798237a820e187ecb447c'
+readonly CI_L2_RUN='43186070186'
+readonly CI_L2_SOURCE_SHA='9f12d7581e07752a53e3b3acd2d5c45ad7d87fa7'
+readonly CI_SHUTDOWN_L2_RUN='43234191360'
 if [[ "${1:-}" == '--self-check' ]]; then
   [[ $# -eq 1 && "$PRIVATE_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 2
-  printf 'AXIA_G07_CI_PASS_OWNER_BOOTSTRAP_STATIC_PASS private_sha=%s ci_l2=%s OWNER_L3_NOT_RUN\n' "$PRIVATE_SHA" "$CI_L2_RUN"
+  printf 'AXIA_G07_CI_PASS_OWNER_BOOTSTRAP_STATIC_PASS private_sha=%s moving_l2_baseline=%s moving_l2_source=%s shutdown_l2_exact=%s OWNER_L3_NOT_RUN\n' "$PRIVATE_SHA" "$CI_L2_RUN" "$CI_L2_SOURCE_SHA" "$CI_SHUTDOWN_L2_RUN"
   exit 0
 fi
 [[ $# -eq 0 ]] || { echo 'AXIA_G07_OWNER_BLOCKED: no arguments supported' >&2; exit 2; }
@@ -52,14 +54,16 @@ readonly ACTUAL="$(git -C "$WORK/instructor" rev-parse HEAD)"
   exit 2
 }
 for f in scripts/p2_owner_l3_wsl2.sh tools/p2_g07_owner_env_parity.py \
-         tools/p2_g07_ci_moving_goal.py; do
+         tools/p2_g07_ci_moving_goal.py \\
+         tools/p2_g07_ordered_shutdown.py \\
+         tools/p2_g07_owner_shutdown_audit.py; do
   [[ -f "$WORK/instructor/$f" ]] || {
     echo "AXIA_G07_OWNER_BLOCKED: pinned source missing $f; NO_GOAL" >&2
     exit 2
   }
 done
 export AXIA_P2_OWNER_PINNED_SHA="$PRIVATE_SHA"
-printf 'AXIA_G07_OWNER_PIN_VERIFIED private_sha=%s ci_l2=%s\n' "$PRIVATE_SHA" "$CI_L2_RUN"
+printf 'AXIA_G07_OWNER_PIN_VERIFIED private_sha=%s moving_l2_baseline=%s moving_l2_source=%s shutdown_l2_exact=%s\n' "$PRIVATE_SHA" "$CI_L2_RUN" "$CI_L2_SOURCE_SHA" "$CI_SHUTDOWN_L2_RUN"
 echo 'SIMULATION ONLY. Public CI L2 PASS != WSL2 Owner L3 acceptance.'
 echo 'The separate private Owner harness requires manual YES-P2-G07-GOAL.'
 echo 'Never run a physical robot from this script. SW Stop != certified E-Stop.'
