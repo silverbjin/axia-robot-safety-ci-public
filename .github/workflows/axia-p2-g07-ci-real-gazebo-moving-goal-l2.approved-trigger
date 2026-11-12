@@ -1,15 +1,16 @@
-# PUBLIC CI-ONLY G07 simulated moving Goal, never Owner WSL2 Goal authority.
-# Shared native STARTUP and 10Hz staged profile real NO-GOAL PASS #43241421238.
-# Genuine pre-Goal TF after 3s REGRESSION: L2 #43242131339 BLOCKED before Goal.
-# TF bounded actual transform only RED #43243118436 -> GREEN #43243360128.
-# Run one bounded actual Goal on new exact Instructor SHA; never claim L3.
-private_source_sha=a95d56c8fba83d1d00265f7a2ae8f299770f8613
-public_l0_shared_startup_green_run=43241185591
-public_l0_genuine_tf_green_run=43243360128
-actual_no_goal_staged_l2_pass=43241421238
+# PUBLIC CI-only scoped G07 moving Goal; no Owner TTY or physical robot.
+# Shared CI/WSL2 10Hz + native staged startup L2 #43241421238 PASS.
+# Persistent pre-Goal TF failure #43242131339 and #43243551953:
+# TF listener created only after executor spun -> missing actual map frames.
+# Native actual TF early registration public L0 RED #43244494113
+# -> GREEN #43244709111 (19 PASS). No invented transform/pose.
+private_source_sha=c24a7872c6354482966f6689ffe522a5e539b0bb
+public_l0_shared_startup_green=43241185591
+public_l0_preexecutor_actual_tf_green=43244709111
+actual_no_goal_stage_shutdown_l2=43241421238
+last_pre_goal_real_tf_l2_blocked=43243551953
 previous_actual_moving_g07_l2_pass=43186070186
-previous_pre_goal_tf_l2_blocked=43242131339
 runtime_digest=sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
-scope=SIM_ONLY_G07_SAME_CI_OWNER_RUNNER_NATIVE_STARTUP_10HZ_GENUINE_TF_CLEAR_SLOW_STOP
+scope=SIM_ONLY_G07_CI_OWNER_SAME_STARTUP_EARLY_TF_RECEIVER_CLEAR_SLOW_STOP
 owner_l3_accepted=false
 certified_estop=false
