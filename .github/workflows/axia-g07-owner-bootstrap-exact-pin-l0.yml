@@ -5,6 +5,7 @@ on:
     paths:
       - 'tests/test_g07_owner_bootstrap_latest_pin_20261112.py'
       - 'scripts/axia_p2_g07_ci_pass_owner_wsl2_once.sh'
+      - '.github/workflows/axia-p2-g07-ci-pass-owner-bootstrap-static-l0.yml'
 permissions:
   contents: read
 jobs:
