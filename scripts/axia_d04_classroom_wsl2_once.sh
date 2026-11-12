@@ -9,20 +9,51 @@ PIN='3668250ac14680b0ea81a67063938374a8c6820f'
 ORIGIN='silverbjin/axia-robot-safety-ci-public'
 RVIZ_BUNDLE_SHA='916a3623a1370c513201011a1b410b938e2b3752'
 RUNNER='scripts/axia_d04_ros_package_wsl2_once.sh'
+SINGLE_IMAGE_PIN='e16804ec240d4b4ec295d964f826c3015a2ba9e9'
+SINGLE_IMAGE_RUNNER='scripts/axia_d04_instructor_single_image_once.sh'
 MODE="${1:---run}"
-[[ $# -le 1 ]] || { echo 'D04_CLASSROOM_USAGE: use --run, --preflight or --self-check' >&2; exit 2; }
+[[ $# -le 1 ]] || { echo 'D04_CLASSROOM_USAGE: use --run, --preflight, --self-check or --single-image' >&2; exit 2; }
 case "$MODE" in
-  --run|--preflight|--self-check) ;;
-  *) echo 'D04_CLASSROOM_USAGE: use --run, --preflight or --self-check' >&2; exit 2 ;;
+  --run|--preflight|--self-check|--single-image) ;;
+  *) echo 'D04_CLASSROOM_USAGE: use --run, --preflight, --self-check or --single-image' >&2; exit 2 ;;
 esac
 
 if [[ "$MODE" == --self-check ]]; then
   echo "D04_CLASSROOM_PUBLIC_SHA=$PIN"
+  echo "D04_CLASSROOM_SINGLE_IMAGE_PUBLIC_SHA=$SINGLE_IMAGE_PIN"
   echo "D04_RVIZ_BUNDLE_SHA=$RVIZ_BUNDLE_SHA"
   echo "D04_RVIZ_STATIC_CONFIGURATION=READ_ONLY"
   echo "D04_CLASSROOM_STATIC_PASS GAZEBO_NOT_RUN YOLO_NOT_RUN"
   echo "D04_CLASSROOM_PATH=GAZEBO_ROS2_JAZZY_CPP_ONNX NO_PYTHON_PT_REQUIRED"
+  echo "D04_CLASSROOM_SINGLE_IMAGE_AVAILABLE=--single-image NO_ROS_NO_GAZEBO"
   exit 0
+fi
+
+# Optional lecture add-on. Separate lifecycle and evidence from the proven P1 demo.
+# The SINGLE_IMAGE_PIN is immutable and contains ONLY public student inference
+# plus read-only annotation; it never launches ROS/Gazebo or xdg-open.
+run_single_image() {
+  local temp_script
+  temp_script="$(mktemp)"
+  local rc=0
+  if curl -fsSL --retry 3 --connect-timeout 15 \
+      "https://raw.githubusercontent.com/$ORIGIN/$SINGLE_IMAGE_PIN/$SINGLE_IMAGE_RUNNER" \
+      -o "$temp_script" &&
+     bash -n "$temp_script" &&
+     bash "$temp_script" --self-check &&
+     bash "$temp_script" --run; then
+    rc=0
+  else
+    rc=$?
+    echo "D04_CLASSROOM_SINGLE_IMAGE_BLOCKED rc=$rc (Gazebo owner verdict unchanged)" >&2
+  fi
+  rm -f -- "$temp_script"
+  return "$rc"
+}
+if [[ "$MODE" == --single-image ]]; then
+  # No unnecessary gh auth, ROS2, Nav2 or Gazebo check for the image-only demo.
+  run_single_image
+  exit $?
 fi
 
 check_host() {
@@ -133,3 +164,13 @@ else
 fi
 echo 'D04_CLASSROOM_OWNER_SCRIPT_EXIT_ZERO: review EVIDENCE and verdict.json before acceptance'
 echo 'D04_RVIZ_GUI_ACCEPTANCE=NOT_INFERRED_FROM_OWNER_EXIT'
+# Opt-in combined classroom flow. Preserve historical --run semantics and
+# existing Gazebo evidence unless lecturer explicitly enables the second part.
+if [[ "${AXIA_D04_SINGLE_IMAGE_AFTER_GAZEBO:-0}" == "1" ]]; then
+  echo 'D04_CLASSROOM_GAZEBO_OWNER_FINISHED; BEGIN_INDEPENDENT_SINGLE_IMAGE'
+  run_single_image
+elif [[ "${AXIA_D04_SINGLE_IMAGE_AFTER_GAZEBO:-0}" != "0" ]]; then
+  echo 'D04_CLASSROOM_SINGLE_IMAGE_AFTER_GAZEBO_INVALID: use 0 or 1' >&2
+  exit 2
+fi
+
