@@ -6,16 +6,16 @@ umask 077
 
 usage() {
   cat <<'HELP'
-Usage: bash axia_d04_course_once.sh --doctor|--image [options]
+Usage: bash axia_d04_course_once.sh --doctor|--run-image [options]
 
   --doctor              Check all prerequisites; exit 2 if incomplete.
-  --image               Run EXISTING private instructor single-image .pt demo
+  --run-image           Run EXISTING private instructor single-image .pt demo
                         only when all prerequisites are satisfied.
   --instructor DIR      Private instructor checkout root.
                         Default: $HOME/axia_d04_classroom/instructor
   --model FILE          Existing licensed .pt model; no auto download.
                         Default: $HOME/axia_licensed_assets/yolo_cached.pt
-  --image-file FILE     Existing licensed local photograph (.jpg/.png).
+  --image FILE          Existing licensed local photograph (.jpg/.png).
                         Default: $HOME/axia_licensed_assets/person_scene.jpg
   --out DIR             New output directory; default under ~/axia_d04_results.
   --help                Print this message.
@@ -38,12 +38,12 @@ while (($# > 0)); do
     --doctor|--image)
       [[ -z "$MODE" ]] || { echo "D04_USAGE_ERROR: mode already selected" >&2; exit 2; }
       MODE="$1"; shift ;;
-    --instructor|--model|--image-file|--out)
+    --instructor|--model|--image|--out)
       (($# >= 2)) || { echo "D04_USAGE_ERROR: missing value for $1" >&2; exit 2; }
       case "$1" in
         --instructor) INSTRUCTOR="$2" ;;
         --model) MODEL="$2" ;;
-        --image-file) PHOTO="$2" ;;
+        --image) PHOTO="$2" ;;
         --out) OUT="$2" ;;
       esac
       shift 2 ;;
@@ -51,7 +51,7 @@ while (($# > 0)); do
     *) echo "D04_USAGE_ERROR: unknown argument $1" >&2; usage >&2; exit 2 ;;
   esac
 done
-[[ -n "$MODE" ]] || { echo "D04_USAGE_ERROR: select --doctor or --image" >&2; usage >&2; exit 2; }
+[[ -n "$MODE" ]] || { echo "D04_USAGE_ERROR: select --doctor or --run-image" >&2; usage >&2; exit 2; }
 
 [[ "$INSTRUCTOR" == /* && "$MODEL" == /* && "$PHOTO" == /* && "$OUT" == /* ]] || {
   echo "D04_ABSOLUTE_PATH_REQUIRED: instructor/model/image/output must be absolute" >&2
@@ -83,7 +83,7 @@ else
 fi
 
 if ((bad > 0)); then
-  echo "D04_IMAGE_PREFLIGHT_BLOCKED: correct all reported failures before selecting --image"
+  echo "D04_IMAGE_PREFLIGHT_BLOCKED: correct all reported failures before selecting --run-image"
   echo "D04_FIX_PATH: use --instructor /ABSOLUTE/PATH/TO/axia-robot-safety-instructor"
   echo "D04_FIX_PYTHON: make a Python venv; run python -m pip install ultralytics"
   echo "D04_FIX_ASSETS: explicitly prepare licensed local .pt weights and image; no automatic downloads"
