@@ -1,0 +1,66 @@
+name: D04 classroom guide WSL2 preflight regression (public CI)
+
+on:
+  push:
+    branches:
+      - 'fix/d04-course-field-preflight-20261112'
+    paths:
+      - '.github/workflows/d04-course-docs-regression.yml'
+      - 'tests/test_d04_course_field_preflight.py'
+      - 'scripts/axia_d04_course_once.sh'
+  pull_request:
+    paths:
+      - '.github/workflows/d04-course-docs-regression.yml'
+      - 'tests/test_d04_course_field_preflight.py'
+      - 'scripts/axia_d04_course_once.sh'
+
+permissions:
+  contents: read
+
+jobs:
+  public-field-regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install minimal regression dependencies (no ROS/YOLO model/PyTorch)
+        run: python -m pip install pytest==8.3.5
+      - name: RED/GREEN user field error regression
+        run: |
+          set -euo pipefail
+          python -m pytest -q -ra tests/test_d04_course_field_preflight.py
+
+  public-student-document-command:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: 6a52fc57953cfd7042ea611f45f81e4c8c18fc9b
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install pytest==8.3.5
+      - name: Execute published D04 student lab fixture commands and EXPECTED RED
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pytest -q block_B/tests/test_fixture_io.py
+          set +e
+          python -m pytest -q block_B/tests/test_block_b_public.py \
+            -k 'select_person or confidence or bbox' > /tmp/d04-student-red.log 2>&1
+          RC=$?
+          set -e
+          grep -q 'TODO_D04_SELECT_PERSON' /tmp/d04-student-red.log
+          if [[ "$RC" -eq 0 ]]; then
+            echo "D04_STUDENT_UNEXPECTED_GREEN"; exit 1
+          fi
+          echo "D04_STUDENT_PUBLISHED_TODO_EXPECTED_RED rc=$RC"
+          echo "D04_STUDENT_FIXTURE_ACTUAL_PASS; STUDENT_TODO_GREEN_NOT_CLAIMED"
