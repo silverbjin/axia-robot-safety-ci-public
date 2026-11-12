@@ -1,12 +1,13 @@
-# One CI-only real Gazebo test of shared G07 scenario on exact PUBLIC GHCR digest.
-# Previous L2 #43139031871 failed on 163.25ms CM->Guard after STOP,
-# without weakening the 150ms safety TTL. This run tests the NEW immutable
-# runtime image while preserving exact live safety thresholds.
-private_source_sha=08abc06159341029597ee84445df3a9b960fffc7
-l0_green_run=43140776954
-runtime_build_run=43139396488
-anonymous_pull_run=43140160863
+# Approved scoped simulation-only CI Goal, never Owner L3 authorization.
+# Earliest dynamic STOP timing incidents:
+#43139031871 guard first CM age=163.246ms (limit 150ms)
+#43141038305 actual CM=169.748ms and Scan=309.959ms, crosses STOP
+# RED #43147007484 2 FAIL/181 PASS -> GREEN #43147132519 183 PASS.
+# This is one real Gazebo L2 test of native STOP CPU-isolation candidate.
+# Do not relax any safety TTL or accept PASS without raw first timing audit.
+private_source_sha=1f4c2ce1f45782aff53db023aac1b25ff99c13ae
+public_l0_green_run=43147132519
 runtime_digest=sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
-scope=CI_SIM_ONLY_COMMON_GOAL_IMMUTABLE_RUNTIME_REAL_CLEAR_SLOW_STOP_TIMING
+scope=SIM_ONLY_COMMON_EXECUTOR_NATIVE_STOP_CLI_LOW_CONTENTION_REAL_GAZEBO_L2
 owner_l3_accepted=false
 certified_estop=false
