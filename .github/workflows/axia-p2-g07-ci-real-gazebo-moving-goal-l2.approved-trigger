@@ -1,14 +1,14 @@
-# CI-only real Nav2 Goal and physical Gazebo G07 obstacle. Never Owner auto-goal.
-# #43147373532 native service CLI CPU mitigation: CM max 142.085ms PASS;
-# physical CLEAR/SLOW/STOP & odom 1.009s PASS; Scan max=300.044ms FAILED.
-# Original official Waffle gpu_lidar hls_lfcd_lds rate 5Hz (200ms nominal).
-# G07-only official SDF TEMP copy rate=10Hz; original official model unchanged.
-# RED #43148258401 3 FAILED/184 PASS -> GREEN #43148575180 187 PASS.
-# No safety TTL, geometry, Guard or Collision Monitor change.
-private_source_sha=13922926d283aa3cc4227038e43f879fb528f42c
-public_l0_green_run=43148575180
-previous_scan_boundary_run=43147373532
+# CI-only real Gazebo Goal. Owner manual TTY remains separate.
+# 10Hz G07-only Waffle SDF temp overlay real L2 #43148778794 PASS
+# (CM 132.079ms, Scan 202.902ms, odom dwell 1.012s) exact prior SHA.
+# Pre-deploy code review uncovered Owner-specific oracle rejecting
+# ci_specific=false even after TTY/PID admission. RED #43149423089:
+# 5 failed / 187 passed; GREEN #43149604697: 192 passed.
+# Final shared owner-authorized SAME physical oracle, no safety gate change.
+private_source_sha=19ea30fa936fe2218cef4265f05211dc5358d1e8
+public_l0_green_run=43149604697
+previous_actual_gazebo_pass=43148778794
 runtime_digest=sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
-scope=SIM_ONLY_G07_COMMON_GOAL_TEMP_10HZ_LIDAR_REAL_CLEAR_SLOW_STOP_TTL_ODOM
+scope=SIM_ONLY_SHARED_G07_REAL_MOVING_10HZ_STOP_ODOM_TTL_OWNER_ORACLE_FINAL
 owner_l3_accepted=false
 certified_estop=false
