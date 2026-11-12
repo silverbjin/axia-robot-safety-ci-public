@@ -15,14 +15,14 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 8c750d3e6a6a0e538665f92faed65abf9b4b0c0d
+          ref: 194f86df2c4cae411e8e6a385656922287c0febb
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Immutable source + sanitized CM abnormal shutdown marker contract
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git rev-parse HEAD)" = 8c750d3e6a6a0e538665f92faed65abf9b4b0c0d
+          test "$(git rev-parse HEAD)" = 194f86df2c4cae411e8e6a385656922287c0febb
           python3 -m pip install -q --disable-pip-version-check pytest==8.3.5
           python3 -m pytest -q -ra tests/unit/test_p2_g07_owner_h3ii_shutdown_truth_20261112.py
           echo AXIA_G07_OWNER_H3II_SHUTDOWN_TRUTH_PUBLIC_L0_PASS_NO_ROS_NO_GOAL
