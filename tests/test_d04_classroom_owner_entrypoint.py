@@ -61,3 +61,15 @@ def test_ci_is_not_wsl2_and_does_not_start_demo(tmp_path):
     assert result.returncode == 2
     assert "D04_CLASSROOM_WSL2_REQUIRED" in result.stdout
     assert "D04_PACKAGE_STATUS=PASS_" not in result.stdout
+
+
+def test_exact_owner_runner_bash_syntax_and_self_check_do_not_require_ros(tmp_path):
+    syntax = subprocess.run(["bash", "-n", str(UPSTREAM)], capture_output=True, text=True)
+    assert syntax.returncode == 0, syntax.stderr
+    check = subprocess.run(
+        ["bash", str(UPSTREAM), "--self-check"],
+        cwd=tmp_path, capture_output=True, text=True, timeout=5
+    )
+    assert check.returncode == 0, check.stderr
+    assert "AXIA_D04_PACKAGE_WRAPPER_STATIC_OK" in check.stdout
+    assert "G_D04_PACKAGE_RUNTIME=NOT_RUN" in check.stdout
