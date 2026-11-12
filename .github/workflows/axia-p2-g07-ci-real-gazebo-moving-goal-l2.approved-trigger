@@ -1,12 +1,11 @@
-# Public CI-only real Harmonic/Nav2 Goal; Owner manual TTY remains separate.
-# User WSL2 rc139 correlated to old 15.0s faulthandler periodic stack dump.
-# RED #43071882786 (4 failed) -> GREEN #43072551636 (168/168).
-# Original CI parity L2 #43070688993 failed scan 312.77ms >300ms.
-# Source now G07 Owner and CI parity: 2 worker executor, buffered callback
-# journal, periodic 0.75s flush, fatal-only traceback, strict original TTL.
-private_source_sha=cc92327d1ae4a17d331d06e845437760ca2bdafe
-l0_green_run=43072551636
-last_l2_failed_run=43070688993
-scope=SIM_ONLY_REAL_GAZEBO_ONE_GOAL_15S_OWNER_OBSERVER_PARITY_CM_GUARD_SCAN_ODOM
+# Explicit CI-only real Gazebo sim Goal. No physical robot and no Owner approval bypass.
+# Previous source cc92327d1ae4a17d331d06e845437760ca2bdafe L2 #43072749608 PASS.
+# RED common path #43138199761 (6 failed, 168 passed).
+# GREEN common path #43138744711 (174 passed).
+# CI real scenario function is now invoked by both public CI and private Owner,
+# while Owner TTY and exact three owned PIDs remain independently required.
+private_source_sha=24819bd14e3ef24613c3de29645ef2067270ee2c
+public_l0_green_run=43138744711
+scope=CI_ONLY_REAL_GAZEBO_COMMON_EXECUTOR_GOAL_CLEAR_SLOW_DYNAMIC_STOP_TTL_ODOM
 owner_l3_accepted=false
 certified_estop=false
