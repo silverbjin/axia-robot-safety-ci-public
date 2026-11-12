@@ -35,7 +35,7 @@ OUT="${AXIA_D04_OUT:-$HOME/axia_d04_results/d04_single_$(date +%Y%m%d_%H%M%S)_$$
 
 while (($# > 0)); do
   case "$1" in
-    --doctor|--image)
+    --doctor|--run-image)
       [[ -z "$MODE" ]] || { echo "D04_USAGE_ERROR: mode already selected" >&2; exit 2; }
       MODE="$1"; shift ;;
     --instructor|--model|--image|--out)
