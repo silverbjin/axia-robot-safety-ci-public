@@ -26,7 +26,8 @@ jobs:
       - name: Test isolated public contracts (not AXIA acceptance)
         run: |
           set -euo pipefail
-          python -m pip install pytest==8.3.5
+          # D04 instructor image annotation L0 requires Pillow for actual PNG assertions.
+          python -m pip install pytest==8.3.5 Pillow==11.3.0
           mkdir -p results
           python -m pytest -q -ra tests --junitxml=results/junit-public.xml
       - uses: actions/upload-artifact@v4
