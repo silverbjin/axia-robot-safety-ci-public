@@ -7,6 +7,7 @@ umask 077
 
 PIN='c775820077917c4da56c6aa60001b224071664b3'
 ORIGIN='silverbjin/axia-robot-safety-ci-public'
+RVIZ_BUNDLE_SHA='916a3623a1370c513201011a1b410b938e2b3752'
 RUNNER='scripts/axia_d04_ros_package_wsl2_once.sh'
 MODE="${1:---run}"
 [[ $# -le 1 ]] || { echo 'D04_CLASSROOM_USAGE: use --run, --preflight or --self-check' >&2; exit 2; }
@@ -17,6 +18,8 @@ esac
 
 if [[ "$MODE" == --self-check ]]; then
   echo "D04_CLASSROOM_PUBLIC_SHA=$PIN"
+  echo "D04_RVIZ_BUNDLE_SHA=$RVIZ_BUNDLE_SHA"
+  echo "D04_RVIZ_STATIC_CONFIGURATION=READ_ONLY"
   echo "D04_CLASSROOM_STATIC_PASS GAZEBO_NOT_RUN YOLO_NOT_RUN"
   echo "D04_CLASSROOM_PATH=GAZEBO_ROS2_JAZZY_CPP_ONNX NO_PYTHON_PT_REQUIRED"
   exit 0
@@ -69,8 +72,35 @@ if [[ "$MODE" == --preflight ]]; then
   exit 0
 fi
 
+# Optional read-only RViz sidecar: do not alter the Owner gate/Goal semantics.
+RVIZ_AUTO="${AXIA_D04_RVIZ_AUTO:-1}"
+[[ "$RVIZ_AUTO" == 0 || "$RVIZ_AUTO" == 1 ]] || {
+  echo "D04_RVIZ_AUTO_INVALID: use 0 or 1" >&2; exit 2; }
+RVIZ_TMP="$(mktemp -d)"
+RVIZ_READY=0
 TMP="$(mktemp)"
-trap 'rm -f -- "$TMP"' EXIT
+trap 'rm -rf -- "$RVIZ_TMP"; rm -f -- "$TMP"' EXIT
+fetch_rviz_asset() {
+  local rel="$1" dest="$2"
+  curl -fsSL --retry 3 --connect-timeout 15 \
+    "https://raw.githubusercontent.com/$ORIGIN/$RVIZ_BUNDLE_SHA/$rel" -o "$dest"
+}
+if fetch_rviz_asset "scripts/axia_d04_rviz_observer.sh" "$RVIZ_TMP/launcher.sh" &&
+   fetch_rviz_asset "scripts/d04_rviz_hold_observer.py" "$RVIZ_TMP/observer.py" &&
+   fetch_rviz_asset "rviz/axia_d04_robot_state.rviz" "$RVIZ_TMP/axia_d04_robot_state.rviz"; then
+  bash -n "$RVIZ_TMP/launcher.sh"
+  python3 -m py_compile "$RVIZ_TMP/observer.py"
+  if bash "$RVIZ_TMP/launcher.sh" --install "$RVIZ_TMP/axia_d04_robot_state.rviz"; then
+    RVIZ_READY=1
+    echo "D04_RVIZ_CONFIG_READY: saved .rviz + one-click shortcut"
+  else
+    echo "D04_RVIZ_INSTALL_BLOCKED: Owner demo remains independently available"
+  fi
+else
+  echo "D04_RVIZ_DOWNLOAD_BLOCKED: Owner demo remains independently available"
+fi
+
+TMP="$(mktemp)"
 URL="https://raw.githubusercontent.com/$ORIGIN/$PIN/$RUNNER"
 curl -fsSL --retry 3 --connect-timeout 15 "$URL" -o "$TMP"
 bash -n "$TMP"
@@ -81,9 +111,26 @@ if [[ "$STATIC_OUTPUT" != *'AXIA_D04_PACKAGE_WRAPPER_STATIC_OK'* ]]; then
 fi
 echo "D04_CLASSROOM_PINNED_OWNER_RUNNER_READY sha=$PIN"
 echo 'D04_CLASSROOM_START: real Gazebo + YOLO ONNX + managed Nav2 shutdown'
-AXIA_D04_PUBLIC_SHA="$PIN" \
-AXIA_D04_REPEAT=1 \
-AXIA_D04_GUI=1 \
-AXIA_D04_DEMO_HOLD_S=90 \
-  bash "$TMP"
+# Run the viewer only AFTER P1/YOLO acceptance, during GUI_DEMO_HOLD.
+HOLD_SECONDS="${AXIA_D04_DEMO_HOLD_S:-120}"
+[[ "$HOLD_SECONDS" =~ ^[0-9]{1,3}$ ]] || {
+  echo "D04_CLASSROOM_HOLD_INVALID" >&2; exit 2; }
+echo "D04_RVIZ_AUTO=$RVIZ_AUTO RVIZ_READY=$RVIZ_READY"
+if [[ "$RVIZ_AUTO" == 1 && "$RVIZ_READY" == 1 ]]; then
+  # pipefail retains Owner errors; observer never upgrades verdict to PASS.
+  AXIA_D04_PUBLIC_SHA="$PIN" \
+  AXIA_D04_REPEAT=1 \
+  AXIA_D04_GUI=1 \
+  AXIA_D04_DEMO_HOLD_S="$HOLD_SECONDS" \
+    bash "$TMP" | python3 -u "$RVIZ_TMP/observer.py" \
+      --launcher "$HOME/.local/bin/axia-d04-rviz" \
+      --log "$HOME/.cache/axia/d04/d04_rviz_observer.log"
+else
+  AXIA_D04_PUBLIC_SHA="$PIN" \
+  AXIA_D04_REPEAT=1 \
+  AXIA_D04_GUI=1 \
+  AXIA_D04_DEMO_HOLD_S="$HOLD_SECONDS" \
+    bash "$TMP"
+fi
 echo 'D04_CLASSROOM_OWNER_SCRIPT_EXIT_ZERO: review EVIDENCE and verdict.json before acceptance'
+echo 'D04_RVIZ_GUI_ACCEPTANCE=NOT_INFERRED_FROM_OWNER_EXIT'
