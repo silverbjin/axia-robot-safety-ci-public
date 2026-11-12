@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "axia_d04_classroom_wsl2_once.sh"
 UPSTREAM = ROOT / "scripts" / "axia_d04_ros_package_wsl2_once.sh"
 PIN = "c775820077917c4da56c6aa60001b224071664b3"
-UPSTREAM_GIT_BLOB = "ea90844f00557da7e76b5487fda0ae5f24cc0390"
+UPSTREAM_GIT_BLOB = "f999dbf0db9fe1f2d63b2a486ed3191a94a15c83"
 
 
 def test_pinned_upstream_owner_script_matches_public_ci_evidence():
