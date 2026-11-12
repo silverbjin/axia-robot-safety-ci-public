@@ -1,0 +1,10 @@
+# Published public CI image candidate. Do NOT equate publish with Owner acceptance.
+image=ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+platform=linux/amd64
+runtime_manifest=25_exact_debian_packages
+official_sha256=5_exact_nav2_assets
+published_by_public_run=43139396488
+instructor_source_not_included=true
+anonymous_pull_verified=false
+common_g07_real_l2_pass=false
+owner_wsl2_gui_pass=false
