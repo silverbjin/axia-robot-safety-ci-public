@@ -18,14 +18,14 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: b4483b3e0ef030c58581f995444051cd51138732
+          ref: 48dc302c4fcc0a45f5572497017344b6bb462803
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Test actual first failed pre-Goal TF boundary without ROS or Goal
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git rev-parse HEAD)" = b4483b3e0ef030c58581f995444051cd51138732
+          test "$(git rev-parse HEAD)" = 48dc302c4fcc0a45f5572497017344b6bb462803
           python3 -m pip install -q --disable-pip-version-check pytest==8.3.5
           python3 -m pytest -q -ra \
             tests/unit/test_p2_g07_pregoal_actual_map_tf_wait_20261112.py \
