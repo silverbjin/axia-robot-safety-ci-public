@@ -136,3 +136,23 @@ def test_report_rejects_invalid_bbox_or_confidence(tmp_path):
                      capture_output=True,text=True,timeout=10)
     assert r.returncode!=0
     assert "D04_SINGLE_IMAGE_REPORT_BLOCKED" in r.stderr
+
+
+def test_public_teacher_guide_commands_match_accepted_source():
+    import re
+    guide = (ROOT/"docs/D04_INSTRUCTOR_SINGLE_IMAGE_VISUAL_GUIDE_KO.md").read_text()
+    assert "D04_NEW_PUBLIC_ENTRY_SHA_TO_BE_PINNED" not in guide
+    assert "0d881f1a1fb8ad46e3cccf87cb8baeb6267195da" in guide
+    assert "D04_SINGLE_IMAGE_BBOX" in guide
+    assert "bbox_class_confidence.png" in guide
+    assert "bbox_class_confidence.html" in guide
+    assert "AXIA_D04_SINGLE_IMAGE_AFTER_GAZEBO=1" in guide
+    assert "bash \"$SCRIPT\" --single-image" in guide
+    # Do not auto-open unmanaged image viewers as in the old Gazebo bug.
+    assert "이미지 뷰어를 자동으로 시작하지 않습니다" in guide
+    blocks=re.findall(r"(?ms)^~~~bash\n(.*?)\n~~~$",guide)
+    assert len(blocks)>=2
+    for code in blocks:
+        check=subprocess.run(["bash","-n","-c",code],
+                             capture_output=True,text=True,timeout=5)
+        assert check.returncode==0,check.stderr
