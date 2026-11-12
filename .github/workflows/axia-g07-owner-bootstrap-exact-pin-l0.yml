@@ -1,0 +1,24 @@
+name: AXIA G07 Owner bootstrap exact-source regression (public-only L0)
+on:
+  push:
+    branches: [fix/g07-owner-bootstrap-pin-20261112]
+    paths:
+      - 'tests/test_g07_owner_bootstrap_latest_pin_20261112.py'
+      - 'scripts/axia_p2_g07_ci_pass_owner_wsl2_once.sh'
+permissions:
+  contents: read
+jobs:
+  g07-owner-bootstrap-pin-l0:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout public CI contract only
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Assert latest Instructor SHA, existing L2 proof, and manual Owner authorization
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest discover -s tests -p 'test_g07_owner_bootstrap_latest_pin_20261112.py' -v
+          echo AXIA_G07_OWNER_BOOTSTRAP_EXACT_PIN_PUBLIC_L0_PASS_NO_ROS_NO_GOAL
