@@ -26,77 +26,43 @@ jobs:
     timeout-minutes: 48
     environment: axia-instructor-sealed
     container:
-      image: ros:jazzy-ros-base-noble
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
       # Docker bridge resolver failed in #43041110273 and #43042223936;
       # use explicit public resolvers only for this GitHub CI container.
       # This does not change ROS networking, source, TTL or WSL2 runtime.
       options: --dns 1.1.1.1 --dns 8.8.8.8
     steps:
-      - name: Checkout signed public OSRF helper at frozen SHA
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          repository: silverbjin/axia-robot-safety-ci-public
-          ref: c38264d51494a836602fe8c276b120fb7c02bd4e
-          path: ci-tools
-          persist-credentials: false
       - name: Private Instructor exact commit sealed
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 24819bd14e3ef24613c3de29645ef2067270ee2c
+          ref: 08abc06159341029597ee84445df3a9b960fffc7
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
-      # GitHub-hosted Docker DNS failed before any Goal in run #43041110273.
-      # Fail fast with INFRA evidence rather than misclassifying a missing
-      # Ubuntu/ROS package as a G07 safety regression. No safety gate is relaxed.
-      - name: Preflight container DNS - no Goal on infra failure
+      - name: Exact immutable runtime image and 25-package/5-file parity without apt reinstall
         shell: bash
         run: |
-          set -euo pipefail
-          for host in archive.ubuntu.com security.ubuntu.com; do
-            resolved=0
-            for attempt in 1 2 3; do
-              if timeout 6 getent ahostsv4 "$host" >/dev/null; then
-                resolved=1
-                break
-              fi
-              sleep 2
-            done
-            if [[ "$resolved" -ne 1 ]]; then
-              echo "AXIA_G07_CI_DNS_INFRA_BLOCKED_NO_GOAL host=$host" >&2
-              exit 86
-            fi
-          done
-          echo 'AXIA_G07_CI_DNS_INFRA_READY_BEFORE_APT'
-      - name: Install Owner exact 25 ROS Nav2 Gazebo runtime lock + headless tools
-        shell: bash
-        run: |
-          set -euo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '24819bd14e3ef24613c3de29645ef2067270ee2c'
-          bash ci-tools/scripts/axia_ci_enable_osrf_gazebo_repo.sh
-          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends procps git
+          set -Eeuo pipefail
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '08abc06159341029597ee84445df3a9b960fffc7'
+          test "$ROS_DISTRO" = jazzy
           cd instructor
           mkdir -p results/p2-g07-ci-moving
-          python3 tools/p2_g07_ci_owner_lock_install.py --apply \
-            --report results/p2-g07-ci-moving/apt_pin_report.json
           set +u
           source /opt/ros/jazzy/setup.bash
           set -u
-          export ROS_DOMAIN_ID=83
-          export ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
-          export GZ_PARTITION=axia_p2_ci_moving_83
-          export AXIA_P0_SIM_ONLY=1
+          export ROS_DOMAIN_ID=83 ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
+          export GZ_PARTITION=axia_p2_ci_moving_83 AXIA_P0_SIM_ONLY=1
           python3 tools/p2_g07_owner_env_parity.py --mode ci \
             --output results/p2-g07-ci-moving/core_parity.json
           python3 - <<'PY'
-          from pathlib import Path
           import json
-          d=json.loads(Path('results/p2-g07-ci-moving/core_parity.json').read_text())
-          assert d['status']=='CORE_PARITY_PASS'
-          assert d['checked_packages']==25 and d['checked_official_files']==5
-          assert d['wsl_kernel_equal_ci'] is False
-          print('AXIA_G07_CI_MOVING_GOAL_OWNER_CORE_25_5_PARITY_PASS_WSL2_KERNEL_NOT_EQUAL')
+          from pathlib import Path
+          v=json.loads(Path('results/p2-g07-ci-moving/core_parity.json').read_text())
+          assert v['status']=='CORE_PARITY_PASS'
+          assert v['checked_packages']==25 and v['checked_official_files']==5
+          assert v['wsl_kernel_equal_ci'] is False
+          print('AXIA_G07_RUNTIME_DIGEST_25_5_ENV_PARITY_PASS_NO_APT')
           PY
       - name: Use independently GREEN L0 oracle; syntax-check actual runner without pip
         shell: bash
@@ -120,7 +86,7 @@ jobs:
         run: |
           set -euo pipefail
           cd instructor
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '24819bd14e3ef24613c3de29645ef2067270ee2c'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '08abc06159341029597ee84445df3a9b960fffc7'
           timeout --signal=TERM --kill-after=10s 900s \
             bash scripts/p2_no_goal_smoke_ci.sh || {
             echo 'AXIA_G07_CI_MOVING_GOAL_REAL_GAZEBO_BLOCKED'
