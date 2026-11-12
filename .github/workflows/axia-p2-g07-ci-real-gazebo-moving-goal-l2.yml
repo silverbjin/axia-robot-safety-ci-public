@@ -1,8 +1,6 @@
-# Exact G07 common staged runner and native lifecycle client with Owner WSL2.
-# Source includes only scoped startup parity fix; moving Goal and safety TTL unchanged.
-# Old actual moving L2 #43186070186 from source 9f12d758 is preserved.
-# New actual NO-GOAL shared startup/teardown L2 #43241421238 PASS.
-# CI offscreen renderer != WSLg GPU/scheduler; Owner L3 still NOT RUN.
+# Actual pre-Goal TF first failure in public real L2 #43242131339 (no Goal).
+# TF readiness RED #43243118436 -> GREEN #43243360128 (17 PASS).
+# Same shared native startup, same G07 10Hz SDF; no synthetic pose.
 name: AXIA G07 CI-only actual Harmonic Nav2 MOVING Goal CLEAR SLOW STOP
 on:
   push:
@@ -32,7 +30,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 754964c6b0706d20344b62dfe78d95fa5aed38ba
+          ref: a95d56c8fba83d1d00265f7a2ae8f299770f8613
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -40,7 +38,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '754964c6b0706d20344b62dfe78d95fa5aed38ba'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 'a95d56c8fba83d1d00265f7a2ae8f299770f8613'
           test "$ROS_DISTRO" = jazzy
           cd instructor
           mkdir -p results/p2-g07-ci-moving
@@ -83,7 +81,7 @@ jobs:
         run: |
           set -euo pipefail
           cd instructor
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '754964c6b0706d20344b62dfe78d95fa5aed38ba'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 'a95d56c8fba83d1d00265f7a2ae8f299770f8613'
           timeout --signal=TERM --kill-after=10s 900s \
             bash scripts/p2_no_goal_smoke_ci.sh || {
             echo 'AXIA_G07_CI_MOVING_GOAL_REAL_GAZEBO_BLOCKED'
