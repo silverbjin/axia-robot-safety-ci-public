@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - 'fix/d04-course-field-preflight-20261112'
+      - 'fix/d04-owned-gui-shutdown-20261112'
     paths:
       - '.github/workflows/d04-course-docs-regression.yml'
       - 'tests/test_d04_course_field_preflight.py'
@@ -19,6 +20,10 @@ on:
       - 'scripts/d04_rviz_hold_observer.py'
       - 'rviz/axia_d04_robot_state.rviz'
       - 'docs/D04_RVIZ_ROBOT_STATE_GUIDE_KO.md'
+      - 'tests/test_d04_owned_gui_shutdown.py'
+      - 'scripts/d04_owned_gui_shutdown.py'
+      - 'scripts/d04_packaged_p1_yolo_gate.py'
+      - 'scripts/axia_d04_ros_package_wsl2_once.sh'
   workflow_dispatch:
   pull_request:
     paths:
@@ -36,6 +41,10 @@ on:
       - 'scripts/d04_rviz_hold_observer.py'
       - 'rviz/axia_d04_robot_state.rviz'
       - 'docs/D04_RVIZ_ROBOT_STATE_GUIDE_KO.md'
+      - 'tests/test_d04_owned_gui_shutdown.py'
+      - 'scripts/d04_owned_gui_shutdown.py'
+      - 'scripts/d04_packaged_p1_yolo_gate.py'
+      - 'scripts/axia_d04_ros_package_wsl2_once.sh'
 
 permissions:
   contents: read
@@ -56,7 +65,7 @@ jobs:
       - name: RED/GREEN user field error regression
         run: |
           set -euo pipefail
-          python -m pytest -q -ra tests/test_d04_course_field_preflight.py tests/test_d04_classroom_owner_entrypoint.py tests/test_d04_postrun_topic_evidence.py tests/test_d04_cli_overlay_regression.py tests/test_d04_rviz_observer_contract.py
+          python -m pytest -q -ra tests/test_d04_course_field_preflight.py tests/test_d04_classroom_owner_entrypoint.py tests/test_d04_postrun_topic_evidence.py tests/test_d04_cli_overlay_regression.py tests/test_d04_rviz_observer_contract.py tests/test_d04_owned_gui_shutdown.py
 
   public-student-document-command:
     runs-on: ubuntu-24.04
