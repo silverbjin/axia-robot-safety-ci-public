@@ -20,13 +20,11 @@ RUN set -Eeuo pipefail; \
       procps git python3-pytest python3-psutil python3-opencv \
       libgl1 libegl1; \
     sha256sum -c /opt/axia/official-files.sha256; \
-    python3 - <<'PY'
-import platform,subprocess,sys
-assert sys.version_info[:2]==(3,12),sys.version
-assert platform.machine()=='x86_64'
-result=subprocess.run(['gz','sim','--version'],text=True,capture_output=True,check=True)
-assert '8.15.0' in result.stdout,result.stdout
-print('AXIA_G07_RUNTIME_ONLY_INSTALL_AND_OFFICIAL_SHA256_PASS')
-PY
+    python3 -c 'import platform, subprocess, sys; \
+assert sys.version_info[:2] == (3,12), sys.version; \
+assert platform.machine() == "x86_64"; \
+v = subprocess.check_output(["gz","sim","--version"],text=True); \
+assert "8.15.0" in v,v; \
+print("AXIA_G07_RUNTIME_ONLY_INSTALL_AND_OFFICIAL_SHA256_PASS")'
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 WORKDIR /work
