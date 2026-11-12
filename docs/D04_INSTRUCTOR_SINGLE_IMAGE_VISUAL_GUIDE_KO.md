@@ -20,7 +20,7 @@ Gazebo 카메라 영상에서 움직이는 Bounding Box만 보여주면 학생�
 (
   set -Eeuo pipefail
 
-  SHA="D04_NEW_PUBLIC_ENTRY_SHA_TO_BE_PINNED"
+  SHA="0d881f1a1fb8ad46e3cccf87cb8baeb6267195da"
   SCRIPT="$(mktemp)"
   trap 'rm -f -- "$SCRIPT"' EXIT
 
