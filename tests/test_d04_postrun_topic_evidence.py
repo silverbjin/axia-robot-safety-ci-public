@@ -47,7 +47,7 @@ def test_original_live_gate_uses_isolated_domain_then_managed_shutdown():
     assert 'env["GZ_PARTITION"]' in s
     assert 'GUI_DEMO_HOLD' in s
     assert s.index('GUI_DEMO_HOLD') < s.index('request_nav2_shutdown(env,out,timeout_s=65)')
-    assert s.index('request_nav2_shutdown(env,out,timeout_s=65)') < s.index('_stop_all(proc, verdict)')
+    assert s.index('request_nav2_shutdown(env,out,timeout_s=65)') < s.index('stop_owned(proc, verdict)')
 
 def test_postrun_reader_proves_saved_delivery_but_not_live_topics(tmp_path):
     root=fixture(tmp_path/"evidence")
