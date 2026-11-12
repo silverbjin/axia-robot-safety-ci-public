@@ -1,0 +1,28 @@
+name: AXIA G07 runtime immutable digest anonymous pull L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths:
+      - '.github/workflows/axia-g07-runtime-anonymous-pull-l0.yml'
+permissions:
+  contents: read
+jobs:
+  anonymous-ghcr-runtime:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Anonymous download of the actual published runtime digest, no token
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          IMAGE="ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e"
+          docker logout ghcr.io >/dev/null 2>&1 || true
+          docker pull "$IMAGE"
+          docker run --rm --entrypoint /bin/bash "$IMAGE" -lc '
+            set -Eeuo pipefail
+            test "$ROS_DISTRO" = jazzy
+            sha256sum -c /opt/axia/official-files.sha256
+            test "$(grep -vcE "^[[:space:]]*(#|$)" /opt/axia/runtime-packages.txt)" = 25
+            echo AXIA_G07_ANONYMOUS_RUNTIME_CORE_LOCK_PASS
+          '
+          echo 'AXIA_G07_RUNTIME_ANONYMOUS_IMMUTABLE_DIGEST_PULL_PASS'
