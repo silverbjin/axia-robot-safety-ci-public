@@ -1,0 +1,79 @@
+name: AXIA G07 public runtime-only Jazzy Harmonic exact digest build
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths:
+      - 'docker/g07/Dockerfile'
+      - 'docker/g07/osrf-repo-setup.sh'
+      - 'docker/g07/runtime-packages.txt'
+      - 'docker/g07/official-files.sha256'
+      - '.github/workflows/axia-g07-runtime-digest-build.yml'
+permissions:
+  contents: read
+  packages: write
+concurrency:
+  group: axia-g07-runtime-digest-build
+  cancel-in-progress: false
+jobs:
+  pinned-runtime-build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: RED/GREEN static public-only runtime image contract
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          base=Path('docker/g07')
+          f=(base/'Dockerfile').read_text()
+          pkgs=[l for l in (base/'runtime-packages.txt').read_text().splitlines()
+                if l and not l.startswith('#')]
+          hashes=[l for l in (base/'official-files.sha256').read_text().splitlines()
+                  if l and not l.startswith('#')]
+          assert len(pkgs)==25 and len({l.split('=')[0] for l in pkgs})==25
+          assert all(re.fullmatch(r'[a-z0-9+.-]+=[0-9A-Za-z.+:~_-]+',p) for p in pkgs)
+          assert len(hashes)==5
+          assert all(re.fullmatch(r'[a-f0-9]{64}  /opt/ros/jazzy/share/[A-Za-z0-9_.\-/]+',h) for h in hashes)
+          assert 'FROM ros:jazzy-ros-base-noble' in f
+          assert 'COPY docker/g07/osrf-repo-setup.sh' in f
+          assert 'COPY docker/g07/runtime-packages.txt' in f
+          assert 'sha256sum -c /opt/axia/official-files.sha256' in f
+          assert 'COPY . ' not in f
+          assert 'axia-robot-safety-instructor' not in f
+          assert 'AXIA_CLOUD_CI' not in f
+          print('AXIA_G07_RUNTIME_PUBLIC_ONLY_25_DEB_5_OFFICIAL_SHA_CONTRACT_PASS')
+          PY
+      - uses: docker/setup-buildx-action@v3
+      - name: Login to GHCR using ephemeral GitHub Actions package permission
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push runtime-only image with content-addressed digest
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          IMAGE="ghcr.io/silverbjin/axia-g07-runtime"
+          docker buildx build --platform linux/amd64 --push \
+            --file docker/g07/Dockerfile \
+            --tag "$IMAGE:jazzy-harmonic-20261112" \
+            --tag "$IMAGE:sha-${GITHUB_SHA:0:12}" \
+            --metadata-file /tmp/axia-g07-runtime-build.json .
+          DIGEST="$(python3 - <<'PY'
+          import json
+          data=json.load(open('/tmp/axia-g07-runtime-build.json'))
+          print(data.get('containerimage.digest',''))
+          PY
+          )"
+          [[ "$DIGEST" =~ ^sha256:[a-f0-9]{64}$ ]] || {
+            echo 'AXIA_G07_RUNTIME_DIGEST_NOT_PRODUCED_NO_PROMOTION';exit 2;
+          }
+          docker buildx imagetools inspect "$IMAGE@$DIGEST"
+          echo "AXIA_G07_RUNTIME_PUBLISHED_EXACT_DIGEST=$IMAGE@$DIGEST"
+          echo 'AXIA_G07_RUNTIME_IMAGE_PRIVATE_INSTRUCTOR_SOURCE_NOT_COPIED'
