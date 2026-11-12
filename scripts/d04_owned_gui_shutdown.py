@@ -64,10 +64,15 @@ def _gazebo_gui_pids(session_id: int) -> set[int]:
         try:
             raw = Path(f"/proc/{row['pid']}/cmdline").read_bytes()
             args = [x.decode(errors="replace") for x in raw.split(b"\0") if x]
-            joined = " ".join(args)
-            if ("gz-sim-gui" in joined
-                    or ("-g" in args and "sim" in args
-                        and any(x.endswith("/gz") or x == "gz" for x in args))):
+            # Inspect the actual executable/script, not embedded Python -c
+            # source code, which can contain a GUI filename as a literal.
+            candidates = args[:1]
+            if len(args) > 1 and args[1] not in ("-c", "-m"):
+                candidates.append(args[1])
+            gui_binary = any("gz-sim-gui" in Path(x).name for x in candidates)
+            gz_cli = ("-g" in args and "sim" in args and
+                      any(Path(x).name == "gz" for x in args[:3]))
+            if gui_binary or gz_cli:
                 result.add(row["pid"])
         except OSError:
             pass
