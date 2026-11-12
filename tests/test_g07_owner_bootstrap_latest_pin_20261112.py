@@ -74,6 +74,17 @@ class G07OwnerBootstrapLatestPin(unittest.TestCase):
         self.assertNotIn("--case G05", s)
         self.assertNotIn("--case G06", s)
 
+    def test_existing_public_static_workflow_has_no_stale_expectation(self):
+        workflow = (
+            ROOT / ".github/workflows/axia-p2-g07-ci-pass-owner-bootstrap-static-l0.yml"
+        ).read_text(encoding="utf-8")
+        self.assertIn(
+            "private_sha=" + INSTRUCTOR_SHA + " ci_l2=" + SUCCESSFUL_L2_RUN
+            + " OWNER_L3_NOT_RUN", workflow
+        )
+        self.assertNotIn("private_sha=" + OLD_INSTRUCTOR_SHA, workflow)
+        self.assertNotIn("ci_l2=" + OLD_L2_RUN, workflow)
+
     def test_negative_mutation_old_pin_is_detected(self):
         def matches_current_pin(text):
             return (
