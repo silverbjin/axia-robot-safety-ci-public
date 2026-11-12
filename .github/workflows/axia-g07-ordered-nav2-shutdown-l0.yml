@@ -1,0 +1,36 @@
+name: AXIA G07 official Nav2 orderly shutdown (PUBLIC L0)
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths:
+      - '.github/workflows/axia-g07-ordered-nav2-shutdown-l0.yml'
+permissions:
+  contents: read
+concurrency:
+  group: axia-g07-ordered-shutdown-public-l0
+  cancel-in-progress: false
+jobs:
+  ordered-shutdown-regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    environment: axia-instructor-sealed
+    steps:
+      - name: Exact private source on ephemeral PUBLIC CI runner only
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 036a34183860e4b47c4e77fd427f4a7a6b11e3b8
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Strict source pin and sanitized shutdown regression; no ROS or Goal
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = 036a34183860e4b47c4e77fd427f4a7a6b11e3b8
+          python3 -m pip install -q --disable-pip-version-check pytest==8.3.5
+          python3 -m pytest -q -ra tests/unit/test_p2_g07_ordered_nav2_shutdown_20261112.py
+          echo AXIA_G07_ORDERED_NAV2_SHUTDOWN_L0_PASS_NO_ROS_NO_GOAL
+      - name: Remove Instructor solution from public runner
+        if: always()
+        shell: bash
+        run: rm -rf -- .git tests tools scripts ros2_ws configs docs training results
