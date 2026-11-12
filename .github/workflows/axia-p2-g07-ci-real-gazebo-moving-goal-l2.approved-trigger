@@ -1,11 +1,12 @@
-# Explicit CI-only real Gazebo sim Goal. No physical robot and no Owner approval bypass.
-# Previous source cc92327d1ae4a17d331d06e845437760ca2bdafe L2 #43072749608 PASS.
-# RED common path #43138199761 (6 failed, 168 passed).
-# GREEN common path #43138744711 (174 passed).
-# CI real scenario function is now invoked by both public CI and private Owner,
-# while Owner TTY and exact three owned PIDs remain independently required.
-private_source_sha=24819bd14e3ef24613c3de29645ef2067270ee2c
-public_l0_green_run=43138744711
-scope=CI_ONLY_REAL_GAZEBO_COMMON_EXECUTOR_GOAL_CLEAR_SLOW_DYNAMIC_STOP_TTL_ODOM
+# One CI-only real Gazebo test of shared G07 scenario on exact PUBLIC GHCR digest.
+# Previous L2 #43139031871 failed on 163.25ms CM->Guard after STOP,
+# without weakening the 150ms safety TTL. This run tests the NEW immutable
+# runtime image while preserving exact live safety thresholds.
+private_source_sha=08abc06159341029597ee84445df3a9b960fffc7
+l0_green_run=43140776954
+runtime_build_run=43139396488
+anonymous_pull_run=43140160863
+runtime_digest=sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+scope=CI_SIM_ONLY_COMMON_GOAL_IMMUTABLE_RUNTIME_REAL_CLEAR_SLOW_STOP_TIMING
 owner_l3_accepted=false
 certified_estop=false
