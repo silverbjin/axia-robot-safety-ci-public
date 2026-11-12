@@ -22,7 +22,7 @@ jobs:
           B=scripts/axia_p2_g07_ci_pass_owner_wsl2_once.sh
           bash -n "$B"
           OUTPUT="$(bash "$B" --self-check)"
-          [[ "$OUTPUT" == 'AXIA_G07_CI_PASS_OWNER_BOOTSTRAP_STATIC_PASS private_sha=cc92327d1ae4a17d331d06e845437760ca2bdafe ci_l2=43072749608 OWNER_L3_NOT_RUN' ]]
+          [[ "$OUTPUT" == 'AXIA_G07_CI_PASS_OWNER_BOOTSTRAP_STATIC_PASS private_sha=19ea30fa936fe2218cef4265f05211dc5358d1e8 ci_l2=43149852597 OWNER_L3_NOT_RUN' ]]
           python3 - <<'PY'
           from pathlib import Path
           s=Path('scripts/axia_p2_g07_ci_pass_owner_wsl2_once.sh').read_text()
