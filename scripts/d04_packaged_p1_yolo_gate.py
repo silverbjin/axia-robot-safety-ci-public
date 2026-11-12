@@ -18,7 +18,8 @@ import subprocess
 import sys
 import time
 
-from d04_waffle_pi_rgb_preflight import _start, _stop_all, sync_ros_discovery_environment
+from d04_waffle_pi_rgb_preflight import _start, sync_ros_discovery_environment
+from d04_owned_gui_shutdown import stop_owned
 from d04_p1_yolo_live import graph_oracle, core_chain, sensor_sample
 from d04_yolo_person_runtime import _watch_detections_and_images, valid_person, valid_rgb
 from d04_nav2_orderly_shutdown import request_nav2_shutdown
@@ -223,12 +224,16 @@ def run(a) -> int:
         else:
             verdict["shutdown_service"] = {"passed":False,"skipped":"NOT_RUNTIME_ACCEPTED"}
         print("[D04][SHUTDOWN] Stopping launch process group",flush=True)
-        _stop_all(proc, verdict)
+        stop_owned(proc, verdict)
         log=out/"package_launch.log"
         lines=log.read_text(errors="replace") if log.exists() else ""
         sigabrt=bool("exit code -6" in lines or "SIGABRT" in lines)
         if sigabrt:
             verdict["shutdown_quality"]="WARN_SIGABRT"
+        elif verdict.get("shutdown_residual_groups"):
+            verdict["shutdown_quality"]="BLOCKED_RESIDUAL_GUI_PROCESSES"
+        elif verdict.get("shutdown_orphaned_group_detected"):
+            verdict["shutdown_quality"]="BLOCKED_PREMATURE_LAUNCH_EXIT_WITH_ORPHANS"
         elif verdict["shutdown_service"].get("passed") is not True:
             verdict["shutdown_quality"]="BLOCKED_NAV2_SHUTDOWN_SERVICE"
         elif verdict.get("shutdown_escalated"):
