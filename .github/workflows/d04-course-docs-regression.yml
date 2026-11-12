@@ -24,6 +24,7 @@ on:
       - 'scripts/d04_owned_gui_shutdown.py'
       - 'scripts/d04_packaged_p1_yolo_gate.py'
       - 'scripts/axia_d04_ros_package_wsl2_once.sh'
+      - 'tests/d04_real_image_view_shutdown_public.py'
   workflow_dispatch:
   pull_request:
     paths:
@@ -45,6 +46,7 @@ on:
       - 'scripts/d04_owned_gui_shutdown.py'
       - 'scripts/d04_packaged_p1_yolo_gate.py'
       - 'scripts/axia_d04_ros_package_wsl2_once.sh'
+      - 'tests/d04_real_image_view_shutdown_public.py'
 
 permissions:
   contents: read
@@ -198,3 +200,37 @@ jobs:
             echo 'D04_RVIZ_STARTUP_EVIDENCE_MISSING'; exit 1
           fi
           echo 'D04_PUBLIC_JAZZY_RVIZ2_CONFIG_LOAD_PASS HEADLESS_XVFB_NO_ROS_TOPICS'
+
+
+  public-jazzy-image-view-owned-shutdown:
+    # Unlike the L0 mocks, this starts the REAL ROS 2 Jazzy image_view GUI
+    # after its launch parent exits, then proves the window does not reappear.
+    # It does NOT run Instructor P1 or claim Gazebo WSLg acceptance.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    container:
+      image: ros:jazzy-ros-base-noble
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install real ROS 2 image viewer and X11 virtual display
+        shell: bash
+        run: |
+          set -eo pipefail
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+            ros-jazzy-image-view ros-jazzy-rclpy ros-jazzy-sensor-msgs \
+            xvfb xauth x11-utils libgl1-mesa-dri
+      - name: Actual ROS2 image_view window closes without respawn after owner shutdown
+        shell: bash
+        run: |
+          set -eo pipefail
+          source /opt/ros/jazzy/setup.bash
+          export ROS_DOMAIN_ID=40
+          export ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
+          export LIBGL_ALWAYS_SOFTWARE=1
+          timeout --signal=TERM --kill-after=10s 100s \
+            xvfb-run -a -s '-screen 0 1280x720x24' \
+            python3 -u tests/d04_real_image_view_shutdown_public.py
+          echo 'D04_PUBLIC_REAL_GUI_SHUTDOWN_L1_PASS NO_PRIVATE_CI'
