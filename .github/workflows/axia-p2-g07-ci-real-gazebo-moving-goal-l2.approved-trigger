@@ -1,13 +1,14 @@
-# Approved scoped simulation-only CI Goal, never Owner L3 authorization.
-# Earliest dynamic STOP timing incidents:
-#43139031871 guard first CM age=163.246ms (limit 150ms)
-#43141038305 actual CM=169.748ms and Scan=309.959ms, crosses STOP
-# RED #43147007484 2 FAIL/181 PASS -> GREEN #43147132519 183 PASS.
-# This is one real Gazebo L2 test of native STOP CPU-isolation candidate.
-# Do not relax any safety TTL or accept PASS without raw first timing audit.
-private_source_sha=1f4c2ce1f45782aff53db023aac1b25ff99c13ae
-public_l0_green_run=43147132519
+# CI-only real Nav2 Goal and physical Gazebo G07 obstacle. Never Owner auto-goal.
+# #43147373532 native service CLI CPU mitigation: CM max 142.085ms PASS;
+# physical CLEAR/SLOW/STOP & odom 1.009s PASS; Scan max=300.044ms FAILED.
+# Original official Waffle gpu_lidar hls_lfcd_lds rate 5Hz (200ms nominal).
+# G07-only official SDF TEMP copy rate=10Hz; original official model unchanged.
+# RED #43148258401 3 FAILED/184 PASS -> GREEN #43148575180 187 PASS.
+# No safety TTL, geometry, Guard or Collision Monitor change.
+private_source_sha=13922926d283aa3cc4227038e43f879fb528f42c
+public_l0_green_run=43148575180
+previous_scan_boundary_run=43147373532
 runtime_digest=sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
-scope=SIM_ONLY_COMMON_EXECUTOR_NATIVE_STOP_CLI_LOW_CONTENTION_REAL_GAZEBO_L2
+scope=SIM_ONLY_G07_COMMON_GOAL_TEMP_10HZ_LIDAR_REAL_CLEAR_SLOW_STOP_TTL_ODOM
 owner_l3_accepted=false
 certified_estop=false
