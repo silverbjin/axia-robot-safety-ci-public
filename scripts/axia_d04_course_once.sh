@@ -27,11 +27,11 @@ HELP
 }
 
 MODE=""
-PYTHON="\${AXIA_D04_PYTHON:-python3}"
-INSTRUCTOR="\${AXIA_D04_INSTRUCTOR_ROOT:-$HOME/axia_d04_classroom/instructor}"
-MODEL="\${AXIA_D04_MODEL:-$HOME/axia_licensed_assets/yolo_cached.pt}"
-PHOTO="\${AXIA_D04_IMAGE:-$HOME/axia_licensed_assets/person_scene.jpg}"
-OUT="\${AXIA_D04_OUT:-$HOME/axia_d04_results/d04_single_$(date +%Y%m%d_%H%M%S)_$$}"
+PYTHON="${AXIA_D04_PYTHON:-python3}"
+INSTRUCTOR="${AXIA_D04_INSTRUCTOR_ROOT:-$HOME/axia_d04_classroom/instructor}"
+MODEL="${AXIA_D04_MODEL:-$HOME/axia_licensed_assets/yolo_cached.pt}"
+PHOTO="${AXIA_D04_IMAGE:-$HOME/axia_licensed_assets/person_scene.jpg}"
+OUT="${AXIA_D04_OUT:-$HOME/axia_d04_results/d04_single_$(date +%Y%m%d_%H%M%S)_$$}"
 
 while (($# > 0)); do
   case "$1" in
