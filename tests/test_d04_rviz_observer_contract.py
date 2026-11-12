@@ -12,7 +12,6 @@ import subprocess
 import sys
 
 import pytest
-import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG = ROOT / "rviz/axia_d04_robot_state.rviz"
@@ -22,6 +21,7 @@ OWNER = ROOT / "scripts/axia_d04_classroom_wsl2_once.sh"
 
 
 def test_rviz_layout_is_valid_saved_read_only_config():
+    yaml = pytest.importorskip("yaml", reason="focused D04 public-field-regression installs PyYAML==6.0.2")
     assert CONFIG.is_file(), "RED: no one-click saved .rviz configuration"
     config = yaml.safe_load(CONFIG.read_text(encoding="utf-8"))
     assert config["Visualization Manager"]["Global Options"]["Fixed Frame"] == "odom"
