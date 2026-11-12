@@ -79,3 +79,51 @@ jobs:
           fi
           echo "D04_STUDENT_PUBLISHED_TODO_EXPECTED_RED rc=$RC"
           echo "D04_STUDENT_FIXTURE_ACTUAL_PASS; STUDENT_TODO_GREEN_NOT_CLAIMED"
+
+
+  public-jazzy-real-yolo-msgs-interface:
+    # Real ROS 2 Jazzy interface build in PUBLIC CI. Does not use AXIA private source.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    container:
+      image: ros:jazzy-ros-base-noble
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install minimal official ROS 2 interface build prerequisites
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+            git python3-colcon-common-extensions \
+            ros-jazzy-rosidl-default-generators \
+            ros-jazzy-std-msgs ros-jazzy-geometry-msgs
+      - name: Build exact public yolo_msgs package and prove overlay loading
+        shell: bash
+        run: |
+          set -euo pipefail
+          source /opt/ros/jazzy/setup.bash
+          mkdir -p /tmp/d04-real-jazzy-msg/src
+          git clone -q https://github.com/mgonzs13/yolo_ros.git /tmp/d04-real-jazzy-msg/src/yolo_ros
+          git -C /tmp/d04-real-jazzy-msg/src/yolo_ros checkout -q --detach \
+            94d2dd500cb26027ee9c019f4d3a02029ac615cc
+          test "$(git -C /tmp/d04-real-jazzy-msg/src/yolo_ros rev-parse HEAD)" = \
+            94d2dd500cb26027ee9c019f4d3a02029ac615cc
+          cd /tmp/d04-real-jazzy-msg
+          colcon build --merge-install --packages-select yolo_msgs --executor sequential \
+            --event-handlers console_direct+
+          # The field report's diagnosis shell had ONLY base Jazzy sourced.
+          # Before overlay the custom message may be unavailable.
+          if ros2 interface show yolo_msgs/msg/DetectionArray >/dev/null 2>&1; then
+            echo "D04_PUBLIC_BEFORE_OVERLAY_ALREADY_AVAILABLE"
+          else
+            echo "D04_PUBLIC_BEFORE_OVERLAY_CUSTOM_TYPE_MISSING_EXPECTED"
+          fi
+          source install/setup.bash
+          ros2 pkg prefix yolo_msgs
+          ros2 interface show yolo_msgs/msg/DetectionArray | grep -F 'detections'
+          python3 -c 'from yolo_msgs.msg import DetectionArray; print("D04_PUBLIC_JAZZY_PYTHON_IMPORT_OK")'
+          echo "D04_PUBLIC_JAZZY_REAL_YOLO_MSGS_INTERFACE_PASS"
+          echo "D04_PUBLIC_ROS_L1_ONLY NO_GAZEBO NO_NAV2_GOAL NO_CM_TTL"
