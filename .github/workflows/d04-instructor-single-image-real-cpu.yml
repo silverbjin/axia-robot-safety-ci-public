@@ -4,6 +4,7 @@ on:
   push:
     branches: ['feat/d04-instructor-single-image-20261112']
     paths:
+      - 'scripts/axia_d04_classroom_wsl2_once.sh'
       - 'scripts/axia_d04_instructor_single_image_once.sh'
       - 'scripts/d04_instructor_single_image_report.py'
       - '.github/workflows/d04-instructor-single-image-real-cpu.yml'
@@ -43,7 +44,8 @@ jobs:
           export AXIA_D04_INSTRUCTOR_SINGLE_IMAGE_RESULTS="$RUNNER_TEMP/d04_instructor_single_image_results"
           export YOLO_CONFIG_DIR="$RUNNER_TEMP/d04_ultralytics_config"
           bash scripts/axia_d04_instructor_single_image_once.sh --self-check
-          bash scripts/axia_d04_instructor_single_image_once.sh --run \
+          bash scripts/axia_d04_classroom_wsl2_once.sh --self-check
+          bash scripts/axia_d04_classroom_wsl2_once.sh --single-image \
             | tee "$RUNNER_TEMP/d04-single-image-run.log"
           grep -q '^D04_SINGLE_IMAGE_REPORT_PASS persons=' "$RUNNER_TEMP/d04-single-image-run.log"
           grep -q '^D04_SINGLE_IMAGE_BBOX index=1 class=person confidence=' "$RUNNER_TEMP/d04-single-image-run.log"
