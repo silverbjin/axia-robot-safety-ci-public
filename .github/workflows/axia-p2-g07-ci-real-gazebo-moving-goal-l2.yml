@@ -1,12 +1,10 @@
-# Exact private source SHA pinned; latest RED→GREEN #43055911244 (158/158).
-# This real-L2 run must validate live Collision Monitor stop_pub_timeout=5s,
-# unchanged Guard input TTL=150ms and CLEAR/SLOW/STOP plus odom dwell.
-# VERIFIED L0 RED #43040702422 -> GREEN #43040932165 (131 PASS); L2 must still prove actual STOP and TTL.
-# HOLD: actual moving CI #42989423638 failed at first CM age 194.599ms
-# against immutable 150ms CM TTL despite 40Hz; that trial was reverted.
-# Source below is L0-green rollback #42990244719 (127 PASS), but has NOT
-# passed a new real moving L2. Do not update approved-trigger / deploy WSL2
-# until a separately reproduced CM pipeline fix passes real moving L2.
+# G07 CI-only REAL Jazzy/Harmonic/Nav2 simulated Goal. NOT Owner L3.
+# Original successful source #43149852597 is preserved, not overwritten.
+# Current Owner tYWDqbSM: first true NORMAL reversal latch and earlier scan/CM
+# observation gaps promoted to public L0 RED #43185235958/#43185692755
+# -> GREEN #43185400582/#43185892156, 198 tests.
+# Exact new source: 9f12d7581e07752a53e3b3acd2d5c45ad7d87fa7. No TTL or STOP oracle changes.
+# Actual L2 must independently pass before WSL2 wrapper can be repinned.
 name: AXIA G07 CI-only actual Harmonic Nav2 MOVING Goal CLEAR SLOW STOP
 on:
   push:
@@ -36,7 +34,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 19ea30fa936fe2218cef4265f05211dc5358d1e8
+          ref: 9f12d7581e07752a53e3b3acd2d5c45ad7d87fa7
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -44,7 +42,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '19ea30fa936fe2218cef4265f05211dc5358d1e8'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '9f12d7581e07752a53e3b3acd2d5c45ad7d87fa7'
           test "$ROS_DISTRO" = jazzy
           cd instructor
           mkdir -p results/p2-g07-ci-moving
@@ -86,7 +84,7 @@ jobs:
         run: |
           set -euo pipefail
           cd instructor
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '19ea30fa936fe2218cef4265f05211dc5358d1e8'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '9f12d7581e07752a53e3b3acd2d5c45ad7d87fa7'
           timeout --signal=TERM --kill-after=10s 900s \
             bash scripts/p2_no_goal_smoke_ci.sh || {
             echo 'AXIA_G07_CI_MOVING_GOAL_REAL_GAZEBO_BLOCKED'
