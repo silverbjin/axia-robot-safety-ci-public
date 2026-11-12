@@ -1,0 +1,78 @@
+name: AXIA G07 real Jazzy Harmonic Nav2 orderly NO-GOAL shutdown L2 (PUBLIC)
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-g07-ordered-nav2-shutdown-real-l2.yml']
+permissions:
+  contents: read
+concurrency:
+  group: axia-g07-ordered-shutdown-real-l2
+  cancel-in-progress: false
+jobs:
+  native-navigation-cm-shutdown:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    environment: axia-instructor-sealed
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+      options: --dns 1.1.1.1 --dns 8.8.8.8
+    steps:
+      - name: Exact private Instructor source on ephemeral PUBLIC CI runtime
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 61fb729cddd098d97e3f59d1f8f3452f3a5d71a0
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Verify scoped source and runtime no Goal before test
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '61fb729cddd098d97e3f59d1f8f3452f3a5d71a0'
+          test "$ROS_DISTRO" = jazzy
+          python3 -m py_compile tools/p2_g07_ordered_shutdown.py tools/p2_g07_owner_shutdown_audit.py
+          bash -n scripts/p2_no_goal_smoke_ci.sh
+          echo G07_ORDERED_SHUTDOWN_PRETEST_SOURCE_AND_SYNTAX_PASS_NO_GOAL
+      - name: Real official Jazzy Nav2 Collision Monitor orderly shutdown and native exit
+        shell: bash
+        env:
+          ROS_DOMAIN_ID: '88'
+          ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+          GZ_PARTITION: axia_p2_shutdown_88
+          AXIA_P0_SIM_ONLY: '1'
+          AXIA_P2_G07_PHYSICAL_PREFLIGHT: '1'
+          AXIA_G07_SHUTDOWN_L2_ONLY: '1'
+          AXIA_P2_SMOKE_RESULTS: results/p2-g07-shutdown-real-l2
+        run: |
+          set -Eeuo pipefail
+          timeout --signal=TERM --kill-after=10s 780s bash scripts/p2_no_goal_smoke_ci.sh || {
+            echo G07_ORDERED_SHUTDOWN_REAL_L2_BLOCKED
+            for f in results/p2-g07-shutdown-real-l2/{staged_startup,launch,g07_ordered_shutdown}.log; do
+              if [[ -f "$f" ]];then echo "--- $(basename "$f") ---";tail -n 90 "$f";fi
+            done
+            exit 2
+          }
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('results/p2-g07-shutdown-real-l2')
+          startup=json.loads((root/'startup_verdict.json').read_text())
+          nav=json.loads((root/'g07_ordered_shutdown.json').read_text())
+          audit=json.loads((root/'g07_shutdown_audit.json').read_text())
+          assert startup['status']=='SMOKE_READY'
+          assert startup['goal_sent'] is False and startup['fault_injected'] is False
+          assert nav['status']=='NAV2_LIFECYCLE_SHUTDOWN_ACK'
+          assert nav['cm_managed_by_navigation'] is True
+          assert nav['navigation_ack'] is True and nav['localization_ack'] is True
+          assert audit['status']=='SHUTDOWN_CLEAN_CANDIDATE'
+          assert audit['cm_exit_code']==0
+          assert audit['owner_l3_accepted'] is False and audit['certified_estop'] is False
+          teardown=(root/'teardown.txt').read_text()
+          assert 'P2_L2_GRACEFUL_TEARDOWN' in teardown
+          assert 'FORCED' not in teardown
+          print('AXIA_G07_REAL_NAV2_CM_LIFECYCLE_AND_NATIVE_PROCESS_CLEAN_L2_PASS_NO_GOAL_OWNER_L3_NOT_RUN')
+          PY
+      - name: Destroy private Instructor source and real Gazebo evidence
+        if: always()
+        shell: bash
+        run: rm -rf -- .git ros2_ws tests tools scripts configs docs training results
