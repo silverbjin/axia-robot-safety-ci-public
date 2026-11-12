@@ -110,6 +110,6 @@ def test_image_runs_absolute_instructor_script_from_arbitrary_cwd(tmp_path):
              "PYTHONPATH": str(lib)},
     )
     assert r.returncode == 0, r.stdout + r.stderr
-    assert "D04_IMAGE_SCRIPT_PASS_LEVEL=STUB_PUBLIC_CONTRACT" in r.stdout
+    assert "D04_IMAGE_SCRIPT_DISPATCH_OK" in r.stdout
     assert (out / "detections.csv").exists()
     assert (out / "run_manifest.json").exists()
