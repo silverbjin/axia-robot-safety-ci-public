@@ -43,7 +43,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 6a52fc57953cfd7042ea611f45f81e4c8c18fc9b
+          ref: 946a8af8cc5785576367f126809db92f195c15da
           persist-credentials: false
       - uses: actions/setup-python@v5
         with:
@@ -53,6 +53,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          test -f block_B/day04/D04_STUDENT_LAB_GUIDE_KO.md
+          grep -q 'No module named' block_B/day04/D04_STUDENT_LAB_GUIDE_KO.md
           python -m pytest -q block_B/tests/test_fixture_io.py
           set +e
           python -m pytest -q block_B/tests/test_block_b_public.py \
@@ -79,7 +81,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 3c824c84be787fdaf21dc1f213a51a8bdc733b9a
+          ref: d68a6c03137dab315ee95759cb259e9b469ca559
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -90,6 +92,10 @@ jobs:
       - name: Run ACTUAL private instructor reference and hidden L0 tests
         run: |
           set -euo pipefail
+          test -f instructor/training/block_B/instructor/D04_DEMO_GUIDE_KO.md
+          test -f instructor/training/block_B/instructor/D04_SOLUTION_GUIDE_KO.md
+          test -f instructor/training/block_B/instructor/D04_LECTURE_SCRIPT_32SLIDES_KO.md
+          grep -q 'D04_IMAGE_PREFLIGHT_BLOCKED' instructor/training/block_B/instructor/D04_DEMO_GUIDE_KO.md
           python -m pytest -q \
             instructor/training/block_B/tests/test_block_b_reference.py \
             instructor/training/block_B/instructor/hidden_tests/test_block_b_hidden.py
