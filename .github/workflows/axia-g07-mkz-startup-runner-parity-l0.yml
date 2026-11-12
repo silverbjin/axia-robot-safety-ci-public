@@ -18,14 +18,14 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 2101b790fb6f0c205dc270ff071e41895fef32af
+          ref: 6099ed78c4b7079c60c447cb03ccb3817a99c7a4
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Regress exact first NAVIGATION_START failure using 95s sanitized fixture
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git rev-parse HEAD)" = 2101b790fb6f0c205dc270ff071e41895fef32af
+          test "$(git rev-parse HEAD)" = 6099ed78c4b7079c60c447cb03ccb3817a99c7a4
           python3 -m pip install -q --disable-pip-version-check pytest==8.3.5
           python3 -m pytest -q -ra \
             tests/unit/test_p2_g07_owner_mkz_startup_runner_parity_20261112.py \
