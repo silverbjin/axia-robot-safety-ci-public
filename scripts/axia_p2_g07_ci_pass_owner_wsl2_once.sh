@@ -1,16 +1,17 @@
 #!/usr/bin/env bash
 # AXIA G07 Owner WSL2 final acceptance bootstrap; SIMULATION ONLY.
-# Public Jazzy/Harmonic/Nav2 Owner-observer parity real Goal L2 #43072749608 PASS.
+# Exact public real Jazzy/Harmonic/Nav2 moving Goal + orderly shutdown L2 #43250221111 PASS.
 # Instructor source SHA pinned byte-for-byte. Owner L3 NOT RUN here.
 # Never auto-answer any Owner TTY consent. No hardware E-Stop certification.
 set -Eeuo pipefail
 umask 077
 readonly PRIVATE_REPO='silverbjin/axia-robot-safety-instructor'
-readonly PRIVATE_SHA='cc92327d1ae4a17d331d06e845437760ca2bdafe'
-readonly CI_L2_RUN='43072749608'
+readonly PRIVATE_SHA='6099ed78c4b7079c60c447cb03ccb3817a99c7a4'
+readonly CI_L2_RUN='43250221111'
+readonly CI_L2_SCOPE='SHARED_STARTUP_GOAL_SHUTDOWN_CM_EXIT0'
 if [[ "${1:-}" == '--self-check' ]]; then
   [[ $# -eq 1 && "$PRIVATE_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 2
-  printf 'AXIA_G07_CI_PASS_OWNER_BOOTSTRAP_STATIC_PASS private_sha=%s ci_l2=%s OWNER_L3_NOT_RUN\n' "$PRIVATE_SHA" "$CI_L2_RUN"
+  printf 'AXIA_G07_CI_PASS_OWNER_BOOTSTRAP_STATIC_PASS private_sha=%s ci_l2=%s scope=%s OWNER_L3_NOT_RUN\n' "$PRIVATE_SHA" "$CI_L2_RUN" "$CI_L2_SCOPE"
   exit 0
 fi
 [[ $# -eq 0 ]] || { echo 'AXIA_G07_OWNER_BLOCKED: no arguments supported' >&2; exit 2; }
@@ -52,14 +53,18 @@ readonly ACTUAL="$(git -C "$WORK/instructor" rev-parse HEAD)"
   exit 2
 }
 for f in scripts/p2_owner_l3_wsl2.sh tools/p2_g07_owner_env_parity.py \
-         tools/p2_g07_ci_moving_goal.py; do
+         scripts/p2_g07_shared_staged_startup.sh \
+         tools/p2_g07_lifecycle_service.py \
+         tools/p2_g07_ci_moving_goal.py \
+         tools/p2_g07_ordered_shutdown.py \
+         tools/p2_g07_owner_shutdown_audit.py; do
   [[ -f "$WORK/instructor/$f" ]] || {
     echo "AXIA_G07_OWNER_BLOCKED: pinned source missing $f; NO_GOAL" >&2
     exit 2
   }
 done
 export AXIA_P2_OWNER_PINNED_SHA="$PRIVATE_SHA"
-printf 'AXIA_G07_OWNER_PIN_VERIFIED private_sha=%s ci_l2=%s\n' "$PRIVATE_SHA" "$CI_L2_RUN"
+printf 'AXIA_G07_OWNER_PIN_VERIFIED private_sha=%s ci_l2=%s scope=%s\n' "$PRIVATE_SHA" "$CI_L2_RUN" "$CI_L2_SCOPE"
 echo 'SIMULATION ONLY. Public CI L2 PASS != WSL2 Owner L3 acceptance.'
 echo 'The separate private Owner harness requires manual YES-P2-G07-GOAL.'
 echo 'Never run a physical robot from this script. SW Stop != certified E-Stop.'
