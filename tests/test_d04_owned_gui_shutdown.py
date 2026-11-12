@@ -216,3 +216,6 @@ def test_real_gate_binds_gazebo_gui_disappearance_to_shutdown():
     assert "wait_for_gui_hold(" in gate
     assert "GAZEBO_GUI_EXITED_OR_RESTARTED" in gate
     assert gate.index("wait_for_gui_hold(") < gate.index("stop_owned(proc, verdict)")
+    assert "signal.signal(signal.SIGINT, _owner_stop)" in gate
+    assert "signal.signal(signal.SIGTERM, _owner_stop)" in gate
+    assert "BLOCKED_OWNER_INTERRUPTED" in gate
