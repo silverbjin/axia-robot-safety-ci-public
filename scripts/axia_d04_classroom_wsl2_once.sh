@@ -88,9 +88,9 @@ fetch_rviz_asset() {
 if fetch_rviz_asset "scripts/axia_d04_rviz_observer.sh" "$RVIZ_TMP/launcher.sh" &&
    fetch_rviz_asset "scripts/d04_rviz_hold_observer.py" "$RVIZ_TMP/observer.py" &&
    fetch_rviz_asset "rviz/axia_d04_robot_state.rviz" "$RVIZ_TMP/axia_d04_robot_state.rviz"; then
-  bash -n "$RVIZ_TMP/launcher.sh"
-  python3 -m py_compile "$RVIZ_TMP/observer.py"
-  if bash "$RVIZ_TMP/launcher.sh" --install "$RVIZ_TMP/axia_d04_robot_state.rviz"; then
+  if bash -n "$RVIZ_TMP/launcher.sh" &&
+     python3 -m py_compile "$RVIZ_TMP/observer.py" &&
+     bash "$RVIZ_TMP/launcher.sh" --install "$RVIZ_TMP/axia_d04_robot_state.rviz"; then
     RVIZ_READY=1
     echo "D04_RVIZ_CONFIG_READY: saved .rviz + one-click shortcut"
   else
@@ -100,7 +100,6 @@ else
   echo "D04_RVIZ_DOWNLOAD_BLOCKED: Owner demo remains independently available"
 fi
 
-TMP="$(mktemp)"
 URL="https://raw.githubusercontent.com/$ORIGIN/$PIN/$RUNNER"
 curl -fsSL --retry 3 --connect-timeout 15 "$URL" -o "$TMP"
 bash -n "$TMP"
