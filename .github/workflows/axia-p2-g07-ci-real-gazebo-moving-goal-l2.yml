@@ -1,7 +1,7 @@
-# Dynamic TF late subscriber missing map after staging, even with canonical base_link.
-# Same readiness-proven official Nav2 AMCL /amcl_pose TRANSIENT_LOCAL as
-# actual G07 map pose; no synthetic TF or odom/map fallback.
-# Public AMCL-contract RED #43247967776 -> GREEN #43248752446 (36 PASS).
+# Same G07 CI/Owner stage, same shared real moving Goal and official shutdown.
+# Exact source moving L2 #43248929215 PASS before post-goal shutdown parity.
+# Public L0 shutdown parity RED #43249687405 -> GREEN #43250035610.
+# This run verifies actual CM native exit 0 AFTER the same moving Goal.
 name: AXIA G07 CI-only actual Harmonic Nav2 MOVING Goal CLEAR SLOW STOP
 on:
   push:
@@ -31,7 +31,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 57252d61dd6c3f78e30db5e1f61c566bc2669ffd
+          ref: 6099ed78c4b7079c60c447cb03ccb3817a99c7a4
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -39,7 +39,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '57252d61dd6c3f78e30db5e1f61c566bc2669ffd'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '6099ed78c4b7079c60c447cb03ccb3817a99c7a4'
           test "$ROS_DISTRO" = jazzy
           cd instructor
           mkdir -p results/p2-g07-ci-moving
@@ -82,7 +82,7 @@ jobs:
         run: |
           set -euo pipefail
           cd instructor
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '57252d61dd6c3f78e30db5e1f61c566bc2669ffd'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '6099ed78c4b7079c60c447cb03ccb3817a99c7a4'
           timeout --signal=TERM --kill-after=10s 900s \
             bash scripts/p2_no_goal_smoke_ci.sh || {
             echo 'AXIA_G07_CI_MOVING_GOAL_REAL_GAZEBO_BLOCKED'
@@ -114,6 +114,17 @@ jobs:
           assert data['owner_observer_parity_survived_15s'] is True
           print('AXIA_G07_CI_OWNER_OBSERVER_PARITY_L2_VALIDATED_2_WORKERS_NO_SIGSEGV')
           assert data['certified_estop'] is False and data['gate_accepted'] is False
+          # Same official ordered shutdown and native CM exit audit as Owner.
+          # These are actual POST-GOAL processes, not a separate NO-GOAL run.
+          teardown=json.loads((root/'g07_ordered_shutdown.json').read_text())
+          cm_audit=json.loads((root/'g07_shutdown_audit.json').read_text())
+          assert teardown['status']=='NAV2_LIFECYCLE_SHUTDOWN_ACK'
+          assert teardown['cm_managed_by_navigation'] is True
+          assert teardown['navigation_ack'] and teardown['localization_ack']
+          assert cm_audit['status']=='SHUTDOWN_CLEAN_CANDIDATE'
+          assert cm_audit['cm_exit_code']==0
+          assert 'P2_L2_GRACEFUL_TEARDOWN' in (root/'teardown.txt').read_text()
+          print('AXIA_G07_REAL_POST_GOAL_OWNER_IDENTICAL_NAV2_SHUTDOWN_CM_EXIT0_PASS')
           assert data['owner_l3_accepted'] is False
           print('AXIA_G07_CI_REAL_HARMONIC_NAV2_MOVING_GOAL_CLEAR_SLOW_STOP_L2_PASS_OWNER_L3_NOT_RUN')
           PY
