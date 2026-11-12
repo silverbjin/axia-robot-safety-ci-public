@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 import signal
 import subprocess
+import threading
 import sys
 import time
 
@@ -132,3 +133,86 @@ def test_shutdown_module_is_pure_stdlib_and_read_only():
     assert "signal.SIGKILL" in script
     for forbidden in ("ros2 topic pub", "ros2 action send_goal", "psutil.Process().kill", "pkill -f", "killall"):
         assert forbidden not in script
+
+
+def test_other_process_group_in_same_owned_session_is_stopped(tmp_path):
+    """ROS child may change its PGID but remains in D04 launch session."""
+    from d04_owned_gui_shutdown import stop_owned
+    child = tmp_path / "fake_yolo_other_pgid.py"
+    child.write_text("import time\nwhile True: time.sleep(0.2)\n")
+    parent = subprocess.Popen(
+        [sys.executable, "-c",
+         "import subprocess,sys;"
+         "c=subprocess.Popen([sys.executable,sys.argv[1]],"
+         "stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,"
+         "stderr=subprocess.DEVNULL,process_group=0);"
+         "print(c.pid,flush=True)", str(child)],
+        start_new_session=True, stdout=subprocess.PIPE, text=True,
+    )
+    pid = int(parent.stdout.readline())
+    parent.wait(timeout=5)
+    assert os.getpgid(pid) == pid
+    assert os.getsid(pid) == parent.pid
+    try:
+        evidence = {}
+        stop_owned([("package_launch", parent)], evidence,
+                   interrupt_timeout=0.4, terminate_timeout=0.4)
+        assert not _alive(pid), "DIFFERENT_PGID_GUI_LEFT_ALIVE"
+        assert evidence["shutdown_group_audit"]["package_launch"]["residual_count"] == 0
+    finally:
+        _force_clean(parent.pid)
+        try:
+            os.kill(pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+
+
+def test_closing_first_gazebo_gui_ends_hold_early(tmp_path):
+    from d04_owned_gui_shutdown import wait_for_gui_hold
+    # The process name is matched from owned /proc cmdline, not system-wide.
+    parent, gui = _create_orphan_within_owned_session(tmp_path)
+    gui_path = tmp_path / "fake_yolo_image_view.py"
+    gazebo_path = tmp_path / "mock_gz-sim-gui.py"
+    gazebo_path.write_bytes(gui_path.read_bytes())
+    another = subprocess.Popen(
+        [sys.executable, str(gazebo_path)],
+        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        # Use parent's existing session via a small fork from test subprocess
+        # instead of injecting a GUI into unrelated user's process group.
+    )
+    # Separate session would be correctly ignored. For deterministic test,
+    # spawn gazebo named process via an owned session leader.
+    another.terminate()
+    another.wait(timeout=3)
+    _force_clean(parent.pid)
+    leader = subprocess.Popen(
+        [sys.executable, "-c",
+         "import subprocess,sys,time;"
+         "c=subprocess.Popen([sys.executable,sys.argv[1]],"
+         "stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,"
+         "stderr=subprocess.DEVNULL);print(c.pid,flush=True);"
+         "time.sleep(3)",
+         str(gazebo_path)],
+        start_new_session=True, stdout=subprocess.PIPE, text=True,
+    )
+    gui_pid = int(leader.stdout.readline())
+    assert _alive(gui_pid)
+    try:
+        timer = threading.Timer(0.4, lambda: os.kill(gui_pid, signal.SIGTERM))
+        timer.start()
+        started = time.monotonic()
+        result = wait_for_gui_hold(leader.pid, 4, poll_interval=0.05)
+        assert result["reason"] == "GAZEBO_GUI_EXITED_OR_RESTARTED", result
+        assert result["observed_gazebo_gui"] is True
+        assert time.monotonic() - started < 2.5
+        timer.join(timeout=2)
+    finally:
+        _force_clean(leader.pid)
+
+
+def test_real_gate_binds_gazebo_gui_disappearance_to_shutdown():
+    gate = GATE.read_text()
+    assert "wait_for_gui_hold(" in gate
+    assert "GAZEBO_GUI_EXITED_OR_RESTARTED" in gate
+    assert gate.index("wait_for_gui_hold(") < gate.index("stop_owned(proc, verdict)")
