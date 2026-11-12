@@ -1,3 +1,6 @@
+# Same G07 staging runner as WSL2 Owner: scripts/p2_g07_shared_staged_startup.sh.
+# Same native Lifecycle client and temporary 10Hz official Waffle SDF.
+# Display backend remains CI offscreen, not WSLg GUI. NO GOAL in this L2.
 name: AXIA G07 real Jazzy Harmonic Nav2 orderly NO-GOAL shutdown L2 (PUBLIC)
 on:
   push:
@@ -21,16 +24,17 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 21d658fac03396c9f30798237a820e187ecb447c
+          ref: 754964c6b0706d20344b62dfe78d95fa5aed38ba
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Verify scoped source and runtime no Goal before test
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '21d658fac03396c9f30798237a820e187ecb447c'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '754964c6b0706d20344b62dfe78d95fa5aed38ba'
           test "$ROS_DISTRO" = jazzy
-          python3 -m py_compile tools/p2_g07_ordered_shutdown.py tools/p2_g07_owner_shutdown_audit.py
+          python3 -m py_compile tools/p2_g07_ordered_shutdown.py tools/p2_g07_owner_shutdown_audit.py tools/p2_g07_lifecycle_service.py tools/p2_staged_no_goal.py
+          bash -n scripts/p2_g07_shared_staged_startup.sh
           bash -n scripts/p2_no_goal_smoke_ci.sh
           echo G07_ORDERED_SHUTDOWN_PRETEST_SOURCE_AND_SYNTAX_PASS_NO_GOAL
       - name: Real official Jazzy Nav2 Collision Monitor orderly shutdown and native exit
@@ -42,6 +46,7 @@ jobs:
           AXIA_P0_SIM_ONLY: '1'
           AXIA_P2_G07_PHYSICAL_PREFLIGHT: '1'
           AXIA_G07_SHUTDOWN_L2_ONLY: '1'
+          AXIA_G07_OWNER_STARTUP_PARITY: '1'
           AXIA_P2_SMOKE_RESULTS: results/p2-g07-shutdown-real-l2
         run: |
           set -Eeuo pipefail
@@ -57,6 +62,15 @@ jobs:
           from pathlib import Path
           root=Path('results/p2-g07-shutdown-real-l2')
           startup=json.loads((root/'startup_verdict.json').read_text())
+          # The exact same staged startup script and native lifecycle caller
+          # run in public CI and Owner WSL2. The only renderer change is WSLg.
+          assert (root/'g07_demo_waffle_manifest.json').exists()
+          for gate in ('localization_start','navigation_start'):
+            ack=json.loads((root/('startup_verdict.'+gate+'.native.json')).read_text())
+            assert ack['status']=='ACK',ack
+            assert ack['command']=='startup' and ack['success'] is True
+            assert ack['goal_sent'] is False
+          print('AXIA_G07_CI_OWNER_IDENTICAL_NATIVE_STAGE_AND_10HZ_PROFILE_L2_PASS_WSLG_NOT_TESTED')
           nav=json.loads((root/'g07_ordered_shutdown.json').read_text())
           audit=json.loads((root/'g07_shutdown_audit.json').read_text())
           assert startup['status']=='SMOKE_READY'
