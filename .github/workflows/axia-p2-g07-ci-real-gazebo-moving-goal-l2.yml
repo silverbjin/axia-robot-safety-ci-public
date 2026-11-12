@@ -1,10 +1,8 @@
-# G07 CI-only REAL Jazzy/Harmonic/Nav2 simulated Goal. NOT Owner L3.
-# Original successful source #43149852597 is preserved, not overwritten.
-# Current Owner tYWDqbSM: first true NORMAL reversal latch and earlier scan/CM
-# observation gaps promoted to public L0 RED #43185235958/#43185692755
-# -> GREEN #43185400582/#43185892156, 198 tests.
-# Exact new source: 9f12d7581e07752a53e3b3acd2d5c45ad7d87fa7. No TTL or STOP oracle changes.
-# Actual L2 must independently pass before WSL2 wrapper can be repinned.
+# Exact G07 common staged runner and native lifecycle client with Owner WSL2.
+# Source includes only scoped startup parity fix; moving Goal and safety TTL unchanged.
+# Old actual moving L2 #43186070186 from source 9f12d758 is preserved.
+# New actual NO-GOAL shared startup/teardown L2 #43241421238 PASS.
+# CI offscreen renderer != WSLg GPU/scheduler; Owner L3 still NOT RUN.
 name: AXIA G07 CI-only actual Harmonic Nav2 MOVING Goal CLEAR SLOW STOP
 on:
   push:
@@ -34,7 +32,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 9f12d7581e07752a53e3b3acd2d5c45ad7d87fa7
+          ref: 754964c6b0706d20344b62dfe78d95fa5aed38ba
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -42,7 +40,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '9f12d7581e07752a53e3b3acd2d5c45ad7d87fa7'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '754964c6b0706d20344b62dfe78d95fa5aed38ba'
           test "$ROS_DISTRO" = jazzy
           cd instructor
           mkdir -p results/p2-g07-ci-moving
@@ -67,7 +65,7 @@ jobs:
         run: |
           set -euo pipefail
           cd instructor
-          python3 -m py_compile tools/p2_g07_ci_moving_goal.py tools/p2_g07_ci_moving_goal_oracle.py
+          python3 -m py_compile tools/p2_g07_ci_moving_goal.py tools/p2_g07_ci_moving_goal_oracle.py tools/p2_g07_lifecycle_service.py tools/p2_staged_no_goal.py
           bash -n scripts/p2_no_goal_smoke_ci.sh
           echo 'AXIA_G07_CI_MOVING_GOAL_RUNNER_STATIC_PASS_L0_VERIFIED_SEPARATELY'
       - name: Real Harmonic official TB3 Waffle and Nav2 ONE bounded simulation Goal
@@ -80,11 +78,12 @@ jobs:
           AXIA_P2_G07_PHYSICAL_PREFLIGHT: '1'
           AXIA_G07_CI_SIM_GOAL_ALLOWED: '1'
           AXIA_G07_CI_OWNER_OBSERVER_PARITY: '1'
+          AXIA_G07_OWNER_STARTUP_PARITY: '1'
           AXIA_P2_SMOKE_RESULTS: results/p2-g07-ci-moving/real-l2
         run: |
           set -euo pipefail
           cd instructor
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '9f12d7581e07752a53e3b3acd2d5c45ad7d87fa7'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '754964c6b0706d20344b62dfe78d95fa5aed38ba'
           timeout --signal=TERM --kill-after=10s 900s \
             bash scripts/p2_no_goal_smoke_ci.sh || {
             echo 'AXIA_G07_CI_MOVING_GOAL_REAL_GAZEBO_BLOCKED'
@@ -101,6 +100,12 @@ jobs:
           preg=json.loads((root/'g07_ci_pregoal/owner_pregoal_l2.json').read_text())
           data=json.loads((root/'g07_ci_moving/ci_moving_goal_result.json').read_text())
           assert startup['status']=='SMOKE_READY' and startup['goal_sent'] is False
+          assert (root/'g07_demo_waffle_manifest.json').exists()
+          for gate in ('localization_start','navigation_start'):
+            native=json.loads((root/('startup_verdict.'+gate+'.native.json')).read_text())
+            assert native['status']=='ACK' and native['success'] is True
+            assert native['goal_sent'] is False and native['command']=='startup'
+          print('AXIA_G07_SHARED_CI_OWNER_STAGED_NATIVE_STARTUP_L2_ACK_PASS')
           assert preg['status']=='P2_G07_OWNER_PREGOAL_L2_READY_NO_GOAL'
           assert data['status']=='CI_GAZEBO_MOVING_GOAL_CANDIDATE'
           assert data['goal_sent'] is True and data['goal_status_executing'] is True
