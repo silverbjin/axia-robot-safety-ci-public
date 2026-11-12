@@ -54,8 +54,8 @@ readonly ACTUAL="$(git -C "$WORK/instructor" rev-parse HEAD)"
   exit 2
 }
 for f in scripts/p2_owner_l3_wsl2.sh tools/p2_g07_owner_env_parity.py \
-         tools/p2_g07_ci_moving_goal.py \\
-         tools/p2_g07_ordered_shutdown.py \\
+         tools/p2_g07_ci_moving_goal.py \
+         tools/p2_g07_ordered_shutdown.py \
          tools/p2_g07_owner_shutdown_audit.py; do
   [[ -f "$WORK/instructor/$f" ]] || {
     echo "AXIA_G07_OWNER_BLOCKED: pinned source missing $f; NO_GOAL" >&2
