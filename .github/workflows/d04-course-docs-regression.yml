@@ -142,3 +142,50 @@ jobs:
           python3 -c 'from yolo_msgs.msg import DetectionArray; print("D04_PUBLIC_JAZZY_PYTHON_IMPORT_OK")'
           echo "D04_PUBLIC_JAZZY_REAL_YOLO_MSGS_INTERFACE_PASS"
           echo "D04_PUBLIC_ROS_L1_ONLY NO_GAZEBO NO_NAV2_GOAL NO_CM_TTL"
+
+
+  public-jazzy-rviz2-config-load:
+    # Runs actual upstream Jazzy RViz2 in a virtual X display. This verifies
+    # the saved configuration/plugin loader, NOT real WSLg or live Gazebo.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 17
+    container:
+      image: ros:jazzy-ros-base-noble
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install official Jazzy RViz2 and virtual display
+        shell: bash
+        run: |
+          set -eo pipefail
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+            ros-jazzy-rviz2 xvfb xauth dbus-x11
+      - name: Load actual .rviz config without robot or private sources
+        shell: bash
+        run: |
+          set -eo pipefail
+          source /opt/ros/jazzy/setup.bash
+          export LIBGL_ALWAYS_SOFTWARE=1
+          export QT_XCB_GL_INTEGRATION=none
+          export QT_LOGGING_RULES='*.debug=false'
+          LOG="$RUNNER_TEMP/d04-rviz2-headless.log"
+          set +e
+          xvfb-run -a -s '-screen 0 1530x900x24' \
+            timeout --signal=TERM --kill-after=5s 18s \
+              rviz2 -d "$GITHUB_WORKSPACE/rviz/axia_d04_robot_state.rviz" \
+              --ros-args -p use_sim_time:=true > "$LOG" 2>&1
+          RC=$?
+          set -e
+          tail -n 60 "$LOG"
+          if [[ "$RC" -ne 124 ]]; then
+            echo "D04_RVIZ_CONFIG_LOAD_UNVERIFIED rc=$RC"; exit 1
+          fi
+          if grep -Eiq 'Failed to load display|Error loading.*config|Class .*not found|Could not load library|Failed to create an OpenGL' "$LOG"; then
+            echo 'D04_RVIZ_CONFIG_PLUGIN_LOAD_FAILED'; exit 1
+          fi
+          if ! grep -Eiq 'OpenGl version|Stereo is NOT SUPPORTED|Loading display config' "$LOG"; then
+            echo 'D04_RVIZ_STARTUP_EVIDENCE_MISSING'; exit 1
+          fi
+          echo 'D04_PUBLIC_JAZZY_RVIZ2_CONFIG_LOAD_PASS HEADLESS_XVFB_NO_ROS_TOPICS'
