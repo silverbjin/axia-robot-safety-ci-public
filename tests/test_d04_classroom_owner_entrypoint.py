@@ -10,7 +10,7 @@ import subprocess
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "axia_d04_classroom_wsl2_once.sh"
 UPSTREAM = ROOT / "scripts" / "axia_d04_ros_package_wsl2_once.sh"
-PIN = "c775820077917c4da56c6aa60001b224071664b3"
+PIN = "3668250ac14680b0ea81a67063938374a8c6820f"
 UPSTREAM_GIT_BLOB = "f999dbf0db9f9786c7e802403883191a94a15c83"
 
 
