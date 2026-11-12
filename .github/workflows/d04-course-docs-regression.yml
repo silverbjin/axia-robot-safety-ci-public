@@ -11,6 +11,8 @@ on:
       - 'scripts/axia_d04_classroom_wsl2_once.sh'
       - 'tests/test_d04_classroom_owner_entrypoint.py'
       - 'tests/test_d04_postrun_topic_evidence.py'
+      - 'tests/test_d04_cli_overlay_regression.py'
+      - 'scripts/axia_d04_ros_cli_diagnose.sh'
       - 'scripts/d04_classroom_read_evidence.py'
   workflow_dispatch:
   pull_request:
@@ -21,6 +23,8 @@ on:
       - 'scripts/axia_d04_classroom_wsl2_once.sh'
       - 'tests/test_d04_classroom_owner_entrypoint.py'
       - 'tests/test_d04_postrun_topic_evidence.py'
+      - 'tests/test_d04_cli_overlay_regression.py'
+      - 'scripts/axia_d04_ros_cli_diagnose.sh'
       - 'scripts/d04_classroom_read_evidence.py'
 
 permissions:
@@ -42,7 +46,7 @@ jobs:
       - name: RED/GREEN user field error regression
         run: |
           set -euo pipefail
-          python -m pytest -q -ra tests/test_d04_course_field_preflight.py tests/test_d04_classroom_owner_entrypoint.py tests/test_d04_postrun_topic_evidence.py
+          python -m pytest -q -ra tests/test_d04_course_field_preflight.py tests/test_d04_classroom_owner_entrypoint.py tests/test_d04_postrun_topic_evidence.py tests/test_d04_cli_overlay_regression.py
 
   public-student-document-command:
     runs-on: ubuntu-24.04
