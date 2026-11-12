@@ -20,7 +20,9 @@ def source(name):
 def test_graceful_shutdown_service_before_process_group_sigint():
     t=source("d04_packaged_p1_yolo_gate.py")
     assert "request_nav2_shutdown" in t
-    assert t.index("request_nav2_shutdown(") < t.index("_stop_all(proc, verdict)")
+    assert t.index("request_nav2_shutdown(") < t.index("stop_owned(proc, verdict)")
+    assert "shutdown_group_audit" in t
+    assert "BLOCKED_RESIDUAL_GUI_PROCESSES" in t
     assert '"shutdown_quality": "NOT_EVALUATED"' in t
 
 

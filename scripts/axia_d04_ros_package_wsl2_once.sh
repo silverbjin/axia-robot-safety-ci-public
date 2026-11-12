@@ -229,7 +229,6 @@ print("AXIA_D04_PACKAGED_P1_YOLO_OWNER_REPEAT_PASS",count,"/",count)
 PY
 STATUS="PASS_PACKAGED_P1_YOLO_CLEAN_${REPEAT}X"
 echo "[D04][PASS] Exact P1 command graph, moving real BBox and clean Nav2 shutdown x${REPEAT}"
-if [[ -n "${DISPLAY:-}" && -f "$OUT/round-1/live/debug_frame.png" ]] && command -v xdg-open >/dev/null; then
-  xdg-open "$OUT/round-1/live/debug_frame.png" >/dev/null 2>&1 || true
-fi
+# Do not auto-open a new, unowned image viewer after ROS/Gazebo shutdown.
+# The frozen debug PNG is an evidence artifact, not another live GUI process.
 echo "D04_BBOX_IMAGE=$OUT/round-1/live/debug_frame.png"

@@ -1,0 +1,243 @@
+name: D04 classroom guide WSL2 preflight regression (public CI)
+
+on:
+  push:
+    branches:
+      - 'fix/d04-course-field-preflight-20261112'
+      - 'fix/d04-owned-gui-shutdown-20261112'
+      - 'feat/d04-instructor-single-image-20261112'
+    paths:
+      - '.github/workflows/d04-course-docs-regression.yml'
+      - 'tests/test_d04_course_field_preflight.py'
+      - 'scripts/axia_d04_course_once.sh'
+      - 'scripts/axia_d04_classroom_wsl2_once.sh'
+      - 'tests/test_d04_classroom_owner_entrypoint.py'
+      - 'tests/test_d04_postrun_topic_evidence.py'
+      - 'tests/test_d04_cli_overlay_regression.py'
+      - 'scripts/axia_d04_ros_cli_diagnose.sh'
+      - 'scripts/d04_classroom_read_evidence.py'
+      - 'tests/test_d04_rviz_observer_contract.py'
+      - 'scripts/axia_d04_rviz_observer.sh'
+      - 'scripts/d04_rviz_hold_observer.py'
+      - 'rviz/axia_d04_robot_state.rviz'
+      - 'docs/D04_RVIZ_ROBOT_STATE_GUIDE_KO.md'
+      - 'tests/test_d04_owned_gui_shutdown.py'
+      - 'scripts/d04_owned_gui_shutdown.py'
+      - 'scripts/d04_packaged_p1_yolo_gate.py'
+      - 'scripts/axia_d04_ros_package_wsl2_once.sh'
+      - 'tests/d04_real_image_view_shutdown_public.py'
+      - 'tests/test_d04_instructor_single_image.py'
+      - 'scripts/d04_instructor_single_image_report.py'
+      - 'scripts/axia_d04_instructor_single_image_once.sh'
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/d04-course-docs-regression.yml'
+      - 'tests/test_d04_course_field_preflight.py'
+      - 'scripts/axia_d04_course_once.sh'
+      - 'scripts/axia_d04_classroom_wsl2_once.sh'
+      - 'tests/test_d04_classroom_owner_entrypoint.py'
+      - 'tests/test_d04_postrun_topic_evidence.py'
+      - 'tests/test_d04_cli_overlay_regression.py'
+      - 'scripts/axia_d04_ros_cli_diagnose.sh'
+      - 'scripts/d04_classroom_read_evidence.py'
+      - 'tests/test_d04_rviz_observer_contract.py'
+      - 'scripts/axia_d04_rviz_observer.sh'
+      - 'scripts/d04_rviz_hold_observer.py'
+      - 'rviz/axia_d04_robot_state.rviz'
+      - 'docs/D04_RVIZ_ROBOT_STATE_GUIDE_KO.md'
+      - 'tests/test_d04_owned_gui_shutdown.py'
+      - 'scripts/d04_owned_gui_shutdown.py'
+      - 'scripts/d04_packaged_p1_yolo_gate.py'
+      - 'scripts/axia_d04_ros_package_wsl2_once.sh'
+      - 'tests/d04_real_image_view_shutdown_public.py'
+      - 'tests/test_d04_instructor_single_image.py'
+      - 'scripts/d04_instructor_single_image_report.py'
+      - 'scripts/axia_d04_instructor_single_image_once.sh'
+
+permissions:
+  contents: read
+
+jobs:
+  public-field-regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install minimal regression dependencies (no ROS/YOLO model/PyTorch)
+        run: python -m pip install pytest==8.3.5 PyYAML==6.0.2 Pillow==11.3.0
+      - name: RED/GREEN user field error regression
+        run: |
+          set -euo pipefail
+          python -m pytest -q -ra tests/test_d04_course_field_preflight.py tests/test_d04_classroom_owner_entrypoint.py tests/test_d04_postrun_topic_evidence.py tests/test_d04_cli_overlay_regression.py tests/test_d04_rviz_observer_contract.py tests/test_d04_owned_gui_shutdown.py tests/test_d04_instructor_single_image.py
+
+  public-student-document-command:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: 946a8af8cc5785576367f126809db92f195c15da
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install pytest==8.3.5
+      - name: Execute published D04 student lab fixture commands and EXPECTED RED
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f block_B/day04/D04_STUDENT_LAB_GUIDE_KO.md
+          grep -q 'No module named' block_B/day04/D04_STUDENT_LAB_GUIDE_KO.md
+          python -m pytest -q block_B/tests/test_fixture_io.py
+          set +e
+          python -m pytest -q block_B/tests/test_block_b_public.py \
+            -k 'select_person or confidence or bbox' > /tmp/d04-student-red.log 2>&1
+          RC=$?
+          set -e
+          grep -q 'TODO_D04_SELECT_PERSON' /tmp/d04-student-red.log
+          if [[ "$RC" -eq 0 ]]; then
+            echo "D04_STUDENT_UNEXPECTED_GREEN"; exit 1
+          fi
+          echo "D04_STUDENT_PUBLISHED_TODO_EXPECTED_RED rc=$RC"
+          echo "D04_STUDENT_FIXTURE_ACTUAL_PASS; STUDENT_TODO_GREEN_NOT_CLAIMED"
+
+
+  public-jazzy-real-yolo-msgs-interface:
+    # Real ROS 2 Jazzy interface build in PUBLIC CI. Does not use AXIA private source.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    container:
+      image: ros:jazzy-ros-base-noble
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install minimal official ROS 2 interface build prerequisites
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+            git python3-colcon-common-extensions \
+            ros-jazzy-rosidl-default-generators \
+            ros-jazzy-std-msgs ros-jazzy-geometry-msgs
+      - name: Build exact public yolo_msgs package and prove overlay loading
+        shell: bash
+        run: |
+          set -eo pipefail
+          # ROS Jazzy setup scripts reference unset vars; keep nounset disabled while sourcing.
+          set +u
+          source /opt/ros/jazzy/setup.bash
+          set -u
+          mkdir -p /tmp/d04-real-jazzy-msg/src
+          git clone -q https://github.com/mgonzs13/yolo_ros.git /tmp/d04-real-jazzy-msg/src/yolo_ros
+          git -C /tmp/d04-real-jazzy-msg/src/yolo_ros checkout -q --detach \
+            94d2dd500cb26027ee9c019f4d3a02029ac615cc
+          test "$(git -C /tmp/d04-real-jazzy-msg/src/yolo_ros rev-parse HEAD)" = \
+            94d2dd500cb26027ee9c019f4d3a02029ac615cc
+          cd /tmp/d04-real-jazzy-msg
+          colcon build --merge-install --packages-select yolo_msgs --executor sequential \
+            --event-handlers console_direct+
+          # The field report's diagnosis shell had ONLY base Jazzy sourced.
+          # Before overlay the custom message may be unavailable.
+          if ros2 interface show yolo_msgs/msg/DetectionArray >/dev/null 2>&1; then
+            echo "D04_PUBLIC_BEFORE_OVERLAY_ALREADY_AVAILABLE"
+          else
+            echo "D04_PUBLIC_BEFORE_OVERLAY_CUSTOM_TYPE_MISSING_EXPECTED"
+          fi
+          set +u
+          source install/setup.bash
+          set -u
+          ros2 pkg prefix yolo_msgs
+          ros2 interface show yolo_msgs/msg/DetectionArray | grep -F 'detections'
+          python3 -c 'from yolo_msgs.msg import DetectionArray; print("D04_PUBLIC_JAZZY_PYTHON_IMPORT_OK")'
+          echo "D04_PUBLIC_JAZZY_REAL_YOLO_MSGS_INTERFACE_PASS"
+          echo "D04_PUBLIC_ROS_L1_ONLY NO_GAZEBO NO_NAV2_GOAL NO_CM_TTL"
+
+
+  public-jazzy-rviz2-config-load:
+    # Runs actual upstream Jazzy RViz2 in a virtual X display. This verifies
+    # the saved configuration/plugin loader, NOT real WSLg or live Gazebo.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 17
+    container:
+      image: ros:jazzy-ros-base-noble
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install official Jazzy RViz2 and virtual display
+        shell: bash
+        run: |
+          set -eo pipefail
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+            ros-jazzy-rviz2 xvfb xauth dbus-x11
+      - name: Load actual .rviz config without robot or private sources
+        shell: bash
+        run: |
+          set -eo pipefail
+          source /opt/ros/jazzy/setup.bash
+          export LIBGL_ALWAYS_SOFTWARE=1
+          export QT_XCB_GL_INTEGRATION=none
+          export QT_LOGGING_RULES='*.debug=false'
+          LOG="$RUNNER_TEMP/d04-rviz2-headless.log"
+          set +e
+          xvfb-run -a -s '-screen 0 1530x900x24' \
+            timeout --signal=TERM --kill-after=5s 18s \
+              rviz2 -d "$GITHUB_WORKSPACE/rviz/axia_d04_robot_state.rviz" \
+              --ros-args -p use_sim_time:=true > "$LOG" 2>&1
+          RC=$?
+          set -e
+          tail -n 60 "$LOG"
+          if [[ "$RC" -ne 124 ]]; then
+            echo "D04_RVIZ_CONFIG_LOAD_UNVERIFIED rc=$RC"; exit 1
+          fi
+          if grep -Eiq 'Failed to load display|Error loading.*config|Class .*not found|Could not load library|Failed to create an OpenGL' "$LOG"; then
+            echo 'D04_RVIZ_CONFIG_PLUGIN_LOAD_FAILED'; exit 1
+          fi
+          if ! grep -Eiq 'OpenGl version|Stereo is NOT SUPPORTED|Loading display config' "$LOG"; then
+            echo 'D04_RVIZ_STARTUP_EVIDENCE_MISSING'; exit 1
+          fi
+          echo 'D04_PUBLIC_JAZZY_RVIZ2_CONFIG_LOAD_PASS HEADLESS_XVFB_NO_ROS_TOPICS'
+
+
+  public-jazzy-image-view-owned-shutdown:
+    # Unlike the L0 mocks, this starts the REAL ROS 2 Jazzy image_view GUI
+    # after its launch parent exits, then proves the window does not reappear.
+    # It does NOT run Instructor P1 or claim Gazebo WSLg acceptance.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    container:
+      image: ros:jazzy-ros-base-noble
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install real ROS 2 image viewer and X11 virtual display
+        shell: bash
+        run: |
+          set -eo pipefail
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+            ros-jazzy-image-view ros-jazzy-rclpy ros-jazzy-sensor-msgs \
+            xvfb xauth x11-utils libgl1-mesa-dri
+      - name: Actual ROS2 image_view window closes without respawn after owner shutdown
+        shell: bash
+        run: |
+          set -eo pipefail
+          source /opt/ros/jazzy/setup.bash
+          export ROS_DOMAIN_ID=40
+          export ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
+          export LIBGL_ALWAYS_SOFTWARE=1
+          timeout --signal=TERM --kill-after=10s 100s \
+            xvfb-run -a -s '-screen 0 1280x720x24' \
+            python3 -u tests/d04_real_image_view_shutdown_public.py
+          echo 'D04_PUBLIC_REAL_GUI_SHUTDOWN_L1_PASS NO_PRIVATE_CI'
