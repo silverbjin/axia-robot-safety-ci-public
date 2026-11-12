@@ -1,0 +1,30 @@
+name: AXIA G07 pinned runtime native Gazebo Python transport availability probe
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-g07-runtime-gz-transport-bindings-probe-l0.yml']
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+    steps:
+      - name: Read-only native transport imports and availability; no Goal
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 - <<'PY'
+          import importlib.util,subprocess
+          for mod in ('gz','gz.transport13','gz.msgs10.pose_pb2','gz.msgs10.boolean_pb2'):
+              try: spec=importlib.util.find_spec(mod)
+              except (ModuleNotFoundError,ImportError) as exc:
+                  print('AXIA_G07_RUNTIME_GZ_NATIVE_MODULE_ABSENT',mod,type(exc).__name__)
+              else: print('AXIA_G07_RUNTIME_GZ_NATIVE_MODULE',mod,bool(spec))
+          PY
+          for package in python3-gz-transport13 python3-gz-msgs10; do
+            dpkg-query -W -f='${Package}=${Version}\n' "$package" || true
+          done
+          echo 'AXIA_G07_RUNTIME_TRANSPORT_NATIVE_IMPORT_PROBED_NO_GOAL'
