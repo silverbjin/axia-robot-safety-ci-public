@@ -4,7 +4,7 @@
 Upstream starts ros2 launch with start_new_session=True. Its previous helper
 checked proc.poll() alone: dead parent could leave image_view/Gazebo children
 alive. This audits the OWNED process group even if parent is already gone.
-No process-name pkill, user-wide killall or other ROS sessions.
+No process-name signal filtering or targeting unrelated ROS sessions.
 """
 from __future__ import annotations
 
