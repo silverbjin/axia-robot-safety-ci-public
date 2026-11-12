@@ -103,8 +103,11 @@ jobs:
       - name: Build exact public yolo_msgs package and prove overlay loading
         shell: bash
         run: |
-          set -euo pipefail
+          set -eo pipefail
+          # ROS Jazzy setup scripts reference unset vars; keep nounset disabled while sourcing.
+          set +u
           source /opt/ros/jazzy/setup.bash
+          set -u
           mkdir -p /tmp/d04-real-jazzy-msg/src
           git clone -q https://github.com/mgonzs13/yolo_ros.git /tmp/d04-real-jazzy-msg/src/yolo_ros
           git -C /tmp/d04-real-jazzy-msg/src/yolo_ros checkout -q --detach \
@@ -121,7 +124,9 @@ jobs:
           else
             echo "D04_PUBLIC_BEFORE_OVERLAY_CUSTOM_TYPE_MISSING_EXPECTED"
           fi
+          set +u
           source install/setup.bash
+          set -u
           ros2 pkg prefix yolo_msgs
           ros2 interface show yolo_msgs/msg/DetectionArray | grep -F 'detections'
           python3 -c 'from yolo_msgs.msg import DetectionArray; print("D04_PUBLIC_JAZZY_PYTHON_IMPORT_OK")'
