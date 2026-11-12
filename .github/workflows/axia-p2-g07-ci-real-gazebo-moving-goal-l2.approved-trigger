@@ -1,14 +1,12 @@
-# CI-only real Gazebo Goal. Owner manual TTY remains separate.
-# 10Hz G07-only Waffle SDF temp overlay real L2 #43148778794 PASS
-# (CM 132.079ms, Scan 202.902ms, odom dwell 1.012s) exact prior SHA.
-# Pre-deploy code review uncovered Owner-specific oracle rejecting
-# ci_specific=false even after TTY/PID admission. RED #43149423089:
-# 5 failed / 187 passed; GREEN #43149604697: 192 passed.
-# Final shared owner-authorized SAME physical oracle, no safety gate change.
-private_source_sha=19ea30fa936fe2218cef4265f05211dc5358d1e8
-public_l0_green_run=43149604697
-previous_actual_gazebo_pass=43148778794
+# Exact public CI-only ONE real Gazebo Goal; no WSL2/Owner authority granted.
+# Original successful source real L2 #43149852597 retained.
+# New Owner field CM 30%-matched small reverse and early sensor/CM gaps:
+# L0 RED #43185235958 then GREEN #43185400582
+# L0 diagnostic RED #43185692755 then GREEN #43185892156 (198 PASS)
+private_source_sha=9f12d7581e07752a53e3b3acd2d5c45ad7d87fa7
+public_l0_green_run=43185892156
+previous_actual_gazebo_pass=43149852597
 runtime_digest=sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
-scope=SIM_ONLY_SHARED_G07_REAL_MOVING_10HZ_STOP_ODOM_TTL_OWNER_ORACLE_FINAL
+scope=SIM_ONLY_SHARED_G07_REAL_MOVING_10HZ_STOP_ODOM_TTL_FIRST_GUARD_OWNER_FIELD_FIX
 owner_l3_accepted=false
 certified_estop=false
