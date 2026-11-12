@@ -1,0 +1,38 @@
+name: AXIA G07 pre-Goal map TF first boundary (PUBLIC L0)
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-g07-pregoal-map-tf-l0.yml']
+permissions:
+  contents: read
+concurrency:
+  group: axia-g07-pregoal-map-tf-public-l0
+  cancel-in-progress: false
+jobs:
+  genuine-tf-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: axia-instructor-sealed
+    steps:
+      - name: Pinned Instructor in ephemeral PUBLIC runner
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 8f5195e2d11738bb2a2c240bdc2dd0ee937f7c75
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Test actual first failed pre-Goal TF boundary without ROS or Goal
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = 8f5195e2d11738bb2a2c240bdc2dd0ee937f7c75
+          python3 -m pip install -q --disable-pip-version-check pytest==8.3.5
+          python3 -m pytest -q -ra \
+            tests/unit/test_p2_g07_pregoal_actual_map_tf_wait_20261112.py \
+            tests/unit/test_p2_g07_owner_mkz_startup_runner_parity_20261112.py \
+            tests/unit/test_p2_g07_unified_ci_owner_path.py
+          echo AXIA_G07_PREG0AL_GENUINE_TF_WAIT_PUBLIC_L0_PASS_NO_ROS_NO_GOAL
+      - name: Destroy private source from public runner
+        if: always()
+        shell: bash
+        run: rm -rf -- .git tools tests scripts ros2_ws configs docs training results
