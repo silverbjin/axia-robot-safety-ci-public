@@ -1,0 +1,25 @@
+name: AXIA G07 Owner WSL2 field-fix exact L2 bootstrap (PUBLIC L0 ONLY)
+on:
+  push:
+    branches: [fix/g07-owner-twyd-wsl2-release-20261112]
+    paths:
+      - '.github/workflows/axia-g07-owner-field-fix-bootstrap-l0.yml'
+      - '.github/workflows/axia-p2-g07-ci-pass-owner-bootstrap-static-l0.yml'
+      - 'scripts/axia_p2_g07_ci_pass_owner_wsl2_once.sh'
+      - 'tests/test_g07_owner_field_fix_bootstrap_20261112.py'
+permissions:
+  contents: read
+jobs:
+  static-g07-owner-sim-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Exact source and live-L2 pin; controlling TTY gate; no ROS or Goal
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest discover -s tests -p test_g07_owner_field_fix_bootstrap_20261112.py -v
+          echo AXIA_G07_OWNER_FIELD_FIX_BOOTSTRAP_L0_PASS_NO_ROS_NO_GOAL
