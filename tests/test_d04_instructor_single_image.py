@@ -34,9 +34,10 @@ def test_entry_and_public_student_pinning_contract():
         STUDENT_SHA, "block_B/day04/yolo_single_image_demo.py",
         "block_B/day04/run_teacher_yolo_demo_once.sh",
         "AXIA_D04_STUDENT_PYTHON", "AXIA_D04_STUDENT_CACHE",
-        "AXIA_D04_STUDENT_RESULTS", "D04_SINGLE_IMAGE_REPORT_PASS",
+        "AXIA_D04_STUDENT_RESULTS",
     ):
         assert required in body,required
+    assert "D04_SINGLE_IMAGE_REPORT_PASS" in REPORT.read_text()
     for forbidden in (
         "axia-robot-safety-instructor", "gh auth", "send_goal",
         "pkill ", "killall ", "xdg-open", "ros2 topic pub",
