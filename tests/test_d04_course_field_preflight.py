@@ -63,7 +63,7 @@ def test_image_refuses_unsafe_missing_dependencies_before_execution(tmp_path):
     home = tmp_path / "home"
     home.mkdir()
     r = run(
-        "--image",
+        "--run-image",
         "--instructor", str(home / "instructor"),
         "--model", str(home / "missing.pt"),
         "--image", str(home / "missing.jpg"),
@@ -103,7 +103,7 @@ def test_image_runs_absolute_instructor_script_from_arbitrary_cwd(tmp_path):
     image.write_bytes(b"stub image, not a real photograph")
     out = tmp_path / "results" / "new"
     r = run(
-        "--image", "--instructor", str(teacher),
+        "--run-image", "--instructor", str(teacher),
         "--model", str(model), "--image", str(image), "--out", str(out),
         cwd=home,
         env={"HOME": str(home), "AXIA_D04_PYTHON": sys.executable,
