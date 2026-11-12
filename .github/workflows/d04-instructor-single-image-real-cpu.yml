@@ -1,0 +1,84 @@
+name: D04 instructor public real CPU YOLO image and visual bbox report
+
+on:
+  push:
+    branches: ['feat/d04-instructor-single-image-20261112']
+    paths:
+      - 'scripts/axia_d04_instructor_single_image_once.sh'
+      - 'scripts/d04_instructor_single_image_report.py'
+      - '.github/workflows/d04-instructor-single-image-real-cpu.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  real-public-single-image-cpu:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 28
+    env:
+      OMP_NUM_THREADS: '2'
+      MKL_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Official CPU PyTorch wheels then pinned Ultralytics
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python -m pip install --disable-pip-version-check \
+            --index-url https://download.pytorch.org/whl/cpu torch torchvision
+          python -m pip install --disable-pip-version-check ultralytics==8.4.211
+          python -c 'from ultralytics import YOLO; from PIL import Image; print("D04_INSTRUCTOR_CPU_DEPENDENCIES_READY")'
+      - name: Actual official YOLO26n pt + bus.jpg inference and bbox/class/confidence annotation
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          export AXIA_D04_STUDENT_PYTHON="$(command -v python)"
+          export AXIA_D04_STUDENT_CACHE="$RUNNER_TEMP/d04_single_image_official_cache"
+          export AXIA_D04_INSTRUCTOR_SINGLE_IMAGE_RESULTS="$RUNNER_TEMP/d04_instructor_single_image_results"
+          export YOLO_CONFIG_DIR="$RUNNER_TEMP/d04_ultralytics_config"
+          bash scripts/axia_d04_instructor_single_image_once.sh --self-check
+          bash scripts/axia_d04_instructor_single_image_once.sh --run \
+            | tee "$RUNNER_TEMP/d04-single-image-run.log"
+          grep -q '^D04_SINGLE_IMAGE_REPORT_PASS persons=' "$RUNNER_TEMP/d04-single-image-run.log"
+          grep -q '^D04_SINGLE_IMAGE_BBOX index=1 class=person confidence=' "$RUNNER_TEMP/d04-single-image-run.log"
+          python - <<'PY'
+          import csv, json, os
+          from pathlib import Path
+          from PIL import Image
+          root=Path(os.environ["AXIA_D04_INSTRUCTOR_SINGLE_IMAGE_RESULTS"])
+          runs=list(root.glob("teacher_same_code_*"))
+          assert len(runs)==1, runs
+          run=runs[0]
+          actual=json.loads((run/"bbox_class_confidence.json").read_text())
+          manifest=json.loads((run/"run_manifest.json").read_text())
+          with (run/"detections.csv").open(newline="") as f:
+              csvrows=list(csv.DictReader(f))
+          assert actual["person_count"]>0
+          assert len(csvrows)==actual["person_count"]==manifest["detections"]
+          assert all(row["class"]=="person" and 0 <= row["confidence"] <= 1
+                     and row["bbox_xyxy"][0]<row["bbox_xyxy"][2]
+                     and row["bbox_xyxy"][1]<row["bbox_xyxy"][3]
+                     for row in actual["detections"])
+          with Image.open(run/"bbox_class_confidence.png") as image:
+              image.verify()
+          html=(run/"bbox_class_confidence.html").read_text()
+          assert all(k in html for k in ("bbox_xyxy","class","confidence",
+                                         "bbox_class_confidence.png"))
+          assert actual["source"]=="LOCAL_YOLO_CPU_ONLY"
+          assert actual["ros_gazebo_nav2_safety"]=="NOT_RUN"
+          print(f'D04_PUBLIC_REAL_SINGLE_IMAGE_BBOX_CLASS_CONFIDENCE_PASS persons={actual["person_count"]}')
+          print('D04_PUBLIC_REAL_SINGLE_IMAGE_SCOPE=CPU_ONLY NO_ROS_NO_GAZEBO_NO_GOAL')
+          PY
+      - name: Remove third-party images and weights; do not upload proprietary media
+        if: always()
+        shell: bash
+        run: |
+          rm -rf "$RUNNER_TEMP/d04_single_image_official_cache" \
+                 "$RUNNER_TEMP/d04_instructor_single_image_results" \
+                 "$RUNNER_TEMP/d04_ultralytics_config" || true
