@@ -8,12 +8,16 @@ on:
       - '.github/workflows/d04-course-docs-regression.yml'
       - 'tests/test_d04_course_field_preflight.py'
       - 'scripts/axia_d04_course_once.sh'
+      - 'scripts/axia_d04_classroom_wsl2_once.sh'
+      - 'tests/test_d04_classroom_owner_entrypoint.py'
   workflow_dispatch:
   pull_request:
     paths:
       - '.github/workflows/d04-course-docs-regression.yml'
       - 'tests/test_d04_course_field_preflight.py'
       - 'scripts/axia_d04_course_once.sh'
+      - 'scripts/axia_d04_classroom_wsl2_once.sh'
+      - 'tests/test_d04_classroom_owner_entrypoint.py'
 
 permissions:
   contents: read
@@ -34,7 +38,7 @@ jobs:
       - name: RED/GREEN user field error regression
         run: |
           set -euo pipefail
-          python -m pytest -q -ra tests/test_d04_course_field_preflight.py
+          python -m pytest -q -ra tests/test_d04_course_field_preflight.py tests/test_d04_classroom_owner_entrypoint.py
 
   public-student-document-command:
     runs-on: ubuntu-24.04
