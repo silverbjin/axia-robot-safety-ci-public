@@ -230,7 +230,10 @@ def run(a) -> int:
         sigabrt=bool("exit code -6" in lines or "SIGABRT" in lines)
         if sigabrt:
             verdict["shutdown_quality"]="WARN_SIGABRT"
-        elif verdict.get("shutdown_residual_groups"):
+        elif verdict.get("shutdown_residual_groups") or any(
+            row.get("residual_count", 0) > 0
+            for row in verdict.get("shutdown_group_audit", {}).values()
+        ):
             verdict["shutdown_quality"]="BLOCKED_RESIDUAL_GUI_PROCESSES"
         elif verdict.get("shutdown_orphaned_group_detected"):
             verdict["shutdown_quality"]="BLOCKED_PREMATURE_LAUNCH_EXIT_WITH_ORPHANS"
