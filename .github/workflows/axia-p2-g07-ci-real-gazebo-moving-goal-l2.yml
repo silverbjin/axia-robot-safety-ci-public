@@ -1,6 +1,7 @@
-# Actual pre-Goal TF first failure in public real L2 #43242131339 (no Goal).
-# TF readiness RED #43243118436 -> GREEN #43243360128 (17 PASS).
-# Same shared native startup, same G07 10Hz SDF; no synthetic pose.
+# Persistent true TF failure >10s in real L2 #43243551953.
+# Root boundary: late TF listener registration after executor start.
+# Public L0 early listener RED #43244494113 -> GREEN #43244709111 (19 PASS).
+# Same shared Owner/CI stage and actual TF, no synthetic map fallback.
 name: AXIA G07 CI-only actual Harmonic Nav2 MOVING Goal CLEAR SLOW STOP
 on:
   push:
@@ -30,7 +31,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: a95d56c8fba83d1d00265f7a2ae8f299770f8613
+          ref: c24a7872c6354482966f6689ffe522a5e539b0bb
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -38,7 +39,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 'a95d56c8fba83d1d00265f7a2ae8f299770f8613'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 'c24a7872c6354482966f6689ffe522a5e539b0bb'
           test "$ROS_DISTRO" = jazzy
           cd instructor
           mkdir -p results/p2-g07-ci-moving
@@ -81,7 +82,7 @@ jobs:
         run: |
           set -euo pipefail
           cd instructor
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 'a95d56c8fba83d1d00265f7a2ae8f299770f8613'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 'c24a7872c6354482966f6689ffe522a5e539b0bb'
           timeout --signal=TERM --kill-after=10s 900s \
             bash scripts/p2_no_goal_smoke_ci.sh || {
             echo 'AXIA_G07_CI_MOVING_GOAL_REAL_GAZEBO_BLOCKED'
