@@ -1,16 +1,16 @@
-# PUBLIC CI-only scoped G07 moving Goal; no Owner TTY or physical robot.
-# Shared CI/WSL2 10Hz + native staged startup L2 #43241421238 PASS.
-# Persistent pre-Goal TF failure #43242131339 and #43243551953:
-# TF listener created only after executor spun -> missing actual map frames.
-# Native actual TF early registration public L0 RED #43244494113
-# -> GREEN #43244709111 (19 PASS). No invented transform/pose.
-private_source_sha=c24a7872c6354482966f6689ffe522a5e539b0bb
+# One PUBLIC CI-only bounded simulated G07 moving Goal.
+# Shared CI/Owner native staged startup 10Hz real no-Goal L2 #43241421238 PASS.
+# Actual G07 moving Goal preflight frame mismatch:
+# startup verified map->base_link, Goal incorrectly required map->base_footprint.
+# Source-alignment public RED #43246479231 GREEN #43246677534 (34/34).
+# No synthetic map/odom/world transform, no TTY/Owner automated Goal.
+private_source_sha=48dc302c4fcc0a45f5572497017344b6bb462803
+public_l0_canonical_tf_green=43246677534
 public_l0_shared_startup_green=43241185591
-public_l0_preexecutor_actual_tf_green=43244709111
-actual_no_goal_stage_shutdown_l2=43241421238
-last_pre_goal_real_tf_l2_blocked=43243551953
+public_no_goal_gazebo_pass=43241421238
 previous_actual_moving_g07_l2_pass=43186070186
+last_inconsistent_tf_moving_l2_blocked=43244962240
 runtime_digest=sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
-scope=SIM_ONLY_G07_CI_OWNER_SAME_STARTUP_EARLY_TF_RECEIVER_CLEAR_SLOW_STOP
+scope=SIM_ONLY_G07_SHARED_CI_OWNER_NATIVE_STARTUP_CANONICAL_MAP_BASE_LINK_MOVING_CLEAR_SLOW_STOP
 owner_l3_accepted=false
 certified_estop=false
