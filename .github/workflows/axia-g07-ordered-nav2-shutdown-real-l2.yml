@@ -21,14 +21,14 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 61fb729cddd098d97e3f59d1f8f3452f3a5d71a0
+          ref: 21d658fac03396c9f30798237a820e187ecb447c
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Verify scoped source and runtime no Goal before test
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '61fb729cddd098d97e3f59d1f8f3452f3a5d71a0'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '21d658fac03396c9f30798237a820e187ecb447c'
           test "$ROS_DISTRO" = jazzy
           python3 -m py_compile tools/p2_g07_ordered_shutdown.py tools/p2_g07_owner_shutdown_audit.py
           bash -n scripts/p2_no_goal_smoke_ci.sh
