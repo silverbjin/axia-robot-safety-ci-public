@@ -5,7 +5,7 @@
 set -Eeuo pipefail
 umask 077
 
-PIN='c775820077917c4da56c6aa60001b224071664b3'
+PIN='3668250ac14680b0ea81a67063938374a8c6820f'
 ORIGIN='silverbjin/axia-robot-safety-ci-public'
 RVIZ_BUNDLE_SHA='916a3623a1370c513201011a1b410b938e2b3752'
 RUNNER='scripts/axia_d04_ros_package_wsl2_once.sh'
