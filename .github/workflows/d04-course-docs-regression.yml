@@ -8,6 +8,7 @@ on:
       - '.github/workflows/d04-course-docs-regression.yml'
       - 'tests/test_d04_course_field_preflight.py'
       - 'scripts/axia_d04_course_once.sh'
+  workflow_dispatch:
   pull_request:
     paths:
       - '.github/workflows/d04-course-docs-regression.yml'
@@ -66,7 +67,7 @@ jobs:
           echo "D04_STUDENT_FIXTURE_ACTUAL_PASS; STUDENT_TODO_GREEN_NOT_CLAIMED"
 
   instructor-private-doc-commands:
-    if: github.event_name == 'push' && github.repository == 'silverbjin/axia-robot-safety-ci-public'
+    if: github.event_name == 'workflow_dispatch' && github.repository == 'silverbjin/axia-robot-safety-ci-public'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     environment: axia-instructor-sealed
