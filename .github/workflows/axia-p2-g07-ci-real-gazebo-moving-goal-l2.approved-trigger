@@ -1,17 +1,16 @@
-# PUBLIC CI-ONLY bounded simulated G07 Goal; not Owner admission.
-# Shared exact CI/Owner native staged Nav2, official temporary 10Hz SDF.
-# Dynamic map TF not available to late observer at rest after initial AMCL,
-# despite canonical frame, longer waits and pre-executor TF listener.
-# Use genuine /amcl_pose from official AMCL RELIABLE TRANSIENT_LOCAL,
-# already required by readiness. No synthetic TF, no odom/world fallback.
-# Public L0 RED #43247967776 (2 fail) -> GREEN #43248752446 (36 pass).
-private_source_sha=57252d61dd6c3f78e30db5e1f61c566bc2669ffd
-public_l0_amcl_pose_green=43248752446
-public_l0_shared_staged_green=43241185591
-real_no_goal_stage_shutdown_pass=43241421238
-earlier_actual_dynamic_tf_l2_blocked=43246861693
-previous_actual_moving_g07_l2_pass=43186070186
+# PUBLIC CI-ONLY bounded one Goal; Owner TTY never automated.
+# Same shared Nav2 startup, actual AMCL map pose (reliable/transient-local),
+# same G07 10Hz official model and same exact clear/slow/stop Goal runner.
+# Post-Goal lifecycle parity: Navigation then Localization managed shutdown,
+# native Collision Monitor clean exit, no forced teardown.
+# Previous exact moving Goal L2 #43248929215 PASSED without this teardown gate.
+# Public L0 parity RED #43249687405 -> GREEN #43250035610.
+private_source_sha=6099ed78c4b7079c60c447cb03ccb3817a99c7a4
+public_l0_moving_teardown_parity_green=43250035610
+public_l0_amcl_true_map_source_green=43248752446
+actual_previous_moving_clear_slow_stop_l2_pass=43248929215
+actual_same_startup_no_goal_shutdown_l2_pass=43241421238
 runtime_digest=sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
-scope=SIM_ONLY_G07_SHARED_CI_OWNER_ACTUAL_AMCL_MAP_POSE_CLEAR_SLOW_STOP_ODOM_TTL
+scope=SIM_ONLY_G07_CI_OWNER_COMMON_STARTUP_GOAL_ORDERED_SHUTDOWN_CM_NATIVE_EXIT
 owner_l3_accepted=false
 certified_estop=false
