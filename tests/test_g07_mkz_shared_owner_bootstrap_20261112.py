@@ -28,8 +28,8 @@ class G07MKZBootstrap(unittest.TestCase):
         self.assertIn("readonly CI_L2_RUN='"+REAL_RUN+"'",self.s)
         self.assertIn("readonly CI_L2_SCOPE='"+SCOPE+"'",self.s)
         self.assertIn("ref: "+PRIVATE_SHA,REAL_L2.read_text())
-        self.assertIn("G07_MOVING_GOAL_CM_CLEAN_EXIT_AFTER_NAV2_ACK_PASS",
-                      REAL_L2.read_text()+self.s)
+        self.assertIn("AXIA_G07_REAL_POST_GOAL_OWNER_IDENTICAL_NAV2_SHUTDOWN_CM_EXIT0_PASS",
+                      REAL_L2.read_text())
         self.assertNotIn("PRIVATE_SHA='"+OLD_SHA+"'",self.s)
 
     def test_legacy_static_contract_updated_to_same_evidence(self):
