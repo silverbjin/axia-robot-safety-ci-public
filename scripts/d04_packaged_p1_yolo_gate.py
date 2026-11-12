@@ -246,6 +246,17 @@ def run(a) -> int:
                        terminate_timeout=3.0, kill_timeout=2.0)
         else:
             stop_owned(proc, verdict)
+        verdict["gui_cleanup_contract"] = "D04_OWNED_ROS_SESSION_V1"
+        group_audit = verdict.get("shutdown_group_audit", {})
+        group_clean = bool(group_audit) and all(
+            row.get("residual_count") == 0 for row in group_audit.values()
+        )
+        print("[D04][GUI_SHUTDOWN_AUDIT] " + json.dumps({
+            "owned_session_clean": group_clean,
+            "groups": group_audit,
+            "orphaned_groups": verdict.get("shutdown_orphaned_group_detected", []),
+            "signal": verdict.get("owner_stop_signal"),
+        }, ensure_ascii=False), flush=True)
         log=out/"package_launch.log"
         lines=log.read_text(errors="replace") if log.exists() else ""
         sigabrt=bool("exit code -6" in lines or "SIGABRT" in lines)
