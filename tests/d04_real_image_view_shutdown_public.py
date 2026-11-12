@@ -62,7 +62,7 @@ def main() -> int:
             msg.header.stamp=node.get_clock().now().to_msg()
             pub.publish(msg)
             tree=windows()
-            if "image_view" in tree.lower():
+            if '"/camera/image_raw"' in tree:
                 seen_window=True
                 break
             if not _members(parent.pid):
@@ -81,7 +81,7 @@ def main() -> int:
             return 3
         # Window should disappear after all processes in the owned session.
         limit=time.monotonic()+5
-        while time.monotonic()<limit and "image_view" in windows().lower():
+        while time.monotonic()<limit and '"/camera/image_raw"' in windows():
             time.sleep(0.2)
         if "image_view" in windows().lower():
             print("D04_PUBLIC_REAL_IMAGE_VIEW_WINDOW_REOPENED",flush=True)
