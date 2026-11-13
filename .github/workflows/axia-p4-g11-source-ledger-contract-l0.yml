@@ -1,0 +1,50 @@
+name: AXIA P4-00 G11 source candidate ledger fail-closed public L0
+on:
+  push:
+    branches: [feat/p4-g11-source-ledger-contract-20261113, release/p2-g06-cm-ttl-20261110]
+    paths:
+      - '.github/workflows/axia-p4-g11-source-ledger-contract-l0.yml'
+      - 'tests/test_p4_g11_source_ledger.py'
+      - 'tools/p4_g11_source_ledger.py'
+permissions:
+  contents: read
+jobs:
+  synthetic-red-green:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: P4-00 test only, no secrets or private source
+        run: python3 -m unittest discover -s tests -p test_p4_g11_source_ledger.py -v
+  private-source-scope:
+    needs: synthetic-red-green
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    environment: axia-instructor-sealed
+    steps:
+      - name: Checkout public validator only
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+          path: public
+      - name: Checkout exact private P4-00 metadata source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 649a797e8247464f48947f81aee432d02972ab6c
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+          path: sealed
+      - name: Compare fixed metadata ledger with fail-closed schema
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C sealed rev-parse HEAD)" = '649a797e8247464f48947f81aee432d02972ab6c'
+          python3 public/tools/p4_g11_source_ledger.py sealed/docs/reports/AXIA_P4_G11_COLD_RUN_EVIDENCE_LEDGER_20261113.json
+          echo AXIA_P4_00_G11_LEDGER_FAIL_CLOSED_L0_SCOPED_PASS_NO_REAL_GOAL
+      - name: Erase sealed checkout and tokens
+        if: always()
+        shell: bash
+        run: rm -rf -- sealed public
