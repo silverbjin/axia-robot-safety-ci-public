@@ -18,14 +18,14 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: bdaa009335c8b698d28cfebab60b8535cd263037
+          ref: e9411f88ded8deabd55da4bccc80154202b3c0a3
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Actual PIYO chronology and original Guard safety invariants
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git rev-parse HEAD)" = bdaa009335c8b698d28cfebab60b8535cd263037
+          test "$(git rev-parse HEAD)" = e9411f88ded8deabd55da4bccc80154202b3c0a3
           python3 -m pip install -q --disable-pip-version-check pytest==8.3.5
           python3 -m pytest -q -ra \
             tests/unit/test_p2_g07_owner_piyo_pair_boundary_20261113.py \
