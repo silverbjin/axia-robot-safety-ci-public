@@ -1,0 +1,21 @@
+name: AXIA P3 S05 bounded sim Stop admission L0 TDD
+on:
+  push:
+    branches: [feat/p3-s05-real-stop-gazebo-l2-20261113, release/p2-g06-cm-ttl-20261110]
+    paths: ['tests/test_p3_s05_public_contract.py', 'tools/p3_s01_public_contract.py',
+            '.github/workflows/axia-p3-s05-admission-l0.yml']
+  pull_request:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['tests/test_p3_s05_public_contract.py', 'tools/p3_s01_public_contract.py',
+            '.github/workflows/axia-p3-s05-admission-l0.yml']
+permissions:
+  contents: read
+jobs:
+  only-one-sim-goal-stop:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Fail closed S05 action authorization
+        run: python3 -m unittest discover -s tests -p test_p3_s05_public_contract.py -v
+      - run: echo AXIA_P3_S05_SCOPED_L0_CONTRACT_ONLY_REAL_GAZEBO_NOT_RUN
