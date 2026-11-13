@@ -1,0 +1,59 @@
+name: AXIA P4 execution handover exact source documentation scope L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-p4-execution-handover-doc-l0-20261113.yml']
+permissions:
+  contents: read
+jobs:
+  verify-private-doc-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    environment: axia-instructor-sealed
+    steps:
+      - name: Checkout exact private P4 handover source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: d0597f4c652a965436261509624bd3a3dc1b8788
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Verify handover references, formal holds and no safety code mutation
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = 'd0597f4c652a965436261509624bd3a3dc1b8788'
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+          base='c91f45d04d286b6733db6c1e7893ecb1a33796db'
+          source=Path('docs/handovers/AXIA_P4_EXECUTION_HANDOVER_20261113_KO.md')
+          assert source.is_file()
+          changes=subprocess.check_output(['git','diff','--name-only',base,'HEAD'],text=True).splitlines()
+          assert changes==[str(source)],changes
+          body=source.read_text(encoding='utf-8')
+          required=(
+            'P4_IN_PROGRESS','MVP_VERIFIED_SIMULATION=NOT_ACCEPTED',
+            'STUDENT_RELEASE=HOLD','G08','G09','G10','G11','G12','G13',
+            'c91f45d04d286b6733db6c1e7893ecb1a33796db',
+            'AXIA_PUBLIC_CI_FIRST_TDD_WSL2_PARITY_STANDARD_20261113_KO.md',
+            'AXIA_Robot_Safety_MVP_Baseline_Scenario_Acceptance_v1_KO.md',
+            '43389015915','43386774747','43389621545',
+            '0/3','0/2','RED → GREEN → REFACTOR → REVIEW → COMMIT',
+            'main','GitHub','WSL2','실제','스테이징',
+            'P4-00','P4-01','P4-02','P4-03','P4-04',
+            'P4-05','P4-06','P4-07','P4-08')
+          missing=[v for v in required if v not in body]
+          assert not missing,missing
+          assert 'G09' in body and 'NOT_ACCEPTED' in body
+          assert 'G10' in body and 'NOT_RUN' in body
+          assert '승인 전' in body and '비공개' in body
+          print('AXIA_P4_EXECUTION_HANDOVER_DOC_ONLY_L0_PASS')
+          print('AXIA_P4_GATE_ACCEPTANCE_NOT_PROMOTED_MAIN_UNMERGED_STUDENT_NOT_RELEASED')
+          print('AXIA_P4_DOC_DIFF_FILES='+str(len(changes)))
+          PY
+      - name: Erase sealed private working tree
+        if: always()
+        shell: bash
+        run: rm -rf -- .git docs ros2_ws scripts tests tools scenarios fixtures configs results training
