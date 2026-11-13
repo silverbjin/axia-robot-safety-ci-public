@@ -1,0 +1,26 @@
+name: AXIA P3 S01 first Nav2 failure boundary L0 regression
+on:
+  push:
+    branches:
+      - fix/p3-s01-first-nav-lifecycle-boundary-20261113
+      - release/p2-g06-cm-ttl-20261110
+    paths:
+      - 'tests/test_p3_s01_startup_first_boundary.py'
+      - 'tools/p3_s01_startup_first_boundary.py'
+      - '.github/workflows/axia-p3-s01-first-boundary-l0.yml'
+  pull_request:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths:
+      - 'tests/test_p3_s01_startup_first_boundary.py'
+      - 'tools/p3_s01_startup_first_boundary.py'
+      - '.github/workflows/axia-p3-s01-first-boundary-l0.yml'
+permissions:
+  contents: read
+jobs:
+  first-nav-boundary:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - run: python3 -m unittest discover -s tests -p test_p3_s01_startup_first_boundary.py -v
+      - run: echo "AXIA_P3_S01_FIRST_NAV_FAILURE_L0_PASS_REAL_GOAL_NOT_RUN"
