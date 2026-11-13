@@ -1,0 +1,151 @@
+# Bounded PUBLIC CI ONLY, exact sealed private source. No Owner TTY bypass.
+name: AXIA P3 G10 true Gazebo held Scan CM recovery one Goal L2
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-p3-g10-held-compound-real-gazebo-l2.yml']
+permissions:
+  contents: read
+concurrency:
+  group: axia-p3-g10-held-composite-real-l2
+  cancel-in-progress: false
+jobs:
+  real-held-scan-cm-fault-reset-rearm-denial:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    environment: axia-instructor-sealed
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+      options: --dns 1.1.1.1 --dns 8.8.8.8
+    steps:
+      - name: Public G10 SIM-only authority source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Sealed exact Instructor tested source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: d7b272faff381c152ee1b8c8a211446753e0c7a0
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          path: instructor
+          persist-credentials: false
+      - name: All public and private authority and oracle regressions BEFORE Goal
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          EXPECTED='d7b272faff381c152ee1b8c8a211446753e0c7a0'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = "$EXPECTED"
+          test "$ROS_DISTRO" = jazzy
+          python3 -m unittest discover -s tests -p test_p3_g10_public_contract.py -v
+          python3 -m unittest discover -s instructor/tests/unit -p test_p3_s03_compound_live_oracle.py -v
+          python3 -m unittest discover -s instructor/tests/unit -p test_p3_g10_held_fault_live_oracle.py -v
+          python3 -m unittest discover -s instructor/tests/unit -p test_p3_g10_cm_pause_scope.py -v
+          python3 -m unittest discover -s instructor/tests/unit -p test_p3_s05_actual_stop_oracle.py -v
+          python3 -m py_compile instructor/tools/p3_g10_held_fault_oracle.py instructor/tools/p3_g10_held_fault_recovery_ci.py instructor/tools/p3_s03_cm_pause_ci.py
+          bash -n instructor/scripts/p2_no_goal_smoke_ci.sh
+          echo AXIA_P3_G10_PUBLIC_14_S03_12_G10_14_CM_PAUSE_6_S05_12_L0_PASS_NO_GOAL
+      - name: Frozen G07 Jazzy Harmonic runtime 25 packages 5 official files
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cd instructor
+          set +u; source /opt/ros/jazzy/setup.bash; set -u
+          mkdir -p results/p3-g10-held-ci
+          export ROS_DOMAIN_ID=98 ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST GZ_PARTITION=axia_p2_g10_ci_98 AXIA_P0_SIM_ONLY=1
+          python3 tools/p2_g07_owner_env_parity.py --mode ci --output results/p3-g10-held-ci/core_parity.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('results/p3-g10-held-ci/core_parity.json')
+          d=json.loads(p.read_text())
+          assert d['status']=='CORE_PARITY_PASS'
+          assert (d['checked_packages'],d['checked_official_files'])==(25,5)
+          print('AXIA_P3_G10_G07_RUNTIME_EXACT_25_PACKAGE_5_OFFICIAL_FILE_PARITY_PASS')
+          PY
+      - name: Actual one Nav2 Goal, Scan DROP plus exact PID CM SIGSTOP, deny held recovery, clear then rearm
+        shell: bash
+        env:
+          ROS_DOMAIN_ID: '98'
+          ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+          GZ_PARTITION: axia_p2_g10_ci_98
+          AXIA_P0_SIM_ONLY: '1'
+          AXIA_P2_G07_PHYSICAL_PREFLIGHT: '1'
+          AXIA_G07_CI_SIM_GOAL_ALLOWED: '1'
+          AXIA_P3_S03_CI_COMPOUND_ALLOWED: '1'
+          AXIA_P3_S03_CI_CM_PAUSE_ALLOWED: '1'
+          AXIA_P3_G10_CI_HELD_RECOVERY_ALLOWED: '1'
+          AXIA_G07_CI_OWNER_OBSERVER_PARITY: '1'
+          AXIA_G07_OWNER_STARTUP_PARITY: '1'
+          AXIA_G07_CI_OWNER_BAG_PARITY: '1'
+          AXIA_P2_SMOKE_RESULTS: results/p3-g10-held-ci/real-l2
+        run: |
+          set -Eeuo pipefail
+          EXPECTED='d7b272faff381c152ee1b8c8a211446753e0c7a0'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = "$EXPECTED"
+          PYTHONPATH="$PWD" EXACT_PRIVATE_SOURCE_SHA="$EXPECTED" python3 - <<'PY'
+          import os
+          from tools.p3_s01_public_contract import admit_g10
+          assert admit_g10(dict(os.environ),source_sha=os.environ['EXACT_PRIVATE_SOURCE_SHA'],
+             checkout_sha=os.environ['EXACT_PRIVATE_SOURCE_SHA'],case='G10',
+             goals=1,goal=(-1.7,.7),cm_killed=False,certified_estop=False,
+             operations=('scan_drop','cm_sigstop','reset_denied','rearm_denied',
+              'fault_cleared_denied','cm_sigcont','scan_normal',
+              'fault_cleared','rearm','no_auto_resume'))
+          print('AXIA_P3_G10_EXCLUSIVE_SIM_ONE_GOAL_HELD_CM_PAUSE_AUTHORIZED_NOT_SENT')
+          PY
+          cd instructor
+          timeout --signal=TERM --kill-after=12s 900s bash scripts/p2_no_goal_smoke_ci.sh || {
+            echo AXIA_P3_G10_REAL_GAZEBO_RECOVERY_BLOCKED >&2
+            for f in results/p3-g10-held-ci/real-l2/{staged_startup,launch,g07_ci_pregoal,p3_g10_held_recovery,g07_ordered_shutdown,rosbag}.log;
+            do if [[ -f "$f" ]];then echo "--- $(basename "$f") ---";tail -n 120 "$f";fi;done
+            exit 2
+          }
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,sqlite3,hashlib
+          root=Path('results/p3-g10-held-ci/real-l2')
+          startup=json.loads((root/'startup_verdict.json').read_text())
+          r=json.loads((root/'p3_g10_held_recovery/g10_compound_result.json').read_text())
+          audit=json.loads((root/'p3_g10_held_recovery/cm_pause/pause_audit.json').read_text())
+          s=json.loads((root/'g07_ordered_shutdown.json').read_text())
+          cm=json.loads((root/'g07_shutdown_audit.json').read_text())
+          assert startup['status']=='SMOKE_READY' and startup['goal_sent'] is False
+          assert r['status']=='G10_REAL_HELD_FAULT_RECOVERY_CANDIDATE' and r['goal_sent'] is True and r['fault_injected'] is True
+          v=r['oracle']
+          assert v['status']=='G10_REAL_COMPOUND_HELD_RECOVERY_CANDIDATE',v
+          assert len(r['goal_uuid'])==32 and r['goal_uuid']==v['goal_uuid']
+          assert r['held_fault_manual_reset_rejection_tested'] and r['held_fault_fault_cleared_rejection_tested']
+          assert r['protective_fault_cleared_after_health_tested'] and r['fresh_rearm_without_auto_resume_tested']
+          assert v['held_fault_reset_rearm_rejection_tested']
+          assert audit['signal']=='SIGSTOP' and audit['sigcont_restored'] is True
+          assert audit['owned_session_verified'] and audit['independent_guard_alive']
+          assert not r['cm_killed'] and not r['formal_accepted'] and not r['certified_estop']
+          assert s['status']=='NAV2_LIFECYCLE_SHUTDOWN_ACK' and s['navigation_ack'] and s['localization_ack']
+          assert cm['status']=='SHUTDOWN_CLEAN_CANDIDATE' and cm['cm_exit_code']==0
+          assert 'P2_L2_GRACEFUL_TEARDOWN' in (root/'teardown.txt').read_text()
+          bag=root/'rosbag2';assert (bag/'metadata.yaml').is_file()
+          files=list(bag.glob('*.db3'));assert len(files)==1
+          c=sqlite3.connect('file:'+str(files[0])+'?mode=ro',uri=True)
+          assert c.execute('pragma quick_check').fetchone()[0]=='ok'
+          counts=dict(c.execute('select topics.name,count(messages.id) from topics left join messages on topics.id=messages.topic_id group by topics.name'))
+          need=('/clock','/scan','/safety/scan','/odom','/cmd_vel_supervised','/cmd_vel_pre_guard','/cmd_vel','/axia/safety/state','/axia/p2/base_guard','/navigate_to_pose/_action/status')
+          assert all(counts.get(name,0)>0 for name in need),counts
+          def digest(p):
+            h=hashlib.sha256()
+            with p.open('rb') as stream:
+              for buf in iter(lambda:stream.read(1<<20),b''):h.update(buf)
+            return h.hexdigest()
+          evidence=root/'p3_g10_held_recovery/actual_ros_events.jsonl'
+          manifest={'schema':'axia_p3_g10_ci_ephemeral_raw_digest_v1',
+                    'source_sha':r['source_sha'],'goal_uuid':r['goal_uuid'],
+                    'ros_events_sha256':digest(evidence),'rosbag_db3_sha256':digest(files[0]),
+                    'rosbag_metadata_sha256':digest(bag/'metadata.yaml'),
+                    'bag_topic_count':len(counts),'formal_accepted':False,
+                    'raw_deleted_after_ci':True,'owner_raw_custody':False}
+          print('AXIA_P3_G10_EPHEMERAL_ORIGINAL_DIGESTS '+json.dumps(manifest,sort_keys=True))
+          print('AXIA_P3_G10_TRUE_GAZEBO_HELD_FAULT_DENIAL_MANUAL_PROTECTIVE_RECOVERY_SCOPED_PASS')
+          print('AXIA_P3_G10_CM_SIGSTOP_NOT_SIGKILL_FORMAL_G10_G11_HOLD_OWNER_WSL2_NOT_RUN')
+          PY
+      - name: Always remove private source and ephemeral raw Gazebo data
+        if: always()
+        shell: bash
+        run: rm -rf -- instructor
