@@ -15,14 +15,14 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 7785df5526846172dd2a55a29a13ef7e3ffea0c7
+          ref: bae1ccc24ed4bc5db2bd0b053cf21ec527a4f739
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: P4 read-only evidence matrix and no false release
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git rev-parse HEAD)" = '7785df5526846172dd2a55a29a13ef7e3ffea0c7'
+          test "$(git rev-parse HEAD)" = 'bae1ccc24ed4bc5db2bd0b053cf21ec527a4f739'
           python3 - <<'PY'
           import json
           from pathlib import Path
@@ -52,6 +52,11 @@ jobs:
           for x in ('G08','G09','G10','G11','G12','G13','NOT_ACCEPTED',
                     '43389015915','f9c7b9a52e073174dd12508b929115db4b8cc961'):
               assert x in md,x
+          license_doc=Path('docs/operations/AXIA_P4_LICENSE_ATTRIBUTION_CANDIDATE_20261113_KO.md').read_text()
+          for x in ('REDISTRIBUTION_AUDIT_HOLD','LGPL-2.1-or-later',
+                    'GPLv3','LICENSES.md','G13','NOT_RUN'):
+              assert x in license_doc,x
+          print('AXIA_P4_LICENSE_PRELIMINARY_NOTICE_HOLD_CONFIRMED')
           print('AXIA_P4_READINESS_MATRIX_L0_PASS_STAGED_37_G12_SCOPED_G13_NOT_RUN_NO_RELEASE')
           PY
       - name: Erase private checkout
