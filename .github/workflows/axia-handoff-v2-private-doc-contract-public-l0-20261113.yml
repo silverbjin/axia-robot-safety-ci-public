@@ -17,7 +17,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: b427520ac579335640d88123612e5e452904ed87
+          ref: 1f4f61f2b513cb2b43e6b07532d94506f6c88a4d
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
           fetch-depth: 0
@@ -26,7 +26,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor rev-parse HEAD)" = b427520ac579335640d88123612e5e452904ed87
+          test "$(git -C instructor rev-parse HEAD)" = 1f4f61f2b513cb2b43e6b07532d94506f6c88a4d
           python3 - <<'PY'
           from pathlib import Path
           import re,subprocess
