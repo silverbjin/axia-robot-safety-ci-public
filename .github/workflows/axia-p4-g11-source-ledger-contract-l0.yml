@@ -1,7 +1,7 @@
 name: AXIA P4-00 G11 source candidate ledger fail-closed public L0
 on:
   push:
-    branches: [feat/p4-g11-source-ledger-contract-20261113]
+    branches: [feat/p4-g11-source-ledger-contract-20261113, release/p2-g06-cm-ttl-20261110]
     paths:
       - '.github/workflows/axia-p4-g11-source-ledger-contract-l0.yml'
       - 'tests/test_p4_g11_source_ledger.py'
