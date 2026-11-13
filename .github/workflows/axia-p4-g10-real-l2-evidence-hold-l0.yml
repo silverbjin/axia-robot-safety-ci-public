@@ -1,0 +1,67 @@
+name: AXIA P4 G10 true held fault L2 evidence crosswalk and G11 HOLD L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-p4-g10-real-l2-evidence-hold-l0.yml']
+permissions:
+  contents: read
+jobs:
+  exact-sealed-g10-evidence-not-formal-custody:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    environment: axia-instructor-sealed
+    steps:
+      - name: Immutable Instructor evidence metadata source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 7be14d59a5ae1fdd333062f7df0f150809e739f4
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Real Goal evidence SHA256 and formal 0 of 15 fail-closed
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = '7be14d59a5ae1fdd333062f7df0f150809e739f4'
+          python3 - <<'PY'
+          import json,re
+          from pathlib import Path
+          root=Path('docs/reports')
+          m=json.loads((root/'AXIA_P4_G08_G13_RELEASE_READINESS_MATRIX_20261113.json').read_text())
+          g=m['g10'];s3=m['s03'];s4=m['s04']
+          assert not m['formal_accepted'] and not m['certified_estop']
+          assert not m['student_release_approved'] and not m['instructor_main_merge_approved']
+          assert g['actual_g10_held_combined_one_goal_ci_l2_run']==43475888273
+          assert g['actual_g10_public_release_sha']=='973143d1d8b578619375329542ceb467b6acb98f'
+          assert g['actual_g10_tested_instructor_sha']=='d7b272faff381c152ee1b8c8a211446753e0c7a0'
+          assert g['tested_and_merged_git_tree_sha']=='0343f79e0455890407522dc87cc4cc378b266ad1'
+          assert g['actual_g10_scoped_l2_technical_pass']
+          assert g['actual_g10_held_fault_reset_rearm_denial_tested'] and g['actual_g10_held_fault_cleared_denial_tested']
+          assert g['actual_g10_scoped_recovery_after_health_and_cancel_tested']
+          assert g['actual_g10_no_old_goal_auto_resume_tested']
+          assert g['actual_g10_exact_pid_sigcont_restored']
+          assert g['actual_g10_real_sqlite_14_topics_verified'] and g['actual_g10_nav2_ordered_shutdown_and_cm_clean_exit']
+          assert g['actual_g10_scoped_service_ack_sequence']==[['reset_held',False],['rearm_held',False],['fault_cleared_held',False],['fault_cleared_restored',True],['rearm_restored',True]]
+          assert g['actual_g10_cm_sigkill_tested'] is False
+          assert g['actual_g10_hermetic_pre_goal_tests']==58
+          proof=g['actual_g10_ephemeral_raw_digests']
+          assert proof['ephemeral_original_deleted_after_ci'] and not proof['permanent_owner_raw_custody']
+          assert all(re.fullmatch('[0-9a-f]{64}',proof[k]) for k in ('events_jsonl_sha256','rosbag_sqlite_sha256','rosbag_metadata_sha256'))
+          assert proof['source_sha']==g['actual_g10_tested_instructor_sha']
+          assert g['formal_accepted'] is False and g['actual_g10_formal_repeat_count']==0
+          assert g['actual_g10_owner_wsl2_l3_run'] is False
+          assert 'FORMAL_NOT_ACCEPTED' in m['gates']['G10']
+          assert s3['public_l2_run']==43433595130 and not s3['real_cm_sigkill_crash']
+          assert s4['public_l2_run']==43455456960 and not s4['real_person_detected']
+          assert m['g11']['formal_scenario_repeat_counts']==dict.fromkeys(('S01','S02','S03','S04','S05'),0)
+          assert m['gates']['G11'].startswith('FORMAL_0_OF_15')
+          assert (root/'AXIA_P3_G10_HELD_COMPOUND_REAL_GAZEBO_L2_20261114_KO.md').is_file()
+          print('AXIA_P3_G10_REAL_GAZEBO_HELD_FAULT_MANUAL_RECOVERY_TECHNICAL_L2_PASS')
+          print('AXIA_P3_G10_EPHEMERAL_RAW_DIGEST_ONLY_NO_PERMANENT_CUSTODY')
+          print('AXIA_P3_G10_NOT_SIGKILL_NOT_CERTIFIED_ESTOP_OWNER_L3_NOT_RUN')
+          print('AXIA_P3_G10_FORMAL_NOT_ACCEPTED_G11_ZERO_OF_FIFTEEN_HOLD')
+          PY
+      - name: Always erase sealed evidence metadata
+        if: always()
+        shell: bash
+        run: rm -rf -- .git docs ros2_ws scripts tools tests fixtures scenarios configs results training
