@@ -1,0 +1,51 @@
+name: AXIA P4 G12 student full Git history security audit public L0
+on:
+  push:
+    branches: [feat/p4-g12-student-full-history-scan-20261113, release/p2-g06-cm-ttl-20261110]
+    paths:
+      - '.github/workflows/axia-p4-g12-student-full-history-audit-l0.yml'
+      - 'tests/test_p4_student_history_audit.py'
+      - 'tools/p4_student_history_audit.py'
+permissions:
+  contents: read
+jobs:
+  history-negative-fixtures:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Verify full-commit-tree and deleted-secret negative fixtures
+        run: python3 -m unittest discover -s tests -p test_p4_student_history_audit.py -v
+  actual-public-student-history:
+    needs: history-negative-fixtures
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+          path: public
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: 1c03c9bfb4b41e2726a7c1d2f47d65496bdaa474
+          fetch-depth: 0
+          persist-credentials: false
+          path: student
+      - name: Fetch all current student branches and tags (read only)
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git -C student fetch --force --prune origin '+refs/heads/*:refs/remotes/origin/*' --tags
+          test "$(git -C student rev-parse refs/remotes/origin/main)" = '1c03c9bfb4b41e2726a7c1d2f47d65496bdaa474'
+          test "$(git -C student rev-parse refs/remotes/origin/D03)" = '4f74916a09f726ffd6978926adfc83ee9f528298'
+      - name: Audit all reachable student Git commits without printing private content
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 public/tools/p4_student_history_audit.py student \
+            --expect-main 1c03c9bfb4b41e2726a7c1d2f47d65496bdaa474 \
+            --expect-d03 4f74916a09f726ffd6978926adfc83ee9f528298
+          echo AXIA_P4_G12_STUDENT_FULL_HISTORY_L0_SCOPED_ONLY_NO_RELEASE
