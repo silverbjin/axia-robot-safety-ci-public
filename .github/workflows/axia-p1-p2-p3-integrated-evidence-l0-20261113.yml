@@ -1,0 +1,96 @@
+name: AXIA P1 P2 P3 selective integration provenance PUBLIC L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths:
+      - '.github/workflows/axia-p1-p2-p3-integrated-evidence-l0-20261113.yml'
+permissions:
+  contents: read
+concurrency:
+  group: axia-p1-p2-p3-integrated-provenance-l0
+  cancel-in-progress: false
+jobs:
+  verified-g07-plus-existing-p3:
+    environment: axia-instructor-sealed
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Exact private Instructor source ephemeral PUBLIC Actions only
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: c297af5a1d5370653a3a459228f0c43110e8325b
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+          fetch-depth: 0
+          path: instructor-src
+      - name: Verify exact G07 Owner L3 safety ancestry and P3-only added files
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cd instructor-src
+          test "$(git rev-parse HEAD)" = 'c297af5a1d5370653a3a459228f0c43110e8325b'
+          git merge-base --is-ancestor eb984b73138e592caa67426eed9c60dde2ca2ebd HEAD
+          python3 - <<'PY'
+          import subprocess
+          x=subprocess.check_output(['git','diff','--name-status','eb984b73138e592caa67426eed9c60dde2ca2ebd','HEAD'],text=True).splitlines()
+          assert len(x)==24,('EXPECTED_23_P3_PLUS_1_RED_TEST',x)
+          allowed=('scenarios/','fixtures/p3/','docs/operations/P3_','docs/reports/P3_',
+                   'docs/reports/p3_r01_','ros2_ws/src/axia_scenario_verifier/axia_scenario_verifier/p3_',
+                   'scripts/run_p3_mvp.py','scripts/p3_owner_inventory_review_wsl2_once.sh',
+                   'tests/unit/test_p3','tools/p3_owner_evidence_probe.py')
+          for v in x:
+              status,p=v.split('\t')
+              assert status=='A' and any(p.startswith(a) for a in allowed),(status,p)
+          print('AXIA_P3_INTEGRATED_G07_SOURCE_UNCHANGED_P3_ONLY_FILES_PASS added='+str(len(x)))
+          PY
+      - name: Real existing P3 implementation, source registry and RED crosswalk
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cd instructor-src
+          export PYTHONPATH="$PWD/ros2_ws/src/axia_scenario_verifier"
+          python3 -m unittest discover -s tests/unit -p 'test_p3*.py' -v
+          echo 'AXIA_P3_INTEGRATED_PUBLIC_PYTHON_L0_TESTS_PASS'
+      - name: P3 CLI must remain INCONCLUSIVE and have valid output hashes
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cd instructor-src
+          python3 scripts/run_p3_mvp.py --scenario all \
+            --results-root "$RUNNER_TEMP/axia-p3-integrated" --allow-partial-ci
+          python3 - "$RUNNER_TEMP/axia-p3-integrated" <<'PY'
+          from pathlib import Path
+          import json,hashlib,sys
+          dirs=list(Path(sys.argv[1]).glob('p3-*'))
+          assert len(dirs)==1
+          p=dirs[0]
+          s=json.loads((p/'summary.json').read_text())
+          assert s['status']=='INCONCLUSIVE' and s['formal_accepted'] is False
+          assert s['gates']==dict.fromkeys(('G08','G09','G10','G11'),'NOT_ACCEPTED')
+          for line in (p/'SHA256SUMS').read_text().splitlines():
+              h,n=line.split('  ',1)
+              assert hashlib.sha256((p/n).read_bytes()).hexdigest()==h
+          print('AXIA_P3_EXISTING_OFFLINE_RUNNER_WITH_G07_NO_FALSE_ACCEPTANCE_PASS')
+          PY
+      - name: Static compile and immutable original G07 guard deadlines
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cd instructor-src
+          python3 -m py_compile \
+            ros2_ws/src/axia_scenario_verifier/axia_scenario_verifier/p3_*.py \
+            ros2_ws/src/axia_safety_supervisor/axia_safety_supervisor/p2_base_guard_policy.py
+          bash -n scripts/p3_owner_inventory_review_wsl2_once.sh
+          bash -n scripts/p2_owner_l3_wsl2.sh
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('ros2_ws/src/axia_safety_supervisor/axia_safety_supervisor/p2_base_guard_policy.py').read_text()
+          assert 'CM_TTL_SEC = 0.15' in p
+          assert 'ASYNC_RECONCILIATION_GRACE_SEC = 0.12' in p
+          assert 'TTL_SEC = 0.5' in p
+          print('AXIA_P1_P2_P3_G07_SAFETY_TTL_UNCHANGED_NO_NEW_GAZEBO')
+          PY
+      - name: Delete private Instructor content
+        if: always()
+        run: rm -rf -- instructor-src
