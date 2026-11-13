@@ -93,5 +93,42 @@ def admit_s03(env, *, source_sha, checkout_sha, case, goals, goal,
         raise ValueError("S03_MUTUALLY_EXCLUSIVE_CASE")
     return True
 
+
+
+def admit_s04(env, *, source_sha, checkout_sha, case, goals, goal,
+              kinds, operations, source):
+    """PUBLIC isolated SIM only: original G09 fixture -> existing Supervisor LIMITED.
+
+    Exactly one mapped Nav2 Goal, no real person/YOLO assertion, second Goal,
+    process crash, direct Twist publisher, reset/rearm or synthetic gate bypass.
+    """
+    if not isinstance(env,dict):
+        raise ValueError("INVALID_S04_ENV")
+    required={"GITHUB_ACTIONS":"true","AXIA_P0_SIM_ONLY":"1",
+              "ROS_DISTRO":"jazzy","AXIA_P3_S04_CI_PNU_ALLOWED":"1"}
+    for key,value in required.items():
+        if env.get(key)!=value:
+            raise ValueError("S04_PUBLIC_SIM_SCOPE_REQUIRED_"+key)
+    if (not isinstance(env.get("GZ_PARTITION"),str)
+            or not env["GZ_PARTITION"].startswith("axia_p2_")):
+        raise ValueError("S04_PARTITION_NOT_ISOLATED")
+    if (not isinstance(source_sha,str) or not HEX40.fullmatch(source_sha)
+            or checkout_sha!=source_sha):
+        raise ValueError("S04_EXACT_SOURCE_SHA_REQUIRED")
+    if case!="S04" or type(goals) is not int or goals!=1:
+        raise ValueError("S04_EXACTLY_ONE_GOAL")
+    if not isinstance(goal,(tuple,list)) or tuple(goal)!=(-1.7,.7):
+        raise ValueError("S04_MAP_CORRIDOR_SCOPE_DENIED")
+    if source!="FROZEN_SYNTHETIC_G09" or tuple(kinds)!=("N","P","U"):
+        raise ValueError("S04_NO_LIVE_DETECTOR_CLAIM_OR_REORDER")
+    if tuple(operations)!=("N","P","U","sw_stop"):
+        raise ValueError("S04_NO_UNAUTHORIZED_FAULT_OR_REARM")
+    if any(env.get(k)=="1" for k in (
+            "AXIA_P3_S01_CI_GOAL_ALLOWED",
+            "AXIA_P3_S03_CI_COMPOUND_ALLOWED",
+            "AXIA_P3_S05_CI_GOAL_ALLOWED")):
+        raise ValueError("S04_NO_OVERLAPPING_SIM_CASE")
+    return True
+
 if __name__ == "__main__":
     print("AXIA_P3_S01_CI_SIM_ONLY_PUBLIC_CONTRACT_STATIC_NO_GOAL")
