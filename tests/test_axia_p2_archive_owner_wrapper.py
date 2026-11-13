@@ -35,6 +35,8 @@ class ReadOnlyOneShotTest(unittest.TestCase):
             self.assertNotIn(forbidden, text)
         self.assertIn("HISTORICAL_TAR_NOT_FOUND_NO_RERUN_REQUIRED", text)
         self.assertIn("AXIA_P2_ARCHIVE_ROOT", text)
+        self.assertIn('if [[ -z "${AXIA_P2_ARCHIVE_ROOT:-}" && ! -d "$ROOT" ]]', text)
+        self.assertIn('ROOT="$OWNER_HOME" # targeted filenames only', text)
         self.assertIn("p2-l3-owner-ulbEs3NU.tar.gz", text)
 
 
