@@ -1,0 +1,28 @@
+name: AXIA P3 S01 single SIM Goal admission L0 TDD
+on:
+  push:
+    branches:
+      - feat/p3-s01-real-gazebo-l2-20261113
+      - release/p2-g06-cm-ttl-20261110
+    paths:
+      - 'tests/test_p3_s01_public_contract.py'
+      - 'tools/p3_s01_public_contract.py'
+      - '.github/workflows/axia-p3-s01-admission-l0.yml'
+  pull_request:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths:
+      - 'tests/test_p3_s01_public_contract.py'
+      - 'tools/p3_s01_public_contract.py'
+      - '.github/workflows/axia-p3-s01-admission-l0.yml'
+permissions:
+  contents: read
+jobs:
+  l0-sim-goal-admission:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: P3 S01 fail closed public L0
+        run: python3 -m unittest discover -s tests -p test_p3_s01_public_contract.py -v
+      - name: Scoped test conclusion
+        run: echo "AXIA_P3_S01_PUBLIC_L0_SCOPE_ONLY_REAL_GAZEBO_NOT_RUN"
