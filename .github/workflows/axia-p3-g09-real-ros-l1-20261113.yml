@@ -17,14 +17,14 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 3dd0366bd7c17b7e127b7ae1facf0f8a4f4f5ba7
+          ref: 032a946c2c8c8140a9498ae36dbd2a8608e2fb59
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Exact source and targeted ROS Jazzy runtime
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '3dd0366bd7c17b7e127b7ae1facf0f8a4f4f5ba7'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '032a946c2c8c8140a9498ae36dbd2a8608e2fb59'
           apt-get update -qq
           DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
             ros-jazzy-rclpy ros-jazzy-std-msgs >/dev/null
