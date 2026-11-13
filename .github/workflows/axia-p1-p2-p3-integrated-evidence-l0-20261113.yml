@@ -19,7 +19,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: c297af5a1d5370653a3a459228f0c43110e8325b
+          ref: c6734c3aa7f5cc76a417b5bc702592cd7cef8530
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
           fetch-depth: 0
@@ -29,14 +29,16 @@ jobs:
         run: |
           set -Eeuo pipefail
           cd instructor-src
-          test "$(git rev-parse HEAD)" = 'c297af5a1d5370653a3a459228f0c43110e8325b'
+          test "$(git rev-parse HEAD)" = 'c6734c3aa7f5cc76a417b5bc702592cd7cef8530'
           git merge-base --is-ancestor eb984b73138e592caa67426eed9c60dde2ca2ebd HEAD
           python3 - <<'PY'
           import subprocess
           x=subprocess.check_output(['git','diff','--name-status','eb984b73138e592caa67426eed9c60dde2ca2ebd','HEAD'],text=True).splitlines()
-          assert len(x)==24,('EXPECTED_23_P3_PLUS_1_RED_TEST',x)
+          assert len(x)==26,('EXPECTED_23_P3_PLUS_TEST_CROSSWALK_SCOPED_G07_REPORT',x)
           allowed=('scenarios/','fixtures/p3/','docs/operations/P3_','docs/reports/P3_',
-                   'docs/reports/p3_r01_','ros2_ws/src/axia_scenario_verifier/axia_scenario_verifier/p3_',
+                   'docs/reports/p3_r01_',
+                   'docs/reports/p3_integrated_evidence_',
+                   'docs/reports/AXIA_G07_YNAUV_OWNER_L3_SCOPED_RAW_REVIEW_20261113_KO.md','ros2_ws/src/axia_scenario_verifier/axia_scenario_verifier/p3_',
                    'scripts/run_p3_mvp.py','scripts/p3_owner_inventory_review_wsl2_once.sh',
                    'tests/unit/test_p3','tools/p3_owner_evidence_probe.py')
           for v in x:
