@@ -1,0 +1,58 @@
+name: AXIA P4 S01 S05 real Gazebo L2 scoped matrix formal HOLD L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-p4-g11-s05-real-l2-scoped-matrix-l0.yml']
+permissions:
+  contents: read
+jobs:
+  sealed-source-g11-s05-actual-gazebo-metadata:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    environment: axia-instructor-sealed
+    steps:
+      - name: Exact sealed source metadata checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: e2907fb621badae812646540c341024e622cc3e2
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Verify two real L2 events and formal G11 HOLD
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = 'e2907fb621badae812646540c341024e622cc3e2'
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('docs/reports')
+          m=json.loads((p/'AXIA_P4_G08_G13_RELEASE_READINESS_MATRIX_20261113.json').read_text())
+          e=m['s05'];s=m['g08'];g=m['g11']
+          assert all(m[k] is False for k in ('formal_accepted','student_release_approved','instructor_main_merge_approved','certified_estop'))
+          assert s['actual_public_real_gazebo_l2'] is True and s['public_real_l2_run']==43424027852
+          assert not s['permanent_owner_raw_custody'] and not s['formal_g08_accepted']
+          assert e['public_actual_ros_gazebo_l2_pass'] is True and e['public_l2_run']==43428601757
+          assert e['private_tested_source_sha']=='7a35866b5ab98c498847cf9e911d671330eb46f0'
+          assert e['tested_and_merged_code_tree_sha']=='ba520487dd9360b5aa7ddc8d833f5df7bbc14b0b'
+          assert (e['private_oracle_tests_passed'],e['public_ci_authorization_tests_passed'])==(12,7)
+          for k in ('actual_moving_odom_before_sw_stop','sw_stop_service_ack','same_goal_canceled','pre_reset_rearm_rejected','reset_ack','rearm_ack','actual_stop_odom_dwell_1_sec','actual_final_cmd_zero_and_ttl_scoped_pass','nav2_native_shutdown_ack','actual_14_topic_sqlite_bag_recorded'):
+            assert e[k] is True,k
+          assert e['old_goal_auto_resumed'] is False and e['collision_monitor_exit_code']==0
+          assert e['raw_deleted_at_ci_end'] is True and e['permanent_owner_raw_custody'] is False
+          for k in ('held_fault_reset_rearm_rejection_tested','combined_fault_g10_tested','formal_s05_accepted','formal_g10_accepted','owner_l3_run','certified_estop'):
+            assert e[k] is False,k
+          assert e['formal_g11_s05_repeat_count']==0
+          assert g['formal_scenario_repeat_counts']==dict.fromkeys(('S01','S02','S03','S04','S05'),0)
+          assert 'NOT_ACCEPTED' in m['gates']['G09'] and 'NOT_ACCEPTED' in m['gates']['G10']
+          assert m['gates']['G11'].startswith('FORMAL_0_OF_15')
+          assert (p/'AXIA_P3_S05_REAL_GAZEBO_SCOPED_ACCEPTANCE_20261113_KO.md').is_file()
+          print('AXIA_P4_S01_S05_PUBLIC_REAL_GAZEBO_L2_SCOPED_EVIDENCE_PASS')
+          print('AXIA_P4_S05_SW_STOP_CANCELED_REARM_NO_AUTO_RESUME_BUT_HELD_FAULT_NOT_RUN')
+          print('AXIA_P4_G08_G10_G11_FORMAL_HOLD_0_OF_15_RAW_CUSTODY_MISSING')
+          print('AXIA_P4_S03_COMPOUND_S04_PNU_OWNER_L3_STUDENT_MAIN_HOLD')
+          PY
+      - name: Erase private Instructor checkout and evidence
+        if: always()
+        shell: bash
+        run: rm -rf -- .git docs ros2_ws scripts tools tests fixtures scenarios configs results training
