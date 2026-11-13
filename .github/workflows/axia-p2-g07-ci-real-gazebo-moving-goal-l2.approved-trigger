@@ -1,17 +1,18 @@
-# PUBLIC CI-ONLY one bounded simulated G07 moving Goal; Owner TTY remains mandatory.
-# First user WSL2 PIYOmtc8 raw: 365.845ms first odom observer gap,
-# Guard first latch 126.057s CM_EXCEEDS_SUPERVISOR despite CM age 80.879ms.
-# Same Guard policy receive-pair actual chronology: PUBLIC RED #43337373145
-# -> GREEN #43337496493 (46 PASS). No CM/scan/supervisor TTL waived.
-# WSL2 simultaneous SQLite 14-topic rosbag was missing from CI:
-# PUBLIC RED #43337806523 -> GREEN #43338205576 (49 PASS).
-# CI real Gazebo same staged runner/Goal/CM native teardown as Owner;
-# CI offscreen != WSLg GUI/kernel and Owner L3 NOT RUN on this source.
-private_source_sha=f268f1bb53fb33fb63ec00cf19d75191b92f2130
-l0_guard_pair_green=43337496493
+# PUBLIC CI ONLY, ONE simulated G07 moving Goal, no Owner consent bypass.
+# Actual WSL2 PIYO first mismatch & 365-405ms observer gap.
+# Guard matched CM/Supervisor pair RED #43337373145 GREEN #43337496493.
+# Real Owner 14-topic rosbag parity RED #43337806523 GREEN #43338205576.
+# Previous public bag-stress L2 #43338381501: actual moving CLEAR/SLOW/STOP
+# odom + real bag + Nav2 shutdown ACK all PASS; post-Gazebo cleanup rc3
+# after 10s. RED #43339194903 -> GREEN #43339388986 53/53 tests.
+# New exact same CI and WSL2 26s post-ACK *cleanup only*; no TTL changes.
+private_source_sha=eb984b73138e592caa67426eed9c60dde2ca2ebd
+l0_guard_reconcile_green=43337496493
 l0_owner_bag_parity_green=43338205576
-previous_actual_moving_l2_pass=43250221111
+l0_managed_exit_green=43339388986
+previous_bag_loaded_real_goal_l2_blocked_teardown=43338381501
+previous_no_bag_real_l2_pass=43250221111
 runtime_digest=sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
-scope=PUBLIC_ONLY_SIM_G07_ONE_MOVING_GOAL_WITH_OWNER_14_TOPIC_BAG_AND_FIRST_GUARD_PAIR_FIX
+scope=PUBLIC_ONLY_G07_REAL_GAZEBO_14TOPIC_BAG_GOAL_STOP_MANAGED_SHUTDOWN_CM_EXIT0
 owner_l3_accepted=false
 certified_estop=false
