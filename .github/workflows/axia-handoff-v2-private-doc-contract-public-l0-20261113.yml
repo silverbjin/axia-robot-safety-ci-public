@@ -20,6 +20,7 @@ jobs:
           ref: b427520ac579335640d88123612e5e452904ed87
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
+          fetch-depth: 0
           path: instructor
       - name: Confirm exact source and correct handoff links, no false acceptance
         shell: bash
