@@ -22,12 +22,15 @@ command -v curl >/dev/null || { echo 'AXIA_P2_ARCHIVE_BLOCKED curl_required' >&2
 
 OWNER_HOME="$(realpath "$HOME")"
 ROOT="${AXIA_P2_ARCHIVE_ROOT:-$OWNER_HOME/axia_p2_private_evidence}"
+if [[ -z "${AXIA_P2_ARCHIVE_ROOT:-}" && ! -d "$ROOT" ]]; then
+  ROOT="$OWNER_HOME" # targeted filenames only; fallback when historical private root moved
+fi
 [[ -d "$ROOT" && ! -L "$ROOT" ]] || {
   echo 'AXIA_P2_ARCHIVE_BLOCKED PRIVATE_ARCHIVE_ROOT_NOT_FOUND' >&2; exit 2;
 }
 ROOT="$(realpath "$ROOT")"
 case "$ROOT" in
-  "$OWNER_HOME"/*) ;;
+  "$OWNER_HOME"|"$OWNER_HOME"/*) ;;
   *) echo 'AXIA_P2_ARCHIVE_BLOCKED ROOT_OUTSIDE_OWNER_HOME' >&2; exit 2 ;;
 esac
 
