@@ -33,5 +33,30 @@ def admit_s01(env, *, source_sha, checkout_sha, case, goals, goal):
     return True
 
 
+
+
+def admit_s05(env, *, source_sha, checkout_sha, case, goals, goal, operations):
+    """One CI SIM-only S05 SW Stop/Reset/Rearm, NOT human Owner authority."""
+    if not isinstance(env, dict):
+        raise ValueError("INVALID_ENV")
+    required={
+        "GITHUB_ACTIONS":"true","AXIA_P0_SIM_ONLY":"1",
+        "ROS_DISTRO":"jazzy","AXIA_P3_S05_CI_GOAL_ALLOWED":"1",
+    }
+    for k,v in required.items():
+        if env.get(k)!=v:
+            raise ValueError("S05_SIM_SCOPE_DENIED_"+k)
+    if not isinstance(env.get("GZ_PARTITION"),str) or not env["GZ_PARTITION"].startswith("axia_p2_"):
+        raise ValueError("S05_PARTITION_NOT_ISOLATED")
+    if not isinstance(source_sha,str) or not HEX40.fullmatch(source_sha) or checkout_sha!=source_sha:
+        raise ValueError("EXACT_S05_PRIVATE_SOURCE_REQUIRED")
+    if case!="S05" or type(goals) is not int or goals!=1:
+        raise ValueError("S05_ONLY_ONE_GOAL")
+    if not isinstance(goal,(list,tuple)) or tuple(goal)!=(-1.7,.7):
+        raise ValueError("S05_NON_APPROVED_G07_LONG_CORRIDOR")
+    if tuple(operations)!=("sw_stop","rearm_denied","reset","rearm"):
+        raise ValueError("S05_NO_FAULT_CRASH_OR_SECOND_GOAL_ALLOWED")
+    return True
+
 if __name__ == "__main__":
     print("AXIA_P3_S01_CI_SIM_ONLY_PUBLIC_CONTRACT_STATIC_NO_GOAL")
