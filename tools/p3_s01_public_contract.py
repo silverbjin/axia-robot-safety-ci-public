@@ -58,5 +58,40 @@ def admit_s05(env, *, source_sha, checkout_sha, case, goals, goal, operations):
         raise ValueError("S05_NO_FAULT_CRASH_OR_SECOND_GOAL_ALLOWED")
     return True
 
+
+
+def admit_s03(env, *, source_sha, checkout_sha, case, goals, goal,
+              operations, cm_killed):
+    """Only a bounded SIGSTOP/SIGCONT in isolated public Gazebo S03.
+
+    Does NOT authorize a real CM SIGKILL or Owner /dev/tty workflow.
+    """
+    if not isinstance(env,dict):
+        raise ValueError("INVALID_S03_ENV")
+    required={
+        "GITHUB_ACTIONS":"true","AXIA_P0_SIM_ONLY":"1",
+        "ROS_DISTRO":"jazzy",
+        "AXIA_P3_S03_CI_COMPOUND_ALLOWED":"1",
+        "AXIA_P3_S03_CI_CM_PAUSE_ALLOWED":"1",
+    }
+    for key,value in required.items():
+        if env.get(key)!=value:
+            raise ValueError("S03_SCOPED_SIM_ONLY_"+key)
+    if not isinstance(env.get("GZ_PARTITION"),str) or not env["GZ_PARTITION"].startswith("axia_p2_"):
+        raise ValueError("S03_GAZEBO_PARTITION_NOT_ISOLATED")
+    if not isinstance(source_sha,str) or not HEX40.fullmatch(source_sha) or checkout_sha!=source_sha:
+        raise ValueError("S03_IMMUTABLE_PRIVATE_SHA_REQUIRED")
+    if case!="S03" or type(goals) is not int or goals!=1:
+        raise ValueError("S03_ONE_NOMINAL_GOAL_ONLY")
+    if not isinstance(goal,(list,tuple)) or tuple(goal)!=(-1.7,.7):
+        raise ValueError("S03_UNAUTHORIZED_G07_CORRIDOR")
+    if cm_killed is not False or tuple(operations)!=(
+        "scan_drop","cm_sigstop","cm_sigcont","scan_normal"
+    ):
+        raise ValueError("S03_NO_CRASH_RESET_OR_SAFETY_BYPASS")
+    if env.get("AXIA_P3_S01_CI_GOAL_ALLOWED")=="1" or env.get("AXIA_P3_S05_CI_GOAL_ALLOWED")=="1":
+        raise ValueError("S03_MUTUALLY_EXCLUSIVE_CASE")
+    return True
+
 if __name__ == "__main__":
     print("AXIA_P3_S01_CI_SIM_ONLY_PUBLIC_CONTRACT_STATIC_NO_GOAL")
