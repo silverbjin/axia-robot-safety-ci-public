@@ -15,14 +15,14 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 34563bc640834d5963020c3ac6f28d61ff965786
+          ref: ef6c0b2fa5765c7216746595a52e28e40e59e2fa
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Original PNU fixture, Safety FSM risk policy, real cmd oracle, script syntaxes
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git rev-parse HEAD)" = '34563bc640834d5963020c3ac6f28d61ff965786'
+          test "$(git rev-parse HEAD)" = 'ef6c0b2fa5765c7216746595a52e28e40e59e2fa'
           python3 -m unittest discover -s tests/unit -p test_p3_s04_risk_to_supervisor_limit_policy.py -v
           python3 -m unittest discover -s tests/unit -p test_p3_s04_actual_risk_to_cmd_oracle.py -v
           python3 -m unittest discover -s tests/unit -p test_p3_s04_post_final_zero_dwell.py -v
