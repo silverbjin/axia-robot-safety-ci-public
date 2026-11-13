@@ -1,0 +1,47 @@
+name: AXIA P3 G09 exact source real Jazzy ROS track transport L1
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths:
+      - '.github/workflows/axia-p3-g09-real-ros-l1-20261113.yml'
+permissions:
+  contents: read
+jobs:
+  g09-real-jazzy-l1:
+    runs-on: ubuntu-24.04
+    environment: axia-instructor-sealed
+    container:
+      image: ros:jazzy-ros-base-noble
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 3dd0366bd7c17b7e127b7ae1facf0f8a4f4f5ba7
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Exact source and targeted ROS Jazzy runtime
+        run: |
+          set -Eeuo pipefail
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '3dd0366bd7c17b7e127b7ae1facf0f8a4f4f5ba7'
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+            ros-jazzy-rclpy ros-jazzy-std-msgs >/dev/null
+      - name: Actual ROS 2 topic P/N/U 10Hz delivery trace NO Goal NO Gazebo
+        shell: bash
+        env:
+          ROS_DOMAIN_ID: '59'
+          ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+        run: |
+          set -Eeuo pipefail
+          set +u
+          source /opt/ros/jazzy/setup.bash
+          set -u
+          export PYTHONPATH="$PWD/ros2_ws/src/axia_scenario_verifier"
+          timeout --signal=TERM --kill-after=5s 45s \
+            python3 -m unittest discover -s tests/ros_integration -p test_p3_g09_ros_l1.py -v
+          echo 'AXIA_G09_REAL_JAZZY_ROS_L1_PASS_NO_GAZEBO_NO_GOAL_NO_CMD_VEL'
+      - name: Erase sealed instructor source
+        if: always()
+        shell: bash
+        run: rm -rf -- ros2_ws tests tools configs docs scripts fixtures scenarios .git
