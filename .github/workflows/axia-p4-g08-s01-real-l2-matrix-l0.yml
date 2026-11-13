@@ -1,0 +1,63 @@
+name: AXIA P4 G08 scoped real S01 L2 evidence matrix L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-p4-g08-s01-real-l2-matrix-l0.yml']
+permissions:
+  contents: read
+jobs:
+  sealed-g08-s01-one-real-l2-formal-hold:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    environment: axia-instructor-sealed
+    steps:
+      - name: Private exact SHA, no retained token
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 456501f5477348c4e29a00651950eaa525ff4ce6
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Validate scoped actual Gazebo source vs formal G08 G11 holds
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = '456501f5477348c4e29a00651950eaa525ff4ce6'
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('docs/reports')
+          m=json.loads((p/'AXIA_P4_G08_G13_RELEASE_READINESS_MATRIX_20261113.json').read_text())
+          e=m['g08'];g11=m['g11'];gates=m['gates']
+          assert m['schema']=='axia_p4_release_readiness_v1'
+          assert all(m[k] is False for k in ('formal_accepted','student_release_approved','instructor_main_merge_approved','certified_estop'))
+          assert gates['G08']=='ONE_PUBLIC_REAL_GAZEBO_S01_L2_SCOPED_PASS_PERMANENT_RAW_NOT_CUSTODIED_FORMAL_HOLD'
+          assert e['actual_public_real_gazebo_l2'] is True and e['public_real_l2_run']==43424027852
+          assert e['public_first_startup_blocked_run']==43423047000
+          assert e['first_nav_start_rejected_before_goal'] is True
+          assert e['first_nav_start_rejection_root_cause_fixed'] is False
+          assert e['public_ci_contract_red_run']==43422397433 and e['public_ci_contract_green_run']==43422487255
+          assert e['first_nav_lifecycle_boundary_red_run']==43423689496 and e['first_nav_lifecycle_boundary_green_run']==43423807131
+          assert e['source_tree_equivalence_checked'] is True
+          assert e['tested_and_merged_code_tree_sha']=='9d1378bb401681768f8fcd1d958af8797b49f98c'
+          assert (e['private_oracle_unit_tests_passed'],e['public_ci_admission_unit_tests_passed'])==(11,7)
+          assert e['actual_same_goal_nav2_succeeded'] is True and e['actual_odom_moved'] is True
+          assert e['unexpected_guard_or_supervisor_stop'] is False and e['safety_timing_oracle_passed_scoped'] is True
+          assert e['collision_monitor_exit_code']==0 and e['navigation_localization_ordered_shutdown_ack'] is True
+          assert e['runtime_bag_actual_sqlite_14_topic_recorded'] is True
+          assert e['ci_raw_deleted_on_completion'] is True and e['permanent_owner_raw_custody'] is False
+          assert e['owner_wsl2_l3_run'] is False and e['formal_g08_accepted'] is False
+          assert e['formal_g11_s01_repeat_count']==0
+          assert g11['formal_scenario_repeat_counts']==dict.fromkeys(('S01','S02','S03','S04','S05'),0)
+          assert gates['G11'].startswith('FORMAL_0_OF_15')
+          assert 'NOT_ACCEPTED' in gates['G09'] and 'NOT_ACCEPTED' in gates['G10']
+          assert (p/'AXIA_P3_LATEST_INTEGRATED_S01_REAL_GAZEBO_AND_S02_S05_PARITY_20261113_KO.md').is_file()
+          print('AXIA_P4_G08_S01_ACTUAL_PUBLIC_GAZEBO_L2_SCOPED_CROSSWALK_PASS')
+          print('AXIA_P4_G08_PERMANENT_RAW_NOT_CUSTODIED_FORMAL_HOLD_G11_0_OF_15')
+          print('AXIA_P4_NAVIGATION_START_FIRST_FAILURE_RETAINED_INTERMITTENT_NOT_FIXED')
+          print('AXIA_P4_G09_G10_OWNER_L3_STUDENT_MAIN_HOLD')
+          PY
+      - name: Remove all private source and evidence
+        if: always()
+        shell: bash
+        run: rm -rf -- .git docs ros2_ws scripts tools tests fixtures scenarios configs results training
