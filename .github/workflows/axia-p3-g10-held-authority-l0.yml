@@ -1,0 +1,18 @@
+name: AXIA P3 G10 held compound public authority L0 RED GREEN
+on:
+  push:
+    branches: [feat/p3-g10-held-compound-recovery-20261114, release/p2-g06-cm-ttl-20261110]
+    paths: ['tools/p3_s01_public_contract.py', 'tests/test_p3_g10_public_contract.py', '.github/workflows/axia-p3-g10-held-authority-l0.yml']
+  pull_request:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['tools/p3_s01_public_contract.py', 'tests/test_p3_g10_public_contract.py', '.github/workflows/axia-p3-g10-held-authority-l0.yml']
+permissions:
+  contents: read
+jobs:
+  g10-no-physical-goal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - run: python3 -m unittest discover -s tests -p test_p3_g10_public_contract.py -v
+      - run: echo AXIA_P3_G10_SCOPED_SIM_ONLY_L0_PASS_REAL_GAZEBO_NOT_RUN

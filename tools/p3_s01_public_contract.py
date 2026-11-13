@@ -130,5 +130,45 @@ def admit_s04(env, *, source_sha, checkout_sha, case, goals, goal,
         raise ValueError("S04_NO_OVERLAPPING_SIM_CASE")
     return True
 
+
+
+def admit_g10(env, *, source_sha, checkout_sha, case, goals, goal,
+              operations, cm_killed, certified_estop):
+    """G10: 1 exact public-simulation Goal; existing Scan/CM + protective FSM.
+
+    This is NOT Owner TTY authority. It NEVER grants CM SIGKILL, manual
+    recovery during held fault, direct Twist, new goal, or hardware E-Stop.
+    """
+    if not isinstance(env,dict):
+        raise ValueError("G10_INVALID_ENV")
+    for k,v in {
+        "GITHUB_ACTIONS":"true","AXIA_P0_SIM_ONLY":"1",
+        "ROS_DISTRO":"jazzy","AXIA_G07_CI_SIM_GOAL_ALLOWED":"1",
+        "AXIA_P3_G10_CI_HELD_RECOVERY_ALLOWED":"1",
+        "AXIA_P3_S03_CI_COMPOUND_ALLOWED":"1",
+        "AXIA_P3_S03_CI_CM_PAUSE_ALLOWED":"1",
+    }.items():
+        if env.get(k)!=v:raise ValueError("G10_SIM_ONLY_"+k)
+    if (not isinstance(env.get("GZ_PARTITION"),str) or
+            not env["GZ_PARTITION"].startswith("axia_p2_")):
+        raise ValueError("G10_ISOLATED_GAZEBO_REQUIRED")
+    if not isinstance(source_sha,str) or not HEX40.fullmatch(source_sha) or checkout_sha!=source_sha:
+        raise ValueError("G10_IMMUTABLE_SOURCE_SHA_REQUIRED")
+    if case!="G10" or type(goals) is not int or goals!=1:
+        raise ValueError("G10_ONLY_ONE_AUTHORIZED_GOAL")
+    if not isinstance(goal,(tuple,list)) or tuple(goal)!=(-1.7,.7):
+        raise ValueError("G10_ONLY_EXISTING_G07_SAFE_CORRIDOR")
+    if cm_killed is not False or certified_estop is not False:
+        raise ValueError("G10_CM_PAUSE_NOT_CRASH_AND_NOT_CERTIFIED_ESTOP")
+    valid=("scan_drop","cm_sigstop","reset_denied","rearm_denied",
+           "fault_cleared_denied","cm_sigcont","scan_normal",
+           "fault_cleared","rearm","no_auto_resume")
+    if tuple(operations)!=valid:
+        raise ValueError("G10_PROTECTIVE_STOP_REQUIRES_FAULT_CLEARED_NOT_RESET")
+    if any(env.get(k)=="1" for k in ("AXIA_P3_S01_CI_GOAL_ALLOWED",
+            "AXIA_P3_S04_CI_PNU_ALLOWED","AXIA_P3_S05_CI_GOAL_ALLOWED")):
+        raise ValueError("G10_MUST_BE_EXCLUSIVE_SIM_CASE")
+    return True
+
 if __name__ == "__main__":
     print("AXIA_P3_S01_CI_SIM_ONLY_PUBLIC_CONTRACT_STATIC_NO_GOAL")

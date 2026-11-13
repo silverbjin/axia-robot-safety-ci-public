@@ -1,0 +1,48 @@
+name: AXIA P3 G10 sealed held fault recovery oracle and scope L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-p3-g10-held-private-oracle-l0.yml']
+permissions:
+  contents: read
+jobs:
+  exact-private-same-goal-held-fault-recovery-oracle:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: axia-instructor-sealed
+    steps:
+      - name: Exact Instructor protected checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 44e560aa178fbcf813db0761d6cabea769214aaa
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Full boundary tests without ROS, Gazebo, Goal or process SIGSTOP
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = '44e560aa178fbcf813db0761d6cabea769214aaa'
+          python3 -m unittest discover -s tests/unit -p test_p3_s03_compound_live_oracle.py -v
+          python3 -m unittest discover -s tests/unit -p test_p3_g10_held_fault_live_oracle.py -v
+          python3 -m unittest discover -s tests/unit -p test_p3_g10_cm_pause_scope.py -v
+          python3 -m unittest discover -s tests/unit -p test_p3_s05_actual_stop_oracle.py -v
+          python3 -m py_compile tools/p3_g10_held_fault_oracle.py tools/p3_g10_held_fault_recovery_ci.py tools/p3_s03_cm_pause_ci.py
+          bash -n scripts/p2_no_goal_smoke_ci.sh
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('scripts/p2_no_goal_smoke_ci.sh').read_text()
+          assert 'AXIA_P3_G10_CI_HELD_RECOVERY_ALLOWED' in s
+          assert 'AXIA_FAULT_LAUNCH_ALLOWED=false' in s
+          assert 'p3_g10_held_fault_recovery_ci.py' in s
+          assert s.index('p3_g10_held_fault_recovery_ci.py') < s.index('p3_s03_compound_live_ci.py')
+          worker=Path('tools/p3_s03_cm_pause_ci.py').read_text()
+          assert 'signal.signal(signal.SIGTERM,_graceful_signal)' in worker
+          assert 'sigcont_restored' in worker
+          print('AXIA_P3_G10_DEFAULT_FAULT_OFF_EXACT_PID_GRACEFUL_SIGNAL_SCOPE_L0_PASS')
+          PY
+          echo AXIA_P3_G10_PRIVATE_ORACLE_FAIL_CLOSED_L0_PASS_REAL_GAZEBO_NOT_RUN
+      - name: Erase sealed source and unit fixtures
+        if: always()
+        shell: bash
+        run: rm -rf -- .git docs ros2_ws scripts tools tests fixtures scenarios configs results training
