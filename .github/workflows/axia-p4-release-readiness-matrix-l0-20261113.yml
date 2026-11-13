@@ -1,0 +1,60 @@
+name: AXIA P4 readiness matrix evidence scope public L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths:
+      - '.github/workflows/axia-p4-release-readiness-matrix-l0-20261113.yml'
+permissions:
+  contents: read
+jobs:
+  private-p4-readiness-scope:
+    environment: axia-instructor-sealed
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 7785df5526846172dd2a55a29a13ef7e3ffea0c7
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: P4 read-only evidence matrix and no false release
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = '7785df5526846172dd2a55a29a13ef7e3ffea0c7'
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          f=Path('docs/reports/AXIA_P4_G08_G13_RELEASE_READINESS_MATRIX_20261113.json')
+          m=json.loads(f.read_text())
+          assert m['schema']=='axia_p4_release_readiness_v1'
+          assert m['canonical_staging_sha']=='f9c7b9a52e073174dd12508b929115db4b8cc961'
+          assert m['formal_accepted'] is False
+          assert m['student_release_approved'] is False
+          assert m['instructor_main_merge_approved'] is False
+          assert m['certified_estop'] is False
+          assert m['g11']['required_scenarios']==5
+          assert m['g11']['required_independent_cold_runs_per_scenario']==3
+          assert m['g11']['formal_scenario_repeat_counts']==dict.fromkeys(('S01','S02','S03','S04','S05'),0)
+          assert m['g12']['student_expected_red_failures']==22
+          assert m['g12']['instructor_public_green_passes']==39
+          assert m['g12']['instructor_hidden_green_passes']==49
+          assert m['g12']['student_secret_path_scan_passed'] is True
+          assert m['g12']['p4_package_release_approved'] is False
+          assert m['g13']['actual_pc_count_verified']==0
+          assert m['staging_integration']['p3_unit_tests_passed']==37
+          assert m['staging_integration']['safety_guard_code_changed'] is False
+          assert m['staging_integration']['g08_to_g11_formal_accepted'] is False
+          assert m['g09']['public_real_ros_l1_run']==43387460089
+          assert m['g10']['public_l0_green_run']==43388169083
+          md=Path('docs/operations/AXIA_P4_G08_G13_RELEASE_READINESS_HANDOFF_20261113_KO.md').read_text()
+          for x in ('G08','G09','G10','G11','G12','G13','NOT_ACCEPTED',
+                    '43389015915','f9c7b9a52e073174dd12508b929115db4b8cc961'):
+              assert x in md,x
+          print('AXIA_P4_READINESS_MATRIX_L0_PASS_STAGED_37_G12_SCOPED_G13_NOT_RUN_NO_RELEASE')
+          PY
+      - name: Erase private checkout
+        if: always()
+        shell: bash
+        run: rm -rf -- docs ros2_ws scripts tools tests fixtures scenarios configs .git
