@@ -1,0 +1,67 @@
+name: AXIA P4 G11 G12 refreshed readiness exact source public L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths:
+      - '.github/workflows/axia-p4-g11-g12-readiness-refresh-l0-20261113.yml'
+permissions:
+  contents: read
+jobs:
+  sealed-g11-g12-readiness-metadata:
+    runs-on: ubuntu-24.04
+    environment: axia-instructor-sealed
+    timeout-minutes: 8
+    steps:
+      - name: Checkout pinned Instructor metadata only
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: daa47f850c2cd3011024f21bd8685711170c9907
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Check exact source and formal HOLD scopes
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = 'daa47f850c2cd3011024f21bd8685711170c9907'
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          root=Path('docs/reports')
+          matrix=json.loads((root/'AXIA_P4_G08_G13_RELEASE_READINESS_MATRIX_20261113.json').read_text())
+          ledger=json.loads((root/'AXIA_P4_G11_COLD_RUN_EVIDENCE_LEDGER_20261113.json').read_text())
+          assert matrix['schema']=='axia_p4_release_readiness_v1'
+          assert matrix['canonical_staging_sha']=='4328de50fbb6c9b0341490d0c9de4e2b9412fe51'
+          assert matrix['canonical_staging_sha_kind']=='P4_00_REVIEWED_HEAD_PRIOR_TO_THIS_METADATA_REFRESH_NOT_SELF_REFERENTIAL_LIVE_HEAD'
+          assert all(matrix[key] is False for key in ('formal_accepted','student_release_approved','instructor_main_merge_approved','certified_estop'))
+          g11=matrix['g11']
+          assert (g11['required_scenarios'],g11['required_independent_cold_runs_per_scenario'])==(5,3)
+          assert g11['formal_scenario_repeat_counts']==dict.fromkeys(('S01','S02','S03','S04','S05'),0)
+          assert g11['historical_candidate_records']==len(ledger['observed_sources'])==24
+          assert g11['new_cold_runs_required_now']=='UNDETERMINED_REQUALIFY_EXISTING_RAW_FIRST'
+          assert ledger['g08']['status']=='G08_RAW_MISSING_IN_REVIEWED_INVENTORY_NOT_ACCEPTED'
+          assert matrix['p4_00_evidence_ledger']['actual_formal_5x3_joins']==0
+          assert matrix['p4_00_evidence_ledger']['g08_raw_absence_proved_on_owner_disk'] is False
+          assert matrix['p4_00_evidence_ledger']['public_ci_sealed_source_l0_run']==43407911025
+          s12=matrix['g12']['full_reachable_student_history_security_audit']
+          assert s12['ci_postmerge_run']==43408993054
+          assert (s12['fetched_refs'],s12['reachable_commits'],s12['unique_git_trees'],s12['high_confidence_findings'])==(19,177,171,0)
+          assert s12['public_ci_source_sha']=='c23fd09d0fa5a25923893f4fe27bbe5492a222bf'
+          for k in ('semantic_answer_disclosure_absence_proved','unreachable_orphan_objects_scanned',
+                    'forks_and_future_pushes_scanned','new_student_release','formal_g12_accepted'):
+              assert s12[k] is False,k
+          assert matrix['g12']['p4_package_release_approved'] is False
+          assert (matrix['g13']['required_distinct_clean_pcs'],matrix['g13']['actual_pc_count_verified'])==(2,0)
+          assert matrix['gates']['G08'].endswith('NOT_LOCATED_IN_REVIEWED_SOURCES')
+          assert 'NOT_ACCEPTED' in matrix['gates']['G11']
+          assert 'NOT_ACCEPTED' in matrix['gates']['G12']
+          assert 'OWNER_RAW_REVIEW_FAILED' in {r['evidence_level'] for r in ledger['observed_sources']}
+          assert all(not v['formal_eligible'] for v in ledger['observed_sources'])
+          print('AXIA_P4_G11_G12_READINESS_MATRIX_L0_PASS candidates=24 formal=0_of_15')
+          print('AXIA_P4_G12_HISTORY_HEURISTIC_L0_PASS refs=19 commits=177 trees=171 findings=0')
+          print('AXIA_P4_G08_RAW_MISSING_G13_NOT_RUN_MAIN_HOLD_STUDENT_RELEASE_HOLD_NO_ROS_GOAL')
+          PY
+      - name: Erase private checkout
+        if: always()
+        shell: bash
+        run: rm -rf -- .git docs ros2_ws scripts tools tests fixtures scenarios configs results training
