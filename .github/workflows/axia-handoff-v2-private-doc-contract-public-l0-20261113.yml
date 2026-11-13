@@ -1,0 +1,75 @@
+name: AXIA Handoff v2 PUBLIC L0 private-doc contract (no ROS/Goal)
+on:
+  push:
+    branches:
+      - release/p2-g06-cm-ttl-20261110
+    paths:
+      - .github/workflows/axia-handoff-v2-private-doc-contract-public-l0-20261113.yml
+permissions:
+  contents: read
+jobs:
+  verify-pinned-handoff:
+    runs-on: ubuntu-24.04
+    environment: axia-instructor-sealed
+    timeout-minutes: 8
+    steps:
+      - name: Checkout immutable private Instructor DOC-ONLY revision
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: b427520ac579335640d88123612e5e452904ed87
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+          path: instructor
+      - name: Confirm exact source and correct handoff links, no false acceptance
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C instructor rev-parse HEAD)" = b427520ac579335640d88123612e5e452904ed87
+          python3 - <<'PY'
+          from pathlib import Path
+          import re,subprocess
+          root=Path("instructor")
+          p=root/"docs/handovers/AXIA_P1_P2_TO_P3_HANDOVER_20261113_KO.md"
+          doc=p.read_text(encoding="utf-8")
+          standard=root/"docs/operations/AXIA_PUBLIC_CI_FIRST_TDD_WSL2_PARITY_STANDARD_20261113_KO.md"
+          rtm=root/"docs/reports/AXIA_P0_P4_INTEGRATED_EVIDENCE_ACCEPTANCE_RTM_20261113_KO.md"
+          assert standard.is_file() and rtm.is_file()
+          delta=subprocess.check_output(['git','-C',str(root),'diff','--name-only','780f3ce3e7de0f7321a032b51522b6da49c1ea3c','HEAD'],text=True).splitlines()
+          assert delta == ['docs/handovers/AXIA_P1_P2_TO_P3_HANDOVER_20261113_KO.md'],delta
+          required = (
+             "AXIA_PUBLIC_CI_FIRST_TDD_WSL2_PARITY_STANDARD_20261113_KO.md",
+             "AXIA_P0_P4_INTEGRATED_EVIDENCE_ACCEPTANCE_RTM_20261113_KO.md",
+             "00d643efa1ed7d2d77a84ab1cf4decc77e4ff13c",
+             "780f3ce3e7de0f7321a032b51522b6da49c1ea3c",
+             "006e6548c7836e5d4882f6742a0cdf920f65bbe1",
+             "1c03c9bfb4b41e2726a7c1d2f47d65496bdaa474",
+             "43354298703","43358358930",
+             "G05/G06","G08~G11","NOT_ACCEPTED","RAW_REVIEW_HOLD",
+             "S01","S02","S03","S04","S05",
+             "사용자가","승인","main",
+          )
+          for item in required:
+             assert item in doc,("HANDOFF_REQUIRED_CONTEXT_MISSING",item)
+          for forbidden in (
+             "3개 PR 모두 Draft·미병합",
+             "PR #100은 HOLD",
+             "새 인수 RTM을 작성",
+             "G07은 L3_NOT_RUN",
+          ):
+             assert forbidden not in doc,("HANDOFF_STALE_STATUS",forbidden)
+          links=re.findall(r'\]\(([^)]+)\)',doc)
+          local=[x for x in links if not (x.startswith("https://") or x.startswith("http://"))]
+          for link in local:
+             candidate=(p.parent/link.split("#",1)[0]).resolve()
+             assert candidate.is_file(),("HANDOFF_BROKEN_LOCAL_LINK",link)
+          assert 'RED' in standard.read_text() and 'GREEN' in standard.read_text()
+          assert 'G11' in rtm.read_text()
+          print("AXIA_HANDOFF_V2_LOCAL_LINKS_AND_SOURCE_SCOPE_PASS",len(local))
+          print("AXIA_HANDOFF_V2_CI_STANDARD_RTM_UNMODIFIED_PASS")
+          PY
+          echo AXIA_HANDOFF_V2_PUBLIC_L0_PASS_NO_ROS_NO_GOAL
+      - name: Remove private checkout
+        if: always()
+        shell: bash
+        run: rm -rf -- instructor
