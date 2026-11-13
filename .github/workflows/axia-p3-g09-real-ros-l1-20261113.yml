@@ -38,9 +38,10 @@ jobs:
           set +u
           source /opt/ros/jazzy/setup.bash
           set -u
-          export PYTHONPATH="$PWD/ros2_ws/src/axia_scenario_verifier"
+          export PYTHONPATH="/opt/ros/jazzy/lib/python3.12/site-packages:/opt/ros/jazzy/local/lib/python3.12/dist-packages:/usr/lib/python3/dist-packages:$PWD/ros2_ws/src/axia_scenario_verifier"
+          /usr/bin/python3 -c 'import rclpy, std_msgs; print("AXIA_G09_JAZZY_RCLPY_IMPORT_PASS")'
           timeout --signal=TERM --kill-after=5s 45s \
-            python3 -m unittest discover -s tests/ros_integration -p test_p3_g09_ros_l1.py -v
+            /usr/bin/python3 -m unittest discover -s tests/ros_integration -p test_p3_g09_ros_l1.py -v
           echo 'AXIA_G09_REAL_JAZZY_ROS_L1_PASS_NO_GAZEBO_NO_GOAL_NO_CMD_VEL'
       - name: Erase sealed instructor source
         if: always()
