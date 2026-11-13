@@ -15,14 +15,14 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: b2f530f4a985cbb1ce4751799d69ac7e3afb9d4d
+          ref: dd1040940fe615fd324cc49464d5d8129b5de1a4
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Verify exact private SHA and G10 combined fault synthetic oracle
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git rev-parse HEAD)" = 'b2f530f4a985cbb1ce4751799d69ac7e3afb9d4d'
+          test "$(git rev-parse HEAD)" = 'dd1040940fe615fd324cc49464d5d8129b5de1a4'
           export PYTHONPATH="$PWD/ros2_ws/src/axia_scenario_verifier"
           python3 -m unittest discover -s tests/unit -p test_p3_g10_compound.py -v
           echo AXIA_G10_COMPOUND_FAULT_L0_GREEN_ONLY_NO_ROS_NO_GOAL
