@@ -15,14 +15,14 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 44e560aa178fbcf813db0761d6cabea769214aaa
+          ref: dde6a66a419d07199f4c9709f66aaedef256d73d
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Full boundary tests without ROS, Gazebo, Goal or process SIGSTOP
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git rev-parse HEAD)" = '44e560aa178fbcf813db0761d6cabea769214aaa'
+          test "$(git rev-parse HEAD)" = 'dde6a66a419d07199f4c9709f66aaedef256d73d'
           python3 -m unittest discover -s tests/unit -p test_p3_s03_compound_live_oracle.py -v
           python3 -m unittest discover -s tests/unit -p test_p3_g10_held_fault_live_oracle.py -v
           python3 -m unittest discover -s tests/unit -p test_p3_g10_cm_pause_scope.py -v
