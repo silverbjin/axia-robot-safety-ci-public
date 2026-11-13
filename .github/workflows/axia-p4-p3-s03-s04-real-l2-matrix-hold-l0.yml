@@ -1,0 +1,71 @@
+name: AXIA P4 P3 S03 S04 real L2 scoped evidence matrix and formal HOLD L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-p4-p3-s03-s04-real-l2-matrix-hold-l0.yml']
+permissions:
+  contents: read
+jobs:
+  sealed-source-p3-s03-s04-and-formal-g09-g10-g11-hold:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    environment: axia-instructor-sealed
+    steps:
+      - name: Checkout exact Instructor metadata SHA
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 3fe1f0845cdb7e07a9f6ae4890e3a6991150c87e
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Verify real L2 source custody and strict no formal acceptance
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = '3fe1f0845cdb7e07a9f6ae4890e3a6991150c87e'
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('docs/reports')
+          m=json.loads((p/'AXIA_P4_G08_G13_RELEASE_READINESS_MATRIX_20261113.json').read_text())
+          s3=m['s03'];s4=m['s04'];g09=m['g09'];g10=m['g10'];g11=m['g11']
+          assert m['schema']=='axia_p4_release_readiness_v1'
+          assert all(m[k] is False for k in ('formal_accepted','student_release_approved','instructor_main_merge_approved','certified_estop'))
+          assert s3['public_ci_run']==43433595130 and s3['actual_public_ros_gazebo_l2_scoped_pass'] is True
+          assert s3['private_tested_source_sha']=='8cfc4dfe9ac7431fbe3e8577894089fa8f9c2953'
+          assert s3['tested_and_merged_tree_sha']=='d7146115a4c76c223ba3d36668443b7c421d6b66'
+          assert (s3['exact_public_sim_admission_tests_passed'],s3['private_compound_event_oracle_tests_passed'])==(9,12)
+          assert s3['cm_exact_pid_sigstop_sigcont_restored'] and not s3['cm_sigkill_crash_tested']
+          assert s3['first_guard_latch_reason']=='UPSTREAM_STALE_AFTER_MOTION'
+          assert s3['actual_scan_and_cm_restored_without_auto_resume']
+          assert s3['same_goal_canceled'] and s3['actual_final_zero_and_odom_dwell_pass']
+          assert s3['real_sqlite_14_topic_quickcheck_pass'] and not s3['permanent_raw_owner_custody']
+          assert not s3['held_fault_reset_rearm_denied_tested'] and not s3['formal_g10_accepted']
+          assert s4['public_ci_run']==43455456960 and s4['actual_public_ros_gazebo_l2_scoped_pass']
+          assert s4['private_tested_source_sha']=='ef6c0b2fa5765c7216746595a52e28e40e59e2fa'
+          assert s4['tested_and_merged_tree_sha']=='2989e8c060c929dd39eb2a63de9c84e8758e9f06'
+          assert (s4['public_sim_goal_admission_tests_passed'],s4['private_risk_policy_tests_passed'],s4['private_raw_event_oracle_tests_passed'],s4['private_first_final_zero_odom_timing_tests_passed'])==(11,14,11,5)
+          assert (s4['first_public_l2_blocked_before_pnu_run'],s4['second_public_l2_raw_timing_blocked_run'])==(43452200526,43453849196)
+          assert (s4['normal_cm_slowdown_first_boundary_red_run'],s4['normal_cm_slowdown_first_boundary_green_run'])==(43453081572,43453588661)
+          assert (s4['post_final_zero_first_boundary_red_run'],s4['post_final_zero_first_boundary_green_run'])==(43454662917,43455138475)
+          assert s4['n_normal_without_false_limit'] and s4['p_limited'] and s4['u_limited']
+          assert s4['existing_supervisor_linear_limit_mps']==0.066 and s4['scoped_guard_final_upper_bound_mps']==0.078
+          assert s4['actual_post_first_final_zero_odom_dwell_sec']>=1.0
+          assert s4['real_sqlite_14_topic_quickcheck_pass'] and s4['native_nav2_ordered_shutdown_and_cm_exit_zero']
+          assert s4['original_g09_synthetic_time_indexed_person_fixture_only'] and not s4['real_person_detected_or_ground_truth_verified']
+          assert not s4['permanent_raw_owner_custody'] and not s4['formal_g09_accepted']
+          assert g09['gazebo_moving_goal_run'] is True and not g09['formal_accepted']
+          assert g10['real_compound_goal_fault_or_recovery_run'] is True and not g10['held_fault_reset_rearm_rejection_tested'] and not g10['formal_accepted']
+          assert 'NOT_ACCEPTED' in m['gates']['G09'] and 'NOT_ACCEPTED' in m['gates']['G10']
+          assert g11['formal_scenario_repeat_counts']==dict.fromkeys(('S01','S02','S03','S04','S05'),0)
+          assert m['gates']['G11'].startswith('FORMAL_0_OF_15')
+          assert (p/'AXIA_P3_S03_S04_REAL_GAZEBO_L2_INTEGRATED_EVIDENCE_20261114_KO.md').is_file()
+          print('AXIA_P3_S03_S04_PUBLIC_REAL_GAZEBO_L2_TECHNICAL_SCOPED_EVIDENCE_PASS')
+          print('AXIA_P3_G09_G10_FORMAL_NOT_ACCEPTED_G11_0_OF_15_RAW_NOT_PERSISTED')
+          print('AXIA_P3_CM_SIGSTOP_NOT_CRASH_S04_SYNTHETIC_NOT_LIVE_PERSON')
+          print('AXIA_P3_OWNER_L3_MAIN_STUDENT_RELEASE_HOLD')
+          PY
+      - name: Always erase private source metadata
+        if: always()
+        shell: bash
+        run: rm -rf -- .git docs ros2_ws scripts tools tests fixtures scenarios configs results training
