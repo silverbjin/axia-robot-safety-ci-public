@@ -1,0 +1,45 @@
+name: AXIA P3 S04 sealed private risk to guard oracle L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-p3-s04-private-oracle-l0.yml']
+permissions:
+  contents: read
+jobs:
+  sealed-pnu-risk-limited-pipeline-preflight:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    environment: axia-instructor-sealed
+    steps:
+      - name: Exact immutable Instructor checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: e640b9e41c9c0a2dbce7a73ca2c709a6dc39ab82
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Original PNU fixture, Safety FSM risk policy, real cmd oracle, script syntaxes
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = 'e640b9e41c9c0a2dbce7a73ca2c709a6dc39ab82'
+          python3 -m unittest discover -s tests/unit -p test_p3_s04_risk_to_supervisor_limit_policy.py -v
+          python3 -m unittest discover -s tests/unit -p test_p3_s04_actual_risk_to_cmd_oracle.py -v
+          python3 -m py_compile tools/p3_s04_actual_risk_to_cmd_oracle.py tools/p3_s04_live_risk_to_cmd_ci.py ros2_ws/src/axia_safety_supervisor/axia_safety_supervisor/p3_g09_risk_policy.py ros2_ws/src/axia_safety_supervisor/axia_safety_supervisor/p2_supervisor_node.py ros2_ws/src/axia_safety_bringup/launch/axia_tb3_p2.launch.py ros2_ws/src/axia_safety_bringup/launch/axia_navigation_p2.launch.py
+          bash -n scripts/p2_no_goal_smoke_ci.sh
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('scripts/p2_no_goal_smoke_ci.sh').read_text()
+          assert 'AXIA_P3_S04_CI_PNU_ALLOWED' in s
+          assert 'LAUNCH_ARGS+=(p3_fixture_risk_bridge_enabled:=true)' in s
+          s2=Path('ros2_ws/src/axia_safety_supervisor/axia_safety_supervisor/p2_supervisor_node.py').read_text()
+          assert 'p3_fixture_risk_bridge_enabled",False' in s2
+          assert 'transition(self._state,"limit_on")' in s2
+          assert 'create_publisher(Twist' not in s2
+          print('AXIA_P3_S04_RISK_ADAPTER_DEFAULT_OFF_NO_FINAL_PUBLISHER')
+          PY
+          echo AXIA_P3_S04_PRIVATE_14_POLICY_AND_10_REAL_ORACLE_L0_PASS_NO_ROS
+      - name: Erase private source
+        if: always()
+        shell: bash
+        run: rm -rf -- .git docs ros2_ws scripts tools tests fixtures scenarios configs results training
