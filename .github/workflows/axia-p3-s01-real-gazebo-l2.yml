@@ -1,0 +1,131 @@
+# New scoped P3 S01 actual Gazebo nominal Goal verification.
+# Trigger only when the explicit reviewed workflow is promoted to the
+# protected PUBLIC RELEASE branch. Never runs on a feature/PR branch.
+name: AXIA P3 S01 real Gazebo nominal Nav2 Goal L2
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-p3-s01-real-gazebo-l2.yml']
+permissions:
+  contents: read
+concurrency:
+  group: axia-p3-s01-real-gazebo-l2
+  cancel-in-progress: false
+jobs:
+  real-s01-nominal-goal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 48
+    environment: axia-instructor-sealed
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+      options: --dns 1.1.1.1 --dns 8.8.8.8
+    steps:
+      - name: Checkout public CI admission contract
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Checkout exact sealed Instructor SHA, no stored credentials
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 0a5dc2621b8ecbe795a16ec4567f8e7f1f342c41
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          path: instructor
+          persist-credentials: false
+      - name: Immutable source and unit/static RED-GREEN gate before any real Goal
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          EXPECTED_SHA="0a5dc2621b8ecbe795a16ec4567f8e7f1f342c41"
+          ACTUAL_SHA="$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)"
+          test "$ACTUAL_SHA" = "$EXPECTED_SHA"
+          test "$ROS_DISTRO" = jazzy
+          python3 -m unittest discover -s tests -p test_p3_s01_public_contract.py -v
+          python3 -m unittest discover -s instructor/tests/unit -p test_p3_s01_actual_goal_oracle.py -v
+          python3 -m py_compile instructor/tools/p3_s01_actual_goal_ci.py instructor/tools/p3_s01_actual_goal_oracle.py
+          bash -n instructor/scripts/p2_no_goal_smoke_ci.sh
+          echo 'AXIA_P3_S01_PRIVATE_ORACLE_AND_RUNNER_L0_PASS_GOAL_NOT_RUN'
+      - name: Exact Owner runtime parity, no apt or pip reinstall
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cd instructor
+          set +u; source /opt/ros/jazzy/setup.bash; set -u
+          mkdir -p results/p3-s01-ci-moving
+          export ROS_DOMAIN_ID=91 ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
+          export GZ_PARTITION=axia_p2_s01_ci_91 AXIA_P0_SIM_ONLY=1
+          python3 tools/p2_g07_owner_env_parity.py --mode ci --output results/p3-s01-ci-moving/core_parity.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          v=json.loads(Path('results/p3-s01-ci-moving/core_parity.json').read_text())
+          assert v['status']=='CORE_PARITY_PASS'
+          assert v['checked_packages']==25 and v['checked_official_files']==5
+          print('AXIA_P3_S01_RUNTIME_G07_DIGEST_25_5_PARITY_PASS_NO_APT')
+          PY
+      - name: Actual isolated official Harmonic Nav2 S01 simulation, ONE Goal
+        shell: bash
+        env:
+          ROS_DOMAIN_ID: '91'
+          ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+          GZ_PARTITION: axia_p2_s01_ci_91
+          AXIA_P0_SIM_ONLY: '1'
+          AXIA_P2_G07_PHYSICAL_PREFLIGHT: '1'
+          AXIA_G07_CI_SIM_GOAL_ALLOWED: '1'
+          AXIA_P3_S01_CI_GOAL_ALLOWED: '1'
+          AXIA_G07_CI_OWNER_OBSERVER_PARITY: '1'
+          AXIA_G07_OWNER_STARTUP_PARITY: '1'
+          AXIA_G07_CI_OWNER_BAG_PARITY: '1'
+          AXIA_P2_SMOKE_RESULTS: results/p3-s01-ci-moving/real-l2
+        run: |
+          set -Eeuo pipefail
+          EXPECTED_SHA="0a5dc2621b8ecbe795a16ec4567f8e7f1f342c41"
+          ACTUAL_SHA="$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)"
+          test "$ACTUAL_SHA" = "$EXPECTED_SHA"
+          EXPECTED_PRIVATE_SHA="$EXPECTED_SHA" PYTHONPATH="$PWD" python3 - <<'PY'
+          import os
+          from tools.p3_s01_public_contract import admit_s01
+          assert admit_s01(dict(os.environ),source_sha=os.environ['EXPECTED_PRIVATE_SHA'],
+                            checkout_sha=os.environ['EXPECTED_PRIVATE_SHA'],
+                            case='S01',goals=1,goal=(-1.6,-.5))
+          print('AXIA_P3_S01_CI_ONE_GOAL_OWNER_SEPARATE_ADMISSION_L0_PASS')
+          PY
+          cd instructor
+          timeout --signal=TERM --kill-after=10s 900s bash scripts/p2_no_goal_smoke_ci.sh || {
+            echo 'AXIA_P3_S01_ACTUAL_GAZEBO_L2_BLOCKED'
+            for f in results/p3-s01-ci-moving/real-l2/{staged_startup,launch,g07_ci_pregoal,p3_s01_actual,g07_ordered_shutdown,rosbag}.log;
+            do if [[ -f "$f" ]];then echo "--- $(basename "$f") ---";tail -n 70 "$f";fi;done
+            exit 2
+          }
+          python3 - <<'PY'
+          import json,sqlite3
+          from pathlib import Path
+          root=Path('results/p3-s01-ci-moving/real-l2')
+          startup=json.loads((root/'startup_verdict.json').read_text())
+          p3=json.loads((root/'p3_s01_actual/s01_actual_goal_result.json').read_text())
+          shutdown=json.loads((root/'g07_ordered_shutdown.json').read_text())
+          cm=json.loads((root/'g07_shutdown_audit.json').read_text())
+          assert startup['status']=='SMOKE_READY' and not startup['goal_sent']
+          assert p3['goal_sent'] and not p3['fault_injected']
+          assert len(p3['goal_uuid'])==32 and p3['status']=='S01_REAL_GAZEBO_ACTION_CANDIDATE',p3
+          assert p3['oracle']['status']=='S01_REAL_ROS_EVENT_CANDIDATE',p3
+          assert p3['oracle']['odom_displacement_m']>=.05
+          assert not p3['formal_accepted'] and not p3['certified_estop']
+          assert shutdown['status']=='NAV2_LIFECYCLE_SHUTDOWN_ACK'
+          assert shutdown['navigation_ack'] and shutdown['localization_ack']
+          assert cm['status']=='SHUTDOWN_CLEAN_CANDIDATE' and cm['cm_exit_code']==0
+          assert 'P2_L2_GRACEFUL_TEARDOWN' in (root/'teardown.txt').read_text()
+          bag=root/'rosbag2'
+          assert (bag/'metadata.yaml').is_file()
+          dbs=list(bag.glob('*.db3'));assert len(dbs)==1
+          c=sqlite3.connect('file:'+str(dbs[0])+'?mode=ro',uri=True)
+          assert c.execute('pragma quick_check').fetchone()[0]=='ok'
+          counts=dict(c.execute('select topics.name,count(messages.id) from topics left join messages on topics.id=messages.topic_id group by topics.name'))
+          for name in ('/clock','/scan','/odom','/cmd_vel_supervised','/cmd_vel_pre_guard','/cmd_vel','/axia/safety/state','/axia/p2/base_guard','/navigate_to_pose/_action/status'):
+            assert counts.get(name,0)>0,(name,counts.get(name,0))
+          print('AXIA_P3_S01_14_TOPIC_SQLITE_REAL_BAG_AND_3_STAGE_CMD_L2_PASS')
+          print('AXIA_P3_S01_REAL_GAZEBO_GOAL_SUCCEEDED_NO_SPURIOUS_STOP_SCOPED_PASS')
+          print('AXIA_P3_S01_FORMAL_G08_G11_HOLD_OWNER_L3_NOT_RUN_OTHER_S02_S05_NOT_RUN')
+          PY
+      - name: Always erase Instructor checkout and raw ROS/Gazebo files
+        if: always()
+        shell: bash
+        run: rm -rf -- instructor
