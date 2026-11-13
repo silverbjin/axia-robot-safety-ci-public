@@ -91,6 +91,12 @@ jobs:
           cd instructor
           timeout --signal=TERM --kill-after=10s 900s bash scripts/p2_no_goal_smoke_ci.sh || {
             echo 'AXIA_P3_S01_ACTUAL_GAZEBO_L2_BLOCKED'
+            # Preserve FIRST failed Nav2 stage, not last cleanup exception or
+            # the zero-message CM bag produced AFTER Nav2 startup rejection.
+            python3 ../tools/p3_s01_startup_first_boundary.py \
+              --launch-log results/p3-s01-ci-moving/real-l2/launch.log \
+              --native results/p3-s01-ci-moving/real-l2/startup_verdict.navigation_start.native.json \
+              --output results/p3-s01-ci-moving/real-l2/p3_s01_first_nav_failure.json || true
             for f in results/p3-s01-ci-moving/real-l2/{staged_startup,launch,g07_ci_pregoal,p3_s01_actual,g07_ordered_shutdown,rosbag}.log;
             do if [[ -f "$f" ]];then echo "--- $(basename "$f") ---";tail -n 70 "$f";fi;done
             exit 2
