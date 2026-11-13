@@ -24,7 +24,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 784a6060d89be48ae3f3f9e663f29406b5e4f4c1
+          ref: ef6c0b2fa5765c7216746595a52e28e40e59e2fa
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -32,13 +32,14 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          EXACT_SHA="784a6060d89be48ae3f3f9e663f29406b5e4f4c1"
+          EXACT_SHA="ef6c0b2fa5765c7216746595a52e28e40e59e2fa"
           ACTUAL="$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)"
           test "$EXACT_SHA" = "$ACTUAL"
           test "$ROS_DISTRO" = jazzy
           python3 -m unittest discover -s tests -p test_p3_s04_public_contract.py -v
           python3 -m unittest discover -s instructor/tests/unit -p test_p3_s04_risk_to_supervisor_limit_policy.py -v
           python3 -m unittest discover -s instructor/tests/unit -p test_p3_s04_actual_risk_to_cmd_oracle.py -v
+          python3 -m unittest discover -s instructor/tests/unit -p test_p3_s04_post_final_zero_dwell.py -v
           bash -n instructor/scripts/p2_no_goal_smoke_ci.sh
           python3 -m py_compile instructor/tools/p3_s04_live_risk_to_cmd_ci.py instructor/tools/p3_s04_actual_risk_to_cmd_oracle.py instructor/ros2_ws/src/axia_safety_supervisor/axia_safety_supervisor/p2_supervisor_node.py
           echo AXIA_P3_S04_PUBLIC_11_PRIVATE_14_PLUS_10_TESTS_PASS_NO_GOAL
@@ -75,7 +76,7 @@ jobs:
           AXIA_P2_SMOKE_RESULTS: results/p3-s04-ci-pnu/real-l2
         run: |
           set -Eeuo pipefail
-          EXACT_SHA="784a6060d89be48ae3f3f9e663f29406b5e4f4c1"
+          EXACT_SHA="ef6c0b2fa5765c7216746595a52e28e40e59e2fa"
           ACTUAL="$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)"
           test "$EXACT_SHA" = "$ACTUAL"
           EXACT_PRIVATE_SHA="$EXACT_SHA" PYTHONPATH="$PWD" python3 - <<'PY'
