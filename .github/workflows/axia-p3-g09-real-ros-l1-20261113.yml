@@ -21,6 +21,7 @@ jobs:
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Exact source and targeted ROS Jazzy runtime
+        shell: bash
         run: |
           set -Eeuo pipefail
           test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '3dd0366bd7c17b7e127b7ae1facf0f8a4f4f5ba7'
