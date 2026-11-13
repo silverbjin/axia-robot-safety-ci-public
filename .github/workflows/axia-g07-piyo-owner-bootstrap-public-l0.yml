@@ -1,0 +1,28 @@
+name: AXIA G07 PIYO WSL2 exact shared run after real 14-topic L2 PUBLIC L0
+on:
+  push:
+    branches: [fix/g07-piyo-owner-wsl2-acceptance-20261113]
+    paths:
+      - '.github/workflows/axia-g07-piyo-owner-bootstrap-public-l0.yml'
+      - 'scripts/axia_p2_g07_ci_pass_owner_wsl2_once.sh'
+      - 'tests/test_g07_piyo_owner_bootstrap_20261113.py'
+      - 'tests/test_g07_mkz_shared_owner_bootstrap_20261112.py'
+      - '.github/workflows/axia-p2-g07-ci-real-gazebo-moving-goal-l2.yml'
+      - '.github/workflows/axia-p2-g07-ci-pass-owner-bootstrap-static-l0.yml'
+permissions:
+  contents: read
+jobs:
+  exact-ci-source-and-no-auto-consent:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Static contract after actual public moving with Owner bag L2
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest discover -s tests -p 'test_g07_piyo_owner_bootstrap_20261113.py' -v
+          python3 -m unittest discover -s tests -p 'test_g07_mkz_shared_owner_bootstrap_20261112.py' -v
+          echo AXIA_G07_PIYO_FINAL_OWNER_BOOTSTRAP_PUBLIC_L0_PASS_NO_ROS_NO_GOAL

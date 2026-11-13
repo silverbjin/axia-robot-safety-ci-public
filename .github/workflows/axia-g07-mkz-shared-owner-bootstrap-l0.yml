@@ -1,0 +1,25 @@
+name: AXIA G07 MKZ shared CI Owner WSL2 bootstrap exact pin PUBLIC L0
+on:
+  push:
+    branches: [fix/g07-mkz-shared-owner-bootstrap-20261112]
+    paths:
+      - '.github/workflows/axia-g07-mkz-shared-owner-bootstrap-l0.yml'
+      - '.github/workflows/axia-p2-g07-ci-pass-owner-bootstrap-static-l0.yml'
+      - 'scripts/axia_p2_g07_ci_pass_owner_wsl2_once.sh'
+      - 'tests/test_g07_mkz_shared_owner_bootstrap_20261112.py'
+permissions:
+  contents: read
+jobs:
+  exact-source-manual-owner-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Pure public static self-check and fail-closed TTY, NO ROS, NO GOAL
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest discover -s tests -p 'test_g07_mkz_shared_owner_bootstrap_20261112.py' -v
+          echo AXIA_G07_MKZ_OWNER_SHARED_RUNNER_BOOTSTRAP_PUBLIC_L0_PASS_NO_ROS_NO_GOAL
