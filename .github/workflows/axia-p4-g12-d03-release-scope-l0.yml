@@ -1,0 +1,90 @@
+name: AXIA P4 G12 D03 independent student TODO RED instructor GREEN public L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths:
+      - '.github/workflows/axia-p4-g12-d03-release-scope-l0.yml'
+      - 'tests/test_axia_p4_g12_release_contract.py'
+      - 'tools/axia_p4_g12_release_contract.py'
+permissions:
+  contents: read
+jobs:
+  public-scoped-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: G12 release boundary synthetic contract
+        run: |
+          python3 -m unittest discover -s tests -p test_axia_p4_g12_release_contract.py -v
+          echo AXIA_G12_RELEASE_CONTRACT_L0_PASS
+  real-student-red-instructor-green:
+    needs: public-scoped-contract
+    runs-on: ubuntu-24.04
+    environment: axia-instructor-sealed
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact independent student D03 (public)
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: 4f74916a09f726ffd6978926adfc83ee9f528298
+          persist-credentials: false
+          path: student
+      - name: Checkout exact private Instructor D03 (sealed, never upload)
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: b01057ed4fa82b97aee8499aacbf2c55829bad23
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+          path: instructor
+      - name: Verify real student TODO RED and private answer GREEN in temporary sandbox
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C student rev-parse HEAD)" = '4f74916a09f726ffd6978926adfc83ee9f528298'
+          test "$(git -C instructor rev-parse HEAD)" = 'b01057ed4fa82b97aee8499aacbf2c55829bad23'
+          test -f student/block_A/day03/todo_safety.py
+          test -f instructor/training/d03/instructor/solutions/todo_safety.py
+          python3 -m venv "$RUNNER_TEMP/p4-g12-venv"
+          source "$RUNNER_TEMP/p4-g12-venv/bin/activate"
+          pip -q install pytest==8.3.5
+          export PYTHONPATH="$PWD/student/block_A/day03"
+          set +e
+          python -m pytest -q student/block_A/tests/test_safety_public.py \
+            student/block_A/tests/test_d03_adapter_public.py \
+            student/block_A/tests/test_d03_runtime_public.py \
+            > "$RUNNER_TEMP/student-red.log" 2>&1
+          RED_RC=$?
+          set -e
+          test "$RED_RC" -eq 1
+          grep -q 'TODO_NOT_IMPLEMENTED' "$RUNNER_TEMP/student-red.log"
+          echo 'AXIA_G12_STUDENT_INTENTIONAL_RED_REPRODUCED'
+          mkdir -p "$RUNNER_TEMP/g12/working/block_A/day03" "$RUNNER_TEMP/g12/working/block_A/tests"
+          cp -a student/block_A/day03/. "$RUNNER_TEMP/g12/working/block_A/day03/"
+          cp -a student/block_A/tests/. "$RUNNER_TEMP/g12/working/block_A/tests/"
+          for item in todo_safety.py p1_adapter_todo.py challenges.py; do
+            cp "instructor/training/d03/instructor/solutions/$item" "$RUNNER_TEMP/g12/working/block_A/day03/$item"
+          done
+          export PYTHONPATH="$RUNNER_TEMP/g12/working/block_A/day03"
+          python -m pytest -q \
+            "$RUNNER_TEMP/g12/working/block_A/tests/test_safety_public.py" \
+            "$RUNNER_TEMP/g12/working/block_A/tests/test_d03_adapter_public.py" \
+            "$RUNNER_TEMP/g12/working/block_A/tests/test_d03_runtime_public.py" \
+            "$RUNNER_TEMP/g12/working/block_A/tests/test_d03_challenges_public.py" \
+            > "$RUNNER_TEMP/instructor-green.log" 2>&1
+          echo 'AXIA_G12_INSTRUCTOR_REFERENCE_PUBLIC_GREEN'
+          python -m pytest -q instructor/training/d03/instructor/hidden_tests/test_d03_*.py \
+            > "$RUNNER_TEMP/instructor-hidden-green.log" 2>&1
+          echo 'AXIA_G12_PRIVATE_HIDDEN_TESTS_GREEN'
+          echo 'AXIA_G12_D03_SCOPED_G12_CANDIDATE_ONLY_NO_G13_NO_ROS_NO_GOAL'
+      - name: Secure cleanup (even if failed)
+        if: always()
+        shell: bash
+        run: |
+          rm -rf -- instructor student
+          rm -rf -- "$RUNNER_TEMP/g12" "$RUNNER_TEMP/p4-g12-venv"
+          rm -f -- "$RUNNER_TEMP/student-red.log" "$RUNNER_TEMP/instructor-green.log" "$RUNNER_TEMP/instructor-hidden-green.log"
