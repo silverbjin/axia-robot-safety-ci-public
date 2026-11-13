@@ -1,16 +1,17 @@
-# PUBLIC CI-ONLY bounded one Goal; Owner TTY never automated.
-# Same shared Nav2 startup, actual AMCL map pose (reliable/transient-local),
-# same G07 10Hz official model and same exact clear/slow/stop Goal runner.
-# Post-Goal lifecycle parity: Navigation then Localization managed shutdown,
-# native Collision Monitor clean exit, no forced teardown.
-# Previous exact moving Goal L2 #43248929215 PASSED without this teardown gate.
-# Public L0 parity RED #43249687405 -> GREEN #43250035610.
-private_source_sha=6099ed78c4b7079c60c447cb03ccb3817a99c7a4
-public_l0_moving_teardown_parity_green=43250035610
-public_l0_amcl_true_map_source_green=43248752446
-actual_previous_moving_clear_slow_stop_l2_pass=43248929215
-actual_same_startup_no_goal_shutdown_l2_pass=43241421238
+# PUBLIC CI-ONLY one bounded simulated G07 moving Goal; Owner TTY remains mandatory.
+# First user WSL2 PIYOmtc8 raw: 365.845ms first odom observer gap,
+# Guard first latch 126.057s CM_EXCEEDS_SUPERVISOR despite CM age 80.879ms.
+# Same Guard policy receive-pair actual chronology: PUBLIC RED #43337373145
+# -> GREEN #43337496493 (46 PASS). No CM/scan/supervisor TTL waived.
+# WSL2 simultaneous SQLite 14-topic rosbag was missing from CI:
+# PUBLIC RED #43337806523 -> GREEN #43338205576 (49 PASS).
+# CI real Gazebo same staged runner/Goal/CM native teardown as Owner;
+# CI offscreen != WSLg GUI/kernel and Owner L3 NOT RUN on this source.
+private_source_sha=f268f1bb53fb33fb63ec00cf19d75191b92f2130
+l0_guard_pair_green=43337496493
+l0_owner_bag_parity_green=43338205576
+previous_actual_moving_l2_pass=43250221111
 runtime_digest=sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
-scope=SIM_ONLY_G07_CI_OWNER_COMMON_STARTUP_GOAL_ORDERED_SHUTDOWN_CM_NATIVE_EXIT
+scope=PUBLIC_ONLY_SIM_G07_ONE_MOVING_GOAL_WITH_OWNER_14_TOPIC_BAG_AND_FIRST_GUARD_PAIR_FIX
 owner_l3_accepted=false
 certified_estop=false
