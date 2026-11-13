@@ -12,9 +12,9 @@ ROOT=Path(__file__).resolve().parents[1]
 WRAPPER=ROOT/"scripts/axia_p2_g07_ci_pass_owner_wsl2_once.sh"
 WORKFLOW=ROOT/".github/workflows/axia-p2-g07-ci-pass-owner-bootstrap-static-l0.yml"
 REAL_L2=ROOT/".github/workflows/axia-p2-g07-ci-real-gazebo-moving-goal-l2.yml"
-PRIVATE_SHA="6099ed78c4b7079c60c447cb03ccb3817a99c7a4"
-REAL_RUN="43250221111"
-SCOPE="SHARED_STARTUP_GOAL_SHUTDOWN_CM_EXIT0"
+PRIVATE_SHA="eb984b73138e592caa67426eed9c60dde2ca2ebd"
+REAL_RUN="43339521667"
+SCOPE="SHARED_STARTUP_GOAL_OWNER14_BAG_CM_CLEAN_EXIT0"
 OLD_SHA="cc92327d1ae4a17d331d06e845437760ca2bdafe"
 
 
