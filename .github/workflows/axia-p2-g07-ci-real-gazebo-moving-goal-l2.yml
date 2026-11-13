@@ -1,8 +1,9 @@
-# PIYO Owner WSL2 genuine first Guard mismatch + 365-405ms observer pause.
-# Public L0 Guard pair RED #43337373145 -> GREEN #43337496493.
-# WSL2/CI 14-topic concurrent SQLite bag RED #43337806523 -> GREEN #43338205576.
-# Same moving Goal/10Hz ROS/2-worker Observer, now SAME rosbag capture load;
-# CI offscreen kernel != WSLg rendered GUI, so Owner L3 remains unverified.
+# PIYO actual public bag-loaded Goal L2 #43338381501: CLEAR/SLOW/STOP/odom
+# and real 14-topic SQLite bag PASS, official Nav2 shutdown ACK PASS,
+# but 10s Gazebo launch cleanup expired (rc3). Actual CM children exit0.
+# Regressed first post-goal cleanup boundary RED #43339194903
+# -> GREEN #43339388986 (53 PASS); both WSL2 Owner and CI use
+# a bounded 26s post-ACK launch grace, no CM/Scan TTL changes.
 name: AXIA G07 CI-only actual Harmonic Nav2 MOVING Goal CLEAR SLOW STOP
 on:
   push:
@@ -32,7 +33,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: f268f1bb53fb33fb63ec00cf19d75191b92f2130
+          ref: eb984b73138e592caa67426eed9c60dde2ca2ebd
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -40,7 +41,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 'f268f1bb53fb33fb63ec00cf19d75191b92f2130'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 'eb984b73138e592caa67426eed9c60dde2ca2ebd'
           test "$ROS_DISTRO" = jazzy
           cd instructor
           mkdir -p results/p2-g07-ci-moving
@@ -84,11 +85,12 @@ jobs:
         run: |
           set -euo pipefail
           cd instructor
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 'f268f1bb53fb33fb63ec00cf19d75191b92f2130'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 'eb984b73138e592caa67426eed9c60dde2ca2ebd'
           timeout --signal=TERM --kill-after=10s 900s \
             bash scripts/p2_no_goal_smoke_ci.sh || {
             echo 'AXIA_G07_CI_MOVING_GOAL_REAL_GAZEBO_BLOCKED'
-            for f in results/p2-g07-ci-moving/real-l2/{staged_startup,launch,g07_ci_pregoal,g07_ci_moving}.log;do
+            for f in results/p2-g07-ci-moving/real-l2/{staged_startup,launch,g07_ci_pregoal,g07_ci_moving,g07_ordered_shutdown,rosbag}.log \
+               results/p2-g07-ci-moving/real-l2/{teardown,teardown_processes}.txt;do
               if [[ -f "$f" ]];then echo "--- $(basename "$f") ---";tail -n 80 "$f";fi
             done
             exit 2
