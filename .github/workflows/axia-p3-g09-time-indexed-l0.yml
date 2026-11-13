@@ -17,7 +17,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: ca52f6fccc53dbd8a8d6591112b194d5fe975934
+          ref: 032a946c2c8c8140a9498ae36dbd2a8608e2fb59
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -26,11 +26,9 @@ jobs:
         run: |
           set -euo pipefail
           cd instructor
-          test "$(git rev-parse HEAD)" = 'ca52f6fccc53dbd8a8d6591112b194d5fe975934'
+          test "$(git rev-parse HEAD)" = '032a946c2c8c8140a9498ae36dbd2a8608e2fb59'
           export PYTHONPATH="$PWD/ros2_ws/src/axia_scenario_verifier"
-          python3 -m unittest discover -s tests/unit -p 'test_p3_g09_time_indexed.py' -v
-          python3 -m unittest discover -s tests/unit -p 'test_p3_mvp.py' -v
-          python3 -m unittest discover -s tests/unit -p 'test_p3_integrated_provenance_20261113.py' -v
+          python3 -m unittest discover -s tests/unit -p 'test_p3*.py' -v
           python3 scripts/run_p3_mvp.py --scenario S04 --results-root "$RUNNER_TEMP/p3-g09" --allow-partial-ci
           echo AXIA_G09_L0_PASS_NO_ROS_NO_GOAL_NO_FAULT
       - name: Erase private temporary source
