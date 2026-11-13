@@ -1,0 +1,75 @@
+name: AXIA P4 S03 S04 real Gazebo scoped L2 evidence matrix L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-p4-s03-s04-scoped-l2-matrix-l0.yml']
+permissions:
+  contents: read
+jobs:
+  sealed-s03-s04-evidence-no-formal-promotion:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    environment: axia-instructor-sealed
+    steps:
+      - name: Exact sealed Instructor metadata SHA
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: a42027f2b2caf200614e940bfc6f6f95fc5e7312
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Verify actual S03 S04 source and real scope, enforce formal 0 of 15
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = 'a42027f2b2caf200614e940bfc6f6f95fc5e7312'
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('docs/reports')
+          m=json.loads((root/'AXIA_P4_G08_G13_RELEASE_READINESS_MATRIX_20261113.json').read_text())
+          s3=m['s03'];s4=m['s04'];g=m['g11']
+          assert m['schema']=='axia_p4_release_readiness_v1'
+          assert all(m[k] is False for k in ('formal_accepted','student_release_approved','instructor_main_merge_approved','certified_estop'))
+          assert g['formal_scenario_repeat_counts']==dict.fromkeys(('S01','S02','S03','S04','S05'),0)
+          assert m['gates']['G11'].startswith('FORMAL_0_OF_15')
+          assert 'FORMAL_NOT_ACCEPTED' in m['gates']['G09'] and 'FORMAL_NOT_ACCEPTED' in m['gates']['G10']
+          assert m['g09']['gazebo_moving_goal_run'] is True and m['g09']['actual_person_camera_track_tested'] is False
+          assert m['g10']['real_compound_goal_fault_or_recovery_run'] is True
+          assert m['g10']['actual_cm_sigkill_tested_in_s03'] is False
+          assert m['g10']['held_fault_reset_rearm_denial_tested'] is False
+          assert s3['public_l2_run']==43433595130 and s3['public_real_gazebo_l2_scoped_pass'] is True
+          assert s3['private_tested_source_sha']=='8cfc4dfe9ac7431fbe3e8577894089fa8f9c2953'
+          assert s3['guard_first_latch_reason']=='UPSTREAM_STALE_AFTER_MOTION'
+          assert s3['real_scan_drop_ack'] and s3['real_owned_cm_sigstop'] and s3['exact_owned_cm_sigcont_restored']
+          assert s3['same_goal_action_canceled'] and s3['odom_dwell_at_least_one_sec']
+          assert s3['real_cm_sigkill_crash'] is False and s3['held_fault_reset_rearm_rejection_tested'] is False
+          assert s3['nav2_lifecycle_shutdown_ack'] and s3['cm_exit_code']==0
+          assert s4['public_l2_run']==43455456960 and s4['public_real_gazebo_l2_scoped_pass'] is True
+          assert s4['private_tested_source_sha']=='ef6c0b2fa5765c7216746595a52e28e40e59e2fa'
+          assert s4['tested_staging_code_tree_sha']=='2989e8c060c929dd39eb2a63de9c84e8758e9f06'
+          assert s4['pnu_track_source']=='FROZEN_SYNTHETIC_G09_FIXTURE' and s4['real_person_detected'] is False
+          assert s4['observed_verdict_fsm']=={
+            'N':'NORMAL_UNCHANGED_NO_FALSE_RISK/NORMAL',
+            'P':'LIMIT_ON_PREDICTED_P/LIMITED',
+            'U':'LIMIT_ON_UNKNOWN_U/LIMITED',
+          }
+          assert s4['actual_supervisor_limited_linear_speed_cap_mps']==0.066
+          assert s4['actual_independent_cm_guard_final_command_oracle_pass'] is True
+          assert s4['same_goal_action_canceled'] and s4['post_final_zero_odom_dwell_sec']>=1.
+          assert s4['nav2_lifecycle_shutdown_ack'] and s4['cm_exit_code']==0
+          for x in (s3,s4):
+            assert x['runtime_package_parity']==25 and x['runtime_official_file_parity']==5
+            assert x['actual_14_topic_sqlite_bag_integrity'] is True
+            assert x['raw_deleted_at_ci_end'] is True and x['permanent_owner_raw_custody'] is False
+            assert x['owner_l3_run'] is False and x['certified_estop'] is False
+          assert s3['formal_g11_s03_repeat_count']==0 and s4['formal_g11_s04_repeat_count']==0
+          assert (root/'AXIA_P3_S03_S04_ACTUAL_GAZEBO_SCOPED_EVIDENCE_20261114_KO.md').is_file()
+          print('AXIA_P4_REAL_S03_COMPOUND_CM_PAUSE_GAZEBO_L2_SCOPED_EVIDENCE_PASS')
+          print('AXIA_P4_REAL_S04_SYNTHETIC_PNU_TO_GUARD_FINAL_GAZEBO_L2_SCOPED_EVIDENCE_PASS')
+          print('AXIA_P4_G09_G10_G11_FORMAL_HOLD_G11_0_OF_15_NO_PERSISTENT_RAW_NO_OWNER_L3')
+          PY
+      - name: Erase private Instructor metadata checkout
+        if: always()
+        shell: bash
+        run: rm -rf -- .git docs ros2_ws scripts tools tests fixtures scenarios configs results training
