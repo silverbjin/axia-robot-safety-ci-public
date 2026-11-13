@@ -1,7 +1,9 @@
-# Same G07 CI/Owner stage, same shared real moving Goal and official shutdown.
-# Exact source moving L2 #43248929215 PASS before post-goal shutdown parity.
-# Public L0 shutdown parity RED #43249687405 -> GREEN #43250035610.
-# This run verifies actual CM native exit 0 AFTER the same moving Goal.
+# PIYO actual public bag-loaded Goal L2 #43338381501: CLEAR/SLOW/STOP/odom
+# and real 14-topic SQLite bag PASS, official Nav2 shutdown ACK PASS,
+# but 10s Gazebo launch cleanup expired (rc3). Actual CM children exit0.
+# Regressed first post-goal cleanup boundary RED #43339194903
+# -> GREEN #43339388986 (53 PASS); both WSL2 Owner and CI use
+# a bounded 26s post-ACK launch grace, no CM/Scan TTL changes.
 name: AXIA G07 CI-only actual Harmonic Nav2 MOVING Goal CLEAR SLOW STOP
 on:
   push:
@@ -31,7 +33,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 6099ed78c4b7079c60c447cb03ccb3817a99c7a4
+          ref: eb984b73138e592caa67426eed9c60dde2ca2ebd
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -39,7 +41,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '6099ed78c4b7079c60c447cb03ccb3817a99c7a4'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 'eb984b73138e592caa67426eed9c60dde2ca2ebd'
           test "$ROS_DISTRO" = jazzy
           cd instructor
           mkdir -p results/p2-g07-ci-moving
@@ -78,15 +80,17 @@ jobs:
           AXIA_G07_CI_SIM_GOAL_ALLOWED: '1'
           AXIA_G07_CI_OWNER_OBSERVER_PARITY: '1'
           AXIA_G07_OWNER_STARTUP_PARITY: '1'
+          AXIA_G07_CI_OWNER_BAG_PARITY: '1'
           AXIA_P2_SMOKE_RESULTS: results/p2-g07-ci-moving/real-l2
         run: |
           set -euo pipefail
           cd instructor
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '6099ed78c4b7079c60c447cb03ccb3817a99c7a4'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 'eb984b73138e592caa67426eed9c60dde2ca2ebd'
           timeout --signal=TERM --kill-after=10s 900s \
             bash scripts/p2_no_goal_smoke_ci.sh || {
             echo 'AXIA_G07_CI_MOVING_GOAL_REAL_GAZEBO_BLOCKED'
-            for f in results/p2-g07-ci-moving/real-l2/{staged_startup,launch,g07_ci_pregoal,g07_ci_moving}.log;do
+            for f in results/p2-g07-ci-moving/real-l2/{staged_startup,launch,g07_ci_pregoal,g07_ci_moving,g07_ordered_shutdown,rosbag}.log \
+               results/p2-g07-ci-moving/real-l2/{teardown,teardown_processes}.txt;do
               if [[ -f "$f" ]];then echo "--- $(basename "$f") ---";tail -n 80 "$f";fi
             done
             exit 2
@@ -106,6 +110,16 @@ jobs:
             assert native['goal_sent'] is False and native['command']=='startup'
           print('AXIA_G07_SHARED_CI_OWNER_STAGED_NATIVE_STARTUP_L2_ACK_PASS')
           assert preg['status']=='P2_G07_OWNER_PREGOAL_L2_READY_NO_GOAL'
+          assert (root/'rosbag2/metadata.yaml').is_file(), 'OWNER_14_TOPIC_BAG_NOT_RECORDED'
+          import sqlite3
+          dbs=list((root/'rosbag2').glob('*.db3'))
+          assert len(dbs)==1
+          conn=sqlite3.connect('file:'+str(dbs[0])+'?mode=ro',uri=True)
+          assert conn.execute('pragma quick_check').fetchone()[0]=='ok'
+          counts=dict(conn.execute('select topics.name,count(messages.id) from topics left join messages on topics.id=messages.topic_id group by topics.name'))
+          for name in ('/clock','/scan','/odom','/cmd_vel_supervised','/cmd_vel_pre_guard','/axia/p2/base_guard'):
+            assert counts.get(name,0)>0,(name,counts)
+          print('AXIA_G07_PUBLIC_CI_WSL2_MATCHED_14_TOPIC_REAL_BAG_L2_PASS')
           assert data['status']=='CI_GAZEBO_MOVING_GOAL_CANDIDATE'
           assert data['goal_sent'] is True and data['goal_status_executing'] is True
           assert all(data['goal_status_at_'+k]==2 for k in ('clear','slow','stop'))
