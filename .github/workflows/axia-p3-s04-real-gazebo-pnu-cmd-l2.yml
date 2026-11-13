@@ -24,7 +24,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: e640b9e41c9c0a2dbce7a73ca2c709a6dc39ab82
+          ref: 784a6060d89be48ae3f3f9e663f29406b5e4f4c1
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -32,7 +32,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          EXACT_SHA="e640b9e41c9c0a2dbce7a73ca2c709a6dc39ab82"
+          EXACT_SHA="784a6060d89be48ae3f3f9e663f29406b5e4f4c1"
           ACTUAL="$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)"
           test "$EXACT_SHA" = "$ACTUAL"
           test "$ROS_DISTRO" = jazzy
@@ -75,7 +75,7 @@ jobs:
           AXIA_P2_SMOKE_RESULTS: results/p3-s04-ci-pnu/real-l2
         run: |
           set -Eeuo pipefail
-          EXACT_SHA="e640b9e41c9c0a2dbce7a73ca2c709a6dc39ab82"
+          EXACT_SHA="784a6060d89be48ae3f3f9e663f29406b5e4f4c1"
           ACTUAL="$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)"
           test "$EXACT_SHA" = "$ACTUAL"
           EXACT_PRIVATE_SHA="$EXACT_SHA" PYTHONPATH="$PWD" python3 - <<'PY'
