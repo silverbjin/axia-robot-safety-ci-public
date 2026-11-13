@@ -1,0 +1,136 @@
+# PUBLIC CI S04 SIM ONLY: no new risk model or final command publisher.
+name: AXIA P3 S04 real Gazebo synthetic G09 PNU to final Guard command L2
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-p3-s04-real-gazebo-pnu-cmd-l2.yml']
+permissions:
+  contents: read
+concurrency:
+  group: axia-p3-s04-real-pnu-final-l2
+  cancel-in-progress: false
+jobs:
+  s04-g09-real-ros-gazebo-safe-command-chain:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 48
+    environment: axia-instructor-sealed
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+      options: --dns 1.1.1.1 --dns 8.8.8.8
+    steps:
+      - name: Public exact synthetic PNU authority checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Exact private Instructor source checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: e640b9e41c9c0a2dbce7a73ca2c709a6dc39ab82
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          path: instructor
+          persist-credentials: false
+      - name: Fail closed S04 public 11 private 24 unit + syntax before Goal
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          EXACT_SHA="e640b9e41c9c0a2dbce7a73ca2c709a6dc39ab82"
+          ACTUAL="$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)"
+          test "$EXACT_SHA" = "$ACTUAL"
+          test "$ROS_DISTRO" = jazzy
+          python3 -m unittest discover -s tests -p test_p3_s04_public_contract.py -v
+          python3 -m unittest discover -s instructor/tests/unit -p test_p3_s04_risk_to_supervisor_limit_policy.py -v
+          python3 -m unittest discover -s instructor/tests/unit -p test_p3_s04_actual_risk_to_cmd_oracle.py -v
+          bash -n instructor/scripts/p2_no_goal_smoke_ci.sh
+          python3 -m py_compile instructor/tools/p3_s04_live_risk_to_cmd_ci.py instructor/tools/p3_s04_actual_risk_to_cmd_oracle.py instructor/ros2_ws/src/axia_safety_supervisor/axia_safety_supervisor/p2_supervisor_node.py
+          echo AXIA_P3_S04_PUBLIC_11_PRIVATE_14_PLUS_10_TESTS_PASS_NO_GOAL
+      - name: Pinned G07 Jazzy Harmonic runtime exact 25 package 5 official parity
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cd instructor
+          set +u; source /opt/ros/jazzy/setup.bash; set -u
+          mkdir -p results/p3-s04-ci-pnu
+          export ROS_DOMAIN_ID=97 ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST GZ_PARTITION=axia_p2_s04_ci_97 AXIA_P0_SIM_ONLY=1
+          python3 tools/p2_g07_owner_env_parity.py --mode ci --output results/p3-s04-ci-pnu/core_parity.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          v=json.loads(Path('results/p3-s04-ci-pnu/core_parity.json').read_text())
+          assert v['status']=='CORE_PARITY_PASS'
+          assert (v['checked_packages'],v['checked_official_files'])==(25,5)
+          print('AXIA_P3_S04_FIXED_G07_RUNTIME_PARITY_25_5_PASS')
+          PY
+      - name: Real one Nav2 Goal G09 N P U to Supervisor LIMIT CM Guard final
+        shell: bash
+        env:
+          ROS_DOMAIN_ID: '97'
+          ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+          GZ_PARTITION: axia_p2_s04_ci_97
+          AXIA_P0_SIM_ONLY: '1'
+          AXIA_P2_G07_PHYSICAL_PREFLIGHT: '1'
+          AXIA_G07_CI_SIM_GOAL_ALLOWED: '1'
+          AXIA_P3_S04_CI_PNU_ALLOWED: '1'
+          AXIA_G07_CI_OWNER_OBSERVER_PARITY: '1'
+          AXIA_G07_OWNER_STARTUP_PARITY: '1'
+          AXIA_G07_CI_OWNER_BAG_PARITY: '1'
+          AXIA_P2_SMOKE_RESULTS: results/p3-s04-ci-pnu/real-l2
+        run: |
+          set -Eeuo pipefail
+          EXACT_SHA="e640b9e41c9c0a2dbce7a73ca2c709a6dc39ab82"
+          ACTUAL="$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)"
+          test "$EXACT_SHA" = "$ACTUAL"
+          EXACT_PRIVATE_SHA="$EXACT_SHA" PYTHONPATH="$PWD" python3 - <<'PY'
+          import os
+          from tools.p3_s01_public_contract import admit_s04
+          assert admit_s04(dict(os.environ),source_sha=os.environ['EXACT_PRIVATE_SHA'],
+            checkout_sha=os.environ['EXACT_PRIVATE_SHA'],case='S04',
+            goals=1,goal=(-1.7,.7),source='FROZEN_SYNTHETIC_G09',
+            kinds=('N','P','U'),operations=('N','P','U','sw_stop'))
+          print('AXIA_P3_S04_ONE_PUBLIC_SIM_SYNTHETIC_PNU_GOAL_AUTHORIZED_NOT_SENT')
+          PY
+          cd instructor
+          timeout --signal=TERM --kill-after=10s 900s bash scripts/p2_no_goal_smoke_ci.sh || {
+            echo AXIA_P3_S04_REAL_RISK_TO_FINAL_GAZEBO_BLOCKED >&2
+            python3 ../tools/p3_s01_startup_first_boundary.py \
+              --launch-log results/p3-s04-ci-pnu/real-l2/launch.log \
+              --native results/p3-s04-ci-pnu/real-l2/startup_verdict.navigation_start.native.json \
+              --output results/p3-s04-ci-pnu/real-l2/first_nav_failure.json || true
+            for f in results/p3-s04-ci-pnu/real-l2/{staged_startup,launch,g07_ci_pregoal,p3_s04_risk_real,g07_ordered_shutdown,rosbag}.log;
+            do if [[ -f "$f" ]];then echo "--- $(basename "$f") ---";tail -n 100 "$f";fi;done
+            exit 2
+          }
+          python3 - <<'PY'
+          import json,sqlite3
+          from pathlib import Path
+          root=Path('results/p3-s04-ci-pnu/real-l2')
+          start=json.loads((root/'startup_verdict.json').read_text())
+          r=json.loads((root/'p3_s04_risk_real/s04_actual_pnu_cmd_result.json').read_text())
+          shutdown=json.loads((root/'g07_ordered_shutdown.json').read_text())
+          cm=json.loads((root/'g07_shutdown_audit.json').read_text())
+          assert start['status']=='SMOKE_READY' and start['goal_sent'] is False
+          assert r['status']=='S04_REAL_PNU_LIMITED_FINAL_CANDIDATE' and r['goal_sent'] is True
+          assert r['oracle']['status']=='S04_REAL_GAZEBO_SYNTHETIC_PNU_TO_CMD_CANDIDATE'
+          assert r['oracle']['track_source']=='SYNTHETIC_ONLY' and r['oracle']['real_person_detected'] is False
+          assert len(r['goal_uuid'])==32 and r['goal_uuid']==r['oracle']['goal_uuid']
+          assert r['oracle']['supervisor_linear_cap_mps']==0.066
+          assert r['oracle']['odom_zero_dwell_sec']>=1.0
+          assert r['oracle']['p_risk_to_supervisor_sec']<=1.0
+          assert r['formal_g09_accepted'] is False and r['certified_estop'] is False
+          assert shutdown['status']=='NAV2_LIFECYCLE_SHUTDOWN_ACK'
+          assert shutdown['navigation_ack'] and shutdown['localization_ack']
+          assert cm['status']=='SHUTDOWN_CLEAN_CANDIDATE' and cm['cm_exit_code']==0
+          assert 'P2_L2_GRACEFUL_TEARDOWN' in (root/'teardown.txt').read_text()
+          bag=root/'rosbag2';assert (bag/'metadata.yaml').is_file()
+          dbs=list(bag.glob('*.db3'));assert len(dbs)==1
+          c=sqlite3.connect('file:'+str(dbs[0])+'?mode=ro',uri=True)
+          assert c.execute('pragma quick_check').fetchone()[0]=='ok'
+          counts=dict(c.execute('select topics.name,count(messages.id) from topics left join messages on topics.id=messages.topic_id group by topics.name'))
+          for name in ('/clock','/scan','/odom','/safety/scan','/cmd_vel_supervised','/cmd_vel_pre_guard','/cmd_vel','/axia/safety/state','/axia/p2/base_guard','/navigate_to_pose/_action/status'):
+            assert counts.get(name,0)>0,(name,counts.get(name,0))
+          print('AXIA_P3_S04_ACTUAL_GAZEBO_SQLITE_14_TOPIC_REAL_SAFETY_PIPELINE_PASS')
+          print('AXIA_P3_S04_SYNTHETIC_N_NORMAL_P_LIMITED_U_LIMITED_REAL_FINAL_CMD_SCOPED_PASS')
+          print('AXIA_P3_S04_REAL_PERSON_NOT_DETECTED_G09_G11_FORMAL_HOLD_OWNER_L3_NOT_RUN')
+          PY
+      - name: Always remove sealed source and raw ROS Gazebo SQLite evidence
+        if: always()
+        shell: bash
+        run: rm -rf -- instructor
