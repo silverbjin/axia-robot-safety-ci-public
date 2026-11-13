@@ -49,6 +49,18 @@ jobs:
           test "$(git -C instructor rev-parse HEAD)" = 'b01057ed4fa82b97aee8499aacbf2c55829bad23'
           test -f student/block_A/day03/todo_safety.py
           test -f instructor/training/d03/instructor/solutions/todo_safety.py
+          python3 - <<'PY'
+          from pathlib import Path
+          root=Path('student')
+          blocked={'hidden_tests','solutions','solution','instructor','private_keys','.ssh'}
+          hits=[p.relative_to(root).as_posix() for p in root.rglob('*')
+                if p.is_symlink() or any(x.lower() in blocked for x in p.relative_to(root).parts)
+                or (p.is_file() and p.suffix.lower() in ('.pem','.key','.p12','.pfx'))]
+          assert not hits, 'STUDENT_SECRET_PATH_OR_SYMLINK_DETECTED'
+          for name in ('todo_safety.py','p1_adapter_todo.py'):
+              assert 'TODO_NOT_IMPLEMENTED' in (root/'block_A/day03'/name).read_text()
+          print('AXIA_G12_ACTUAL_STUDENT_TODO_AND_PRIVATE_PATH_ISOLATION_PASS')
+          PY
           python3 -m venv "$RUNNER_TEMP/p4-g12-venv"
           source "$RUNNER_TEMP/p4-g12-venv/bin/activate"
           pip -q install pytest==8.3.5
@@ -80,6 +92,17 @@ jobs:
           python -m pytest -q instructor/training/d03/instructor/hidden_tests/test_d03_*.py \
             > "$RUNNER_TEMP/instructor-hidden-green.log" 2>&1
           echo 'AXIA_G12_PRIVATE_HIDDEN_TESTS_GREEN'
+          python3 - "$RUNNER_TEMP/student-red.log" "$RUNNER_TEMP/instructor-green.log" "$RUNNER_TEMP/instructor-hidden-green.log" <<'PY'
+          import re,sys
+          outputs=[open(x,encoding='utf-8').read() for x in sys.argv[1:]]
+          patterns=(r'(\\d+) failed', r'(\\d+) passed', r'(\\d+) passed')
+          actual=[]
+          for data,pattern in zip(outputs,patterns):
+              m=re.search(pattern,data)
+              assert m and int(m.group(1))>0, 'P4_G12_MISSING_TEST_SUMMARY'
+              actual.append(int(m.group(1)))
+          print('AXIA_G12_ACTUAL_COUNTS student_failed=%d instructor_public_passed=%d instructor_hidden_passed=%d'%tuple(actual))
+          PY
           echo 'AXIA_G12_D03_SCOPED_G12_CANDIDATE_ONLY_NO_G13_NO_ROS_NO_GOAL'
       - name: Secure cleanup (even if failed)
         if: always()
