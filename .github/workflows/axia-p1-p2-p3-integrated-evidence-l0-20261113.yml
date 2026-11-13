@@ -19,7 +19,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: e6527128e020b8d767497a0490e8a2def57457c7
+          ref: 378842bda9dbf1a585cc88d5de9c5ad637d1c041
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
           fetch-depth: 0
@@ -29,12 +29,12 @@ jobs:
         run: |
           set -Eeuo pipefail
           cd instructor-src
-          test "$(git rev-parse HEAD)" = 'e6527128e020b8d767497a0490e8a2def57457c7'
+          test "$(git rev-parse HEAD)" = '378842bda9dbf1a585cc88d5de9c5ad637d1c041'
           git merge-base --is-ancestor eb984b73138e592caa67426eed9c60dde2ca2ebd HEAD
           python3 - <<'PY'
           import subprocess
           x=subprocess.check_output(['git','diff','--name-status','eb984b73138e592caa67426eed9c60dde2ca2ebd','HEAD'],text=True).splitlines()
-          assert len(x)==27,('EXPECTED_23_P3_PLUS_TWO_TESTS_CROSSWALK_SCOPED_G07_REPORT',x)
+          assert len(x)==28,('EXPECTED_23_P3_PLUS_2_TESTS_LINKAGE_REPORT_METADATA',x)
           allowed=('scenarios/','fixtures/p3/','docs/operations/P3_','docs/reports/P3_',
                    'docs/reports/p3_r01_',
                    'docs/reports/p3_integrated_evidence_',
