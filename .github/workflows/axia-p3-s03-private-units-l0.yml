@@ -1,0 +1,43 @@
+name: AXIA P3 S03 sealed private compound safety oracle L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-p3-s03-private-units-l0.yml']
+permissions:
+  contents: read
+jobs:
+  source-pinned-compound-oracle-l0:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    environment: axia-instructor-sealed
+    steps:
+      - name: Exact Instructor source checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 8cfc4dfe9ac7431fbe3e8577894089fa8f9c2953
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Assert immutable source and run full S03 raw oracle regressions (NO ROS/Goal)
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = '8cfc4dfe9ac7431fbe3e8577894089fa8f9c2953'
+          python3 -m unittest discover -s tests/unit -p test_p3_s03_compound_live_oracle.py -v
+          python3 -m py_compile tools/p3_s03_compound_live_oracle.py tools/p3_s03_compound_live_ci.py tools/p3_s03_cm_pause_ci.py
+          bash -n scripts/p2_no_goal_smoke_ci.sh
+          python3 - <<'PY'
+          from pathlib import Path
+          shell=Path('scripts/p2_no_goal_smoke_ci.sh').read_text()
+          assert 'allow_fault_injection:="$AXIA_FAULT_LAUNCH_ALLOWED"' in shell
+          assert 'AXIA_FAULT_LAUNCH_ALLOWED=false' in shell
+          assert 'AXIA_P3_S03_CI_COMPOUND_ALLOWED' in shell
+          assert 'AXIA_P3_S03_CI_CM_PAUSE_ALLOWED' in shell
+          assert 'AXIA_G07_OWNER_STARTUP_PARITY' in shell
+          print('AXIA_P3_S03_DEFAULT_INJECTOR_OFF_EXPLICIT_CI_SIM_ONLY')
+          PY
+          echo AXIA_P3_S03_PRIVATE_12_UNIT_AND_SCRIPT_STATIC_L0_PASS_NO_ROS_NO_GOAL
+      - name: Erase private code and test fixtures
+        if: always()
+        shell: bash
+        run: rm -rf -- .git docs ros2_ws scripts tools tests fixtures scenarios configs results training
