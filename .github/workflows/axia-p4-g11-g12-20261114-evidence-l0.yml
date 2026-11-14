@@ -1,0 +1,56 @@
+name: AXIA P4 G11 Owner postrun raw and G12 Student actual inventory readiness L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-p4-g11-g12-20261114-evidence-l0.yml']
+permissions:
+  contents: read
+jobs:
+  sealed-report-hold-scope-no-ros:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    environment: axia-instructor-sealed
+    steps:
+      - name: Read-only exact Instructor integrated evidence
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 6cd97137515595b680c54910376fdd8cb850a09b
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Check no false formal run and live source/CI pointers
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = 6cd97137515595b680c54910376fdd8cb850a09b
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path("docs/reports")
+          m=json.loads((root/"AXIA_P4_G08_G13_RELEASE_READINESS_MATRIX_20261113.json").read_text())
+          report=(root/"AXIA_P4_G11_RUNNER_CUSTODY_G12_STUDENT_RELEASE_AUDIT_20261114_KO.md").read_text()
+          assert not m["formal_accepted"] and not m["student_release_approved"]
+          assert m["g11"]["formal_scenario_repeat_counts"]==dict.fromkeys(("S01","S02","S03","S04","S05"),0)
+          a=m["g11"]["owner_postrun_retention"]
+          assert a["public_green_run"]==43546675116 and a["public_green_unit_count"]==15
+          assert a["public_owner_bootstrap_ci_run"]==43547660387
+          assert a["same_source_tree_sha"]=="de46280c8a9c45fce81c7a1f5579e5cb9e9a5530"
+          assert a["mandatory_after_rosbag_shutdown_when_opted_in"] is True
+          assert a["actual_owner_gazebo_goal_after_hook"] is False
+          assert a["raw_archive_retained_actual_owner_wsl2_under_new_hook"] is False
+          assert a["formal_safety_ttl_reviewed_under_hook"] is False
+          assert a["formal_acceptance_credits"]==0
+          b=m["g12"]["student_release_actual_inventory_20261114"]
+          assert b["public_green_run"]==43547348947 and b["public_unit_cases_passed"]==10
+          assert set(b["blockers"])=={"D03_NOT_IN_STUDENT_MAIN","ROOT_LICENSES_MD_MISSING","ROOT_VERSION_LOCK_MD_MISSING","THIRD_PARTY_ATTRIBUTION_NOT_LOCKED"}
+          assert not b["student_release_performed"] and not b["formal_g12_accepted"]
+          assert m["g13"]["actual_pc_count_verified"]==0
+          assert "WSL2" in report and "0/15" in report and "NOT_RUN" in report
+          print("AXIA_G11_POSTRUN_CUSTODY_GREEN15_OWNER_GOAL_NOT_RUN_NO_FORMAL_CREDIT")
+          print("AXIA_G12_REAL_STUDENT_INVENTORY_GREEN10_RELEASE_BLOCKERS_TRUE")
+          print("AXIA_P4_G11_0_OF_15_G12_HOLD_G13_0_OF_2")
+          PY
+      - name: Always remove protected Instructor report
+        if: always()
+        shell: bash
+        run: rm -rf -- .git docs ros2_ws scripts tools tests fixtures scenarios configs results training
