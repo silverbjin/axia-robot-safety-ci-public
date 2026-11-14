@@ -1,0 +1,65 @@
+name: AXIA P4 G11 G07 WSL2 pinned Owner custody bootstrap admission L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-p4-g11-owner-g07-custody-bootstrap-l0.yml']
+permissions:
+  contents: read
+jobs:
+  no-goal-public-pinned-private-bootstrap-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    environment: axia-instructor-sealed
+    steps:
+      - name: Checkout only public bootstrap
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Static public script must keep consent and mandatory raw custody
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          bash -n scripts/axia_p4_g11_owner_g07_custody_once.sh
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('scripts/axia_p4_g11_owner_g07_custody_once.sh').read_text()
+          assert 'PRIVATE_SHA="50caa38134d002935b6bcd022645a1e8a1d49cef"' in s
+          assert 'AXIA_G11_RUN_CUSTODY_REQUIRED=1' in s
+          assert 'AXIA_P2_OWNER_PINNED_SHA' in s
+          assert '--case G07 --mvp-relocated-obstacle' in s
+          assert 'INTERACTIVE_TTY_REQUIRED' in s
+          assert 'YES-P2-G07-GOAL' in s
+          assert 'ros2 action send_goal' not in s
+          assert 'gh release upload' not in s and 'rclone' not in s
+          print('AXIA_G11_G07_PUBLIC_BOOTSTRAP_SIM_ONLY_OWNER_CONSENT_PRESERVED_PASS')
+          PY
+      - name: Checkout exact private Owner source for static parity only
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 50caa38134d002935b6bcd022645a1e8a1d49cef
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          path: instructor
+          persist-credentials: false
+      - name: Verify public pins actual protected GREEN tree, post-bag hook no goal
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C instructor rev-parse HEAD)" = '50caa38134d002935b6bcd022645a1e8a1d49cef'
+          test "$(git -C instructor rev-parse HEAD^{tree})" = 'de46280c8a9c45fce81c7a1f5579e5cb9e9a5530'
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('instructor/scripts/p2_owner_l3_wsl2.sh').read_text()
+          assert s.index('sha256sum "$OUT.tar.gz" > "$OUT.tar.gz.sha256"') < s.index('tools/p4_g11_session_archive_custody.py')
+          assert 'AXIA_G11_RUN_CUSTODY_REQUIRED:-0' in s
+          assert 'YES-P2-%s-GOAL' in s and 'YES-P2-%s-CRASH' in s
+          assert '--scenario AUTO' in s
+          assert "AXIA_G11_OWNER_RUN_CUSTODY_BLOCKED" in s
+          assert Path('instructor/tools/p4_g11_session_archive_custody.py').is_file()
+          print('AXIA_G11_PRIVATE_GREEN_SOURCE_TREE_EXACT_POST_BAG_CUSTODY_PASS')
+          print('AXIA_G11_OWNER_WSL2_REAL_GAZEBO_AND_FORMAL_G11_NOT_RUN')
+          PY
+      - name: Always erase protected private source
+        if: always()
+        shell: bash
+        run: rm -rf -- instructor
