@@ -38,7 +38,7 @@
 
 **안전:** 원본 G07 Owner가 실제 /dev/tty에 YES-P2-G07-GOAL을 요청한다. 강사가 직접 입력해야 한다. 자동 동의 스크립트, 파이프 tee, CI용 Goal 권한 우회는 금지한다.
 
-예상 출력(실제 신규 ROS·WSL2 실행 출력 아님):
+예상 출력(실제 신규 ROS·WSL2 실행 출력 아님). **D06_RVIZ_STARTED 및 D06_EDU_OBSERVATION_ZONE은 sidecar.log / readonly_monitor.log에 저장되며, 강사 A의 포그라운드 G07 stdout에 직접 나타나지 않을 수 있다.**
 
     D06_OWNER_RVIZ_STATIC_PASS ... GAZEBO_NOT_RUN RVIZ_NOT_RUN
     Case G07 ... Type YES-P2-G07-GOAL:
