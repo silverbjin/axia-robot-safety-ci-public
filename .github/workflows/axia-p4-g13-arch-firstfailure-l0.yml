@@ -1,0 +1,53 @@
+name: AXIA P4 G13 arch-shell and existing first-failure no-rerun L0 TDD
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-p4-g13-arch-firstfailure-l0.yml']
+permissions:
+  contents: read
+jobs:
+  exact-executed-shell-regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - name: Exact candidate G13 shell source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: 9aa58e8fa05836ce7b598ebcf4b7e1efe7170b11
+          path: source
+          persist-credentials: false
+      - name: Assert architecture expression and no-run first-failure inspection
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          FILE=source/scripts/axia_p4_g13_external_no_goal_once.sh
+          bash -n "$FILE"
+          python3 - "$FILE" <<'PY'
+          import pathlib,re,subprocess,sys
+          s=pathlib.Path(sys.argv[1]).read_text()
+          assert re.search(r'\[\[\s*"\$\(uname -m\)"\s*!=\s*"x86_64"\s*\]\]',s), 'ARCH_COMPARISON_MUST_BE_INSIDE_BASH_TEST'
+          assert '"$(uname -m)" != x86_64;' not in s, 'REPRODUCES_BAD_EXECUTE != OPERATOR'
+          assert 'g13_first_failure_readonly' in s, 'FIRST_FAILURE_REVIEW_MUST_BE_AVAILABLE'
+          assert 'AXIA_G13_PREVIOUS_RUN_FIRST_FAILURE=' in s
+          assert 'AXIA_G13_PREVIOUS_RUN_DIAGNOSTIC_ONLY_NO_GOAL_NO_RETRY' in s
+          assert 'AXIA_G07_CI_SIM_GOAL_ALLOWED=0' in s
+          assert 'AXIA_G13_TWO_DISTINCT_EXTERNAL_PC_RECEIPTS_REQUIRED_FORMAL_0_OF_2' in s
+          print('AXIA_G13_SHELL_ARCH_ERROR_AND_OLD_RUN_REVIEW_L0_PASS')
+          PY
+          # Test actual Python parser and wrapper against a synthetic old
+          # failed NO-GOAL Owner session. Never run ROS or a Goal.
+          mkdir -p "$HOME/.axia_g13_external_pc_evidence/g13-PC1-cifixture/actual"
+          ROOT="$HOME/.axia_g13_external_pc_evidence/g13-PC1-cifixture"
+          printf '%s\n' 'P2_STAGED_NO_GOAL_BLOCKED:LOCALIZATION_START:G07_NATIVE_LIFECYCLE_STARTUP_SERVICE_TIMEOUT:request_sent=True' >"$ROOT/actual/staged_startup.log"
+          printf '%s\n' 'P2_L2_SMOKE_RC=3' >"$ROOT/smoke.log"
+          printf '%s\n' '{"label":"PC1","run_exit_code":3,"no_goal_smoke_pass":false}' >"$ROOT/g13_no_goal_receipt.json"
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path.home()/'.axia_g13_external_pc_evidence/g13-PC1-cifixture'
+          assert p.is_dir()
+          PY
+          bash "$FILE" --inspect "$ROOT" >"$RUNNER_TEMP/g13_inspect.log"
+          grep -Fq 'AXIA_G13_PREVIOUS_RUN_FIRST_FAILURE=LOCALIZATION_START' "$RUNNER_TEMP/g13_inspect.log"
+          grep -Fq 'AXIA_G13_PREVIOUS_RUN_DIAGNOSTIC_ONLY_NO_GOAL_NO_RETRY' "$RUNNER_TEMP/g13_inspect.log"
+          ! grep -Fq 'REAL_JAZZY_HARMONIC_NO_GOAL_L2_PASS' "$RUNNER_TEMP/g13_inspect.log"
+          echo AXIA_G13_PREVIOUS_FAILED_ORIGINAL_REVIEW_L0_PASS_NO_ROS_NO_GOAL
