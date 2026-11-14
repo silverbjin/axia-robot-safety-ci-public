@@ -30,6 +30,40 @@ if [[ "$#" -eq 1 && "$1" == --self-check ]];then
   self_check;exit $?
 fi
 [[ "$#" -eq 0 ]] || { echo 'D06_USAGE --self-check or no arguments' >&2;exit 2; }
+# Admission receipt is source-locked to this exact public checkout. Fail
+# BEFORE private download, ROS startup, TTY consent or any real Goal.
+# The receipt is NOT an Owner acceptance verdict; only CI preflight admission.
+GATE="$ROOT/d06/acceptance/d06_g07_final_owner_ci_gate.json"
+if /usr/bin/python3 - "$GATE" "$P4_OWNER_PRIVATE_SHA" "$P4_PUBLIC_RELEASE_SHA" <<'PY'
+import json,sys
+from pathlib import Path
+path=Path(sys.argv[1])
+if path.is_symlink() or not path.is_file():
+    raise SystemExit(3)
+try:
+    value=json.loads(path.read_text(encoding='utf-8'))
+except (OSError,ValueError):
+    raise SystemExit(3)
+if not (
+    value.get('schema')=='axia.d06.final_owner_ci_gate_v1'
+    and value.get('status')=='ADMITTED_FINAL_OWNER_ONLY'
+    and value.get('allow_one_final_wsl2_owner') is True
+    and value.get('whole_ci_l2_pass') is True
+    and value.get('private_instructor_sha')==sys.argv[2]
+    and value.get('p4_release_sha')==sys.argv[3]
+    and type(value.get('last_real_gazebo_ci_run_id')) is int
+    and value['last_real_gazebo_ci_run_id']>0
+    and value.get('certified_estop') is False
+):
+    raise SystemExit(3)
+PY
+then
+  echo "D06_FINAL_OWNER_ADMISSION_ACCEPTED exact_source_ci_full_gazebo_l2_verified"
+else
+  echo "D06_FINAL_OWNER_BLOCKED_CI_L2_HOLD latest_real_G07_CI_failed; inspect_d06_public_Draft_PR108"
+  echo "D06_OWNER_NO_ROS_NO_GAZEBO_NO_GOAL_UNTIL_PUBLIC_L2_FULL_GREEN"
+  exit 3
+fi
 [[ -t 0 && -t 1 && -r /dev/tty ]] || {
   echo 'D06_BLOCKED_REAL_OWNER_INTERACTIVE_TTY_REQUIRED' >&2;exit 2;
 }
