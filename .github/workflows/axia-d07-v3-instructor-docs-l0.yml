@@ -1,0 +1,39 @@
+name: AXIA D07 V3 instructor delivery docs public sealed L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-d07-v3-instructor-docs-l0.yml']
+permissions:
+  contents: read
+concurrency:
+  group: axia-d07-v3-instructor-docs-l0
+  cancel-in-progress: false
+jobs:
+  docs-private-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    environment: axia-instructor-sealed
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Checkout sealed private Instructor at exact SHA
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: ac6b1106f588014746b73b262c4f9f18c2103b62
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          path: instructor
+          persist-credentials: false
+      - name: Private D07 V3 instructor document assertions
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C instructor rev-parse HEAD)" = "ac6b1106f588014746b73b262c4f9f18c2103b62"
+          cd instructor
+          python3 -m unittest discover -s training/block_B/tests -p 'test_d07_v3_delivery_docs.py' -v
+          test -f training/block_B/instructor/d07_route_reference.py
+          test -f training/block_B/instructor/hidden_tests/test_d07_route_hidden.py
+          echo 'AXIA_D07_V3_INSTRUCTOR_DOCS_PUBLIC_CI_PASS_L0_ONLY_NO_ROS_NO_GOAL'
+      - name: Remove private checkout
+        if: always()
+        shell: bash
+        run: rm -rf -- instructor
