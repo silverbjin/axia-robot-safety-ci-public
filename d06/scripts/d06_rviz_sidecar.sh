@@ -38,7 +38,7 @@ trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 session=''
-for attempt in $(seq 1 240);do
+for attempt in $(seq 1 600);do
   mapfile -d '' -t matches < <(find "$BASE" -maxdepth 3 -type f \
     -path "$BASE/p2-l3-owner-*/G07/session.env" -newer "$MARKER" \
     -print0 2>/dev/null)
@@ -46,7 +46,7 @@ for attempt in $(seq 1 240);do
     echo 'D06_RVIZ_BLOCKED_MULTIPLE_NEW_OWNER_SESSIONS';exit 2
   fi
   if (( ${#matches[@]} == 1 ));then session="${matches[0]}";break;fi
-  sleep 0.5
+  sleep 1
 done
 [[ -n "$session" ]] || { echo 'D06_RVIZ_BLOCKED_OWNER_SESSION_NOT_FOUND';exit 2; }
 owner_dir="$(dirname "$(dirname "$session")")"
@@ -67,18 +67,20 @@ source /opt/ros/jazzy/setup.bash
 set -u
 printf 'D06_OWNER_SESSION=%s\nROS_DOMAIN_ID=%s\nGZ_PARTITION=%s\n' \
   "$owner_dir" "$ros_domain" "$partition" > "$OUT/session_attachment.txt"
-setsid rviz2 -d "$RVIZ_CONFIG" --ros-args -p use_sim_time:=true \
+setsid nice -n 15 rviz2 -d "$RVIZ_CONFIG" --ros-args -p use_sim_time:=true \
   > "$OUT/rviz.log" 2>&1 & rviz_pid=$!
-setsid /usr/bin/python3 -u "$MONITOR" --out "$OUT" \
+setsid nice -n 15 /usr/bin/python3 -u "$MONITOR" --out "$OUT" \
   > "$OUT/readonly_monitor.log" 2>&1 & monitor_pid=$!
 sleep 3
 if ! kill -0 "$rviz_pid" 2>/dev/null || ! kill -0 "$monitor_pid" 2>/dev/null;then
+  echo 'D06_RVIZ_DIAGNOSTICS early_child_exit; inspect RViz GL/WSLg and observer traceback'
   echo 'D06_RVIZ_BLOCKED_EARLY_CHILD_EXIT'
   tail -n 12 "$OUT/rviz.log" || true
   tail -n 12 "$OUT/readonly_monitor.log" || true
   exit 2
 fi
 echo "D06_RVIZ_STARTED domain=$ros_domain rviz_pid=$rviz_pid monitor_pid=$monitor_pid"
+echo 'D06_RVIZ_DIAGNOSTICS observer=nice15 rviz=nice15 owner_safety_priorities_unchanged'
 echo 'D06_GUI_NOT_ACCEPTANCE: visual WSL2 check still required'
 while kill -0 "$rviz_pid" 2>/dev/null && kill -0 "$monitor_pid" 2>/dev/null;do
   sleep 1
