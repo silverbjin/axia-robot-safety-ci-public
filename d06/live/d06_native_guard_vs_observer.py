@@ -36,7 +36,68 @@ def _snapshot(e):
     return {"t":e["t"],"cm":cm,"supervisor":sup,
             "cm_max":info.get("cm_callback_max_gap_sec"),
             "supervisor_max":info.get("supervisor_callback_max_gap_sec"),
+            "cm_windows":info.get("cm_gap_windows"),
+            "supervisor_windows":info.get("supervisor_gap_windows"),
+            "cm_truncated":info.get("cm_gap_windows_truncated") is True,
+            "supervisor_truncated":info.get("supervisor_gap_windows_truncated") is True,
             "latched":data.get("latched") is True}
+
+def _gap_windows(raw):
+    """Only bounded, self-consistent real callback interval metadata."""
+    if not isinstance(raw,list) or len(raw)>8:
+        return None
+    clean=[]
+    for item in raw:
+        if not isinstance(item,dict):
+            return None
+        start=item.get("start_mono")
+        end=item.get("end_mono")
+        gap=item.get("gap_sec")
+        if not all(type(x) in (int,float) and math.isfinite(x)
+                   for x in (start,end,gap)):
+            return None
+        if end<=start or gap<=.15 or abs((end-start)-gap)>.00001:
+            return None
+        clean.append((round(start,6),round(end,6),gap))
+    if len(set((a,b) for a,b,_ in clean))!=len(clean):
+        return None
+    return clean
+
+
+def _scoped_new_gaps(baseline, latest, key, count, goal, active_end):
+    """Count intervals entirely inside Goal..STOP, not a straddling 22s gap.
+
+    Raw lifetime gap-counter delta alone can include a pre-Goal -> post-Goal
+    first callback. When a bounded ring fails to cover all new increments,
+    fail closed rather than mistaking missing records for no safety gap.
+    """
+    if count==0:
+        return {"verified":True,"inside":0,"straddling":0,"max_ms":None}
+    if active_end is None:
+        return None
+    old=_gap_windows(baseline.get(key+"_windows"))
+    new=_gap_windows(latest.get(key+"_windows"))
+    if old is None or new is None:
+        return None
+    old_keys={(start,end) for start,end,_ in old}
+    changes=[row for row in new if (row[0],row[1]) not in old_keys]
+    if len(changes)!=count:
+        return None
+    inside=[]
+    crossing=0
+    for start,end,duration in changes:
+        if start>=goal and end<=active_end:
+            inside.append(duration)
+        elif start<goal<=end<=active_end:
+            crossing+=1
+        elif end<=goal:
+            pass
+        else:
+            # A same-host clock anomaly or truncated boundary is unknown.
+            return None
+    return {"verified":True,"inside":len(inside),"straddling":crossing,
+            "max_ms":round(max(inside)*1000,3) if inside else None}
+
 
 def inspect_native_guard(events, *, active_end=None):
     report={
@@ -44,6 +105,11 @@ def inspect_native_guard(events, *, active_end=None):
         "status":"NATIVE_GUARD_RECEIPT_UNVERIFIED",
         "native_cm_gap_count_added_since_goal":None,
         "native_supervisor_gap_count_added_since_goal":None,
+        "native_cm_goal_scoped_gap_count":None,
+        "native_supervisor_goal_scoped_gap_count":None,
+        "native_cm_boundary_straddling_gap_count":None,
+        "native_cm_gap_window_coverage_verified":False,
+        "native_supervisor_gap_window_coverage_verified":False,
         "native_cm_callback_max_gap_ms":None,
         "native_supervisor_callback_max_gap_ms":None,
         "native_guard_latch_observed":False,
@@ -95,20 +161,28 @@ def inspect_native_guard(events, *, active_end=None):
         return report
     report["native_cm_gap_count_added_since_goal"]=cm
     report["native_supervisor_gap_count_added_since_goal"]=sup
-    # These max fields are PROCESS-LIFETIME maxima. Only expose them when the
-    # matching Goal-scoped counter actually changed; otherwise a 22s cold
-    # startup or post-Goal shutdown gap would be mislabeled as active motion.
-    if cm>0 and _num(final["cm_max"]):
-        report["native_cm_callback_max_gap_ms"]=round(final["cm_max"]*1000,3)
-    if sup>0 and _num(final["supervisor_max"]):
-        report["native_supervisor_callback_max_gap_ms"]=round(final["supervisor_max"]*1000,3)
-    # A CM >150ms gap is a real direct Guard callback delivery boundary,
-    # even if a separate Observer's callbacks were regular.
+    cm_scope=_scoped_new_gaps(initial,final,"cm",cm,goal,active_end)
+    sup_scope=_scoped_new_gaps(initial,final,"supervisor",sup,goal,active_end)
+    if cm_scope is not None:
+        report["native_cm_gap_window_coverage_verified"]=cm_scope["verified"]
+        report["native_cm_goal_scoped_gap_count"]=cm_scope["inside"]
+        report["native_cm_boundary_straddling_gap_count"]=cm_scope["straddling"]
+        report["native_cm_callback_max_gap_ms"]=cm_scope["max_ms"]
+    if sup_scope is not None:
+        report["native_supervisor_gap_window_coverage_verified"]=sup_scope["verified"]
+        report["native_supervisor_goal_scoped_gap_count"]=sup_scope["inside"]
+        report["native_supervisor_callback_max_gap_ms"]=sup_scope["max_ms"]
+    # Goal/STOP-scoped diagnostics never modify Guard's native fail-closed
+    # policy. First actual latch ALWAYS wins, even if a gap straddles t0.
     if report["native_guard_latch_observed"]:
         report["status"]="HOLD_NATIVE_GUARD_FIRST_LATCH"
-    elif cm>0:
+    elif cm_scope is None and cm>0:
         report["status"]="HOLD_NATIVE_GUARD_CM_INPUT_GAP_150MS"
-    elif sup>0:
+    elif sup_scope is None and sup>0:
+        report["status"]="HOLD_NATIVE_GUARD_SUPERVISOR_INPUT_GAP_150MS"
+    elif cm_scope is not None and cm_scope["inside"]>0:
+        report["status"]="HOLD_NATIVE_GUARD_CM_INPUT_GAP_150MS"
+    elif sup_scope is not None and sup_scope["inside"]>0:
         report["status"]="HOLD_NATIVE_GUARD_SUPERVISOR_INPUT_GAP_150MS"
     else:
         report["status"]="NATIVE_GUARD_INPUT_GAPS_NOT_OBSERVED"
