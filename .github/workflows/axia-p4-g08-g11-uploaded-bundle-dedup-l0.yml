@@ -15,15 +15,15 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 76030e027f1131498ba91106a067d4360ad06353
+          ref: 91a5c78b3992ada4a2dad70848f4919c67c58c19
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: ROS-free synthetic-index requalification contract tests
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git rev-parse HEAD)" = '76030e027f1131498ba91106a067d4360ad06353'
-          python3 -m unittest discover -s tests/unit -p test_p4_g11_bundle_requalification_contract.py -v
+          test "$(git rev-parse HEAD)" = '91a5c78b3992ada4a2dad70848f4919c67c58c19'
+          python3 -m py_compile tools/p4_g11_bundle_requalification_contract.py\n          python3 -m unittest discover -s tests/unit -p test_p4_g11_bundle_requalification_contract.py -v
           echo AXIA_P4_G08_G11_704_REF_NOT_704_GOALS_RAW_SCOPE_L0_PASS_FORMAL_0_OF_15
       - name: Always erase private solution
         if: always()
