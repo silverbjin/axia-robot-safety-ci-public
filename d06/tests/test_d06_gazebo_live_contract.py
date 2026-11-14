@@ -12,10 +12,11 @@ G=D06/"docs/D06_GAZEBO_RVIZ_OWNER_GUIDE_KO.md"
 
 def test_reuse_pinned_owner_and_keep_tty_goal_consent():
     src=W.read_text()
-    for token in ("eb984b73138e592caa67426eed9c60dde2ca2ebd",
-        "--mvp-relocated-obstacle","YES-P2-G07-GOAL",
-        "AXIA_P2_OWNER_PINNED_SHA","gh repo clone","--self-check",
-        "D06_GAZEBO_GUI_NOT_YET_VERIFIED"):
+    for token in ("d1769b8675c85e7ee564966637cef9113435904a",
+        "afe4e9ae3f6542ef7b2bd3097ce5c15ae5a5ddcc",
+        "axia_p4_g11_owner_g07_rmw_provenance_once.sh",
+        "YES-P2-G07-GOAL","AXIA_P2_OWNER_PINNED_SHA",
+        "gh auth status","--self-check","D06_GAZEBO_GUI_NOT_YET_VERIFIED"):
         assert token in src,token
     assert "AXIA_G07_CI_SIM_GOAL_ALLOWED=1" not in src
     assert "echo YES-P2-G07-GOAL" not in src
