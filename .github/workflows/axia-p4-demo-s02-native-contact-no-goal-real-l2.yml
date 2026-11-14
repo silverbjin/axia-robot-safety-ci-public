@@ -1,0 +1,114 @@
+name: AXIA P4 S02 actual Gazebo native Contact topic/type NO-GOAL L2
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-p4-demo-s02-native-contact-no-goal-real-l2.yml']
+permissions:
+  contents: read
+jobs:
+  real-native-contact-no-goal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 13
+    environment: axia-instructor-sealed
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+      options: --dns 1.1.1.1 --dns 8.8.8.8
+    steps:
+      - name: Exact sealed S02 candidate and original Waffle/Nav2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: f4c3aa8d022ebb4d1a79bef1d391466f5993fbe9
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          path: instructor
+          persist-credentials: false
+      - name: CI safety admission source + exact script syntax
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = f4c3aa8d022ebb4d1a79bef1d391466f5993fbe9
+          bash -n instructor/scripts/p2_no_goal_smoke_ci.sh
+          python3 -m py_compile instructor/tools/p2_l3_gz_fixture.py instructor/tools/p4_s02_native_contact_evidence.py
+          echo AXIA_S02_REAL_CONTACT_L2_EXACT_PRIVATE_SOURCE_STATIC_PASS_NO_ROS_NO_GOAL
+      - name: Real Gazebo native Contact publisher/type probe concurrently with safe official Nav2 NO-GOAL session
+        shell: bash
+        env:
+          ROS_DOMAIN_ID: '86'
+          ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+          GZ_PARTITION: axia_p4_s02_contact_86
+          AXIA_P0_SIM_ONLY: '1'
+          AXIA_P2_G07_PHYSICAL_PREFLIGHT: '1'
+          AXIA_P2_G07_OWNER_PARITY_CHECK: '1'
+          AXIA_G07_OWNER_STARTUP_PARITY: '1'
+          AXIA_G07_SHUTDOWN_L2_ONLY: '1'
+          AXIA_P4_G07_LOCALIZATION_STARTUP_DIAGNOSTIC: '1'
+          AXIA_G07_CI_SIM_GOAL_ALLOWED: '0'
+          AXIA_P2_SMOKE_RESULTS: results/p4-s02-contact-no-goal-l2
+        run: |
+          set -Eeuo pipefail
+          cd instructor
+          set +u
+          source /opt/ros/jazzy/setup.bash
+          set -u
+          mkdir -p "$RUNNER_TEMP/axia_s02"
+          timeout --signal=TERM --kill-after=10s 540s bash scripts/p2_no_goal_smoke_ci.sh \
+            >"$RUNNER_TEMP/axia_s02/smoke.log" 2>&1 &
+          runner_pid=$!
+          topic='/world/default/model/axia_p2_g07_obstacle/link/obstacle_link/sensor/axia_contact/contact'
+          found=0
+          for attempt in $(seq 1 75); do
+            if ! kill -0 "$runner_pid" 2>/dev/null;then break;fi
+            if timeout 5s gz topic -l 2>/dev/null | grep -Fxq "$topic";then
+              found=1
+              echo "AXIA_S02_GAZEBO_CANONICAL_CONTACT_TOPIC_FOUND_NATIVE source=original_owner_topic attempt=$attempt"
+              break
+            fi
+            sleep 2
+          done
+          if (( found == 0 ));then
+            echo AXIA_S02_NATIVE_CONTACT_TOPIC_MISSING_OR_SESSION_FINISHED
+          else
+            timeout 9s gz topic -i -t "$topic" >"$RUNNER_TEMP/axia_s02/contact_topic_info.log" 2>&1 || true
+            if grep -Fq 'gz.msgs.Contacts' "$RUNNER_TEMP/axia_s02/contact_topic_info.log"; then
+              echo AXIA_S02_NATIVE_GAZEBO_CONTACT_MESSAGE_TYPE_VERIFIED
+            else
+              echo AXIA_S02_NATIVE_CONTACT_TYPE_UNVERIFIED
+            fi
+            # Observe a bounded actual native stream. No messages is NOT
+            # evidence of zero collision. Never issue Goal or fault.
+            timeout 4s gz topic -e -t "$topic" \
+              >"$RUNNER_TEMP/axia_s02/contact_native_stream.log" 2>/dev/null || true
+          fi
+          wait "$runner_pid" || rc=$?
+          rc=${rc:-0}
+          if (( rc != 0 ));then
+            echo "AXIA_S02_REAL_NO_GOAL_NAV2_L2_BLOCKED_RC=$rc"
+            grep -E 'P2_STAGED_NO_GOAL_BLOCKED|G07_.*BLOCKED|PARITY_BLOCKED|P2_L2_SMOKE_RC' "$RUNNER_TEMP/axia_s02/smoke.log" | tail -n 25 || true
+            exit 3
+          fi
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          root=Path('results/p4-s02-contact-no-goal-l2')
+          sv=json.loads((root/'startup_verdict.json').read_text())
+          shutdown=json.loads((root/'g07_ordered_shutdown.json').read_text())
+          probe=list(root.glob('**/g07_contact_topic_probe.json'))
+          assert sv['status']=='SMOKE_READY' and sv['goal_sent'] is False
+          assert shutdown['status']=='NAV2_LIFECYCLE_SHUTDOWN_ACK'
+          assert shutdown['navigation_ack'] and shutdown['localization_ack']
+          if probe:
+              p=json.loads(probe[0].read_text())
+              print('AXIA_S02_GAZEBO_CONTACT_PROBE '+json.dumps({
+                  'selected_native_topic':p.get('selected_native_topic'),
+                  'contact_found':p.get('contact_found'),
+                  'collision_zero_verified':p.get('collision_zero_verified',False),
+              },sort_keys=True))
+          print('AXIA_S02_GAZEBO_NAV2_NO_GOAL_L2_RUN_PASS_CONTACT_ZERO_NOT_PROVEN')
+          PY
+          if (( found == 0 ));then exit 3;fi
+          if ! grep -Fq 'gz.msgs.Contacts' "$RUNNER_TEMP/axia_s02/contact_topic_info.log";then exit 3;fi
+          echo AXIA_S02_REAL_GAZEBO_NATIVE_CONTACT_TOPIC_AND_TYPE_L2_PASS_ZERO_COLLISION_UNVERIFIED
+      - name: Purge private source and sensor raw text after reporting only aggregate results
+        if: always()
+        shell: bash
+        run: rm -rf -- instructor "$RUNNER_TEMP/axia_s02"
