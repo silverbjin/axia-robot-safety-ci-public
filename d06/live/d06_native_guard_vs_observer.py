@@ -38,7 +38,7 @@ def _snapshot(e):
             "supervisor_max":info.get("supervisor_callback_max_gap_sec"),
             "latched":data.get("latched") is True}
 
-def inspect_native_guard(events):
+def inspect_native_guard(events, *, active_end=None):
     report={
         "schema":"axia.d06.native_guard_vs_observer_receipt_v1",
         "status":"NATIVE_GUARD_RECEIPT_UNVERIFIED",
@@ -47,6 +47,7 @@ def inspect_native_guard(events):
         "native_cm_callback_max_gap_ms":None,
         "native_supervisor_callback_max_gap_ms":None,
         "native_guard_latch_observed":False,
+        "active_goal_window_end_mono":None,
         "native_cm_last_receive_age_ms_at_latch":None,
         "observer_cm_gap_proves_guard_delay":False,
         "safety_pass":False,
@@ -60,9 +61,15 @@ def inspect_native_guard(events):
     if len(goals)!=1:
         return report
     goal=goals[0]
+    if active_end is not None:
+        if not _num(active_end) or active_end<=goal:
+            return report
+        report["active_goal_window_end_mono"]=active_end
     raw_guard=[e for e in events if isinstance(e,dict)
                and e.get("kind")=="guard" and _num(e.get("t"))
-               and e["t"]>=goal and isinstance(e.get("data"),dict)]
+               and e["t"]>=goal
+               and (active_end is None or e["t"]<=active_end)
+               and isinstance(e.get("data"),dict)]
     first_latch=next((e for e in sorted(raw_guard,key=lambda row:row["t"])
                       if e["data"].get("latched") is True),None)
     if first_latch is not None:
@@ -76,7 +83,8 @@ def inspect_native_guard(events):
     snapshots=sorted((x for row in events if (x:=_snapshot(row)) is not None),
                      key=lambda x:x["t"])
     before=[x for x in snapshots if x["t"]<goal]
-    after=[x for x in snapshots if x["t"]>=goal]
+    after=[x for x in snapshots
+           if x["t"]>=goal and (active_end is None or x["t"]<=active_end)]
     if not before or not after:
         return report
     initial=before[-1]
@@ -87,9 +95,12 @@ def inspect_native_guard(events):
         return report
     report["native_cm_gap_count_added_since_goal"]=cm
     report["native_supervisor_gap_count_added_since_goal"]=sup
-    if _num(final["cm_max"]):
+    # These max fields are PROCESS-LIFETIME maxima. Only expose them when the
+    # matching Goal-scoped counter actually changed; otherwise a 22s cold
+    # startup or post-Goal shutdown gap would be mislabeled as active motion.
+    if cm>0 and _num(final["cm_max"]):
         report["native_cm_callback_max_gap_ms"]=round(final["cm_max"]*1000,3)
-    if _num(final["supervisor_max"]):
+    if sup>0 and _num(final["supervisor_max"]):
         report["native_supervisor_callback_max_gap_ms"]=round(final["supervisor_max"]*1000,3)
     # A CM >150ms gap is a real direct Guard callback delivery boundary,
     # even if a separate Observer's callbacks were regular.
@@ -106,6 +117,7 @@ def inspect_native_guard(events):
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("--events",type=Path,required=True)
+    p.add_argument("--verdict",type=Path)
     args=p.parse_args()
     try:
         if args.events.is_symlink():
@@ -114,7 +126,18 @@ def main():
               args.events.read_text(encoding="utf-8").splitlines() if line.strip()]
     except (OSError,UnicodeError,ValueError,TypeError):
         rows=[]
-    result=inspect_native_guard(rows)
+    active_end=None
+    if args.verdict is not None:
+        try:
+            if args.verdict.is_symlink():
+                raise ValueError("SYMLINK")
+            verdict=json.loads(args.verdict.read_text(encoding="utf-8"))
+            active_end=verdict.get("native_delivery_window_end_mono")
+            if not _num(active_end):
+                active_end=-1
+        except (OSError,ValueError,UnicodeError,TypeError,AttributeError):
+            active_end=-1
+    result=inspect_native_guard(rows,active_end=active_end)
     print("D06_G07_NATIVE_GUARD_VS_OBSERVER "
           +json.dumps(result,sort_keys=True),flush=True)
     # This NEVER overrides original Safety Supervisor/Guard/G07 L2 oracle.
