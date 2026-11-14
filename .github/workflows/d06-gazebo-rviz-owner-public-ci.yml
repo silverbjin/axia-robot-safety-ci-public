@@ -27,7 +27,7 @@ jobs:
           PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -q d06/tests/test_d06_gazebo_live_contract.py d06/tests/test_d06_field_g07_regression.py d06/tests/test_d06_owner_startup_progress_readonly.py
           bash -n d06/scripts/d06_gazebo_rviz_owner_wsl2_once.sh
           bash -n d06/scripts/d06_rviz_sidecar.sh
-          python -m py_compile d06/live/d06_readonly_monitor.py
+          python -m py_compile d06/live/d06_readonly_monitor.py d06/live/d06_g07_field_triage.py
           bash d06/scripts/d06_gazebo_rviz_owner_wsl2_once.sh --self-check
           echo "D06_GAZEBO_RVIZ_L0_PASS ROS_GAZEBO_RVIZ_NOT_RUN"
 
