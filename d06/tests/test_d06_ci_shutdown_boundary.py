@@ -11,7 +11,8 @@ def fixture(tmp_path, *, rc=3, marker="G07_CI_LAUNCH_LIVE_AFTER_MANAGED_EXIT_BUD
     (root/"g07_ci_moving").mkdir()
     (root/"g07_ci_moving"/"ci_moving_goal_result.json").write_text(
         json.dumps({"status":"CI_GAZEBO_MOVING_GOAL_CANDIDATE",
-                    "guard_latched":False,"odom_stopped_dwell_sec":1.00166}))
+                    "goal_sent":True,"guard_latched":False,
+                    "odom_stopped_dwell_sec":1.00166}))
     (root/"g07_ordered_shutdown.json").write_text(
         json.dumps({"status":"NAV2_LIFECYCLE_SHUTDOWN_ACK",
                     "navigation_ack":True,"localization_ack":True}))
