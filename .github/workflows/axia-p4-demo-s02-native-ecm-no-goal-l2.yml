@@ -18,7 +18,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 02e89b2c01f88b50dbbce02387533da62b534dff
+          ref: 74ab882d907f7b0c4c3f21fb13d47bd28522d2df
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -26,7 +26,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 02e89b2c01f88b50dbbce02387533da62b534dff
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 74ab882d907f7b0c4c3f21fb13d47bd28522d2df
           bash -n instructor/scripts/p2_no_goal_smoke_ci.sh
           python3 -m py_compile instructor/tools/p2_l3_gz_fixture.py instructor/tools/p4_s02_native_contact_evidence.py
           echo AXIA_S02_REAL_CONTACT_L2_EXACT_PRIVATE_SOURCE_STATIC_PASS_NO_ROS_NO_GOAL
@@ -68,7 +68,7 @@ jobs:
           export GZ_SIM_SYSTEM_PLUGIN_PATH="$RUNNER_TEMP/s02-ecm-build:${GZ_SIM_SYSTEM_PLUGIN_PATH:-}"
           export AXIA_S02_ECM_WITNESS_CI=1
           export AXIA_S02_ECM_WITNESS_REPORT="$PWD/results/p4-s02-contact-no-goal-l2/s02_ecm_witness.json"
-          export AXIA_S02_WITNESS_SOURCE_SHA=02e89b2c01f88b50dbbce02387533da62b534dff
+          export AXIA_S02_WITNESS_SOURCE_SHA=74ab882d907f7b0c4c3f21fb13d47bd28522d2df
           export AXIA_S02_WITNESS_SESSION=s02-native-ecm-no-goal-86
           mkdir -p "$RUNNER_TEMP/axia_s02"
           echo AXIA_S02_NATIVE_ECM_GAZEBO_WITNESS_OPTIN_BUILD_PASS_GOAL_DENIED
@@ -130,10 +130,13 @@ jobs:
           def safe(line):
               t=line.strip()
               return bool(re.match(r'^(AXIA_|G07_|P2_|ROS_|NAV2_)',t)) and bool(re.search(
-                  r'BLOCKED|FAIL|MISSING|INVALID|ERROR|TIMEOUT|PARITY',t))
+                  r'(?:^|_)(?:BLOCKED|FAIL|MISSING|INVALID|ERROR|TIMEOUT)(?:$|_|:)',t))
           first=next((l.strip()[:190] for l in lines if safe(l)),'NONE')
+          overlay=root/'g07_world_overlay.log'
+          raw=overlay.read_text(errors='replace').splitlines() if overlay.exists() else []
+          overlay_error=next((x.strip()[:120] for x in raw if x.strip().startswith('P2_G07_WORLD_OVERLAY_BLOCKED:')),'NONE')
           print('AXIA_S02_PRE_GAZEBO_FIRST_FAILURE '+json.dumps({
-              'first_marker':first,'smoke_lines':len(lines),
+              'first_marker':first,'overlay_error':overlay_error,'smoke_lines':len(lines),
               'build_log_present':(root/'build.log').is_file(),
               'world_overlay_present':(root/'g07_world_overlay.log').is_file(),
               'launch_log_present':(root/'launch.log').is_file(),
