@@ -10,7 +10,13 @@ def test_current_real_l2_failure_blocks_instructor_goal_owner_before_private_che
     value=json.loads(gate.read_text())
     assert value["status"]=="HOLD_CI_REAL_G07_L2"
     assert value["allow_one_final_wsl2_owner"] is False
-    assert value["last_real_gazebo_ci_run_id"]==43587404886
+    assert value["last_real_gazebo_ci_run_id"]==43592074676
+    assert value["current_ci_instructor_candidate_sha"]=="97f2044404a8b90e9c8f4b3010c0796eef87feff"
+    assert value["first_failure_kind"]=="CM_RMW_PUBLICATION_GAP_AND_GUARD_STALE_150MS"
+    assert value["cm_source_gap_ms"]>150
+    assert value["cm_observer_callback_gap_ms"]>150
+    assert value["guard_cm_age_ms"]>150
+    assert value["whole_ci_l2_pass"] is False
     assert value["first_failure_kind"]=="CM_RMW_PUBLICATION_GAP_150MS"
     assert value["cm_source_gap_ms"]>150
     assert value["certified_estop"] is False
