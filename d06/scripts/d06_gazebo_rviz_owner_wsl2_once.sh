@@ -44,6 +44,9 @@ try:
     value=json.loads(path.read_text(encoding='utf-8'))
 except (OSError,ValueError):
     raise SystemExit(3)
+if (value.get('private_instructor_sha')!=sys.argv[2]
+        or value.get('p4_release_sha')!=sys.argv[3]):
+    raise SystemExit(4)
 if not (
     value.get('schema')=='axia.d06.final_owner_ci_gate_v1'
     and value.get('status')=='ADMITTED_FINAL_OWNER_ONLY'
@@ -60,6 +63,11 @@ PY
 then
   echo "D06_FINAL_OWNER_ADMISSION_ACCEPTED exact_source_ci_full_gazebo_l2_verified"
 else
+  admission_rc=$?
+  if [[ "$admission_rc" == 4 ]]; then
+    echo "D06_FINAL_OWNER_GATE_SHA_MISMATCH pinned_instructor_or_public_release_mismatch"
+    exit 3
+  fi
   echo "D06_FINAL_OWNER_BLOCKED_CI_L2_HOLD latest_real_G07_CI_failed; inspect_d06_public_Draft_PR108"
   echo "D06_OWNER_NO_ROS_NO_GAZEBO_NO_GOAL_UNTIL_PUBLIC_L2_FULL_GREEN"
   exit 3
