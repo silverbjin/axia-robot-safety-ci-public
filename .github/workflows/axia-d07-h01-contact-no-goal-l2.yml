@@ -32,7 +32,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 122ff75bc2bdcc6c79eb2070d70cbe71a0de3bc3
+          ref: 36578c1b64a403160ebe6e790b814829eddaa096
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -40,7 +40,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '122ff75bc2bdcc6c79eb2070d70cbe71a0de3bc3'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '36578c1b64a403160ebe6e790b814829eddaa096'
           test "$(git -C ci-public-admission -c safe.directory="$PWD/ci-public-admission" rev-parse HEAD)" = '5b6b10322ee3682f43815cd1a8d4b8135811f8fc'
           ( cd ci-public-admission && python3 -m unittest discover -s tests -p test_d07_h01_public_contract.py -v )
           cd instructor
@@ -94,7 +94,7 @@ jobs:
           AXIA_P2_SMOKE_RESULTS: results/d07-h01-ci/real-l2
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '122ff75bc2bdcc6c79eb2070d70cbe71a0de3bc3'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '36578c1b64a403160ebe6e790b814829eddaa096'
           cd instructor
           timeout --signal=TERM --kill-after=10s 870s bash scripts/p2_no_goal_smoke_ci.sh || {
             echo 'AXIA_D07_H01_REAL_GAZEBO_CONTACT_CALIBRATION_NO_GOAL_BLOCKED'
@@ -116,7 +116,7 @@ jobs:
           assert c['calibration']['topic_type_proven'] is True
           assert c['contact_ground_truth_ready'] is False
           assert c['goal_sent'] is False and c['motion_admitted'] is False
-          assert c['source_sha']=='122ff75bc2bdcc6c79eb2070d70cbe71a0de3bc3'
+          assert c['source_sha']=='36578c1b64a403160ebe6e790b814829eddaa096'
           assert c['certified_estop'] is False
           bag=root/'rosbag2'
           assert (bag/'metadata.yaml').exists()
