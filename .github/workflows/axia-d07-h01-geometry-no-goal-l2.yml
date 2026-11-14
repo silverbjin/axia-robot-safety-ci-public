@@ -21,6 +21,13 @@ jobs:
       options: --dns 1.1.1.1 --dns 8.8.8.8
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Exact public H01 admission contract from unmerged feature branch
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-ci-public
+          ref: 5b6b10322ee3682f43815cd1a8d4b8135811f8fc
+          path: ci-public-admission
+          persist-credentials: false
       - name: Exact sealed Instructor H01 source, never publish private repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -34,7 +41,8 @@ jobs:
         run: |
           set -Eeuo pipefail
           test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '56d8407e556a0675a32c43824576fd55cf104181'
-          python3 -m unittest discover -s tests -p test_d07_h01_public_contract.py -v
+          test "$(git -C ci-public-admission -c safe.directory="$PWD/ci-public-admission" rev-parse HEAD)" = '5b6b10322ee3682f43815cd1a8d4b8135811f8fc'
+          ( cd ci-public-admission && python3 -m unittest discover -s tests -p test_d07_h01_public_contract.py -v )
           cd instructor
           python3 -m unittest discover -s tests/unit -p test_d07_h01_oracle.py -v
           python3 -m py_compile tools/d07_h01_oracle.py tools/d07_h01_geometry_l2.py
@@ -112,4 +120,4 @@ jobs:
       - name: Always erase private source and original CI rosbag after log evidence
         if: always()
         shell: bash
-        run: rm -rf -- instructor
+        run: rm -rf -- instructor ci-public-admission
