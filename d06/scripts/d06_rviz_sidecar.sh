@@ -16,8 +16,20 @@ cleanup() {
   for pid in "$monitor_pid" "$rviz_pid";do
     [[ "$pid" =~ ^[0-9]+$ ]] || continue
     kill -INT -- "-$pid" 2>/dev/null || true
-    sleep 0.5
-    kill -TERM -- "-$pid" 2>/dev/null || true
+    for i in {1..15};do
+      kill -0 "$pid" 2>/dev/null || break
+      sleep 0.1
+    done
+    if kill -0 "$pid" 2>/dev/null;then
+      kill -TERM -- "-$pid" 2>/dev/null || true
+      for i in {1..15};do
+        kill -0 "$pid" 2>/dev/null || break
+        sleep 0.1
+      done
+    fi
+    if kill -0 "$pid" 2>/dev/null;then
+      kill -KILL -- "-$pid" 2>/dev/null || true
+    fi
     wait "$pid" 2>/dev/null || true
   done
   echo 'D06_RVIZ_SIDECAR_CLEANED D06_GUI_NOT_ACCEPTANCE'
