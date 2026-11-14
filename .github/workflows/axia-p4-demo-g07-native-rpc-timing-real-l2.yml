@@ -1,0 +1,335 @@
+# PIYO actual public bag-loaded Goal L2 #43338381501: CLEAR/SLOW/STOP/odom
+# and real 14-topic SQLite bag PASS, official Nav2 shutdown ACK PASS,
+# but 10s Gazebo launch cleanup expired (rc3). Actual CM children exit0.
+# Regressed first post-goal cleanup boundary RED #43339194903
+# -> GREEN #43339388986 (53 PASS); both WSL2 Owner and CI use
+# a bounded 26s post-ACK launch grace, no CM/Scan TTL changes.
+name: AXIA P4 G07 native STOP RPC CM RMW overlap diagnostic real L2
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    # HOLD: only an explicit source-reviewed CI trigger after the CM
+    # STOP-period cause has a GREEN regression may authorize the costly
+    # simulation Goal. Editing this workflow alone never auto-moves a robot.
+    paths: ['.github/workflows/axia-p4-g07-rmw-cm-supervisor-window-real-l2.yml']
+permissions:
+  contents: read
+concurrency:
+  group: axia-g07-ci-real-gazebo-moving-goal-l2
+  cancel-in-progress: false
+jobs:
+  real-gazebo-nav2-moving-simulation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 48
+    environment: axia-instructor-sealed
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+      # Docker bridge resolver failed in #43041110273 and #43042223936;
+      # use explicit public resolvers only for this GitHub CI container.
+      # This does not change ROS networking, source, TTL or WSL2 runtime.
+      options: --dns 1.1.1.1 --dns 8.8.8.8
+    steps:
+      - name: Private Instructor exact commit sealed
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 397938ab551f06d2bc19194546303e58c03e0b99
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          path: instructor
+          persist-credentials: false
+      - name: Exact immutable runtime image and 25-package/5-file parity without apt reinstall
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '397938ab551f06d2bc19194546303e58c03e0b99'
+          test "$ROS_DISTRO" = jazzy
+          cd instructor
+          mkdir -p results/p2-g07-ci-moving
+          set +u
+          source /opt/ros/jazzy/setup.bash
+          set -u
+          export ROS_DOMAIN_ID=83 ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
+          export GZ_PARTITION=axia_p2_ci_moving_83 AXIA_P0_SIM_ONLY=1
+          python3 tools/p2_g07_owner_env_parity.py --mode ci \
+            --output results/p2-g07-ci-moving/core_parity.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          v=json.loads(Path('results/p2-g07-ci-moving/core_parity.json').read_text())
+          assert v['status']=='CORE_PARITY_PASS'
+          assert v['checked_packages']==25 and v['checked_official_files']==5
+          assert v['wsl_kernel_equal_ci'] is False
+          print('AXIA_G07_RUNTIME_DIGEST_25_5_ENV_PARITY_PASS_NO_APT')
+          PY
+      - name: Use independently GREEN L0 oracle; syntax-check actual runner without pip
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd instructor
+          python3 -m py_compile tools/p2_g07_ci_moving_goal.py tools/p2_g07_ci_moving_goal_oracle.py tools/p2_g07_lifecycle_service.py tools/p2_staged_no_goal.py
+          bash -n scripts/p2_no_goal_smoke_ci.sh
+          echo 'AXIA_G07_CI_MOVING_GOAL_RUNNER_STATIC_PASS_L0_VERIFIED_SEPARATELY'
+      - name: Real Harmonic official TB3 Waffle and Nav2 ONE bounded simulation Goal
+        shell: bash
+        env:
+          ROS_DOMAIN_ID: '83'
+          ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+          GZ_PARTITION: axia_p2_ci_moving_83
+          AXIA_P0_SIM_ONLY: '1'
+          AXIA_P2_G07_PHYSICAL_PREFLIGHT: '1'
+          AXIA_G07_CI_SIM_GOAL_ALLOWED: '1'
+          AXIA_G07_CI_OWNER_OBSERVER_PARITY: '1'
+          AXIA_G07_OWNER_STARTUP_PARITY: '1'
+          AXIA_G07_CI_OWNER_BAG_PARITY: '1'
+          AXIA_P2_SMOKE_RESULTS: results/p2-g07-ci-moving/real-l2
+        run: |
+          set -euo pipefail
+          cd instructor
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '397938ab551f06d2bc19194546303e58c03e0b99'
+          timeout --signal=TERM --kill-after=10s 900s \
+            bash scripts/p2_no_goal_smoke_ci.sh || {
+            echo 'AXIA_G07_CI_MOVING_GOAL_REAL_GAZEBO_BLOCKED'
+            for f in results/p2-g07-ci-moving/real-l2/{staged_startup,launch,g07_ci_pregoal,g07_ci_moving,g07_ordered_shutdown,rosbag}.log \
+               results/p2-g07-ci-moving/real-l2/{teardown,teardown_processes}.txt;do
+              if [[ -f "$f" ]];then echo "--- $(basename "$f") ---";tail -n 80 "$f";fi
+            done
+            exit 2
+          }
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          root=Path('results/p2-g07-ci-moving/real-l2')
+          startup=json.loads((root/'startup_verdict.json').read_text())
+          preg=json.loads((root/'g07_ci_pregoal/owner_pregoal_l2.json').read_text())
+          data=json.loads((root/'g07_ci_moving/ci_moving_goal_result.json').read_text())
+          assert startup['status']=='SMOKE_READY' and startup['goal_sent'] is False
+          assert (root/'g07_demo_waffle_manifest.json').exists()
+          for gate in ('localization_start','navigation_start'):
+            native=json.loads((root/('startup_verdict.'+gate+'.native.json')).read_text())
+            assert native['status']=='ACK' and native['success'] is True
+            assert native['goal_sent'] is False and native['command']=='startup'
+          print('AXIA_G07_SHARED_CI_OWNER_STAGED_NATIVE_STARTUP_L2_ACK_PASS')
+          assert preg['status']=='P2_G07_OWNER_PREGOAL_L2_READY_NO_GOAL'
+          assert (root/'rosbag2/metadata.yaml').is_file(), 'OWNER_14_TOPIC_BAG_NOT_RECORDED'
+          import sqlite3
+          dbs=list((root/'rosbag2').glob('*.db3'))
+          assert len(dbs)==1
+          conn=sqlite3.connect('file:'+str(dbs[0])+'?mode=ro',uri=True)
+          assert conn.execute('pragma quick_check').fetchone()[0]=='ok'
+          counts=dict(conn.execute('select topics.name,count(messages.id) from topics left join messages on topics.id=messages.topic_id group by topics.name'))
+          for name in ('/clock','/scan','/odom','/cmd_vel_supervised','/cmd_vel_pre_guard','/axia/p2/base_guard'):
+            assert counts.get(name,0)>0,(name,counts)
+          print('AXIA_G07_PUBLIC_CI_WSL2_MATCHED_14_TOPIC_REAL_BAG_L2_PASS')
+          assert data['status']=='CI_GAZEBO_MOVING_GOAL_CANDIDATE'
+          assert data['goal_sent'] is True and data['goal_status_executing'] is True
+          assert all(data['goal_status_at_'+k]==2 for k in ('clear','slow','stop'))
+          assert data['odom_stopped_dwell_sec']>=1
+          assert data['guard_latched'] is False
+          assert data['owner_observer_parity_survived_15s'] is True
+          print('AXIA_G07_CI_OWNER_OBSERVER_PARITY_L2_VALIDATED_2_WORKERS_NO_SIGSEGV')
+          assert data['certified_estop'] is False and data['gate_accepted'] is False
+          # Same official ordered shutdown and native CM exit audit as Owner.
+          # These are actual POST-GOAL processes, not a separate NO-GOAL run.
+          teardown=json.loads((root/'g07_ordered_shutdown.json').read_text())
+          cm_audit=json.loads((root/'g07_shutdown_audit.json').read_text())
+          assert teardown['status']=='NAV2_LIFECYCLE_SHUTDOWN_ACK'
+          assert teardown['cm_managed_by_navigation'] is True
+          assert teardown['navigation_ack'] and teardown['localization_ack']
+          assert cm_audit['status']=='SHUTDOWN_CLEAN_CANDIDATE'
+          assert cm_audit['cm_exit_code']==0
+          assert 'P2_L2_GRACEFUL_TEARDOWN' in (root/'teardown.txt').read_text()
+          print('AXIA_G07_REAL_POST_GOAL_OWNER_IDENTICAL_NAV2_SHUTDOWN_CM_EXIT0_PASS')
+          assert data['owner_l3_accepted'] is False
+          print('AXIA_G07_CI_REAL_HARMONIC_NAV2_MOVING_GOAL_CLEAR_SLOW_STOP_L2_PASS_OWNER_L3_NOT_RUN')
+          PY
+      - name: Post-Goal cross-node first CM TTL read-only diagnostic
+        if: always()
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cd instructor
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,sys
+          sys.path.insert(0,str(Path('tools').resolve()))
+          from p2_g07_ci_moving_goal_oracle import first_guard_cm_delivery_boundary
+          folder=Path('results/p2-g07-ci-moving/real-l2/g07_ci_moving')
+          summary=folder/'ci_moving_goal_result.json'
+          events=folder/'actual_ros_events.jsonl'
+          if not summary.is_file() or not events.is_file():
+              print('AXIA_P4_G07_L2_CROSS_NODE_DIAGNOSTIC_BLOCKED_NO_ORIGINAL_RUN')
+              sys.exit(3)
+          verdict=json.loads(summary.read_text())
+          rows=[json.loads(line) for line in events.read_text().splitlines()]
+          starts=[row['t'] for row in rows if row.get('kind')=='owner_goal_published']
+          if len(starts)!=1:
+              print('AXIA_P4_G07_L2_GOAL_START_AMBIGUOUS_NO_SIGNOFF')
+              sys.exit(3)
+          result=first_guard_cm_delivery_boundary(
+              rows,verdict.get('first_guard_latch'),goal_start=starts[0])
+          print('AXIA_P4_G07_L2_FIRST_CM_GUARD_BOUNDARY '+json.dumps(result,sort_keys=True))
+          assert result['safety_pass'] is False
+          assert result['cm_publisher_stopped_proven'] is False
+          if result['status']=='GUARD_INTERNAL_CM_TTL_BREACH':
+              print('AXIA_P4_G07_REAL_L2_FIRST_GUARD_CM_STALE_BLOCKED_150MS')
+              sys.exit(3)
+          if result['status']!='NO_FIRST_GUARD_LATCH_TRACE':
+              print('AXIA_P4_G07_L2_FIRST_GUARD_BOUNDARY_INCONCLUSIVE')
+              sys.exit(3)
+          if (verdict.get('status')!='CI_GAZEBO_MOVING_GOAL_CANDIDATE'
+                  or verdict.get('first_timing_violation') is not None
+                  or verdict.get('guard_latched') is not False):
+              print('AXIA_P4_G07_L2_G07_ORIGINAL_ORACLE_HOLD')
+              sys.exit(3)
+          print('AXIA_P4_G07_L2_CROSS_NODE_FIRST_CM_GUARD_NO_BREACH_IN_CI_ONLY')
+          print('AXIA_P4_G07_OWNER_WSL2_NOT_RUN_SCHEDULER_UNVERIFIED_FORMAL_HOLD')
+          PY
+      - name: Verify genuine Jazzy MessageInfo publish/receive timestamps in actual Goal
+        if: always()
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cd instructor
+          python3 - <<'PY'
+          from pathlib import Path
+          import sys,json
+          sys.path.insert(0,str(Path('tools').resolve()))
+          from p2_g07_ci_moving_goal_oracle import cm_rmw_provenance
+          root=Path('results/p2-g07-ci-moving/real-l2/g07_ci_moving')
+          event_file=root/'actual_ros_events.jsonl'
+          result_file=root/'ci_moving_goal_result.json'
+          if not event_file.is_file() or not result_file.is_file():
+              print('AXIA_P4_G07_NATIVE_RMW_MISSING_ACTUAL_GOAL_EVIDENCE')
+              sys.exit(3)
+          rows=[json.loads(line) for line in event_file.read_text().splitlines()]
+          goal=[v['t'] for v in rows if v.get('kind')=='owner_goal_published']
+          if len(goal)!=1:
+              print('AXIA_P4_G07_NATIVE_RMW_GOAL_NOT_UNIQUE')
+              sys.exit(3)
+          cm=[v for v in rows if v.get('kind')=='pre_guard' and v.get('t',0)>=goal[0]]
+          sup=[v for v in rows if v.get('kind')=='supervised' and v.get('t',0)>=goal[0]]
+          def valid(v):
+              return type(v.get('rmw_source_ns')) is int and v['rmw_source_ns']>0 and (
+                  type(v.get('rmw_received_ns')) is int
+                  and v['rmw_received_ns']>=v['rmw_source_ns'])
+          if len(cm)<10 or len(sup)<10 or not all(map(valid,cm+sup)):
+              print('AXIA_P4_G07_NATIVE_RMW_MESSAGE_INFO_UNAVAILABLE_CM_OR_SUPERVISOR')
+              sys.exit(3)
+          cmseq=[v.get('rmw_publication_seq') for v in cm]
+          if not all(type(n) is int for n in cmseq):
+              print('AXIA_P4_G07_NATIVE_RMW_PUBLICATION_SEQ_UNSUPPORTED_NO_CAUSAL_CREDIT')
+              sys.exit(3)
+          if any(b<=a for a,b in zip(cmseq,cmseq[1:])):
+              print('AXIA_P4_G07_NATIVE_RMW_PUBLISHER_SEQUENCE_NONMONOTONIC')
+              sys.exit(3)
+          provenance=cm_rmw_provenance(rows,goal_start=goal[0],end=rows[-1]['t'])
+          summary=json.loads(result_file.read_text())
+          source_gaps=[(b['rmw_source_ns']-a['rmw_source_ns'])/1e9
+                       for a,b in zip(cm,cm[1:])]
+          print('AXIA_P4_G07_REAL_RMW_CM_SOURCE_MAX_GAP_SEC='+str(round(max(source_gaps),6)))
+          print('AXIA_P4_G07_REAL_RMW_PROVENANCE='+json.dumps(provenance,sort_keys=True))
+          if (summary.get('status')!='CI_GAZEBO_MOVING_GOAL_CANDIDATE'
+                  or summary.get('guard_latched') is not False
+                  or summary.get('first_timing_violation') is not None):
+              print('AXIA_P4_G07_RMW_L2_ORIGINAL_G07_SAFETY_HOLD')
+              sys.exit(3)
+          if provenance['status']!='NO_CM_OBSERVED_GAP_IN_BOUND':
+              print('AXIA_P4_G07_RMW_L2_UNSAFE_CM_OBSERVED_GAP')
+              sys.exit(3)
+          print('AXIA_P4_G07_NATIVE_RMW_SOURCE_RECEIPT_SEQ_L2_PASS_CI_ONLY')
+          print('AXIA_P4_G07_OWNER_WSL2_NOT_RUN_FORMAL_G11_0_OF_15')
+          PY
+      - name: First CM publication gap vs actual Supervisor publication window
+        if: always()
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cd instructor
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,sys
+          sys.path.insert(0,str(Path("tools").resolve()))
+          from p2_g07_ci_moving_goal_oracle import cm_upstream_rmw_gap_window
+          folder=Path("results/p2-g07-ci-moving/real-l2/g07_ci_moving")
+          event_file=folder/"actual_ros_events.jsonl"
+          result_file=folder/"ci_moving_goal_result.json"
+          if not event_file.is_file() or not result_file.is_file():
+              print("AXIA_P4_G07_CM_SUPERVISOR_REAL_L2_NO_ACTUAL_GOAL_EVIDENCE")
+              sys.exit(3)
+          rows=[json.loads(line) for line in event_file.read_text().splitlines()]
+          starts=[e["t"] for e in rows if e.get("kind")=="owner_goal_published"]
+          if len(starts)!=1:
+              print("AXIA_P4_G07_CM_SUPERVISOR_REAL_L2_AMBIGUOUS_GOAL")
+              sys.exit(3)
+          limit=max(e["t"] for e in rows if type(e.get("t")) in (int,float))
+          result=cm_upstream_rmw_gap_window(rows,goal_start=starts[0],end=limit)
+          summary=json.loads(result_file.read_text())
+          print("AXIA_P4_G07_REAL_CM_SUPERVISOR_FIRST_RMW_WINDOW "+
+                json.dumps(result,sort_keys=True))
+          print("AXIA_P4_G07_REAL_G07_RUN_STATUS="+str(summary.get("status")))
+          print("AXIA_P4_G07_REAL_G07_FIRST_GUARD_REASON="+
+                str((summary.get("first_guard_latch") or {}).get("reason")))
+          if result["status"]=="RMW_PROVENANCE_MISSING_OR_INVALID":
+              print("AXIA_P4_G07_REAL_CM_SUPERVISOR_METADATA_UNVERIFIED")
+              sys.exit(3)
+          # A confirmed CM output breach is deliberately a FAIL even when
+          # continuous upstream messages narrow the explanation.
+          if result["status"]=="CM_SOURCE_GAP_EXCEEDS_150MS":
+              print("AXIA_P4_G07_REAL_CM_SUPERVISOR_TTL_BREACH_DIAGNOSTIC_ONLY")
+              sys.exit(3)
+          if (summary.get("status")!="CI_GAZEBO_MOVING_GOAL_CANDIDATE"
+              or summary.get("guard_latched") is not False
+              or summary.get("first_timing_violation") is not None):
+              print("AXIA_P4_G07_REAL_CM_SUPERVISOR_ORIGINAL_SAFETY_ORACLE_HOLD")
+              sys.exit(3)
+          print("AXIA_P4_G07_REAL_CM_SUPERVISOR_WINDOW_WITHIN_TTL_L2_PASS_CI_ONLY")
+          print("AXIA_P4_G07_OWNER_NOT_RUN_G11_FORMAL_0_OF_15")
+          PY
+      - name: First CM RMW gap vs actual native STOP RPC monotonic overlap
+        if: always()
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cd instructor
+          python3 - <<'PY'
+          import json,sys
+          from pathlib import Path
+          sys.path.insert(0,str(Path("tools").resolve()))
+          from p2_g07_ci_moving_goal_oracle import cm_native_stop_rpc_overlap
+          p=Path("results/p2-g07-ci-moving/real-l2/g07_ci_moving")
+          f=p/"ci_moving_goal_result.json"
+          e=p/"actual_ros_events.jsonl"
+          if not f.is_file() or not e.is_file():
+              print("AXIA_G07_FIRST_CM_RPC_L2_NO_GOAL_EVIDENCE_DIAGNOSTIC_NOT_RUN")
+              sys.exit(3)
+          v=json.loads(f.read_text())
+          events=[json.loads(row) for row in e.read_text().splitlines()]
+          started=[row["t"] for row in events if row.get("kind")=="owner_goal_published"]
+          rpc=v.get("stop_native_rpc_monotonic_window")
+          if len(started)!=1 or not isinstance(rpc,dict):
+              print("AXIA_G07_FIRST_CM_RPC_L2_NO_NATIVE_STOP_RPC_WINDOW_HOLD")
+              sys.exit(3)
+          result=cm_native_stop_rpc_overlap(
+              events,goal_start=started[0],
+              end=max(row["t"] for row in events if type(row.get("t")) in (int,float)),
+              rpc_started=rpc.get("started_at"),
+              rpc_finished=rpc.get("ended_at"),
+              first_guard_tick=(v.get("first_guard_latch") or {}).get("tick_monotonic"))
+          print("AXIA_G07_FIRST_CM_RPC_L2_CLASSIFICATION "+json.dumps(result,sort_keys=True))
+          assert result["rpc_caused_cm_delay_proven"] is False
+          assert result["g07_timing_resolved"] is False
+          assert result["ready_for_wsl2_owner_goal"] is False
+          if result["status"] in (
+                  "CM_RMW_GAP_DURING_NATIVE_STOP_RPC_CANDIDATE",
+                  "CM_RMW_GAP_WITHOUT_NATIVE_STOP_RPC_OVERLAP",
+                  "CM_RMW_SEQUENCE_OR_SUPERVISOR_COVERAGE_INCOMPLETE",
+                  "RIGHT_CENSORED_AT_FIRST_GUARD_LATCH",
+                  "RMW_PROVENANCE_MISSING_OR_INVALID"):
+              print("AXIA_G07_CM_150MS_FIRST_SOURCE_GAP_NOT_RESOLVED_HOLD")
+              sys.exit(3)
+          print("AXIA_G07_NO_GAP_IN_THIS_CI_ONLY_OWNER_WSL2_G07_HOLD")
+          PY
+      - name: Delete all Instructor source and raw ROS / Gazebo evidence
+        if: always()
+        shell: bash
+        run: rm -rf -- instructor ci-tools
