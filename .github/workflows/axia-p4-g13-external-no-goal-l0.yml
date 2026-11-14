@@ -1,0 +1,55 @@
+name: AXIA P4 G13 distinct external PC no-Goal script contract L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-p4-g13-external-no-goal-l0.yml']
+permissions:
+  contents: read
+jobs:
+  reject-goal-and-unverified-machine:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - name: Pin exact public candidate script
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ded0b3ddbee8e7c9960c861621ccf17da7696677
+          persist-credentials: false
+      - name: Two individual external PC receipts required, never run Goal in CI
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          FILE=scripts/axia_p4_g13_external_no_goal_once.sh
+          bash -n "$FILE"
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path("scripts/axia_p4_g13_external_no_goal_once.sh").read_text()
+          for required in (
+              'PRIVATE_SHA=', 'PRIVATE_TREE=',
+              'AXIA_G07_CI_SIM_GOAL_ALLOWED=0',
+              'AXIA_G07_SHUTDOWN_L2_ONLY=1',
+              'AXIA_P2_G07_PHYSICAL_PREFLIGHT=1',
+              'bash scripts/p2_no_goal_smoke_ci.sh',
+              'AXIA_G13_MACHINE_FINGERPRINT_SHA256',
+              'g13_two_distinct_pcs_formally_accepted":False',
+              'P2_NO_GOAL_STATIC_AND_RUNTIME_READINESS_OBSERVED',
+              'G07_REAL_SHUTDOWN_L2_CM_CLEAN_EXIT_AFTER_NAV2_ACK_PASS',
+              'AXIA_G13_TWO_DISTINCT_EXTERNAL_PC_RECEIPTS_REQUIRED_FORMAL_0_OF_2',
+              'AXIA_G13_BLOCKED_WSL2_UBUNTU2404_X86_64_REQUIRED',
+          ):
+              assert required in s, required
+          for banned in (
+              'ros2 action send_goal','AXIA_G07_CI_SIM_GOAL_ALLOWED=1',
+              'pkill', 'rclone', 'gh release upload', 'git push --force',
+          ):
+              assert banned not in s,banned
+          assert s.count("PRIVATE_SHA=")==1
+          print("AXIA_G13_PUBLIC_NO_GOAL_SAFE_BOOTSTRAP_L0_PASS")
+          PY
+          set +e
+          OUT="$(bash "$FILE" WRONG_LABEL 2>&1)"
+          RC=$?
+          set -e
+          test "$RC" -eq 2
+          grep -Fq 'AXIA_G13_USAGE=' <<< "$OUT"
+          echo AXIA_G13_NO_ROS_NO_GOAL_EXTERNAL_0_OF_2_L0_PASS
