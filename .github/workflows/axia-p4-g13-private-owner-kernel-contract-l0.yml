@@ -1,0 +1,32 @@
+name: AXIA P4 G13 private WSL2 Owner-no-Goal vs CI-kernel scope L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-p4-g13-private-owner-kernel-contract-l0.yml']
+permissions:
+  contents: read
+jobs:
+  sealed-no-goal-ci-kernel-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    environment: axia-instructor-sealed
+    steps:
+      - name: Pin exact private source, no actual ROS or Goal
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 16698fe93ebe6319c2bbd0ac9fd2ea063e14cdf8
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Verify WSL2 Owner no-Goal special scope and unchanged Linux CI gate
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = 16698fe93ebe6319c2bbd0ac9fd2ea063e14cdf8
+          bash -n scripts/p2_no_goal_smoke_ci.sh
+          python3 -m unittest discover -s tests/unit -p test_p4_g13_pc1_owner_vs_ci_kernel_no_goal.py -v
+          echo AXIA_G13_PC1_OWNER_WSL2_VS_LINUX_CI_KERNEL_SCOPE_L0_PASS_NO_ROS_NO_GOAL
+      - name: Delete protected source
+        if: always()
+        shell: bash
+        run: rm -rf -- .git docs ros2_ws scripts tools tests fixtures scenarios configs results training
