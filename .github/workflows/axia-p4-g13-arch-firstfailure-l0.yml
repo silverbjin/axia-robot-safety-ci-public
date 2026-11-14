@@ -1,8 +1,15 @@
 name: AXIA P4 G13 arch-shell and existing first-failure no-rerun L0 TDD
 on:
+  pull_request:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths:
+      - '.github/workflows/axia-p4-g13-arch-firstfailure-l0.yml'
+      - 'scripts/axia_p4_g13_external_no_goal_once.sh'
   push:
     branches: [release/p2-g06-cm-ttl-20261110]
-    paths: ['.github/workflows/axia-p4-g13-arch-firstfailure-l0.yml']
+    paths:
+      - '.github/workflows/axia-p4-g13-arch-firstfailure-l0.yml'
+      - 'scripts/axia_p4_g13_external_no_goal_once.sh'
 permissions:
   contents: read
 jobs:
@@ -13,7 +20,6 @@ jobs:
       - name: Exact candidate G13 shell source
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
-          ref: d8322a97c927959310bbc061122eeff09727a0b0
           path: source
           persist-credentials: false
       - name: Assert architecture expression and no-run first-failure inspection
@@ -21,6 +27,8 @@ jobs:
         run: |
           set -Eeuo pipefail
           FILE=source/scripts/axia_p4_g13_external_no_goal_once.sh
+          echo "AXIA_G13_CI_SOURCE_SHA=$(git -C source rev-parse HEAD)"
+          sha256sum "$FILE"
           bash -n "$FILE"
           python3 - "$FILE" <<'PY'
           import pathlib,re,subprocess,sys
