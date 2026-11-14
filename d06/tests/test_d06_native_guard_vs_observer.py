@@ -90,3 +90,36 @@ def test_first_guard_latch_preserves_native_cm_age_and_callback_counter():
     assert result["native_cm_last_receive_age_ms_at_latch"]==179.652
     assert result["observer_cm_gap_proves_guard_delay"] is False
     assert result["safety_pass"] is False
+
+
+def test_long_cm_gap_after_goal_stop_does_not_poison_active_motion_ttl():
+    # Real #43603675174 carried a 22.609s lifetime CM maximum. A cumulative
+    # increment after the active Goal's true t1 is NOT evidence of a moving
+    # safety violation. The post-Goal period belongs to lifecycle cleanup.
+    events=[guard(9.9,0,0),
+            {"kind":"owner_goal_published","t":10.0},
+            guard(10.2,0,0,cm_max=.08),
+            guard(10.35,0,0,cm_max=.09),
+            guard(32.96,1,0,cm_max=22.609220)]
+    r=inspect_native_guard(events,active_end=10.4)
+    assert r["status"]=="NATIVE_GUARD_INPUT_GAPS_NOT_OBSERVED"
+    assert r["native_cm_gap_count_added_since_goal"]==0
+    assert r["active_goal_window_end_mono"]==10.4
+    assert r["native_cm_callback_max_gap_ms"] is None
+    assert r["safety_pass"] is False
+
+def test_true_cm_gap_inside_active_goal_still_blocks():
+    events=[guard(9.9,0,0),
+            {"kind":"owner_goal_published","t":10.0},
+            guard(10.2,1,0,cm_max=.171215),
+            guard(32.9,2,0,cm_max=22.609220)]
+    r=inspect_native_guard(events,active_end=10.4)
+    assert r["status"]=="HOLD_NATIVE_GUARD_CM_INPUT_GAP_150MS"
+    assert r["native_cm_gap_count_added_since_goal"]==1
+
+def test_invalid_active_end_is_unknown_not_pass():
+    events=[guard(9.9,0,0),{"kind":"owner_goal_published","t":10.0},
+            guard(10.2,0,0)]
+    r=inspect_native_guard(events,active_end=9.0)
+    assert r["status"]=="NATIVE_GUARD_RECEIPT_UNVERIFIED"
+    assert r["safety_pass"] is False
