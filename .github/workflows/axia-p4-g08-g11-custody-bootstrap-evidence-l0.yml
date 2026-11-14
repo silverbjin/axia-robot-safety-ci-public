@@ -32,7 +32,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 015db13e6d80293d6827e45f5ad345e2c1742f2
+          ref: 015db13e6d80293d6827e45f5ad345e2c1742f2e
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -40,7 +40,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor rev-parse HEAD)" = '015db13e6d80293d6827e45f5ad345e2c1742f2'
+          test "$(git -C instructor rev-parse HEAD)" = '015db13e6d80293d6827e45f5ad345e2c1742f2e'
           python3 - <<'PY'
           import json
           from pathlib import Path
