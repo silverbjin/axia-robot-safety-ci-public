@@ -15,14 +15,14 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 9a8e3c5644c410e63157ab8d532f1951fe56292b
+          ref: f4c3aa8d022ebb4d1a79bef1d391466f5993fbe9
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Source-based canonical Contact and zero-collision fail-close
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git rev-parse HEAD)" = 9a8e3c5644c410e63157ab8d532f1951fe56292b
+          test "$(git rev-parse HEAD)" = f4c3aa8d022ebb4d1a79bef1d391466f5993fbe9
           python3 -m unittest discover -s tests/unit -p test_p4_demo_s02_native_contact_first_probe.py -v
           python3 -m unittest discover -s tests/unit -p test_p4_demo_s02_existing_gz_fixture_topic_selection.py -v
           python3 -m py_compile tools/p4_s02_native_contact_evidence.py
