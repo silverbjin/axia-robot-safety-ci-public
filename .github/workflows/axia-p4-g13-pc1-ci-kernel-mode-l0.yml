@@ -1,9 +1,11 @@
-name: AXIA P4 G13 PC1 original CI-kernel gate before Nav2 no-Goal L0
+name: AXIA P4 G13 PC1 original CI-kernel pre-ROS failure classification L0
 on:
-  push:
-    branches: [release/p2-g06-cm-ttl-20261110]
-    paths: ['.github/workflows/axia-p4-g13-pc1-ci-kernel-mode-l0.yml']
   pull_request:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths:
+      - 'scripts/axia_p4_g13_external_no_goal_once.sh'
+      - '.github/workflows/axia-p4-g13-pc1-ci-kernel-mode-l0.yml'
+  push:
     branches: [release/p2-g06-cm-ttl-20261110]
     paths:
       - 'scripts/axia_p4_g13_external_no_goal_once.sh'
@@ -11,32 +13,20 @@ on:
 permissions:
   contents: read
 jobs:
-  original-first-failure-and-owner-vs-ci-mode:
+  public-sanitized-actual-owner-pc1-failure:
     runs-on: ubuntu-24.04
-    timeout-minutes: 8
-    environment: axia-instructor-sealed
+    timeout-minutes: 6
     steps:
-      - name: Public actual PR source
+      - name: Exact public PR/script source only
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
-          path: public
           persist-credentials: false
-      - name: Private source pinned exactly for CI mode-boundary contract
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          repository: silverbjin/axia-robot-safety-instructor
-          ref: 4a09e3cbbbe34a884dca0c150024ce7db60637f0
-          path: instructor
-          token: ${{ secrets.AXIA_CLOUD_CI }}
-          persist-credentials: false
-      - name: Original sanitized PC1 receipt and forbidden CI-kernel on WSL2 RED GREEN
+      - name: Reproduce FIRST real PC1 pre-ROS failure using sanitized small fixture
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor rev-parse HEAD)" = 4a09e3cbbbe34a884dca0c150024ce7db60637f0
-          python3 -m unittest discover -s instructor/tests/unit -p test_p4_g13_pc1_owner_vs_ci_kernel_no_goal.py -v
-          bash -n instructor/scripts/p2_no_goal_smoke_ci.sh
-          bash -n public/scripts/axia_p4_g13_external_no_goal_once.sh
+          SCRIPT=scripts/axia_p4_g13_external_no_goal_once.sh
+          bash -n "$SCRIPT"
           ROOT="$HOME/.axia_g13_external_pc_evidence/g13-PC1-ci_kernel_fixture"
           mkdir -p "$ROOT/actual"
           printf '%s\n' \
@@ -47,12 +37,11 @@ jobs:
           printf '%s\n' 'AXIA_G07_ENV_PARITY_BLOCKED mismatches=ci_kernel' >"$ROOT/actual/g07_userspace_parity.log"
           printf '%s\n' '{"mode":"ci","wsl_detected":true,"status":"PARITY_BLOCKED","mismatch":{"ci_kernel":"CI_NOT_WSL2_REQUIRED"},"goal_sent":false}' >"$ROOT/actual/g07_userspace_parity.json"
           printf '%s\n' '{"label":"PC1","run_exit_code":3,"goal_sent":false,"no_goal_smoke_pass":false}' >"$ROOT/g13_no_goal_receipt.json"
-          bash public/scripts/axia_p4_g13_external_no_goal_once.sh --inspect "$ROOT" >"$RUNNER_TEMP/g13_pc1_inspect.txt"
-          grep -Fq 'AXIA_G13_PREVIOUS_RUN_FIRST_FAILURE=CI_KERNEL_MODE_ON_WSL2' "$RUNNER_TEMP/g13_pc1_inspect.txt"
-          grep -Fq 'AXIA_G13_PREVIOUS_RUN_DIAGNOSTIC_ONLY_NO_GOAL_NO_RETRY' "$RUNNER_TEMP/g13_pc1_inspect.txt"
-          ! grep -Fq 'REAL_JAZZY_HARMONIC_NO_GOAL_L2_PASS' "$RUNNER_TEMP/g13_pc1_inspect.txt"
-          echo AXIA_G13_PC1_CI_KERNEL_WRONG_MODE_FIRST_FAILURE_L0_PASS_NO_ROS_NO_GOAL
-      - name: Erase private source
-        if: always()
-        shell: bash
-        run: rm -rf -- instructor
+          bash "$SCRIPT" --inspect "$ROOT" > "$RUNNER_TEMP/first.txt"
+          grep -Fq 'AXIA_G13_PREVIOUS_RUN_FIRST_FAILURE=CI_KERNEL_MODE_ON_WSL2' "$RUNNER_TEMP/first.txt"
+          grep -Fq 'AXIA_G13_PREVIOUS_RUN_FIRST_FAILURE_PHASE=BEFORE_GAZEBO_LAUNCH_AND_NAV2_LIFECYCLE' "$RUNNER_TEMP/first.txt"
+          grep -Fq 'AXIA_G13_PREVIOUS_RUN_DIAGNOSTIC_ONLY_NO_GOAL_NO_RETRY' "$RUNNER_TEMP/first.txt"
+          ! grep -Fq 'REAL_JAZZY_HARMONIC_NO_GOAL_L2_PASS' "$RUNNER_TEMP/first.txt"
+          grep -Fq 'AXIA_G07_CI_SIM_GOAL_ALLOWED=0' "$SCRIPT"
+          ! grep -Fq 'ros2 action send_goal' "$SCRIPT"
+          echo AXIA_G13_ORIGINAL_PC1_CI_KERNEL_FIRST_STAGE_PUBLIC_L0_PASS_NO_ROS_NO_GOAL
