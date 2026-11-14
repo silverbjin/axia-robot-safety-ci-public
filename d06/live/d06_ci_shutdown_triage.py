@@ -81,6 +81,31 @@ def review_cleanup(root: Path, log_file: Path, rc_file: Path) -> dict:
             "certified_estop":False,
             "no_raw_private_output":True,
         }
+    # A Guard safety transition and first timing violation take precedence
+    # over a later shutdown RC. Never print arbitrary private exception text.
+    if original.get("goal_sent") is True and original.get("status") != "CI_GAZEBO_MOVING_GOAL_CANDIDATE":
+        latch=original.get("first_guard_latch")
+        timing=original.get("first_timing_violation")
+        guard_latched=bool(isinstance(latch,dict) and latch.get("latched") is True
+                           or original.get("guard_latched") is True)
+        phase=("GOAL_SAFETY_LATCH" if guard_latched
+               else "GOAL_TIMING_OR_ORACLE_BLOCKED")
+        first_gate=None
+        if isinstance(latch,dict) and latch.get("reason")=="UPSTREAM_STALE_AFTER_MOTION":
+            first_gate="UPSTREAM_STALE_AFTER_MOTION"
+        elif isinstance(timing,dict) and timing.get("channel") in ("scan","pre_guard","supervised","guard","odom","clock"):
+            first_gate="FIRST_"+timing["channel"].upper()+"_TIMING_BREACH"
+        return {
+            "schema":"axia.d06.ci_actual_g07_cleanup_first_boundary_v1",
+            "status":("HOLD_G07_SAFETY_LATCH" if guard_latched else "HOLD_G07_GOAL_ORACLE"),
+            "first_failure_phase":phase,"first_failure_gate":first_gate,
+            "original_g07_motion_candidate":False,"runner_rc":rc,
+            "first_cleanup_failure":None,
+            "native_nav2_lifecycle_ack":False,"native_cm_clean_exit":False,
+            "launch_graceful_exit_marker":False,"full_run_pass":False,
+            "owner_l3_accepted":False,"certified_estop":False,
+            "no_raw_private_output":True,
+        }
     shutdown=_json(root/"g07_ordered_shutdown.json")
     audit=_json(root/"g07_shutdown_audit.json")
     teardown=_text(root/"teardown.txt")
