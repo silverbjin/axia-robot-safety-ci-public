@@ -27,7 +27,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 97f2044404a8b90e9c8f4b3010c0796eef87feff
+          ref: b9296abe587511513c2012cbf6291bf0a9575e5f
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -71,12 +71,15 @@ jobs:
           PY
           python3 -m unittest discover -s instructor/tests/unit \
             -p 'test_p4_g07_ordered_shutdown_localization_budget.py' -q
+          # Exact G07 RMW source-vs-receive sensor delivery contract, NO GOAL.
+          python3 -m unittest discover -s instructor/tests/unit \
+            -p 'test_p4_g07_scan_odom_rmw_delivery.py' -q
 
       - name: Exact immutable runtime image and 25-package/5-file parity without apt reinstall
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '97f2044404a8b90e9c8f4b3010c0796eef87feff'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 'b9296abe587511513c2012cbf6291bf0a9575e5f'
           test "$ROS_DISTRO" = jazzy
           cd instructor
           mkdir -p results/p2-g07-ci-moving
@@ -120,7 +123,7 @@ jobs:
         run: |
           set -euo pipefail
           cd instructor
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '97f2044404a8b90e9c8f4b3010c0796eef87feff'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 'b9296abe587511513c2012cbf6291bf0a9575e5f'
           # Keep normal Owner-matched execution; /proc schedstat was unavailable
           # in diagnostic CI #43594781886, so do not burden full L2 with probe.
           set +e
