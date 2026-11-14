@@ -35,7 +35,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-ci-public
-          ref: 4e89c4b58b4051ae1045aadb319d0b16cf1c70d6
+          ref: 0a2511c72c8f54d2d1f8db29b3404a7951d370ea
           path: ci-tools
           persist-credentials: false
 
@@ -215,6 +215,30 @@ jobs:
           python3 ci-tools/d06/live/d06_supervisor_scan_vs_observer_first_gap.py --events "$EVENTS"
           python3 ci-tools/d06/live/d06_native_scan_vs_observer.py --events "$EVENTS"
           echo 'D06_OBSERVER_VS_NATIVE_SUPERVISOR_SAFETY_DIAGNOSTIC_ONLY NO_GUARD_RECEIPT_CAUSAL_PROOF'
+
+      - name: G07 direct Guard CM and Supervisor input intervals after moving Goal
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,sys
+          from pathlib import Path
+          sys.path.insert(0,str(Path('ci-tools').resolve()))
+          from d06.live.d06_native_guard_vs_observer import inspect_native_guard
+          event_file=Path('instructor/results/p2-g07-ci-moving/real-l2/g07_ci_moving/actual_ros_events.jsonl')
+          if not event_file.is_file() or event_file.is_symlink():
+              print('D06_NATIVE_GUARD_INPUT_UNVERIFIED_NO_SEALED_EVENTS')
+              sys.exit(3)
+          events=[json.loads(l) for l in event_file.read_text().splitlines() if l.strip()]
+          result=inspect_native_guard(events)
+          print('D06_G07_DIRECT_GUARD_CM_SUPERVISOR_RECEIPT '+
+                json.dumps(result,sort_keys=True),flush=True)
+          if result['status']!='NATIVE_GUARD_INPUT_GAPS_NOT_OBSERVED':
+              print('D06_G07_NATIVE_GUARD_RECEIPT_HOLD_150MS_NO_WSL2_ACCEPTANCE')
+              sys.exit(3)
+          print('D06_G07_NATIVE_GUARD_RECEIPT_150MS_L2_SCOPE_PASS_NOT_OWNER_L3')
+          PY
 
       - name: Post-Goal cross-node first CM TTL read-only diagnostic
         if: always()
