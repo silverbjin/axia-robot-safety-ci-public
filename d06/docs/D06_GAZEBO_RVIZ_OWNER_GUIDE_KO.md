@@ -94,3 +94,30 @@ RED→GREEN→REFACTOR→REVIEW→COMMIT. 학생 공개 TODO와 Instructor priva
 - D06 UI만 nice 15, RViz2 frame rate 8, 교육용 MarkerArray 1Hz로 하향. 이 조치는 CPU 부하 완화 **후보**로 실제 Guard TTL 문제의 영구 수정이 입증된 것은 아님. Supervisor/CM/Guard/Goal/공식 Nav2 안전 TTL은 전혀 변경하지 않는다.
 - 신규 실패가 반복되면 D06_GUI_EVIDENCE/sidecar.log와 private P4 G11 원본 첫 RMW gap/Guard latch를 결합한다. 가장 마지막 Python exception이 아니라 최초 안전 상태 전이와 첫 CM source/receive 위반을 우선하고, 원본은 공개 업로드하지 않는다.
 - D06_G07_POSTRUN_TRIAGE는 비식별 경계 분류로 언제나 safety_pass=false. 실제 Gazebo GUI+RViz WSL2 인수 전 새 Live PASS를 선언하지 않는다.
+
+
+## Owner cold-start 이후 읽기 전용 위치 진단 (2026-11-14)
+
+제공된 WSL2 원본 G07의 `STATUS=STARTUP_READY_NO_GOAL` 및 `LAST_COMPLETED=NAV2_ACTION_READY`는 Nav2 사전 준비가 성공했다는 뜻이다. 최초 Clock 5.426초, Localization Lifecycle 4.297629초 ACK, Navigation Lifecycle 8.319897초 ACK이다. 이 근거만으로 실제 G07 Goal이나 Safety STOP 완료를 주장하지 않는다.
+
+**이전 검사기의 `ELAPSED_SINCE_START_LOG_SEC=587.3`은 로그 파일의 마지막 수정 시각부터 587.3초가 흐른 값이지, 480초짜리 startup 실행 시간이나 timeout이 아니다.** 최신 검사기는 `STARTUP_LOG_LAST_WRITE_AGE_SEC`로 명칭을 교정하고 원본 이후 단계 `POST_STARTUP_PHASE`를 추가했다.
+
+기존 Gazebo·Owner를 재시작하거나 터미널 A를 종료하지 말고, 새 터미널 B에서 최신 공개 읽기 전용 검사기만 실행한다.
+
+~~~bash
+(
+  set -Eeuo pipefail
+  SHA="<D06_POST_STARTUP_CI_GREEN_SHA>"
+  SCRIPT="$(mktemp "$HOME/axia_d06_phase_check.XXXXXXXX")"
+  trap 'rm -f -- "$SCRIPT"' EXIT
+  curl -fsSL --retry 3 \
+    "https://raw.githubusercontent.com/silverbjin/axia-robot-safety-ci-public/$SHA/d06/live/d06_owner_startup_inspect.py" \
+    -o "$SCRIPT"
+  python3 "$SCRIPT" \
+    --run-root "$HOME/axia_p2_private_evidence/p2-l3-owner-Nfb3pALe/G07"
+)
+~~~
+
+`NAV2_READY_NEXT_STAGE_NOT_YET_OBSERVED`는 후속 로그 미관찰, `CORRIDOR_CHECK_STARTED_OR_FAILED`는 지도 검증 시작/실패, `PHYSICAL_PREG0AL_STARTED_OR_FAILED` 또는 `PHYSICAL_PREG0AL_READY_NO_GOAL`은 Goal 이전 실제 장애물·LiDAR 검사, `LIVE_OBSERVER_STARTED_GOAL_UNVERIFIED`는 Live 실행 시작만 관찰, `LIVE_GOAL_SENT_BLOCKED_SAFETY_REVIEW`는 기존 결과에 Goal 후 실패 기록, `OWNER_EXIT_RECORDED_REVIEW_REQUIRED`는 Owner 종료 summary가 저장됐다는 뜻이다.
+
+이 상태값은 **파일에 남은 기록을 해석한 것**이지 현재 ROS 프로세스 생존이나 실제 주행 완료를 증명하지 않는다. 이후 안전 문제를 발견하면 최초 Guard 안전 전이/최초 CM RMW 150ms·Scan 300ms 위반을 먼저 검토한다. Owner 원본은 읽기 전용으로 보존하고 공개 CI에는 비식별 데이터만 사용한다. 기존 Owner 수동 Goal 승인은 유지한다.
