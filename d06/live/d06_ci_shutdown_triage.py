@@ -44,6 +44,43 @@ def review_cleanup(root: Path, log_file: Path, rc_file: Path) -> dict:
     except ValueError:
         rc=None
     original=_json(root/"g07_ci_moving"/"ci_moving_goal_result.json")
+    startup=_json(root/"startup_verdict.json")
+    pregoal=_json(root/"g07_ci_pregoal"/"owner_pregoal_l2.json")
+    # A later cleanup rc=3 must NEVER mask an earlier pre-Goal failure.
+    # No Goal marker/result means the shutdown path is only a consequence.
+    if not original or original.get("goal_sent") is not True:
+        if startup.get("status") in ("BLOCKED","ERROR") or startup.get("failed_gate"):
+            phase="PRE_GOAL_STARTUP"
+            code="HOLD_PRE_GOAL_STARTUP"
+            gate=(str(startup.get("failed_gate"))[:90] if startup.get("failed_gate")
+                  else "UNCLASSIFIED_STARTUP_FAILURE")
+        elif (startup.get("status")=="SMOKE_READY"
+              and (root/"g07_ci_pregoal.log").is_file()):
+            phase="PRE_GOAL_PHYSICAL"
+            code="HOLD_PRE_GOAL_PHYSICAL"
+            gate=("PREG0AL_PHYSICAL_L2"
+                  if pregoal.get("status")!="P2_G07_OWNER_PREGOAL_L2_READY_NO_GOAL"
+                  else "ACTUAL_GOAL_NOT_STARTED")
+        else:
+            phase="PRE_GOAL_UNCLASSIFIED"
+            code="HOLD_PRE_GOAL_UNCLASSIFIED"
+            gate=None
+        return {
+            "schema":"axia.d06.ci_actual_g07_cleanup_first_boundary_v1",
+            "status":code,
+            "first_failure_phase":phase,
+            "first_failure_gate":gate,
+            "original_g07_motion_candidate":False,
+            "runner_rc":rc,
+            "first_cleanup_failure":None,
+            "native_nav2_lifecycle_ack":False,
+            "native_cm_clean_exit":False,
+            "launch_graceful_exit_marker":False,
+            "full_run_pass":False,
+            "owner_l3_accepted":False,
+            "certified_estop":False,
+            "no_raw_private_output":True,
+        }
     shutdown=_json(root/"g07_ordered_shutdown.json")
     audit=_json(root/"g07_shutdown_audit.json")
     teardown=_text(root/"teardown.txt")
@@ -68,6 +105,8 @@ def review_cleanup(root: Path, log_file: Path, rc_file: Path) -> dict:
            and not hits)
     return {
         "schema":"axia.d06.ci_actual_g07_cleanup_first_boundary_v1",
+        "first_failure_phase":"POST_GOAL_CLEANUP",
+        "first_failure_gate":None,
         "status":("CI_G07_L2_CLEANUP_CANDIDATE_ONLY"
                   if clean else "HOLD_POST_GOAL_CLEANUP"),
         "original_g07_motion_candidate":(
