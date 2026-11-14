@@ -27,7 +27,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: afe4e9ae3f6542ef7b2bd3097ce5c15ae5a5ddcc
+          ref: 8aea57fa0c6742e5687a2747b66911b0fc70867f
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -60,7 +60,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 'afe4e9ae3f6542ef7b2bd3097ce5c15ae5a5ddcc'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '8aea57fa0c6742e5687a2747b66911b0fc70867f'
           test "$ROS_DISTRO" = jazzy
           cd instructor
           mkdir -p results/p2-g07-ci-moving
@@ -86,7 +86,7 @@ jobs:
           set -euo pipefail
           cd instructor
           python3 -m py_compile tools/p2_g07_ci_moving_goal.py tools/p2_g07_ci_moving_goal_oracle.py tools/p2_g07_lifecycle_service.py tools/p2_staged_no_goal.py
-          bash -n scripts/p2_no_goal_smoke_ci.sh
+          bash -n scripts/p2_no_goal_smoke_ci.sh scripts/p2_owner_l3_wsl2.sh
           echo 'AXIA_G07_CI_MOVING_GOAL_RUNNER_STATIC_PASS_L0_VERIFIED_SEPARATELY'
       - name: Real Harmonic official TB3 Waffle and Nav2 ONE bounded simulation Goal
         shell: bash
@@ -104,7 +104,7 @@ jobs:
         run: |
           set -euo pipefail
           cd instructor
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 'afe4e9ae3f6542ef7b2bd3097ce5c15ae5a5ddcc'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '8aea57fa0c6742e5687a2747b66911b0fc70867f'
           set +e
           timeout --signal=TERM --kill-after=10s 900s \
             bash scripts/p2_no_goal_smoke_ci.sh > ../d06_g07_sealed_runner.log 2>&1
