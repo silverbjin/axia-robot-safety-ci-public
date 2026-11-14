@@ -134,8 +134,8 @@ def review_cleanup(root: Path, log_file: Path, rc_file: Path) -> dict:
     native_status=_native_status(shutdown.get("status"))
     native_gate=(native_status.removeprefix("BLOCKED_LIFECYCLE_")
                  if native_status.startswith("BLOCKED_LIFECYCLE_") else None)
-    nav_ack=shutdown.get("navigation_ack") is True
-    loc_ack=shutdown.get("localization_ack") is True
+    nav_seen=shutdown.get("navigation_ack") is True
+    loc_seen=shutdown.get("localization_ack") is True
     nav_elapsed=_seconds(shutdown.get("navigation_elapsed_sec"))
     loc_elapsed=_seconds(shutdown.get("localization_elapsed_sec"))
 
@@ -163,8 +163,8 @@ def review_cleanup(root: Path, log_file: Path, rc_file: Path) -> dict:
         "first_failure_phase":"POST_GOAL_CLEANUP",
         "first_failure_gate":native_gate,
         "native_shutdown_status":native_status,
-        "navigation_ack_observed":nav_ack,
-        "localization_ack_observed":loc_ack,
+        "navigation_ack_observed":nav_seen,
+        "localization_ack_observed":loc_seen,
         "navigation_ack_elapsed_sec":nav_elapsed,
         "localization_ack_elapsed_sec":loc_elapsed,
         "status":("CI_G07_L2_CLEANUP_CANDIDATE_ONLY"
