@@ -35,7 +35,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-ci-public
-          ref: 01d92ee73bff6216f191aa324cfb9dfe16f1dbf8
+          ref: be7ce0fba5ba3783adfda6304d1092d13ee696b6
           path: ci-tools
           persist-credentials: false
 
@@ -193,6 +193,15 @@ jobs:
             --launch-log instructor/results/p2-g07-ci-moving/real-l2/launch.log \
             --native-json instructor/results/p2-g07-ci-moving/real-l2/g07_ordered_shutdown.json
           echo 'D06_NATIVE_SHUTDOWN_STAGE_DIAGNOSTIC_ONLY NO_OWNER_L3'
+
+      - name: First real LaserScan Odom CM source vs receive vs Observer boundary
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ci-tools/d06/live/d06_sensor_rmw_first_delivery.py \
+            --events instructor/results/p2-g07-ci-moving/real-l2/g07_ci_moving/actual_ros_events.jsonl
+          echo 'D06_G07_RMW_SOURCE_RECEIVE_DIAG_ONLY NOT_A_GUARD_RECEIPT_OR_L3_PASS'
 
       - name: Post-Goal cross-node first CM TTL read-only diagnostic
         if: always()
