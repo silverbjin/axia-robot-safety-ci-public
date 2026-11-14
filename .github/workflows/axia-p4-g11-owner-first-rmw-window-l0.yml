@@ -1,0 +1,84 @@
+name: AXIA P4 G11 Owner first CM-Supervisor RMW raw-custody bootstrap L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-p4-g11-owner-first-rmw-window-l0.yml']
+permissions:
+  contents: read
+jobs:
+  first-cm-window-owner-consent-no-goal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    environment: axia-instructor-sealed
+    steps:
+      - name: Verify exact candidate script and NO-TTY rejection
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: 9ba09c6fa6a49e72ef87c0ec64a04b8506b2138e
+          persist-credentials: false
+      - name: Assert Owner Goal human consent and same-Goal first RMW publication evidence
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          SCRIPT=scripts/axia_p4_g11_owner_g07_rmw_provenance_once.sh
+          bash -n "$SCRIPT"
+          set +e
+          output="$(bash "$SCRIPT" </dev/null 2>&1)"
+          rc=$?
+          set -e
+          test "$rc" -eq 2
+          grep -Fq INTERACTIVE_OWNER_TTY_REQUIRED <<<"$output"
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('scripts/axia_p4_g11_owner_g07_rmw_provenance_once.sh').read_text()
+          for term in (
+            'PRIVATE_SHA="afe4e9ae3f6542ef7b2bd3097ce5c15ae5a5ddcc"',
+            'PRIVATE_TREE="580dec5be1988b26d5189616b1b01559a0f1f9a5"',
+            'YES-P2-G07-GOAL', 'AXIA_G11_RUN_CUSTODY_REQUIRED=1',
+            '--case G07 --mvp-relocated-obstacle',
+            'p4_g11_g07_joined_raw_review.py',
+            'cm_rmw_provenance','cm_upstream_rmw_gap_window',
+            'first_guard_cm_delivery_boundary',
+            'AXIA_G11_G07_FIRST_CM_SUPERVISOR_RMW_WINDOW',
+            'FORMAL_0_OF_15_OWNER_ACCEPTANCE_HOLD',
+            'RMW_NO_AUTO_GOAL_NO_UPLOAD_FORMAL_HOLD',
+          ):
+              assert term in s, term
+          begin=s.index('bash "$WORK/instructor/scripts/p2_owner_l3_wsl2.sh"')
+          joined=s.index('python3 "$WORK/instructor/tools/p4_g11_g07_joined_raw_review.py"')
+          rmw=s.index('cm_upstream_rmw_gap_window')
+          assert begin<joined<rmw
+          for blocked in ('ros2 action send_goal','gh release upload','rclone copy'):
+              assert blocked not in s
+          print('AXIA_G11_FIRST_CM_WINDOW_OWNER_TTY_NO_AUTO_GOAL_L0_PASS')
+          PY
+      - name: Protected Instructor exact merge source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: afe4e9ae3f6542ef7b2bd3097ce5c15ae5a5ddcc
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          path: instructor
+          persist-credentials: false
+      - name: Verify source tree and static original safety boundaries
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C instructor rev-parse HEAD)" = afe4e9ae3f6542ef7b2bd3097ce5c15ae5a5ddcc
+          test "$(git -C instructor rev-parse 'HEAD^{tree}')" = 580dec5be1988b26d5189616b1b01559a0f1f9a5
+          bash -n instructor/scripts/p2_owner_l3_wsl2.sh
+          python3 -m py_compile instructor/tools/p2_g07_ci_moving_goal.py instructor/tools/p2_g07_ci_moving_goal_oracle.py instructor/tools/p2_l3_live_session.py
+          python3 - <<'PY'
+          from pathlib import Path
+          policy=Path('instructor/ros2_ws/src/axia_safety_supervisor/axia_safety_supervisor/p2_base_guard_policy.py').read_text()
+          assert 'CM_TTL_SEC = 0.15' in policy
+          tool=Path('instructor/tools/p2_g07_ci_moving_goal_oracle.py').read_text()
+          assert 'cm_upstream_rmw_gap_window' in tool
+          owner=Path('instructor/scripts/p2_owner_l3_wsl2.sh').read_text()
+          assert 'YES-P2-%s-GOAL' in owner
+          print('AXIA_G11_FIRST_CM_WINDOW_INSTRUCTOR_PIN_TREE_L0_PASS_NO_GOAL')
+          PY
+      - name: Erase protected source and fixture
+        if: always()
+        shell: bash
+        run: rm -rf -- instructor
