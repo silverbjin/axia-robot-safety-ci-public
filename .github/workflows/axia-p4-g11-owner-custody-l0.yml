@@ -15,16 +15,27 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: f6b4ecbaa8656f9482446f6d73d4713c091cc748
+          ref: 15528da4d3d3bf16d693904c313d8123a1833b50
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Fail closed G11 raw copy no Goal no ROS source registry and tamper tests
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git rev-parse HEAD)" = 'f6b4ecbaa8656f9482446f6d73d4713c091cc748'
+          test "$(git rev-parse HEAD)" = '15528da4d3d3bf16d693904c313d8123a1833b50'
           python3 -m unittest discover -s tests/unit -p test_p4_g11_owner_raw_custody.py -v
           python3 -m py_compile tools/p3_owner_evidence_probe.py tools/p4_g11_owner_raw_custody.py
+          bash -n scripts/p4_g11_owner_custody_once.sh
+          python3 - <<\'PY\'
+          from pathlib import Path
+          s=Path("scripts/p4_g11_owner_custody_once.sh").read_text()
+          assert "AXIA_G11_PRIVATE_SOURCE_SHA" in s
+          assert "AXIA_G11_REMOTE_MIRROR:-0" in s
+          assert "p3_owner_evidence_probe.py" in s
+          assert "p4_g11_owner_raw_custody.py" in s
+          assert "ros2 launch" not in s and "ros2 action" not in s
+          print("AXIA_P4_G11_OWNER_NO_GOAL_OPTIONAL_PRIVATE_MIRROR_STATIC_PASS")
+          PY
           echo AXIA_P4_G11_RAW_CUSTODY_L0_REGISTRY_TAMPER_AND_NO_FORMAL_ACCEPT_PASS
       - name: Erase protected private source
         if: always()
