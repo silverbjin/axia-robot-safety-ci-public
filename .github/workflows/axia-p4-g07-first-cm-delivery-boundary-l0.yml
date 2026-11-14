@@ -1,0 +1,33 @@
+name: AXIA P4 G07 first CM-Guard delivery timing L0 TDD
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths:
+      - .github/workflows/axia-p4-g07-first-cm-delivery-boundary-l0.yml
+permissions:
+  contents: read
+jobs:
+  first-post-goal-cm-ttl-failclosed:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    environment: axia-instructor-sealed
+    steps:
+      - name: Fetch private exact synthetic tests only
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 06fc36726a2de56cbc4cc45e26172d8d33cdab5d
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Original Xc1lsKeg numerical boundary (no raw / no ROS / no Goal)
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = 06fc36726a2de56cbc4cc45e26172d8d33cdab5d
+          python3 -m unittest discover -s tests/unit -p test_p4_g07_first_guard_cm_delivery_boundary.py -v
+          python3 -m py_compile tools/p2_g07_ci_moving_goal_oracle.py
+          echo AXIA_G07_FIRST_CM_GUARD_DELIVERY_BOUNDARY_L0_PASS_NO_ROS_NO_GOAL
+      - name: Remove exact private checkout and fixture
+        if: always()
+        shell: bash
+        run: rm -rf -- .git docs ros2_ws scripts tools tests fixtures scenarios configs results training
