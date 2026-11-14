@@ -1,5 +1,10 @@
 # AXIA D06 — Gazebo GUI + RViz2 강사 Live Demo
 
+> **2026-11-14 FINAL OWNER ADMISSION: HOLD.** 실제 공개 Gazebo L2 [#43587404886](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43587404886)에서 CM RMW publication source gap=172.153ms >150ms가 재현되어 정식 CLEAR→SLOW→STOP+종료 전체 인수가 실패했다. **현재 WSL2 Owner 재실행 금지.** 최신 D06 원샷은 `d06/acceptance/d06_g07_final_owner_ci_gate.json`의 CI 승인 없이는 ROS/Gazebo/Goal 전에 자동 차단된다. 구형 SHA/구형 원샷은 이 차단을 제공하지 않으므로 사용하지 않는다.
+>
+> 공통 진단·원인 대조·RED→GREEN은 공개 CI에서 수행한다. 실제 전체 시연 조건(Scan<=300ms, CM/Supervisor/Guard<=150ms, odom STOP>=1초, 원본 bag/정상 종료)이 검증된 뒤에만 공개 CI 고정 SHA를 강사에게 최종 검수용으로 배포한다. 현재 수업에는 **공식 격리 CM ROS L1**을 대신 사용하며 기존 G07 성공 증거는 과거 증거로만 설명한다.
+
+
 ## 목적과 범위
 - 일정: 2026-11-16 19:00–22:00, 이론 60분·실습 120분. 21:25–21:40 강사 Live Demo에 사용.
 - 목표 1: **거리 구간별 속도 제한 및 감속ㆍ정지 규칙 이해** — 실제 Waffle의 CLEAR→SLOWDOWN→STOP에서 CM 전 속도, CM 이후 속도, 최종 Guard 속도, odom 관측값을 비교한다.
