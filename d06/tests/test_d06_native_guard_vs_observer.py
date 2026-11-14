@@ -7,7 +7,7 @@ without this independent original status evidence. No ROS, Goal or raw upload.
 """
 from d06.live.d06_native_guard_vs_observer import inspect_native_guard
 
-def guard(t, cm_count, sup_count, *, cm_max=0.08, sup_max=0.05, latched=False):
+def guard(t, cm_count, sup_count, *, cm_max=0.08, sup_max=0.05, latched=False, cm_age=None):
     return {
         "kind":"guard","t":t,
         "data":{"latched":latched,
@@ -17,6 +17,7 @@ def guard(t, cm_count, sup_count, *, cm_max=0.08, sup_max=0.05, latched=False):
                    "cm_callback_count":100,
                    "cm_callback_gaps_over_150ms":cm_count,
                    "cm_callback_max_gap_sec":cm_max,
+                   "cm_last_receive_age_sec":cm_age,
                    "supervisor_callback_count":100,
                    "supervisor_callback_gaps_over_150ms":sup_count,
                    "supervisor_callback_max_gap_sec":sup_max,
@@ -59,6 +60,7 @@ def test_native_guard_latch_wins_over_any_healthy_counter():
     assert r["status"]=="HOLD_NATIVE_GUARD_FIRST_LATCH"
     assert r["native_guard_latch_observed"] is True
     assert r["owner_l3_accepted"] is False
+    assert r["native_cm_gap_count_added_since_goal"]==0
 
 def test_no_pre_goal_baseline_or_missing_schema_remains_unverified():
     events=[{"kind":"owner_goal_published","t":10.0},guard(10.3,0,0)]
@@ -74,3 +76,17 @@ def test_counter_regression_cannot_falsely_pass():
     r=inspect_native_guard(events)
     assert r["status"]=="NATIVE_GUARD_RECEIPT_UNVERIFIED"
     assert r["native_cm_gap_count_added_since_goal"] is None
+
+
+def test_first_guard_latch_preserves_native_cm_age_and_callback_counter():
+    # Real public Gazebo L2 #43603054244: Guard first CM age=179.652ms,
+    # actual CM RMW source gap NOT observed; cause still unverified.
+    events=[guard(9.9,0,0,cm_age=.025),
+            {"kind":"owner_goal_published","t":10.0},
+            guard(10.49,0,0,cm_age=.179652,latched=True)]
+    result=inspect_native_guard(events)
+    assert result["status"]=="HOLD_NATIVE_GUARD_FIRST_LATCH"
+    assert result["native_cm_gap_count_added_since_goal"]==0
+    assert result["native_cm_last_receive_age_ms_at_latch"]==179.652
+    assert result["observer_cm_gap_proves_guard_delay"] is False
+    assert result["safety_pass"] is False
