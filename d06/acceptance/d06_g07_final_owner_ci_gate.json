@@ -1,0 +1,19 @@
+{
+  "schema": "axia.d06.final_owner_ci_gate_v1",
+  "status": "HOLD_CI_REAL_G07_L2",
+  "allow_one_final_wsl2_owner": false,
+  "last_real_gazebo_ci_run_id": 43587404886,
+  "last_real_gazebo_ci_url": "https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43587404886",
+  "private_instructor_sha": "afe4e9ae3f6542ef7b2bd3097ce5c15ae5a5ddcc",
+  "p4_release_sha": "d1769b8675c85e7ee564966637cef9113435904a",
+  "first_failure_kind": "CM_RMW_PUBLICATION_GAP_150MS",
+  "cm_source_gap_ms": 172.152953,
+  "cm_observer_callback_gap_ms": 170.878,
+  "scan_max_gap_ms": 194.329,
+  "measured_one_goal": true,
+  "whole_ci_l2_pass": false,
+  "actual_wslg_simultaneous_gazebo_rviz_verified": false,
+  "certified_estop": false,
+  "next_action": "CI_ONLY_REVIEW_NO_WSL2_OWNER_RETRY_UNTIL_WHOLE_L2_GREEN",
+  "approval_note": "Need source-pinned full real L2 including postgoal shutdown and original bag review; do not elevate scoped PASS."
+}
