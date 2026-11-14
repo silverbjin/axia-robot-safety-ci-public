@@ -7,6 +7,8 @@ The private source, rosbag, runner logs and checkout stay in sealed CI workspace
 from __future__ import annotations
 import argparse
 import json
+import math
+import re
 from pathlib import Path
 
 FAIL_MARKERS = (
@@ -34,6 +36,26 @@ def _text(path: Path):
         return path.read_text(encoding="utf-8",errors="replace")
     except OSError:
         return ""
+
+def _native_status(value) -> str:
+    # Whitelist only recognized G07 official native Lifecycle statuses.
+    # Never expose arbitrary private error text, paths or exception messages.
+    if value in ("NAV2_LIFECYCLE_SHUTDOWN_ACK",
+                 "BLOCKED_CM_NOT_MANAGED_BY_NAVIGATION",
+                 "BLOCKED_LIFECYCLE_CALL"):
+        return value
+    if isinstance(value,str) and re.fullmatch(
+            r"BLOCKED_LIFECYCLE_(?:NAVIGATION|LOCALIZATION)_[A-Z0-9_]{1,60}",
+            value):
+        return value
+    return "UNVERIFIED_NATIVE_SHUTDOWN_STATUS"
+
+
+def _seconds(value):
+    if type(value) in (float,int) and math.isfinite(value) and 0<=value<=130:
+        return round(float(value),6)
+    return None
+
 
 def review_cleanup(root: Path, log_file: Path, rc_file: Path) -> dict:
     """First observed exit marker. Status is NEVER Owner acceptance."""
@@ -109,6 +131,14 @@ def review_cleanup(root: Path, log_file: Path, rc_file: Path) -> dict:
     shutdown=_json(root/"g07_ordered_shutdown.json")
     audit=_json(root/"g07_shutdown_audit.json")
     teardown=_text(root/"teardown.txt")
+    native_status=_native_status(shutdown.get("status"))
+    native_gate=(native_status.removeprefix("BLOCKED_LIFECYCLE_")
+                 if native_status.startswith("BLOCKED_LIFECYCLE_") else None)
+    nav_ack=shutdown.get("navigation_ack") is True
+    loc_ack=shutdown.get("localization_ack") is True
+    nav_elapsed=_seconds(shutdown.get("navigation_elapsed_sec"))
+    loc_elapsed=_seconds(shutdown.get("localization_elapsed_sec"))
+
     hits=[(trace.index(m),m) for m in FAIL_MARKERS if m in trace]
     first=min(hits)[1] if hits else None
     if first is None and rc!=0:
@@ -131,7 +161,12 @@ def review_cleanup(root: Path, log_file: Path, rc_file: Path) -> dict:
     return {
         "schema":"axia.d06.ci_actual_g07_cleanup_first_boundary_v1",
         "first_failure_phase":"POST_GOAL_CLEANUP",
-        "first_failure_gate":None,
+        "first_failure_gate":native_gate,
+        "native_shutdown_status":native_status,
+        "navigation_ack_observed":nav_ack,
+        "localization_ack_observed":loc_ack,
+        "navigation_ack_elapsed_sec":nav_elapsed,
+        "localization_ack_elapsed_sec":loc_elapsed,
         "status":("CI_G07_L2_CLEANUP_CANDIDATE_ONLY"
                   if clean else "HOLD_POST_GOAL_CLEANUP"),
         "original_g07_motion_candidate":(
