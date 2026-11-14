@@ -38,11 +38,16 @@ def test_original_observer_cm_gap_368ms_without_native_guard_breach_cannot_claim
     assert r["safety_pass"] is False
 
 def test_native_cm_subscriber_actual_150ms_breach_distinct_from_observer():
-    events=[guard(9.9,0,0),{"kind":"owner_goal_published","t":10.0},
-            guard(10.45,1,0,cm_max=.171215)]
-    r=inspect_native_guard(events)
+    before=guard(9.9,0,0)
+    after=guard(10.45,1,0,cm_max=.171215)
+    before["data"]["native_input_timing"]["cm_gap_windows"]=[]
+    after["data"]["native_input_timing"]["cm_gap_windows"]=[
+        {"start_mono":10.1,"end_mono":10.271215,"gap_sec":.171215}]
+    events=[before,{"kind":"owner_goal_published","t":10.0},after]
+    r=inspect_native_guard(events,active_end=10.5)
     assert r["status"]=="HOLD_NATIVE_GUARD_CM_INPUT_GAP_150MS"
     assert r["native_cm_gap_count_added_since_goal"]==1
+    assert r["native_cm_goal_scoped_gap_count"]==1
     assert r["native_cm_callback_max_gap_ms"]==171.215
     assert r["safety_pass"] is False
 
