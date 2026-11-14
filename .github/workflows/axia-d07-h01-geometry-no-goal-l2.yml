@@ -32,7 +32,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 658437dfd9d6b411888af38971f638e979b45bad
+          ref: d6bab60d635bb15bd387dea18a661b9acb52399c
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -40,7 +40,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '658437dfd9d6b411888af38971f638e979b45bad'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 'd6bab60d635bb15bd387dea18a661b9acb52399c'
           test "$(git -C ci-public-admission -c safe.directory="$PWD/ci-public-admission" rev-parse HEAD)" = '5b6b10322ee3682f43815cd1a8d4b8135811f8fc'
           ( cd ci-public-admission && python3 -m unittest discover -s tests -p test_d07_h01_public_contract.py -v )
           cd instructor
@@ -59,8 +59,9 @@ jobs:
           python3 -m unittest discover -s tests/unit -p test_d07_h01_geometry_native_contact.py -v
           python3 -m unittest discover -s tests/unit -p test_d07_h01_live_obstacle_config.py -v
           python3 -m unittest discover -s tests/unit -p test_d07_h01_native_layers.py -v
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_amcl_pre_goal.py -v
           python3 -m unittest discover -s tests/unit -p test_d07_h01_contact.py -v
-          python3 -m py_compile tools/d07_h01_oracle.py tools/d07_h01_costmap_drift.py tools/d07_h01_geometry_l2.py tools/d07_h01_path_cost_correlation.py tools/d07_h01_nav2_clear_config.py tools/d07_h01_native_costmap_layers.py
+          python3 -m py_compile tools/d07_h01_oracle.py tools/d07_h01_costmap_drift.py tools/d07_h01_geometry_l2.py tools/d07_h01_path_cost_correlation.py tools/d07_h01_nav2_clear_config.py tools/d07_h01_native_costmap_layers.py tools/d07_h01_amcl_pre_goal.py
           bash -n scripts/p2_no_goal_smoke_ci.sh
           echo 'AXIA_D07_H01_PUBLIC_ADMISSION_PRIVATE_ORACLE_SYNTAX_L0_PASS_NO_ROS_NO_GOAL'
       - name: Exact official Jazzy/Harmonic/Nav2 runtime 25+5 parity
@@ -98,7 +99,7 @@ jobs:
           AXIA_P2_SMOKE_RESULTS: results/d07-h01-ci/real-l2
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '658437dfd9d6b411888af38971f638e979b45bad'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 'd6bab60d635bb15bd387dea18a661b9acb52399c'
           cd instructor
           timeout --signal=TERM --kill-after=10s 870s bash scripts/p2_no_goal_smoke_ci.sh || {
             echo 'AXIA_D07_H01_REAL_GAZEBO_GEOMETRY_NO_GOAL_BLOCKED'
@@ -123,7 +124,7 @@ jobs:
               print('AXIA_D07_H01_CONTACT_HOLD_NO_GOAL_MOTION_NOT_ADMITTED')
           else:
               assert geo['contact_topic_proven'] is True
-          assert geo['source_sha']=='658437dfd9d6b411888af38971f638e979b45bad'
+          assert geo['source_sha']=='d6bab60d635bb15bd387dea18a661b9acb52399c'
           assert geo['goal_sent'] is False and geo['real_nav2'] is True
           assert geo['real_laser_scan'] is True and geo['actual_costmap_obstacle_observed'] is True
           assert geo['path_changed'] and geo['path_viable']
