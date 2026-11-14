@@ -35,7 +35,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-ci-public
-          ref: 8552e4fa061f60b3be9caf23d668b7b306bbf44d
+          ref: f3311a755b6aa0bf829ae384e54188e4b311dc59
           path: ci-tools
           persist-credentials: false
 
