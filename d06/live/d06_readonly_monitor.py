@@ -126,7 +126,7 @@ def run(out: Path):
                 now = time.monotonic()
                 if now < next_emit:
                     continue
-                next_emit = now + 0.50  # <=2 Hz to avoid burdening safety TTL
+                next_emit = now + 1.00  # <=1 Hz read-only visualization; safety TTL unchanged
                 age = None if state["last_scan"] is None else now - state["last_scan"]
                 zone = annotated_zone(state["front"], age)
                 pub.publish(MarkerArray(markers=[
