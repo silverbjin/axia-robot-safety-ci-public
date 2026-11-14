@@ -3,9 +3,9 @@
 # SIM ONLY, SINGLE MANUAL TTY GOAL. Never changes safety TTL or Guard.
 set -Eeuo pipefail
 umask 077
-readonly P4_PUBLIC_RELEASE_SHA='d1769b8675c85e7ee564966637cef9113435904a'
-readonly P4_OWNER_PRIVATE_SHA='afe4e9ae3f6542ef7b2bd3097ce5c15ae5a5ddcc'
-readonly P4_OWNER_PRIVATE_TREE='580dec5be1988b26d5189616b1b01559a0f1f9a5'
+readonly P4_PUBLIC_RELEASE_SHA='67b8995cc7fdd506b12f348fc7e5241dcedddc67'
+readonly P4_OWNER_PRIVATE_SHA='c44414f8e3bad37a349565f211d554540cccb062'
+readonly P4_OWNER_PRIVATE_TREE='d2e3044689a5873cd61d6bc5f84a40b20a81f84e'
 readonly P4_G11_SCRIPT='scripts/axia_p4_g11_owner_g07_rmw_provenance_once.sh'
 # The G11 owner release itself sets AXIA_P2_OWNER_PINNED_SHA and collects
 # YES-P2-G07-GOAL on a physical TTY. No AXIA_G07_CI_SIM_GOAL_ALLOWED override.
