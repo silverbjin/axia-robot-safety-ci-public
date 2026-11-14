@@ -47,13 +47,15 @@ jobs:
           from pathlib import Path
           ci=Path('instructor/scripts/p2_no_goal_smoke_ci.sh').read_text()
           owner=Path('instructor/scripts/p2_owner_l3_wsl2.sh').read_text()
-          assert 'setsid nice -n 10 ros2 bag record' in ci, 'G07_CI_BAG_NICE10_MISSING'
+          assert 'setsid nice -n 10 taskset -c "$G07_EVIDENCE_CPU" ros2 bag record' in ci, 'G07_CI_BAG_NICE10_TASKSET_MISSING'
+          assert 'max(os.sched_getaffinity(0))' in ci and 'len(os.sched_getaffinity(0))>=2' in ci
           assert 'AXIA_G07_CI_OWNER_BAG_PARITY' in ci, 'G07_CI_SCOPE_MISSING'
-          assert 'BAG_NICE=(nice -n 10)' in owner, 'G07_OWNER_BAG_NICE10_MISSING'
+          assert 'BAG_NICE=(nice -n 10 taskset -c "$G07_EVIDENCE_CPU")' in owner, 'G07_OWNER_BAG_NICE10_TASKSET_MISSING'
+          assert 'max(os.sched_getaffinity(0))' in owner and 'len(os.sched_getaffinity(0))>=2' in owner
           assert '"$CASE" == G07 && "$MVP_RELOCATED" == 1' in owner
           assert 'setsid "${BAG_NICE[@]}" ros2 bag record' in owner
           assert 'AXIA_P2_GUARD_BYPASS' not in ci+owner
-          print('D06_G07_CI_OWNER_ROSBAG_NICE10_PARITY_STATIC_PASS NO_ROS_NO_GOAL')
+          print('D06_G07_CI_OWNER_ROSBAG_NICE10_TASKSET_PARITY_STATIC_PASS NO_ROS_NO_GOAL')
           PY
 
       - name: RED or GREEN - Localization after-Goal ACK max 40s within original total 60s (NO GOAL)
