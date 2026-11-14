@@ -3,8 +3,8 @@
 # No simulated Goal in CI, no implicit consent, no public RAW upload.
 set -Eeuo pipefail
 umask 077
-PRIVATE_SHA="15e55b3cc8751494cffd0c8a328c65d267aac728"
-PRIVATE_TREE="c510533674eeb292f041b3d5cd37b7b18b6ef648"
+PRIVATE_SHA="afe4e9ae3f6542ef7b2bd3097ce5c15ae5a5ddcc"
+PRIVATE_TREE="580dec5be1988b26d5189616b1b01559a0f1f9a5"
 [[ -t 0 && -t 1 && -r /dev/tty ]] || {
   echo 'AXIA_G11_G07_BLOCKED_INTERACTIVE_OWNER_TTY_REQUIRED' >&2; exit 2;
 }
@@ -104,7 +104,7 @@ from datetime import datetime,timezone
 import json,os,sys
 sys.path.insert(0,sys.argv[1])
 from p2_g07_ci_moving_goal_oracle import (
-    cm_rmw_provenance,first_guard_cm_delivery_boundary)
+    cm_rmw_provenance,first_guard_cm_delivery_boundary,cm_upstream_rmw_gap_window)
 live=Path(sys.argv[2])
 output=Path(sys.argv[3])
 try:
@@ -118,12 +118,14 @@ try:
     goal_start=goal_starts[0]
     at=max(row["t"] for row in rows if isinstance(row.get("t"),(int,float)))
     rmw=cm_rmw_provenance(rows,goal_start=goal_start,end=at)
+    upstream=cm_upstream_rmw_gap_window(rows,goal_start=goal_start,end=at)
     boundary=first_guard_cm_delivery_boundary(
         rows,result.get("first_guard_latch"),goal_start=goal_start)
     report={
         "schema":"axia_p4_g07_owner_rmw_postrun_diagnostic_v1",
         "created_utc":datetime.now(timezone.utc).isoformat(),
         "rmw_cm":rmw,"guard_first_cm":boundary,
+        "cm_supervisor":upstream,
         "goal_uuid":result.get("goal_uuid"),
         "source_runtime_status":result.get("status"),
         "safety_ttl_formally_assessed":False,
@@ -138,6 +140,7 @@ try:
         stream.write("\n")
     print("AXIA_G11_G07_RMW_CM_STATUS="+str(rmw["status"]))
     print("AXIA_G11_G07_RMW_CM_ATTRIBUTION="+str(rmw["attribution"]))
+    print("AXIA_G11_G07_FIRST_CM_SUPERVISOR_RMW_WINDOW="+json.dumps(upstream,sort_keys=True))
     print("AXIA_G11_G07_RMW_CM_FIRST_GAP="+json.dumps(rmw["first_gap"],sort_keys=True))
     print("AXIA_G11_G07_FIRST_GUARD_CM_BOUNDARY="+json.dumps(
         boundary["first_timing_violation"],sort_keys=True))
