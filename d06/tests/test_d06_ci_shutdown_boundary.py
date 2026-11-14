@@ -109,3 +109,55 @@ def test_goal_guard_latch_first_wins_over_cleanup_rc3(tmp_path):
     assert r["first_failure_gate"]=="UPSTREAM_STALE_AFTER_MOTION"
     assert r["first_cleanup_failure"] is None
     assert r["full_run_pass"] is False
+
+
+def test_first_native_localization_timeout_is_reported_without_private_trace(tmp_path):
+    from d06.live.d06_ci_shutdown_triage import review_cleanup
+    root,logfile,rcfile=fixture(tmp_path,rc=3,
+        marker="G07_MOVING_GOAL_ORDERED_SHUTDOWN_BLOCKED")
+    (root/"g07_ordered_shutdown.json").write_text(json.dumps({
+        "status":"BLOCKED_LIFECYCLE_LOCALIZATION_SERVICE_TIMEOUT",
+        "navigation_ack":True,
+        "localization_ack":False,
+        "navigation_elapsed_sec":6.7,
+        "localization_elapsed_sec":25.0,
+        "failure_stage":"PRIVATE_SOURCE_SHOULD_NOT_ESCAPE",
+    }))
+    result=review_cleanup(root,logfile,rcfile)
+    assert result["status"]=="HOLD_POST_GOAL_CLEANUP"
+    assert result["first_cleanup_failure"]=="G07_MOVING_GOAL_ORDERED_SHUTDOWN_BLOCKED"
+    assert result["native_shutdown_status"]=="BLOCKED_LIFECYCLE_LOCALIZATION_SERVICE_TIMEOUT"
+    assert result["first_failure_gate"]=="LOCALIZATION_SERVICE_TIMEOUT"
+    assert result["navigation_ack_observed"] is True
+    assert result["localization_ack_observed"] is False
+    assert result["navigation_ack_elapsed_sec"]==6.7
+    assert result["localization_ack_elapsed_sec"]==25.0
+    assert "PRIVATE_SOURCE_SHOULD_NOT_ESCAPE" not in json.dumps(result)
+    assert result["full_run_pass"] is False
+
+def test_native_navigation_rejected_has_different_first_failure_gate(tmp_path):
+    from d06.live.d06_ci_shutdown_triage import review_cleanup
+    root,logfile,rcfile=fixture(tmp_path,rc=3,
+        marker="G07_MOVING_GOAL_ORDERED_SHUTDOWN_BLOCKED")
+    (root/"g07_ordered_shutdown.json").write_text(json.dumps({
+        "status":"BLOCKED_LIFECYCLE_NAVIGATION_REJECTED",
+        "navigation_ack":False,
+        "localization_ack":False,
+        "navigation_elapsed_sec":.49,
+    }))
+    got=review_cleanup(root,logfile,rcfile)
+    assert got["native_shutdown_status"]=="BLOCKED_LIFECYCLE_NAVIGATION_REJECTED"
+    assert got["first_failure_gate"]=="NAVIGATION_REJECTED"
+    assert got["navigation_ack_observed"] is False
+    assert got["localization_ack_elapsed_sec"] is None
+
+def test_unrecognized_native_status_refuses_to_print_unsafe_detail(tmp_path):
+    from d06.live.d06_ci_shutdown_triage import review_cleanup
+    root,logfile,rcfile=fixture(tmp_path)
+    (root/"g07_ordered_shutdown.json").write_text(json.dumps({
+        "status":"PRIVATE_PATH:/home/user/instructor/solution",
+    }))
+    got=review_cleanup(root,logfile,rcfile)
+    assert got["native_shutdown_status"]=="UNVERIFIED_NATIVE_SHUTDOWN_STATUS"
+    assert got["first_failure_gate"] is None
+    assert "/home/user" not in json.dumps(got)
