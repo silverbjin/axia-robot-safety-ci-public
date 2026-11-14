@@ -29,6 +29,17 @@ jobs:
           bash -n d06/scripts/d06_rviz_sidecar.sh
           python -m py_compile d06/live/d06_readonly_monitor.py d06/live/d06_g07_field_triage.py
           bash d06/scripts/d06_gazebo_rviz_owner_wsl2_once.sh --self-check
+          # Verify the actual untrusted WSL2 entrypoint blocks while L2 is HOLD.
+          # Not just an assert that a string exists in the shell source.
+          rc=0
+          bash d06/scripts/d06_gazebo_rviz_owner_wsl2_once.sh \
+            > /tmp/d06-owner-final-admission.log 2>&1 || rc=$?
+          test "$rc" = 3
+          grep -Fq 'D06_FINAL_OWNER_BLOCKED_CI_L2_HOLD' \
+            /tmp/d06-owner-final-admission.log
+          grep -Fq 'D06_OWNER_NO_ROS_NO_GAZEBO_NO_GOAL' \
+            /tmp/d06-owner-final-admission.log
+          echo 'D06_FINAL_OWNER_CI_HOLD_ACTUAL_SHELL_BLOCKS_BEFORE_ROS_AND_GOAL_PASS'
           echo "D06_GAZEBO_RVIZ_L0_PASS ROS_GAZEBO_RVIZ_NOT_RUN"
 
   l1-readonly-ros:
