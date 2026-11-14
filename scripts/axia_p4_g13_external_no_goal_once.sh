@@ -4,6 +4,91 @@
 # Safety: NO automatic Goal, Crash, Fault, E-Stop, or student release.
 set -Eeuo pipefail
 umask 077
+
+# Read-only triage of PREVIOUS failed G13 attempt. Must run before
+# WSL2, gh, ROS, or clone preflights, and must never start another Goal.
+g13_first_failure_readonly() {
+  python3 - "$1" <<'PY'
+from pathlib import Path
+import hashlib,json,re,sys
+raw=Path(sys.argv[1]).expanduser()
+allowed=Path.home()/".axia_g13_external_pc_evidence"
+try:
+    root=raw.resolve(strict=True)
+    home=allowed.resolve(strict=True)
+    if (not root.is_dir() or root.parent!=home
+        or not re.fullmatch(r"g13-PC[12]-[A-Za-z0-9_-]+",root.name)
+        or raw.is_symlink()):
+        raise ValueError("G13_EVIDENCE_PATH_NOT_CANONICAL")
+except (OSError,ValueError) as e:
+    print("AXIA_G13_PREVIOUS_RUN_BLOCKED_INVALID_EVIDENCE_DIRECTORY",file=sys.stderr)
+    sys.exit(2)
+print("AXIA_G13_PREVIOUS_RUN_READONLY_EVIDENCE="+str(root))
+receipt=root/"g13_no_goal_receipt.json"
+try:
+    data=json.loads(receipt.read_text(encoding="utf-8"))
+    print("AXIA_G13_PREVIOUS_RUN_EXIT_CODE="+str(data.get("run_exit_code","UNKNOWN")))
+    print("AXIA_G13_PREVIOUS_RUN_NO_GOAL_PASS="+str(data.get("no_goal_smoke_pass","UNKNOWN")))
+except (ValueError,OSError):
+    print("AXIA_G13_PREVIOUS_RUN_RECEIPT_MISSING_OR_INVALID")
+# Start/lifecycle failure is observed BEFORE shutdown or wrapper final rc.
+# Report the first available specific failure witness, not the last
+# RuntimeError nor success from any unrelated previous CI run.
+paths=[
+  "actual/staged_startup.log",
+  "actual/g07_ordered_shutdown.log",
+  "actual/g07_shutdown_audit.json",
+  "actual/launch.log",
+  "smoke.log",
+]
+markers=[
+ ("LOCALIZATION_START",re.compile(r"(?:P2_STAGED_NO_GOAL_BLOCKED|BLOCKED|ERROR).{0,240}LOCALIZATION_START|LOCALIZATION_START.{0,240}(?:BLOCKED|TIMEOUT|ERROR|FAILED)|lifecycle_manager_localization.*(?:timed out|failed|ERROR)",re.I)),
+ ("NAVIGATION_START",re.compile(r"(?:P2_STAGED_NO_GOAL_BLOCKED|BLOCKED|ERROR).{0,240}NAVIGATION_START|NAVIGATION_START.{0,240}(?:BLOCKED|TIMEOUT|ERROR|FAILED)|lifecycle_manager_navigation.*(?:timed out|failed|ERROR)",re.I)),
+ ("STARTUP_BLOCKED",re.compile(r"P2_STAGED_NO_GOAL_BLOCKED|G07_NATIVE_LIFECYCLE_STARTUP_SERVICE_TIMEOUT")),
+ ("LIFECYCLE_SHUTDOWN",re.compile(r"SHUTDOWN_BLOCKED|SHUTDOWN.*(?:TIMEOUT|ERROR|BLOCKED)|NAVIGATION_ACK.*false|LOCALIZATION_ACK.*false",re.I)),
+ ("CM_SHUTDOWN",re.compile(r"G07_REAL_SHUTDOWN_L2_CM_PROCESS_NONCLEAN|CM_PROCESS_NONCLEAN|CM.*(?:SIGABRT|SIGKILL)",re.I)),
+ ("FORCED_TEARDOWN",re.compile(r"P2_L2_FORCED_TEARDOWN|P2_L2_FORCED_SIGKILL")),
+ ("OTHER_RUNTIME_ERROR",re.compile(r"(?:^|\\s)(?:ERROR|BLOCKED|Traceback|RuntimeError):?",re.I)),
+]
+witnesses=[]
+for name in paths:
+    p=root/name
+    if p.is_symlink() or not p.is_file():
+        continue
+    sha=hashlib.sha256()
+    with p.open("rb") as stream:
+        for buf in iter(lambda:stream.read(1048576),b""):
+            sha.update(buf)
+    print("AXIA_G13_PREVIOUS_RUN_LOG_HASH="+name+":"+sha.hexdigest())
+    # Bounded review; never echo the complete (possibly private) logs.
+    with p.open("r",encoding="utf-8",errors="replace") as stream:
+        for line_number,line in enumerate(stream,1):
+            if line_number>150000:
+                print("AXIA_G13_PREVIOUS_RUN_LOG_REVIEW_BOUNDED="+name)
+                break
+            for label,pattern in markers:
+                if pattern.search(line):
+                    witnesses.append((paths.index(name),line_number,label,name))
+                    break
+if witnesses:
+    # Staged startup is earliest stage. Shutdown failure cannot outrank it;
+    # within one source preserve original line order.
+    first=min(witnesses,key=lambda row:(row[0],row[1]))
+    print("AXIA_G13_PREVIOUS_RUN_FIRST_FAILURE="+first[2])
+    print("AXIA_G13_PREVIOUS_RUN_FIRST_FAILURE_SOURCE="+first[3]+":"+str(first[1]))
+    print("AXIA_G13_PREVIOUS_RUN_FIRST_FAILURE_PROVENANCE=FIRST_AVAILABLE_STAGE_LOG_NOT_GLOBAL_CAUSAL_PROOF")
+else:
+    print("AXIA_G13_PREVIOUS_RUN_FIRST_FAILURE=UNDETERMINED_FROM_AVAILABLE_LOGS")
+print("AXIA_G13_PREVIOUS_RUN_DIAGNOSTIC_ONLY_NO_GOAL_NO_RETRY")
+PY
+}
+if [[ "${1:-}" == "--inspect" ]]; then
+  [[ "$#" == 2 ]] || {
+    echo 'AXIA_G13_USAGE_INSPECT=--inspect_OLD_G13_EVIDENCE_DIRECTORY' >&2; exit 2;
+  }
+  g13_first_failure_readonly "$2"
+  exit $?
+fi
 [[ "$#" == 1 && ( "$1" == "PC1" || "$1" == "PC2" ) ]] || {
   echo 'AXIA_G13_USAGE=--LABEL_PC1_OR_PC2_AS_FIRST_ARGUMENT' >&2; exit 2;
 }
@@ -13,7 +98,7 @@ PRIVATE_TREE='580dec5be1988b26d5189616b1b01559a0f1f9a5'
 if [[ ! -r /proc/sys/kernel/osrelease ]] ||
    ! grep -Eqi '(microsoft|wsl2)' /proc/sys/kernel/osrelease ||
    ! grep -q '24.04' /etc/os-release ||
-   "$(uname -m)" != x86_64; then
+   [[ "$(uname -m)" != "x86_64" ]]; then
   echo 'AXIA_G13_BLOCKED_WSL2_UBUNTU2404_X86_64_REQUIRED' >&2; exit 2
 fi
 for c in gh git python3 bash timeout sha256sum ros2 gz; do
@@ -87,7 +172,8 @@ timeout --signal=TERM --kill-after=10s 540s \
   bash scripts/p2_no_goal_smoke_ci.sh >"$OUT/smoke.log" 2>&1 || SMOKE_RC=$?
 # On failure, preserve first error and original logs. NEVER auto-retry.
 if (( SMOKE_RC != 0 )); then
-  grep -E 'P2_STAGED_NO_GOAL_BLOCKED|LOCALIZATION_START|NAVIGATION_START|P2_L2_SMOKE_RC|P2_L2_FORCED' "$OUT/smoke.log" | tail -n 25 || true
+  echo "AXIA_G13_L2_SMOKE_FAILED_RC=$SMOKE_RC; PRESERVE_FIRST_FAILURE_NO_RETRY"
+  g13_first_failure_readonly "$OUT" || true
 fi
 python3 - "$OUT" "$LABEL" "$PRIVATE_SHA" "$SMOKE_RC" <<'PY'
 import hashlib,json,os,sys
