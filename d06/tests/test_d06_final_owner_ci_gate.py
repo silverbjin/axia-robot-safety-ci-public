@@ -10,12 +10,17 @@ def test_current_real_l2_failure_blocks_instructor_goal_owner_before_private_che
     value=json.loads(gate.read_text())
     assert value["status"]=="HOLD_CI_REAL_G07_L2"
     assert value["allow_one_final_wsl2_owner"] is False
-    assert value["last_real_gazebo_ci_run_id"]==43592074676
-    assert value["current_ci_instructor_candidate_sha"]=="97f2044404a8b90e9c8f4b3010c0796eef87feff"
-    assert value["first_failure_kind"]=="CM_RMW_PUBLICATION_GAP_AND_GUARD_STALE_150MS"
-    assert value["cm_source_gap_ms"]>150
-    assert value["cm_observer_callback_gap_ms"]>150
-    assert value["guard_cm_age_ms"]>150
+    assert value["last_real_gazebo_ci_run_id"]==43596963732
+    assert value["last_real_gazebo_ci_attempt"]==3
+    assert value["last_real_gazebo_ci_job_id"]==132455451421
+    assert value["current_ci_instructor_candidate_sha"]=="8fd137d656ef226940ca38d65ea0a5e473b8ac55"
+    assert value["first_failure_kind"]=="ODOM_OBSERVER_RMW_RECEIVE_GAP_AND_SCAN_300MS"
+    assert value["odom_callback_gap_ms"]>300
+    assert value["odom_rmw_received_gap_ms"]>300
+    assert value["odom_rmw_source_gap_ms"]<300
+    assert value["scan_max_gap_ms"]>300
+    assert value["guard_latched"] is False
+    assert value["attempt_results"]==["PASS","PASS","FAIL"]
     assert value["whole_ci_l2_pass"] is False
     assert value["certified_estop"] is False
 
