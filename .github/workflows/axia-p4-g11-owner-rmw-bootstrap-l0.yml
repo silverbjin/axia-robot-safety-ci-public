@@ -70,7 +70,7 @@ jobs:
           s=Path("instructor/scripts/p2_owner_l3_wsl2.sh").read_text()
           assert 'YES-P2-%s-GOAL' in s
           assert 'AXIA_G11_RUN_CUSTODY_REQUIRED:-0' in s
-          assert 'CM_TTL_SEC=0.15' in Path("instructor/ros2_ws/src/axia_safety_supervisor/axia_safety_supervisor/p2_base_guard_policy.py").read_text()
+          assert 'CM_TTL_SEC = 0.15' in Path("instructor/ros2_ws/src/axia_safety_supervisor/axia_safety_supervisor/p2_base_guard_policy.py").read_text()
           p=Path("instructor/tools/p2_g07_ci_moving_goal_oracle.py").read_text()
           assert 'cm_rmw_provenance' in p and 'first_guard_cm_delivery_boundary' in p
           print("AXIA_G11_G07_RMW_PRIVATE_SOURCE_TREE_STATIC_PASS_NO_ROS_NO_GOAL")
