@@ -1,0 +1,39 @@
+name: AXIA D07 H01 private read-only oracle L0 public CI
+on:
+  push:
+    branches: ['feat/d07-h01-motion-lesson-20261114']
+    paths: ['.github/workflows/axia-d07-h01-private-oracle-l0.yml']
+  pull_request:
+    branches: ['release/p2-g06-cm-ttl-20261110']
+    paths: ['.github/workflows/axia-d07-h01-private-oracle-l0.yml']
+permissions:
+  contents: read
+jobs:
+  sealed-unit-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    environment: axia-instructor-sealed
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Checkout exact private integrated Instructor H01
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: fe26cdf897b256f2c4de11b49cb436cee41eb932
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          path: instructor
+          persist-credentials: false
+      - name: Verify SHA and no ROS/Goal read-only oracle regression
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 'fe26cdf897b256f2c4de11b49cb436cee41eb932'
+          python3 -m compileall -q instructor/tools/d07_h01_oracle.py instructor/tests/unit/test_d07_h01_oracle.py
+          cd instructor
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_oracle.py -v
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_runner_diagnostics.py -v
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_costmap_semantics.py -v
+          echo 'AXIA_D07_H01_PRIVATE_ORACLE_L0_PASS_NO_ROS_NO_GOAL'
+      - name: Remove sealed source
+        if: always()
+        run: rm -rf -- instructor
