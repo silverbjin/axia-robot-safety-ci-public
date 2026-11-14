@@ -18,7 +18,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 2f787c7a2f0c8847fd7c070772d73c8d494ba0f3
+          ref: 9c24bb17e7842110f34b91a2990b21571a363ae5
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -26,10 +26,18 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 2f787c7a2f0c8847fd7c070772d73c8d494ba0f3
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 9c24bb17e7842110f34b91a2990b21571a363ae5
           command -v cmake
+          echo "AXIA_S02_BUILD_RUNTIME_LIBRARY_BEFORE=$(dpkg-query -W -f='${Package}:${Version};' 'libgz-sim8*' 2>/dev/null || true)"
+          # The frozen runtime image is not a compiler image. Install only
+          # S02 build-time toolchain; fail if Gazebo runtime packages change.
+          if ! command -v c++ >/dev/null || ! test -e /usr/include/gz/sim8/gz/sim/System.hh; then
+            apt-get update -qq
+            DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends g++ make libgz-sim8-dev
+          fi
           command -v c++
           test -e /usr/include/gz/sim8/gz/sim/System.hh
+          echo "AXIA_S02_BUILD_RUNTIME_LIBRARY_AFTER=$(dpkg-query -W -f='${Package}:${Version};' 'libgz-sim8*' 2>/dev/null || true)"
           cmake -S instructor/tools/native_s02 -B "$RUNNER_TEMP/s02-native-build" -DCMAKE_BUILD_TYPE=Release
           cmake --build "$RUNNER_TEMP/s02-native-build" --parallel 2
           test -s "$RUNNER_TEMP/s02-native-build/libaxia_s02_physics_witness.so"
