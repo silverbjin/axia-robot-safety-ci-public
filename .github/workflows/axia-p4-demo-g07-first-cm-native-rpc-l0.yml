@@ -1,0 +1,33 @@
+name: AXIA P4 G07 first CM RMW gap vs Gazebo STOP RPC L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-p4-demo-g07-first-cm-native-rpc-l0.yml']
+permissions:
+  contents: read
+jobs:
+  protected-first-gap-analysis:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    environment: axia-instructor-sealed
+    steps:
+      - name: Checkout exact private source, do not publish it
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: eee432e638cabafafa7e6743fb90828dff376dfc
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: First actual failure fingerprint regression, no ROS or Goal
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = eee432e638cabafafa7e6743fb90828dff376dfc
+          python3 -m unittest discover -s tests/unit -p test_p4_demo_g07_first_cm_gap_native_rpc_overlap.py -v
+          python3 -m unittest discover -s tests/unit -p test_p4_g07_cm_upstream_rmw_gap_window.py -v
+          python3 -m unittest discover -s tests/unit -p test_p2_base_guard_policy.py -v
+          echo AXIA_G07_FIRST_CM_RMW_NATIVE_RPC_BOUNDARY_L0_PASS_SAFETY_UNCHANGED
+      - name: Remove sealed source
+        if: always()
+        shell: bash
+        run: rm -rf -- .git tests tools ros2_ws docs configs scripts training
