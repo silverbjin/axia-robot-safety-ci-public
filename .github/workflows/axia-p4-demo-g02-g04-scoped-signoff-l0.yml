@@ -15,14 +15,14 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 02916c9c46a6f61e5973d16f8a0066d715375282
+          ref: 2ce1b413fe7c456d56090cdd8b781ff61f228f97
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Historical scoped L0/L1 and L2 recorded evidence signoff
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git rev-parse HEAD)" = 02916c9c46a6f61e5973d16f8a0066d715375282
+          test "$(git rev-parse HEAD)" = 2ce1b413fe7c456d56090cdd8b781ff61f228f97
           python3 -m unittest discover -s tests/unit -p test_p4_demo_g02_g04_scoped_signoff.py -v
           python3 -m unittest discover -s tests/unit -p test_p4_demo_acceptance_profile.py -v
           python3 tools/p4_demo_acceptance.py --verify-current \
