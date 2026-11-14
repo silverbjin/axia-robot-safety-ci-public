@@ -1,0 +1,32 @@
+name: AXIA P4 G07 first postgoal CM Supervisor RMW failure evidence L0 TDD
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-p4-g07-postgoal-failfirst-rmw-l0.yml']
+permissions:
+  contents: read
+jobs:
+  postgoal-failfirst-observer-no-ros:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    environment: axia-instructor-sealed
+    steps:
+      - name: Protected exact private regression source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 391c08f575ced3fa5b89afc0f8471dca60b8e1c4
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Assert first timing gap is captured on failed Goal and no PASS promotion
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = 391c08f575ced3fa5b89afc0f8471dca60b8e1c4
+          python3 -m unittest discover -s tests/unit -p test_p4_g07_postgoal_failfirst_rmw_diagnostic.py -v
+          python3 -m py_compile tools/p2_g07_ci_moving_goal.py
+          echo AXIA_P4_G07_POSTGOAL_FIRST_RMW_FAILURE_EVIDENCE_L0_PASS_NO_ROS_NO_GOAL
+      - name: Erase private source
+        if: always()
+        shell: bash
+        run: rm -rf -- .git docs ros2_ws scripts tools tests fixtures scenarios configs results training
