@@ -24,7 +24,7 @@
 
     (
       set -Eeuo pipefail
-      PUBLIC_SHA="<공개-CI-GREEN-40자리-SHA>"
+      PUBLIC_SHA="c74f37bb7af8f31afcfae842f3d7eddc3f0d849f"
       LAB="$(mktemp -d "$HOME/axia_d06_gazebo_rviz_public_XXXXXXXX")"
       git -C "$LAB" init -q
       git -C "$LAB" remote add origin https://github.com/silverbjin/axia-robot-safety-ci-public.git
