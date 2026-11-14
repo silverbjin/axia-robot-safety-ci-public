@@ -56,3 +56,15 @@ def test_classroom_procedure_has_evidence_boundaries_and_shutdown():
       "RED","GREEN","CI","WSL2","Ctrl+C","EVIDENCE=",
       "NOT_RUN","UNKNOWN","SW Stop","E-Stop","L1","L2","L3","main 병합"):
         assert token in src,token
+
+
+def test_gui_sidecar_failure_is_never_reported_as_success_and_reap_is_bounded():
+    wrapper=W.read_text()
+    sidecar=S.read_text()
+    assert "D06_RVIZ_NOT_CONFIRMED" in wrapper
+    # Original G07 success must not hide missing RViz startup or early child exit.
+    assert "D06_RVIZ_SIDECAR_EXITED_BEFORE_OWNER_COMPLETION" in wrapper
+    assert "rc=3" in wrapper
+    # Cleanup must not block forever and must signal only sidecar-owned groups.
+    assert 'kill -KILL -- "-$pid"' in sidecar
+    assert 'wait "$pid"' in sidecar
