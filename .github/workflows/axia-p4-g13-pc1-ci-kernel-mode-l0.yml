@@ -25,7 +25,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 4a09e3cbbbe34a884dca0c150024ce7db60637f0
+          ref: 2102b4c5d9870d8872a98dcd7d20030ef4898e17
           path: instructor
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
@@ -33,7 +33,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor rev-parse HEAD)" = 4a09e3cbbbe34a884dca0c150024ce7db60637f0
+          test "$(git -C instructor rev-parse HEAD)" = 2102b4c5d9870d8872a98dcd7d20030ef4898e17
           python3 -m unittest discover -s instructor/tests/unit -p test_p4_g13_pc1_owner_vs_ci_kernel_no_goal.py -v
           bash -n instructor/scripts/p2_no_goal_smoke_ci.sh
           bash -n public/scripts/axia_p4_g13_external_no_goal_once.sh
