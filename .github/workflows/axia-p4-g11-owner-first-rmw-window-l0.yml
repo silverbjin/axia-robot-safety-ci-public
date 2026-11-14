@@ -14,7 +14,7 @@ jobs:
       - name: Verify exact candidate script and NO-TTY rejection
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
-          ref: 9ba09c6fa6a49e72ef87c0ec64a04b8506b2138e
+          ref: 0a403dde71351db30cb5dae038d15668e42d52f0
           persist-credentials: false
       - name: Assert Owner Goal human consent and same-Goal first RMW publication evidence
         shell: bash
