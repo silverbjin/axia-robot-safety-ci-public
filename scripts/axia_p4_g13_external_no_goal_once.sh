@@ -35,6 +35,10 @@ except (ValueError,OSError):
 # Report the first available specific failure witness, not the last
 # RuntimeError nor success from any unrelated previous CI run.
 paths=[
+  # First environment parity precedes any Gazebo launch/ROS Lifecycle. The
+  # original PC1 ZIP has these files but no staged_startup.log.
+  "actual/g07_userspace_parity.log",
+  "actual/g07_userspace_parity.json",
   "actual/staged_startup.log",
   "actual/g07_ordered_shutdown.log",
   "actual/g07_shutdown_audit.json",
@@ -42,6 +46,8 @@ paths=[
   "smoke.log",
 ]
 markers=[
+ ("CI_KERNEL_MODE_ON_WSL2",re.compile(r"mismatches=ci_kernel|\\\"ci_kernel\\\"\\s*:\\s*\\\"CI_NOT_WSL2_REQUIRED",re.I)),
+ ("ENV_USERSpace_PARITY_BLOCKED",re.compile(r"AXIA_G07_ENV_PARITY_BLOCKED|P2_G07_NO_GOAL_CI_USERSPACE_PARITY_BLOCKED",re.I)),
  ("LOCALIZATION_START",re.compile(r"(?:P2_STAGED_NO_GOAL_BLOCKED|BLOCKED|ERROR).{0,240}LOCALIZATION_START|LOCALIZATION_START.{0,240}(?:BLOCKED|TIMEOUT|ERROR|FAILED)|lifecycle_manager_localization.*(?:timed out|failed|ERROR)",re.I)),
  ("NAVIGATION_START",re.compile(r"(?:P2_STAGED_NO_GOAL_BLOCKED|BLOCKED|ERROR).{0,240}NAVIGATION_START|NAVIGATION_START.{0,240}(?:BLOCKED|TIMEOUT|ERROR|FAILED)|lifecycle_manager_navigation.*(?:timed out|failed|ERROR)",re.I)),
  ("STARTUP_BLOCKED",re.compile(r"P2_STAGED_NO_GOAL_BLOCKED|G07_NATIVE_LIFECYCLE_STARTUP_SERVICE_TIMEOUT")),
@@ -77,6 +83,9 @@ if witnesses:
     print("AXIA_G13_PREVIOUS_RUN_FIRST_FAILURE="+first[2])
     print("AXIA_G13_PREVIOUS_RUN_FIRST_FAILURE_SOURCE="+first[3]+":"+str(first[1]))
     print("AXIA_G13_PREVIOUS_RUN_FIRST_FAILURE_PROVENANCE=FIRST_AVAILABLE_STAGE_LOG_NOT_GLOBAL_CAUSAL_PROOF")
+    if first[2]=="CI_KERNEL_MODE_ON_WSL2":
+        print("AXIA_G13_PREVIOUS_RUN_FIRST_FAILURE_PHASE=BEFORE_GAZEBO_LAUNCH_AND_NAV2_LIFECYCLE")
+        print("AXIA_G13_PREVIOUS_RUN_CI_PARITY_USED_ON_WSL2_NO_GOAL_FIX_REQUIRED")
 else:
     print("AXIA_G13_PREVIOUS_RUN_FIRST_FAILURE=UNDETERMINED_FROM_AVAILABLE_LOGS")
 print("AXIA_G13_PREVIOUS_RUN_DIAGNOSTIC_ONLY_NO_GOAL_NO_RETRY")
