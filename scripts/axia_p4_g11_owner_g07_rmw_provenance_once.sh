@@ -3,8 +3,8 @@
 # No simulated Goal in CI, no implicit consent, no public RAW upload.
 set -Eeuo pipefail
 umask 077
-PRIVATE_SHA="afe4e9ae3f6542ef7b2bd3097ce5c15ae5a5ddcc"
-PRIVATE_TREE="580dec5be1988b26d5189616b1b01559a0f1f9a5"
+PRIVATE_SHA="c44414f8e3bad37a349565f211d554540cccb062"
+PRIVATE_TREE="d2e3044689a5873cd61d6bc5f84a40b20a81f84e"
 [[ -t 0 && -t 1 && -r /dev/tty ]] || {
   echo 'AXIA_G11_G07_BLOCKED_INTERACTIVE_OWNER_TTY_REQUIRED' >&2; exit 2;
 }
