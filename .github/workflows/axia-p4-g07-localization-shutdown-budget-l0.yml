@@ -1,0 +1,32 @@
+name: AXIA P4 G07 bounded localization shutdown ACK L0 TDD
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-p4-g07-localization-shutdown-budget-l0.yml']
+permissions:
+  contents: read
+jobs:
+  scoped-localization-rpc-no-ros:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    environment: axia-instructor-sealed
+    steps:
+      - name: Exact private source/fixture, no actual ROS Goal
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 854fd5ba29a52db721e5994a29006ee05202eac4
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Assert original 13 second limit is a scoped cleanup boundary
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = 854fd5ba29a52db721e5994a29006ee05202eac4
+          python3 -m unittest discover -s tests/unit -p test_p4_g07_ordered_shutdown_localization_budget.py -v
+          python3 -m py_compile tools/p2_g07_ordered_shutdown.py
+          echo AXIA_P4_G07_LOCALIZATION_SHUTDOWN_BUDGET_L0_PASS_NO_ROS_NO_GOAL
+      - name: Remove protected source
+        if: always()
+        shell: bash
+        run: rm -rf -- .git docs ros2_ws scripts tools tests fixtures scenarios configs results training
