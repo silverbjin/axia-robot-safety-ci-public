@@ -51,3 +51,17 @@ jobs:
           grep -Fq 'AXIA_G13_PREVIOUS_RUN_DIAGNOSTIC_ONLY_NO_GOAL_NO_RETRY' "$RUNNER_TEMP/g13_inspect.log"
           ! grep -Fq 'REAL_JAZZY_HARMONIC_NO_GOAL_L2_PASS' "$RUNNER_TEMP/g13_inspect.log"
           echo AXIA_G13_PREVIOUS_FAILED_ORIGINAL_REVIEW_L0_PASS_NO_ROS_NO_GOAL
+          # First normal stage MUST NOT be mistaken for the first failure.
+          printf '%s\\n' \
+            'P2_STAGED_NO_GOAL_LOCALIZATION_START_ACK' \
+            'P2_STAGED_NO_GOAL_BLOCKED:NAVIGATION_START:G07_NATIVE_LIFECYCLE_STARTUP_SERVICE_TIMEOUT:request_sent=True' \
+            >"$ROOT/actual/staged_startup.log"
+          bash "$FILE" --inspect "$ROOT" >"$RUNNER_TEMP/g13_navigation.log"
+          grep -Fq 'AXIA_G13_PREVIOUS_RUN_FIRST_FAILURE=NAVIGATION_START' "$RUNNER_TEMP/g13_navigation.log"
+          ! grep -Fq 'AXIA_G13_PREVIOUS_RUN_FIRST_FAILURE=LOCALIZATION_START' "$RUNNER_TEMP/g13_navigation.log"
+          echo AXIA_G13_FIRST_VIOLATION_NOT_FIRST_NORMAL_STATE_L0_PASS
+          # A missing original stage cannot create a fictitious PASS.
+          rm -f "$ROOT/actual/staged_startup.log"
+          bash "$FILE" --inspect "$ROOT" >"$RUNNER_TEMP/g13_no_stage.log"
+          grep -Fq 'AXIA_G13_PREVIOUS_RUN_FIRST_FAILURE=UNDETERMINED_FROM_AVAILABLE_LOGS' "$RUNNER_TEMP/g13_no_stage.log"
+          echo AXIA_G13_UNVERIFIED_ORIGINAL_FAIL_CLOSED_L0_PASS
