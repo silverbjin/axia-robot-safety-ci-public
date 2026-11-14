@@ -1,0 +1,48 @@
+name: AXIA P4 G07 container CPU scheduling and native transport preflight L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-p4-g07-runtime-cpu-native-preflight-l0.yml']
+permissions:
+  contents: read
+jobs:
+  digest-runtime-diagnostic:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+      options: --dns 1.1.1.1 --dns 8.8.8.8
+    steps:
+      - name: Read container CPU budget and native gz transport libraries, no ROS or Goal
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 - <<'PY'
+          import importlib.util,json,os,subprocess
+          from pathlib import Path
+          allowed=sorted(os.sched_getaffinity(0))
+          def load(path):
+              p=Path(path)
+              if not p.exists():return 'MISSING'
+              return p.read_text().strip()[:350]
+          modules={}
+          for name in ('gz.transport13','gz.transport12','gz.msgs10','gz.msgs11','pygazebo'):
+              try:modules[name]=importlib.util.find_spec(name) is not None
+              except (ModuleNotFoundError,ValueError):modules[name]=False
+          cmds={}
+          for name in ('taskset','nice','pkg-config','gz'):
+              x=subprocess.run(['bash','-lc','command -v '+name],capture_output=True,text=True)
+              cmds[name]=x.stdout.strip() if x.returncode==0 else 'MISSING'
+          print('AXIA_G07_RUNTIME_CPU_NATIVE_PREFLIGHT '+json.dumps({
+              'allowed_cores_count':len(allowed),
+              'cpu_max':load('/sys/fs/cgroup/cpu.max'),
+              'cpu_stat':load('/sys/fs/cgroup/cpu.stat'),
+              'cpu_pressure':load('/sys/fs/cgroup/cpu.pressure'),
+              'cpuset_cpus_effective':load('/sys/fs/cgroup/cpuset.cpus.effective'),
+              'native_python_modules':modules,
+              'executables':cmds,
+          },sort_keys=True))
+          PY
+          pkg-config --modversion gz-transport13 2>/dev/null || true
+          pkg-config --modversion gz-msgs10 2>/dev/null || true
+          echo AXIA_G07_RUNTIME_CPU_NATIVE_PREFLIGHT_L0_NO_ROS_NO_GOAL
