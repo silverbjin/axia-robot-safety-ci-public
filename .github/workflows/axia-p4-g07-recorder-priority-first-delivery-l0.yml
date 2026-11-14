@@ -15,14 +15,14 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 1b28919b916ab2266a03d0ae2032adf7f501e8a0
+          ref: d9e1d5c8682737eee480123ab750441ded08d54e
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: First delivery boundary G07 recorder priority RED GREEN
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git rev-parse HEAD)" = 1b28919b916ab2266a03d0ae2032adf7f501e8a0
+          test "$(git rev-parse HEAD)" = d9e1d5c8682737eee480123ab750441ded08d54e
           python3 -m unittest discover -s tests/unit -p test_p4_g07_recorder_priority_first_delivery.py -v
           python3 -m unittest discover -s tests/unit -p test_p4_g07_rmw_source_receive_provenance.py -v
           python3 -m unittest discover -s tests/unit -p test_p4_demo_acceptance_profile.py -v
