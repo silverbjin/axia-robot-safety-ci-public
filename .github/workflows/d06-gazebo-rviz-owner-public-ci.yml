@@ -1,0 +1,32 @@
+name: D06 Gazebo RViz Owner Public CI (source-only)
+on:
+  push:
+    branches: ['feature/d06-gazebo-rviz-owner-20261114']
+    paths: ['d06/**', '.github/workflows/d06-gazebo-rviz-owner-public-ci.yml']
+  pull_request:
+    paths: ['d06/**', '.github/workflows/d06-gazebo-rviz-owner-public-ci.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  l0:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: D06 RED to GREEN public contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install -q pytest==8.3.5 PyYAML==6.0.2
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -q d06/tests/test_d06_gazebo_live_contract.py
+          bash -n d06/scripts/d06_gazebo_rviz_owner_wsl2_once.sh
+          bash -n d06/scripts/d06_rviz_sidecar.sh
+          python -m py_compile d06/live/d06_readonly_monitor.py
+          bash d06/scripts/d06_gazebo_rviz_owner_wsl2_once.sh --self-check
+          echo "D06_GAZEBO_RVIZ_L0_PASS ROS_GAZEBO_RVIZ_NOT_RUN"
