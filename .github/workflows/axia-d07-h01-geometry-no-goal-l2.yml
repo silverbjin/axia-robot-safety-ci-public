@@ -32,7 +32,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 56d8407e556a0675a32c43824576fd55cf104181
+          ref: 948bb41ef697ce6c1590611909b45ba403bf78ca
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -40,7 +40,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '56d8407e556a0675a32c43824576fd55cf104181'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '948bb41ef697ce6c1590611909b45ba403bf78ca'
           test "$(git -C ci-public-admission -c safe.directory="$PWD/ci-public-admission" rev-parse HEAD)" = '5b6b10322ee3682f43815cd1a8d4b8135811f8fc'
           ( cd ci-public-admission && python3 -m unittest discover -s tests -p test_d07_h01_public_contract.py -v )
           cd instructor
@@ -83,7 +83,7 @@ jobs:
           AXIA_P2_SMOKE_RESULTS: results/d07-h01-ci/real-l2
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '56d8407e556a0675a32c43824576fd55cf104181'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '948bb41ef697ce6c1590611909b45ba403bf78ca'
           cd instructor
           timeout --signal=TERM --kill-after=10s 870s bash scripts/p2_no_goal_smoke_ci.sh || {
             echo 'AXIA_D07_H01_REAL_GAZEBO_GEOMETRY_NO_GOAL_BLOCKED'
@@ -100,7 +100,7 @@ jobs:
           geo=json.loads((root/'d07_h01_geometry/d07_h01_geometry.json').read_text())
           assert pre['status']=='P2_G07_OWNER_PREGOAL_L2_READY_NO_GOAL'
           assert geo['status']=='D07_H01_REAL_NAV2_GEOMETRY_READY_NO_GOAL',geo
-          assert geo['source_sha']=='56d8407e556a0675a32c43824576fd55cf104181'
+          assert geo['source_sha']=='948bb41ef697ce6c1590611909b45ba403bf78ca'
           assert geo['goal_sent'] is False and geo['real_nav2'] is True
           assert geo['real_laser_scan'] is True and geo['actual_costmap_obstacle_observed'] is True
           assert geo['contact_topic_proven'] is True
