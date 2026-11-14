@@ -27,7 +27,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 8aea57fa0c6742e5687a2747b66911b0fc70867f
+          ref: 97f2044404a8b90e9c8f4b3010c0796eef87feff
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -69,12 +69,14 @@ jobs:
           assert manager_shutdown_budget('localization',10)==10, 'G07_GLOBAL_LIMIT_NOT_RESPECTED'
           print('D06_G07_LOC_POSTGOAL_NATIVE_ACK_40S_BOUNDED_WITHIN_60S_STATIC_PASS')
           PY
+          python3 -m unittest discover -s instructor/tests/unit \
+            -p 'test_p4_g07_ordered_shutdown_localization_budget.py' -q
 
       - name: Exact immutable runtime image and 25-package/5-file parity without apt reinstall
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '8aea57fa0c6742e5687a2747b66911b0fc70867f'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '97f2044404a8b90e9c8f4b3010c0796eef87feff'
           test "$ROS_DISTRO" = jazzy
           cd instructor
           mkdir -p results/p2-g07-ci-moving
@@ -118,7 +120,7 @@ jobs:
         run: |
           set -euo pipefail
           cd instructor
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '8aea57fa0c6742e5687a2747b66911b0fc70867f'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '97f2044404a8b90e9c8f4b3010c0796eef87feff'
           set +e
           timeout --signal=TERM --kill-after=10s 900s \
             bash scripts/p2_no_goal_smoke_ci.sh > ../d06_g07_sealed_runner.log 2>&1
