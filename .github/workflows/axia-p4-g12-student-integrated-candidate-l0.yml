@@ -14,13 +14,13 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: ad5dab222c4739603fb961bdd481d945636710f6
+          ref: 9edafdc970f0a845768c6f831023eb86a738e8f7
           persist-credentials: false
       - name: Check integration candidate has both student blocks and honest attribution HOLD
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git rev-parse HEAD)" = ad5dab222c4739603fb961bdd481d945636710f6
+          test "$(git rev-parse HEAD)" = 9edafdc970f0a845768c6f831023eb86a738e8f7
           python3 - <<'PY'
           from pathlib import Path
           import subprocess
