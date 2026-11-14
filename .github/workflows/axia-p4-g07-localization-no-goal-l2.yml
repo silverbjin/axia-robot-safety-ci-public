@@ -1,0 +1,87 @@
+name: AXIA P4 G07 actual localization startup no-Goal bounded L2
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-p4-g07-localization-no-goal-l2.yml']
+permissions:
+  contents: read
+jobs:
+  real-harmonic-nav2-lifecycle-no-goal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    environment: axia-instructor-sealed
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+      options: --dns 1.1.1.1 --dns 8.8.8.8
+    steps:
+      - name: Exact protected Instructor no-Goal source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 303ae51f8c0ba835822712f885609a0221858a6a
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          path: instructor
+          persist-credentials: false
+      - name: Source lock and read-only failure diagnostic syntax
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 303ae51f8c0ba835822712f885609a0221858a6a
+          test "$ROS_DISTRO" = jazzy
+          bash -n instructor/scripts/p2_no_goal_smoke_ci.sh
+          python3 -m py_compile instructor/tools/p2_staged_no_goal.py instructor/tools/p2_g07_lifecycle_service.py
+          echo AXIA_P4_G07_LOCALIZATION_REAL_L2_STATIC_SOURCE_PIN_NO_GOAL
+      - name: Real official Nav2 lifecycle localization/navigation and orderly shutdown, NO Goal
+        shell: bash
+        env:
+          ROS_DOMAIN_ID: '83'
+          ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+          GZ_PARTITION: axia_p2_ci_moving_83
+          AXIA_P0_SIM_ONLY: '1'
+          AXIA_P2_G07_PHYSICAL_PREFLIGHT: '1'
+          AXIA_P2_G07_OWNER_PARITY_CHECK: '1'
+          AXIA_G07_OWNER_STARTUP_PARITY: '1'
+          AXIA_G07_SHUTDOWN_L2_ONLY: '1'
+          AXIA_P4_G07_LOCALIZATION_STARTUP_DIAGNOSTIC: '1'
+          AXIA_G07_CI_SIM_GOAL_ALLOWED: '0'
+          AXIA_P2_SMOKE_RESULTS: results/p4-g07-localization-no-goal-l2
+        run: |
+          set -Eeuo pipefail
+          cd instructor
+          set +u
+          source /opt/ros/jazzy/setup.bash
+          set -u
+          OUT=results/p4-g07-localization-no-goal-l2
+          timeout --signal=TERM --kill-after=10s 540s bash scripts/p2_no_goal_smoke_ci.sh || {
+            echo 'AXIA_P4_G07_LOCALIZATION_NO_GOAL_L2_BLOCKED_FIRST_FAILURE_REQUIRED'
+            if [[ -f "$OUT/staged_startup.log" ]]; then
+              grep -E 'P2_STAGED_NO_GOAL_BLOCKED|AXIA_P4_G07_LOCALIZATION_STARTUP|G07_SHARED_NATIVE' "$OUT/staged_startup.log" | tail -n 30 || true
+            fi
+            if [[ -f "$OUT/launch.log" ]]; then
+              grep -E 'lifecycle_manager_localization|map_server|amcl' "$OUT/launch.log" | tail -n 40 || true
+            fi
+            exit 3
+          }
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          root=Path('results/p4-g07-localization-no-goal-l2')
+          startup=json.loads((root/'startup_verdict.json').read_text())
+          loc=json.loads((root/'startup_verdict.localization_start.native.json').read_text())
+          nav=json.loads((root/'startup_verdict.navigation_start.native.json').read_text())
+          shutdown=json.loads((root/'g07_ordered_shutdown.json').read_text())
+          assert startup['status']=='SMOKE_READY'
+          assert startup['goal_sent'] is False and startup['gate_accepted'] is False
+          for row in (loc,nav):
+              assert row['status']=='ACK' and row['success'] is True
+              assert row['goal_sent'] is False
+          assert shutdown['status']=='NAV2_LIFECYCLE_SHUTDOWN_ACK'
+          assert shutdown['navigation_ack'] and shutdown['localization_ack']
+          print('AXIA_P4_G07_REAL_LOCALIZATION_NAVIGATION_NATIVE_ACK_NO_GOAL_L2_PASS')
+          print('AXIA_P4_G07_REAL_ORDERED_SHUTDOWN_ACK_NO_GOAL_L2_PASS')
+          print('AXIA_P4_G07_NO_OWNER_GOAL_NO_PRIVATE_UPLOAD_FORMAL_HOLD')
+          PY
+      - name: Erase protected source and private runtime evidence
+        if: always()
+        shell: bash
+        run: rm -rf -- instructor
