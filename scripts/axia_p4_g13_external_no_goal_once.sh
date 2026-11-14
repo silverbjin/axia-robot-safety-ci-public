@@ -42,8 +42,8 @@ paths=[
   "smoke.log",
 ]
 markers=[
- ("LOCALIZATION_START",re.compile(r"LOCALIZATION_START|lifecycle_manager_localization.*(?:timed out|failed|ERROR)",re.I)),
- ("NAVIGATION_START",re.compile(r"NAVIGATION_START|lifecycle_manager_navigation.*(?:timed out|failed|ERROR)",re.I)),
+ ("LOCALIZATION_START",re.compile(r"(?:P2_STAGED_NO_GOAL_BLOCKED|BLOCKED|ERROR).{0,240}LOCALIZATION_START|LOCALIZATION_START.{0,240}(?:BLOCKED|TIMEOUT|ERROR|FAILED)|lifecycle_manager_localization.*(?:timed out|failed|ERROR)",re.I)),
+ ("NAVIGATION_START",re.compile(r"(?:P2_STAGED_NO_GOAL_BLOCKED|BLOCKED|ERROR).{0,240}NAVIGATION_START|NAVIGATION_START.{0,240}(?:BLOCKED|TIMEOUT|ERROR|FAILED)|lifecycle_manager_navigation.*(?:timed out|failed|ERROR)",re.I)),
  ("STARTUP_BLOCKED",re.compile(r"P2_STAGED_NO_GOAL_BLOCKED|G07_NATIVE_LIFECYCLE_STARTUP_SERVICE_TIMEOUT")),
  ("LIFECYCLE_SHUTDOWN",re.compile(r"SHUTDOWN_BLOCKED|SHUTDOWN.*(?:TIMEOUT|ERROR|BLOCKED)|NAVIGATION_ACK.*false|LOCALIZATION_ACK.*false",re.I)),
  ("CM_SHUTDOWN",re.compile(r"G07_REAL_SHUTDOWN_L2_CM_PROCESS_NONCLEAN|CM_PROCESS_NONCLEAN|CM.*(?:SIGABRT|SIGKILL)",re.I)),
