@@ -1,0 +1,132 @@
+# D07-H01 public simulation NO GOAL: first prove official Nav2 can route
+# around the real preloaded Waffle LiDAR-visible cylinder; no driving authority.
+# This is not D07-H01 moving avoidance L2, Owner L3 or safety certification.
+name: AXIA D07 H01 stationary native Contact calibration NO GOAL L2
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-d07-h01-contact-no-goal-l2.yml']
+permissions:
+  contents: read
+concurrency:
+  group: axia-d07-h01-real-contact-calibration-no-goal
+  cancel-in-progress: false
+jobs:
+  real-gazebo-real-nav2-preflight:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 42
+    environment: axia-instructor-sealed
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+      options: --dns 1.1.1.1 --dns 8.8.8.8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Exact public H01 admission contract from unmerged feature branch
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-ci-public
+          ref: 5b6b10322ee3682f43815cd1a8d4b8135811f8fc
+          path: ci-public-admission
+          persist-credentials: false
+      - name: Exact sealed Instructor H01 source, never publish private repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 122ff75bc2bdcc6c79eb2070d70cbe71a0de3bc3
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          path: instructor
+          persist-credentials: false
+      - name: Mandatory exact source, L0, no-goal code and shell syntax
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '122ff75bc2bdcc6c79eb2070d70cbe71a0de3bc3'
+          test "$(git -C ci-public-admission -c safe.directory="$PWD/ci-public-admission" rev-parse HEAD)" = '5b6b10322ee3682f43815cd1a8d4b8135811f8fc'
+          ( cd ci-public-admission && python3 -m unittest discover -s tests -p test_d07_h01_public_contract.py -v )
+          cd instructor
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_oracle.py -v
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_runner_diagnostics.py -v
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_costmap_roundtrip.py -v
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_path_return.py -v
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_costmap_spatial.py -v
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_costmap_localization.py -v
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_drift.py -v
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_drift_runner.py -v
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_clearing_residue.py -v
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_contact.py -v
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_contact_calibration.py -v
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_contact_calibration_runner.py -v
+          python3 -m py_compile tools/d07_h01_oracle.py tools/d07_h01_contact_probe.py tools/d07_h01_contact_calibration_l2.py
+          bash -n scripts/p2_no_goal_smoke_ci.sh
+          echo 'AXIA_D07_H01_PUBLIC_ADMISSION_PRIVATE_ORACLE_SYNTAX_L0_PASS_NO_ROS_NO_GOAL'
+      - name: Exact official Jazzy/Harmonic/Nav2 runtime 25+5 parity
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cd instructor
+          set +u; source /opt/ros/jazzy/setup.bash; set -u
+          mkdir -p results/d07-h01-ci
+          export ROS_DOMAIN_ID=95 ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
+          export GZ_PARTITION=axia_p2_d07_contact_${GITHUB_RUN_ID} AXIA_P0_SIM_ONLY=1
+          python3 tools/p2_g07_owner_env_parity.py --mode ci --output results/d07-h01-ci/runtime.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('results/d07-h01-ci/runtime.json').read_text())
+          assert r['status']=='CORE_PARITY_PASS'
+          assert (r['checked_packages'],r['checked_official_files'])==(25,5)
+          print('AXIA_D07_H01_EXACT_RUNTIME_G07_25_PACKAGE_5_FILE_PASS')
+          PY
+      - name: ACTUAL Gazebo native Contact stationary positive control (NO GOAL)
+        shell: bash
+        env:
+          ROS_DOMAIN_ID: '95'
+          ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+          GZ_PARTITION: axia_p2_d07_contact_${{ github.run_id }}
+          AXIA_P0_SIM_ONLY: '1'
+          AXIA_P2_G07_PHYSICAL_PREFLIGHT: '1'
+          AXIA_G07_CI_SIM_GOAL_ALLOWED: '1'
+          AXIA_D07_H01_CI_ALLOWED: '1'
+          AXIA_D07_H01_CONTACT_CALIBRATION_ONLY: '1'
+          AXIA_G07_CI_OWNER_OBSERVER_PARITY: '1'
+          AXIA_G07_OWNER_STARTUP_PARITY: '1'
+          AXIA_G07_CI_OWNER_BAG_PARITY: '1'
+          AXIA_P2_SMOKE_RESULTS: results/d07-h01-ci/real-l2
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '122ff75bc2bdcc6c79eb2070d70cbe71a0de3bc3'
+          cd instructor
+          timeout --signal=TERM --kill-after=10s 870s bash scripts/p2_no_goal_smoke_ci.sh || {
+            echo 'AXIA_D07_H01_REAL_GAZEBO_CONTACT_CALIBRATION_NO_GOAL_BLOCKED'
+            for f in results/d07-h01-ci/real-l2/{staged_startup,launch,g07_ci_pregoal,d07_h01_contact_calibration,g07_ordered_shutdown,rosbag}.log; do
+              if [[ -f "$f" ]]; then echo "--- $(basename "$f") ---"; tail -n 100 "$f"; fi
+            done
+            exit 2
+          }
+          python3 - <<'PY'
+          import json,sqlite3
+          from pathlib import Path
+          root=Path('results/d07-h01-ci/real-l2')
+          pre=json.loads((root/'g07_ci_pregoal/owner_pregoal_l2.json').read_text())
+          c=json.loads((root/'d07_h01_contact_calibration/contact_calibration.json').read_text())
+          assert pre['status']=='P2_G07_OWNER_PREGOAL_L2_READY_NO_GOAL'
+          assert c['status']=='CONTACT_STATIONARY_L2_POSITIVE_ONLY_NO_GOAL', c
+          assert c['positive_control_proven'] is True
+          assert c['calibration']['calibration_event_count']>=1
+          assert c['calibration']['topic_type_proven'] is True
+          assert c['contact_ground_truth_ready'] is False
+          assert c['goal_sent'] is False and c['motion_admitted'] is False
+          assert c['source_sha']=='122ff75bc2bdcc6c79eb2070d70cbe71a0de3bc3'
+          assert c['certified_estop'] is False
+          bag=root/'rosbag2'
+          assert (bag/'metadata.yaml').exists()
+          dbs=list(bag.glob('*.db3'));assert len(dbs)==1
+          conn=sqlite3.connect('file:'+str(dbs[0])+'?mode=ro',uri=True)
+          assert conn.execute('pragma quick_check').fetchone()[0]=='ok'
+          print('AXIA_D07_H01_NATIVE_GAZEBO_CONTACT_POSITIVE_L2_SCOPED_PASS_NO_MOVING_GOAL')
+          print('AXIA_D07_H01_CONTACT_IN_MOTION_WINDOW_AND_TTL_NOT_PROVEN_OWNER_L3_NOT_RUN')
+          PY
+      - name: Always erase private source and original CI rosbag after log evidence
+        if: always()
+        shell: bash
+        run: rm -rf -- instructor ci-public-admission
