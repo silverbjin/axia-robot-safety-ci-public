@@ -1,0 +1,32 @@
+name: AXIA P4 G07 first CM-vs-Supervisor RMW publication window L0 TDD
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-p4-g07-cm-vs-supervisor-window-l0.yml']
+permissions:
+  contents: read
+jobs:
+  protected-cross-topic-publication-window:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    environment: axia-instructor-sealed
+    steps:
+      - name: Exact protected synthetic regression only
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 6209afa4cf243e07d4735bf0057bbda440fbd726
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: First 175ms CM publication gap with independent Supervisor RMW evidence
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = 6209afa4cf243e07d4735bf0057bbda440fbd726
+          python3 -m unittest discover -s tests/unit -p test_p4_g07_cm_upstream_rmw_gap_window.py -v
+          python3 -m py_compile tools/p2_g07_ci_moving_goal_oracle.py
+          echo AXIA_P4_G07_CM_SUPERVISOR_PUBLICATION_WINDOW_L0_PASS_NO_ROS_NO_GOAL
+      - name: Erase protected source and synthetic evidence
+        if: always()
+        shell: bash
+        run: rm -rf -- .git docs ros2_ws scripts tools tests fixtures scenarios configs results training
