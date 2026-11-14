@@ -27,7 +27,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: b266148f281144aaf03d652438e216d8800b7b6a
+          ref: f1bd11394657ea0255e6e954e45bfedd0bb69da2
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -35,7 +35,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-ci-public
-          ref: 12dacaddbcdd4923f0b7d06f6466dd593e4d4597
+          ref: 8017d3b9cb718a2cd5b4db03924c1b22f3e7a816
           path: ci-tools
           persist-credentials: false
 
@@ -85,7 +85,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 'b266148f281144aaf03d652438e216d8800b7b6a'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 'f1bd11394657ea0255e6e954e45bfedd0bb69da2'
           test "$ROS_DISTRO" = jazzy
           cd instructor
           mkdir -p results/p2-g07-ci-moving
@@ -129,7 +129,7 @@ jobs:
         run: |
           set -euo pipefail
           cd instructor
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 'b266148f281144aaf03d652438e216d8800b7b6a'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 'f1bd11394657ea0255e6e954e45bfedd0bb69da2'
           # Keep normal Owner-matched execution; /proc schedstat was unavailable
           # in diagnostic CI #43594781886, so do not burden full L2 with probe.
           set +e
@@ -234,7 +234,13 @@ jobs:
               print('D06_NATIVE_GUARD_INPUT_UNVERIFIED_NO_SEALED_EVENTS')
               sys.exit(3)
           events=[json.loads(l) for l in event_file.read_text().splitlines() if l.strip()]
-          result=inspect_native_guard(events)
+          verdict_path=Path('instructor/results/p2-g07-ci-moving/real-l2/g07_ci_moving/ci_moving_goal_result.json')
+          if not verdict_path.is_file():
+              print('D06_NATIVE_GUARD_MOVING_T1_UNKNOWN_NO_ORIGINAL_VERDICT')
+              sys.exit(3)
+          verdict=json.loads(verdict_path.read_text())
+          t1=verdict.get('native_delivery_window_end_mono')
+          result=inspect_native_guard(events,active_end=t1 if type(t1) in (int,float) else -1)
           print('D06_G07_DIRECT_GUARD_CM_SUPERVISOR_RECEIPT '+
                 json.dumps(result,sort_keys=True),flush=True)
           if result['status']!='NATIVE_GUARD_INPUT_GAPS_NOT_OBSERVED':
