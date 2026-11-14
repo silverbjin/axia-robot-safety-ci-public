@@ -4,7 +4,7 @@
 - 일정: 2026-11-16 19:00–22:00, 이론 60분·실습 120분. 21:25–21:40 강사 Live Demo에 사용.
 - 목표 1: **거리 구간별 속도 제한 및 감속ㆍ정지 규칙 이해** — 실제 Waffle의 CLEAR→SLOWDOWN→STOP에서 CM 전 속도, CM 이후 속도, 최종 Guard 속도, odom 관측값을 비교한다.
 - 목표 2: **Safety Bubble 기반 안전제어 로직 설계 실습** — 학생 Python 정책(Stop 0.40m, Slow 0.75m, ratio=0.30, UNKNOWN)을 설명하고 공식 LaserScan+CM Zone/min_points=4 동작과 비교한다.
-- 새 ROS 안전 제어 코드, Goal·/cmd_vel publisher 및 TTL 변경은 **0**. 기존 비공개 G07 Owner SHA eb984b73138e592caa67426eed9c60dde2ca2ebd를 정확히 재사용한다.
+- 새 ROS 안전 제어 코드, Goal·/cmd_vel publisher 및 TTL 변경은 **0**. 최신 P4 G11 공개 Release SHA d1769b8675c85e7ee564966637cef9113435904a를 호출한다. 해당 Release는 비공개 Instructor SHA afe4e9ae3f6542ef7b2bd3097ce5c15ae5a5ddcc 및 Git tree 580dec5be1988b26d5189616b1b01559a0f1f9a5를 검증하고 원본 RMW 진단·raw custody를 보존한다. 과거 eb984b7 G07 고정은 사용하지 않는다.
 - RViz marker의 원은 **교육용 표시**이지 공식 CM action 증거가 아니다. 실험은 SIMULATION ONLY. SW Stop과 실제 인증 E-Stop을 혼동하지 않는다.
 
 ## 검증 현황
@@ -25,12 +25,11 @@
     (
       set -Eeuo pipefail
       PUBLIC_SHA="<공개-CI-GREEN-40자리-SHA>"
-      LAB="$HOME/axia_d06_gazebo_rviz_public"
-      if [[ ! -d "$LAB/.git" ]]; then
-        git clone -q https://github.com/silverbjin/axia-robot-safety-ci-public.git "$LAB"
-      fi
+      LAB="$(mktemp -d "$HOME/axia_d06_gazebo_rviz_public_XXXXXXXX")"
+      git -C "$LAB" init -q
+      git -C "$LAB" remote add origin https://github.com/silverbjin/axia-robot-safety-ci-public.git
       git -C "$LAB" fetch -q --depth 1 origin "$PUBLIC_SHA"
-      git -C "$LAB" checkout -q --detach "$PUBLIC_SHA"
+      git -C "$LAB" checkout -q --detach FETCH_HEAD
       test "$(git -C "$LAB" rev-parse HEAD)" = "$PUBLIC_SHA"
       bash "$LAB/d06/scripts/d06_gazebo_rviz_owner_wsl2_once.sh" --self-check
       bash "$LAB/d06/scripts/d06_gazebo_rviz_owner_wsl2_once.sh"
@@ -72,7 +71,7 @@
 
 ## 증거 / 오류 인수 경계
 
-강사 A 완료 후 D06_GUI_EVIDENCE 아래 SHA256SUMS, sidecar.log, rviz.log, readonly_monitor.log, readonly_samples.jsonl, session_attachment.txt를 확인한다. 원본 Owner EVIDENCE의 summary.json, G07/live, 14-topic rosbag2, launch.log와 **같은 세션**인지 대조한다.
+강사 A 완료 후 D06_GUI_EVIDENCE 아래 SHA256SUMS, sidecar.log, rviz.log, readonly_monitor.log, readonly_samples.jsonl, session_attachment.txt 및 first_failure_triage.json(있는 경우)을 확인한다. 최신 P4 G11의 비공개 RMW 발행/수신 진단 및 원본 보관 증거와 동일 Goal인지 별도로 대조한다. 원본 Owner EVIDENCE의 summary.json, G07/live, 14-topic rosbag2, launch.log와 **같은 세션**인지 대조한다.
 
 - **Gazebo GUI와 RViz 두 창이 실제로 보이는지** 사람 눈으로 확인한다. D06_RVIZ_STARTED는 단지 프로세스가 생성됐다는 뜻이다.
 - **공식 CM의 실제 STOP**은 G07의 실제 /scan→CM→Guard→/cmd_vel 및 /odom 증거로 확인한다. D06_EDU_OBSERVATION_ZONE은 단순 전방 scan 기반 교육용 라벨로 CM 판정이 아니다.
@@ -85,3 +84,13 @@
 RED→GREEN→REFACTOR→REVIEW→COMMIT. 학생 공개 TODO와 Instructor private 정답/Hidden Tests는 분리한다. 본 공개 저장소는 원본 비공개 G07 소스를 포함하지 않는다.
 
 새 PUBLIC CI L0 PASS는 정적 소스 계약이며 **ROS/Gazebo L2나 WSL2 GUI 성공을 뜻하지 않는다.** 관련 실제 L2 검증 범위를 명시한 뒤 인수 여부를 별도 판정한다. main 병합은 반드시 사용자 승인 후에만 진행한다.
+
+
+## 2026-11-14 현장 문제의 최초 실패 경계와 P4 최소 수정
+
+- 과거 G07 Owner L3 scoped PASS는 실제였으나, 이후 간헐적 CM/Guard 150ms 타이밍 오류가 재발하여 최신 통합 스테이징에서도 Owner 정식 인수는 HOLD.
+- 이번 G07 Owner 최초 /cmd_vel_pre_guard 관측 공백 **172.739ms > 150ms**, Guard 내부 마지막 CM 수신 나이 **181.552ms > 150ms**, Supervisor 나이 56.141ms로 정상. 동시 관찰기의 더 최신 CM 샘플은 Guard 수신 지연 *가능성*이며 CM 발행 정상 증명은 아님.
+- 실제 launch.log에는 Controller 20Hz 루프가 약 5.46Hz로 떨어지는 경고도 있음. WSL2 GUI CPU 경합 가설은 있어도 **인과 확정은 아직 불가**.
+- D06 UI만 nice 15, RViz2 frame rate 8, 교육용 MarkerArray 1Hz로 하향. 이 조치는 CPU 부하 완화 **후보**로 실제 Guard TTL 문제의 영구 수정이 입증된 것은 아님. Supervisor/CM/Guard/Goal/공식 Nav2 안전 TTL은 전혀 변경하지 않는다.
+- 신규 실패가 반복되면 D06_GUI_EVIDENCE/sidecar.log와 private P4 G11 원본 첫 RMW gap/Guard latch를 결합한다. 가장 마지막 Python exception이 아니라 최초 안전 상태 전이와 첫 CM source/receive 위반을 우선하고, 원본은 공개 업로드하지 않는다.
+- D06_G07_POSTRUN_TRIAGE는 비식별 경계 분류로 언제나 safety_pass=false. 실제 Gazebo GUI+RViz WSL2 인수 전 새 Live PASS를 선언하지 않는다.
