@@ -107,7 +107,7 @@ RED→GREEN→REFACTOR→REVIEW→COMMIT. 학생 공개 TODO와 Instructor priva
 ~~~bash
 (
   set -Eeuo pipefail
-  SHA="<D06_POST_STARTUP_CI_GREEN_SHA>"
+  SHA="3fd0ba58debab9bae8621d86cc513fab63f015e4"
   SCRIPT="$(mktemp "$HOME/axia_d06_phase_check.XXXXXXXX")"
   trap 'rm -f -- "$SCRIPT"' EXIT
   curl -fsSL --retry 3 \
