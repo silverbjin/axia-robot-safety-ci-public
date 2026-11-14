@@ -1,0 +1,178 @@
+name: D06 Gazebo RViz Owner Public CI (source-only)
+on:
+  push:
+    branches: ['feature/d06-gazebo-rviz-owner-20261114']
+    paths: ['d06/**', '.github/workflows/d06-gazebo-rviz-owner-public-ci.yml']
+  pull_request:
+    paths: ['d06/**', '.github/workflows/d06-gazebo-rviz-owner-public-ci.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  l0:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: D06 RED to GREEN public contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install -q pytest==8.3.5 PyYAML==6.0.2
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -q d06/tests/test_d06_gazebo_live_contract.py d06/tests/test_d06_field_g07_regression.py d06/tests/test_d06_owner_startup_progress_readonly.py d06/tests/test_d06_ci_shutdown_boundary.py d06/tests/test_d06_final_owner_ci_gate.py d06/tests/test_d06_cm_proc_sched_first_gap.py d06/tests/test_d06_nav2_native_shutdown_log_boundary.py d06/tests/test_d06_sensor_rmw_first_delivery.py d06/tests/test_d06_supervisor_scan_vs_observer_first_gap.py d06/tests/test_d06_native_guard_vs_observer.py d06/tests/test_d06_native_scan_vs_observer.py
+          bash -n d06/scripts/d06_gazebo_rviz_owner_wsl2_once.sh
+          bash -n d06/scripts/d06_rviz_sidecar.sh
+          python -m py_compile d06/live/d06_readonly_monitor.py d06/live/d06_g07_field_triage.py
+          bash d06/scripts/d06_gazebo_rviz_owner_wsl2_once.sh --self-check
+          # Only final Owner TTY admission is allowed after exact 3/3 CI L2.
+          # A noninteractive public CI must still fail before ROS/Gazebo/Goal.
+          rc=0
+          bash d06/scripts/d06_gazebo_rviz_owner_wsl2_once.sh \
+            > /tmp/d06-owner-final-admission.log 2>&1 || rc=$?
+          test "$rc" = 2
+          grep -Fq 'D06_FINAL_OWNER_ADMISSION_ACCEPTED' \
+            /tmp/d06-owner-final-admission.log
+          grep -Fq 'D06_BLOCKED_REAL_OWNER_INTERACTIVE_TTY_REQUIRED' \
+            /tmp/d06-owner-final-admission.log
+          ! grep -Fq 'P2_L3_G07_COLD_START' /tmp/d06-owner-final-admission.log
+          echo 'D06_FINAL_OWNER_ADMISSION_ONLY_TTY_BLOCKS_BEFORE_ROS_AND_GOAL_PASS'
+          echo "D06_GAZEBO_RVIZ_L0_PASS ROS_GAZEBO_RVIZ_NOT_RUN"
+
+  l1-readonly-ros:
+    needs: l0
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    container:
+      image: ros:jazzy-ros-base-noble
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install only official Jazzy message/runtime dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt-get update -qq
+          apt-get install -y -qq --no-install-recommends \
+            ros-jazzy-rclpy ros-jazzy-sensor-msgs ros-jazzy-nav-msgs \
+            ros-jazzy-geometry-msgs ros-jazzy-visualization-msgs \
+            ros-jazzy-nav2-msgs ros-jazzy-ros2cli
+      - name: Real isolated ROS scan/odom observation and RViz marker reception
+        shell: bash
+        run: |
+          set -eo pipefail
+          source /opt/ros/jazzy/setup.bash
+          timeout --signal=TERM --kill-after=15s 100s \
+            python3 -u d06/live/d06_ros_l1_visual_probe.py \
+              --out results/d06-readonly-ros-l1
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          v=json.loads(Path('results/d06-readonly-ros-l1/verdict.json').read_text())
+          assert v['status']=='PASS_READONLY_REAL_ROS_L1'
+          assert v['ros_actual'] is True and v['gazebo_actual'] is False
+          assert v['cmd_vel_publisher_count']==0 and v['cmd_vel_published'] is False
+          assert [s['name'] for s in v['stages']]==['clear','slow','stop']
+          assert all(s['status']=='PASS' for s in v['stages'])
+          assert v['monitor_rc']==0
+          print('D06_GAZEBO_RVIZ_REAL_ROS_L1_PASS GAZEBO_NOT_RUN GUI_NOT_RUN')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d06-rviz-readonly-real-ros-l1
+          path: results/d06-readonly-ros-l1/
+          retention-days: 14
+          if-no-files-found: warn
+
+  l1-rviz-xvfb-window:
+    needs: l0
+    runs-on: ubuntu-24.04
+    timeout-minutes: 24
+    container:
+      image: ros:jazzy-ros-base-noble
+    env:
+      DEBIAN_FRONTEND: noninteractive
+      LIBGL_ALWAYS_SOFTWARE: '1'
+      GALLIUM_DRIVER: llvmpipe
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install actual official RViz2 and virtual display (no private code)
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt-get update -qq
+          apt-get install -y -qq --no-install-recommends \
+            ros-jazzy-rviz2 ros-jazzy-rclpy ros-jazzy-visualization-msgs \
+            ros-jazzy-sensor-msgs ros-jazzy-nav-msgs ros-jazzy-nav2-msgs \
+            ros-jazzy-geometry-msgs libgl1-mesa-dri xvfb xauth x11-utils
+          bash -n d06/scripts/d06_rviz_sidecar.sh
+          echo 'D06_REAL_RVIZ2_XVFB_PREREQUISITES_INSTALLED NO_GOAL'
+      - name: Actual RViz2 window with exact D06 sidecar and real ROS MarkerArray
+        shell: bash
+        run: |
+          set -eo pipefail
+          source /opt/ros/jazzy/setup.bash
+          TESTROOT="$(mktemp -d)"
+          export HOME="$TESTROOT/home"
+          mkdir -p "$HOME"
+          OWNER="$HOME/axia_p2_private_evidence/p2-l3-owner-ci_l1"
+          OUT="$TESTROOT/evidence"
+          mkdir -p "$OWNER/G07" "$OUT"
+          echo 'afe4e9ae3f6542ef7b2bd3097ce5c15ae5a5ddcc' > "$OWNER/source.sha"
+          MARKER="$TESTROOT/started.marker"
+          touch "$MARKER"
+          sleep 1
+          printf 'ROS_DOMAIN_ID=83\nGZ_PARTITION=axia_p2_g07_ci_l1\n' > "$OWNER/G07/session.env"
+          export OUT MARKER
+          timeout --signal=TERM --kill-after=12s 100s \
+            xvfb-run -a -s '-screen 0 1530x900x24' bash -c '
+              set -eo pipefail
+              export QT_QPA_PLATFORM=xcb
+              bash d06/scripts/d06_rviz_sidecar.sh "$MARKER" "$OUT" \
+                afe4e9ae3f6542ef7b2bd3097ce5c15ae5a5ddcc \
+                > "$OUT/sidecar.log" 2>&1 &
+              PID=$!
+              trap "kill -TERM $PID 2>/dev/null || true" EXIT
+              READY=0
+              for i in $(seq 1 45);do
+                if grep -Fq D06_RVIZ_STARTED "$OUT/sidecar.log";then READY=1;break;fi
+                kill -0 "$PID" 2>/dev/null || break
+                sleep 1
+              done
+              cat "$OUT/sidecar.log"
+              if [[ "$READY" != 1 ]];then
+                tail -n 50 "$OUT/rviz.log" "$OUT/readonly_monitor.log" 2>/dev/null || true
+                echo "D06_XVFB_RVIZ_SIDECAR_NOT_READY"
+                exit 3
+              fi
+              xwininfo -root -tree > "$OUT/xwindows.txt"
+              grep -Ei "rviz|D06 G07" "$OUT/xwindows.txt" || {
+                tail -n 60 "$OUT/rviz.log" || true
+                echo "D06_RVIZ_WINDOW_NOT_DISPLAYED_XVFB"
+                exit 3
+              }
+              kill -0 "$PID"
+              kill -TERM "$PID" || true
+              wait "$PID" || true
+              echo "D06_RVIZ_XVFB_WINDOW_AND_MARKER_OBSERVER_L1_PASS"
+            '
+          grep -F 'D06_READONLY_MONITOR_STARTED' "$OUT/readonly_monitor.log"
+          grep -F 'D06_RVIZ_STARTED' "$OUT/sidecar.log"
+          echo 'D06_RVIZ_L1_XVFB_PASS NOT_WSLG NOT_GAZEBO NOT_OWNER_GOAL'
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: d06-xvfb-rviz-first-failure-logs
+          path: |
+            /tmp/**/evidence/rviz.log
+            /tmp/**/evidence/readonly_monitor.log
+            /tmp/**/evidence/sidecar.log
+          if-no-files-found: ignore
