@@ -15,14 +15,14 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: c2c097b290ce595486ba6a674ddfe492d23d0c80
+          ref: 303ae51f8c0ba835822712f885609a0221858a6a
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: RED/GREEN bounded read-only localization failure capture
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git rev-parse HEAD)" = c2c097b290ce595486ba6a674ddfe492d23d0c80
+          test "$(git rev-parse HEAD)" = 303ae51f8c0ba835822712f885609a0221858a6a
           python3 -m unittest discover -s tests/unit -p test_p4_g07_localization_startup_failure_capture.py -v
           bash -n scripts/p2_no_goal_smoke_ci.sh
           echo AXIA_P4_G07_LOCALIZATION_STARTUP_FAILURE_CAPTURE_L0_PASS_NO_ROS_NO_GOAL
