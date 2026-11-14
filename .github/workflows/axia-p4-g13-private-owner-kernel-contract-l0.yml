@@ -15,14 +15,14 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 16698fe93ebe6319c2bbd0ac9fd2ea063e14cdf8
+          ref: e730f0c682f9d13d58ba9790faec28abc1133589
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Verify WSL2 Owner no-Goal special scope and unchanged Linux CI gate
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git rev-parse HEAD)" = 16698fe93ebe6319c2bbd0ac9fd2ea063e14cdf8
+          test "$(git rev-parse HEAD)" = e730f0c682f9d13d58ba9790faec28abc1133589
           bash -n scripts/p2_no_goal_smoke_ci.sh
           python3 -m unittest discover -s tests/unit -p test_p4_g13_pc1_owner_vs_ci_kernel_no_goal.py -v
           echo AXIA_G13_PC1_OWNER_WSL2_VS_LINUX_CI_KERNEL_SCOPE_L0_PASS_NO_ROS_NO_GOAL
