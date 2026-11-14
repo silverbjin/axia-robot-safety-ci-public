@@ -1,0 +1,190 @@
+name: AXIA P4 S02 true Gazebo ECM every-step native witness NO-GOAL L2
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-p4-demo-s02-native-ecm-no-goal-l2.yml']
+permissions:
+  contents: read
+jobs:
+  real-native-contact-no-goal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 13
+    environment: axia-instructor-sealed
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+      options: --dns 1.1.1.1 --dns 8.8.8.8
+    steps:
+      - name: Exact sealed S02 candidate and original Waffle/Nav2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 647d5aeee1f90e9b9f9f38b5094e383960414d24
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          path: instructor
+          persist-credentials: false
+      - name: CI safety admission source + exact script syntax
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 647d5aeee1f90e9b9f9f38b5094e383960414d24
+          bash -n instructor/scripts/p2_no_goal_smoke_ci.sh
+          python3 -m py_compile instructor/tools/p2_l3_gz_fixture.py instructor/tools/p4_s02_native_contact_evidence.py
+          echo AXIA_S02_REAL_CONTACT_L2_EXACT_PRIVATE_SOURCE_STATIC_PASS_NO_ROS_NO_GOAL
+      - name: Real Gazebo native Contact publisher/type probe concurrently with safe official Nav2 NO-GOAL session
+        shell: bash
+        env:
+          ROS_DOMAIN_ID: '86'
+          ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+          GZ_PARTITION: axia_p2_s02_contact_86
+          AXIA_P0_SIM_ONLY: '1'
+          AXIA_P2_G07_PHYSICAL_PREFLIGHT: '1'
+          AXIA_P2_G07_OWNER_PARITY_CHECK: '1'
+          AXIA_G07_OWNER_STARTUP_PARITY: '1'
+          AXIA_G07_SHUTDOWN_L2_ONLY: '1'
+          AXIA_P4_G07_LOCALIZATION_STARTUP_DIAGNOSTIC: '1'
+          AXIA_G07_CI_SIM_GOAL_ALLOWED: '0'
+          AXIA_P2_SMOKE_RESULTS: results/p4-s02-contact-no-goal-l2
+        run: |
+          set -Eeuo pipefail
+          cd instructor
+          # Existing Owner parity contract blocks a non-axia_p2_ namespace.
+          [[ "${GZ_PARTITION:-}" == axia_p2_* ]] || {
+            echo AXIA_S02_CI_GZ_PARTITION_OWNER_PARITY_BLOCKED_NO_GOAL
+            exit 3
+          }
+          echo AXIA_S02_CI_GZ_PARTITION_PARITY_PRECHECK_PASS_NO_GOAL
+          set +u
+          source /opt/ros/jazzy/setup.bash
+          set -u
+          # Native verifier only: compile against exact installed Gazebo8 ABI
+          # inside this single CI invocation. No ROS/Nav2/CM safety modification.
+          if ! command -v c++ >/dev/null || ! test -e /usr/include/gz/sim8/gz/sim/System.hh; then
+            apt-get update -qq
+            DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends g++ make libgz-sim8-dev
+          fi
+          cmake -S tools/native_s02 -B "$RUNNER_TEMP/s02-ecm-build" -DCMAKE_BUILD_TYPE=Release
+          cmake --build "$RUNNER_TEMP/s02-ecm-build" --parallel 2
+          test -s "$RUNNER_TEMP/s02-ecm-build/libaxia_s02_physics_witness.so"
+          export GZ_SIM_SYSTEM_PLUGIN_PATH="$RUNNER_TEMP/s02-ecm-build:${GZ_SIM_SYSTEM_PLUGIN_PATH:-}"
+          export AXIA_S02_ECM_WITNESS_CI=1
+          export AXIA_S02_ECM_WITNESS_REPORT="$PWD/results/p4-s02-contact-no-goal-l2/s02_ecm_witness.json"
+          export AXIA_S02_WITNESS_SOURCE_SHA=647d5aeee1f90e9b9f9f38b5094e383960414d24
+          export AXIA_S02_WITNESS_SESSION=s02-native-ecm-no-goal-86
+          mkdir -p "$RUNNER_TEMP/axia_s02"
+          echo AXIA_S02_NATIVE_ECM_GAZEBO_WITNESS_OPTIN_BUILD_PASS_GOAL_DENIED
+          timeout --signal=TERM --kill-after=10s 540s bash scripts/p2_no_goal_smoke_ci.sh \
+            >"$RUNNER_TEMP/axia_s02/smoke.log" 2>&1 &
+          runner_pid=$!
+          topic='/axia_p2_g07/contacts'
+          found=0
+          for attempt in $(seq 1 75); do
+            if ! kill -0 "$runner_pid" 2>/dev/null;then break;fi
+            if timeout 5s gz topic -l 2>/dev/null | grep -Fxq "$topic";then
+              found=1
+              echo "AXIA_S02_GAZEBO_CANONICAL_CONTACT_TOPIC_FOUND_NATIVE source=original_owner_topic attempt=$attempt"
+              break
+            fi
+            sleep 2
+          done
+          if (( found == 0 ));then
+            echo AXIA_S02_NATIVE_CONTACT_TOPIC_MISSING_OR_SESSION_FINISHED
+          else
+            timeout 9s gz topic -i -t "$topic" >"$RUNNER_TEMP/axia_s02/contact_topic_info.log" 2>&1 || true
+            if grep -Fq 'gz.msgs.Contacts' "$RUNNER_TEMP/axia_s02/contact_topic_info.log"; then
+              echo AXIA_S02_NATIVE_GAZEBO_CONTACT_MESSAGE_TYPE_VERIFIED
+            else
+              echo AXIA_S02_NATIVE_CONTACT_TYPE_UNVERIFIED
+            fi
+            # Observe a bounded actual native stream. No messages is NOT
+            # evidence of zero collision. Never issue Goal or fault.
+            timeout 4s gz topic -e -t "$topic" \
+              >"$RUNNER_TEMP/axia_s02/contact_native_stream.log" 2>/dev/null || true
+          fi
+          wait "$runner_pid" || rc=$?
+          rc=${rc:-0}
+          # Native per-step counters are independent of the event-only topic.
+          # Report only aggregates, never raw private logs or source.
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          f=Path('results/p4-s02-contact-no-goal-l2/s02_ecm_witness.json')
+          if not f.exists():
+              print('AXIA_S02_ECM_PHYSICS_WITNESS_MISSING_NO_ZERO_PROOF')
+          else:
+              w=json.loads(f.read_text())
+              print('AXIA_S02_ECM_NATIVE_STEP_OBSERVATION '+json.dumps({
+                  k:w.get(k) for k in ('sensor_found','component_found',
+                    'first_iteration','last_iteration','observed_iterations',
+                    'missing_iterations','positive_contacts','report_complete')
+              },sort_keys=True))
+              print('AXIA_S02_ECM_NO_GOAL_CANNOT_SIGN_OFF_COLLISION_ZERO')
+          PY
+          if (( rc != 0 ));then
+            echo "AXIA_S02_REAL_NO_GOAL_NAV2_L2_BLOCKED_RC=$rc"
+            grep -E 'P2_STAGED_NO_GOAL_BLOCKED|G07_.*BLOCKED|PARITY_BLOCKED|P2_L2_SMOKE_RC' "$RUNNER_TEMP/axia_s02/smoke.log" | tail -n 25 || true
+            # Diagnostic-only: extract first native Nav2 ACK failure and categories
+            # from exact private source logs, never print raw Owner/CI logs.
+            python3 - <<'PY'
+          import json,re
+          from pathlib import Path
+          root=Path('results/p4-s02-contact-no-goal-l2')
+          verdict=root/'g07_ordered_shutdown.json'
+          startup=root/'startup_verdict.json'
+          launch=root/'launch.log'
+          v=json.loads(verdict.read_text()) if verdict.exists() else {}
+          s=json.loads(startup.read_text()) if startup.exists() else {}
+          lines=launch.read_text(errors='replace').splitlines() if launch.exists() else []
+          tokens={
+            'navigation_manager':['lifecycle_manager_navigation'],
+            'localization_manager':['lifecycle_manager_localization'],
+            'collision_monitor':['collision_monitor'],
+            'bond_failure':['bond','broken'],
+            'lifecycle_change_failed':['failed to change state','failed transition'],
+            'service_timeout':['service timeout','timed out','timeout'],
+            'fatal_process':['process has died','segfault','sigabrt','sigsegv'],
+            'ros_callback_error':['executor','callback group','rclcpp'],
+          }
+          summary={k:sum(any(x in l.lower() for x in vals) for l in lines)
+                   for k,vals in tokens.items()}
+          print('AXIA_S02_NAV_ACK_FIRST_BOUNDARY '+json.dumps({
+            'first_failure':'NAVIGATION_SHUTDOWN_ACK_TIMEOUT'
+              if v.get('status','').endswith('NAVIGATION_SERVICE_TIMEOUT')
+              else v.get('status','UNKNOWN'),
+            'navigation_elapsed_sec':v.get('navigation_elapsed_sec'),
+            'navigation_ack':v.get('navigation_ack',False),
+            'localization_ack':v.get('localization_ack',False),
+            'cm_managed_by_navigation':v.get('cm_managed_by_navigation',False),
+            'startup_status':s.get('status'),
+            'goal_sent':s.get('goal_sent',None),
+            'launch_diagnostic_counts':summary,
+            'launch_line_count':len(lines),
+          },sort_keys=True))
+          PY
+            exit 3
+          fi
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          root=Path('results/p4-s02-contact-no-goal-l2')
+          sv=json.loads((root/'startup_verdict.json').read_text())
+          shutdown=json.loads((root/'g07_ordered_shutdown.json').read_text())
+          probe=list(root.glob('**/g07_contact_topic_probe.json'))
+          assert sv['status']=='SMOKE_READY' and sv['goal_sent'] is False
+          assert shutdown['status']=='NAV2_LIFECYCLE_SHUTDOWN_ACK'
+          assert shutdown['navigation_ack'] and shutdown['localization_ack']
+          if probe:
+              p=json.loads(probe[0].read_text())
+              print('AXIA_S02_GAZEBO_CONTACT_PROBE '+json.dumps({
+                  'selected_native_topic':p.get('contact_topic'),
+                  'contact_found':p.get('contact_found'),
+                  'collision_zero_verified':p.get('native_contact_zero_verified',False),
+              },sort_keys=True))
+          print('AXIA_S02_GAZEBO_NAV2_NO_GOAL_L2_RUN_PASS_CONTACT_ZERO_NOT_PROVEN')
+          PY
+          if (( found == 0 ));then exit 3;fi
+          if ! grep -Fq 'gz.msgs.Contacts' "$RUNNER_TEMP/axia_s02/contact_topic_info.log";then exit 3;fi
+          echo AXIA_S02_REAL_GAZEBO_NATIVE_CONTACT_TOPIC_AND_TYPE_L2_PASS_ZERO_COLLISION_UNVERIFIED
+      - name: Purge private source and sensor raw text after reporting only aggregate results
+        if: always()
+        shell: bash
+        run: rm -rf -- instructor "$RUNNER_TEMP/axia_s02" "$RUNNER_TEMP/s02-ecm-build"
