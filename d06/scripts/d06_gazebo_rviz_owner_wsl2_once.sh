@@ -76,13 +76,19 @@ finish() {
   [[ ! -d "$CHECKOUT" ]] || rm -rf -- "$CHECKOUT"
   (cd "$OUT" && find . -type f ! -name SHA256SUMS -print0 |
     sort -z | xargs -0 -r sha256sum > SHA256SUMS)
-  echo "D06_GUI_OWNER_WRAPPER_RC=$rc"
   echo "D06_GUI_EVIDENCE=$OUT"
   if grep -Fq D06_RVIZ_STARTED "$OUT/sidecar.log" 2>/dev/null;then
     echo 'D06_RVIZ_PROCESS_START_OBSERVED; WSLG_VISUAL_CONFIRMATION_NOT_AUTOMATED'
   else
     echo 'D06_RVIZ_NOT_CONFIRMED; inspect sidecar.log'
+    if [[ "$rc" == 0 ]];then rc=3;fi
   fi
+  if grep -Fq D06_RVIZ_SIDECAR_EXITED_BEFORE_OWNER_COMPLETION \
+      "$OUT/sidecar.log" 2>/dev/null;then
+    echo 'D06_RVIZ_EARLY_EXIT_BLOCKED; original safety result retained separately'
+    if [[ "$rc" == 0 ]];then rc=3;fi
+  fi
+  echo "D06_GUI_OWNER_WRAPPER_RC=$rc"
   echo 'D06_GAZEBO_GUI_NOT_YET_VERIFIED: original G07 numerical result is not GUI acceptance'
   exit "$rc"
 }
