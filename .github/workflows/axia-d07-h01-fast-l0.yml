@@ -20,7 +20,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: dc5f8e2b2c5bf8e4bbab11804490b5a66b59014d
+          ref: 71f6ac4bda47bed7e2990ee467a92948989566a0
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -28,7 +28,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 'dc5f8e2b2c5bf8e4bbab11804490b5a66b59014d'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '71f6ac4bda47bed7e2990ee467a92948989566a0'
           cd instructor
           python3 -m py_compile tools/d07_h01_native_topic_catchup.py tools/d07_h01_native_corridor_return.py tools/d07_h01_preintrusion_baseline.py tools/d07_h01_nav2_scan_source.py tools/d07_h01_free_planner_repeat.py tools/d07_h01_amcl_pre_goal.py tools/d07_h01_native_costmap_layers.py tools/d07_h01_nav2_clear_config.py tools/d07_h01_path_cost_correlation.py tools/d07_h01_costmap_drift.py tools/d07_h01_oracle.py tools/d07_h01_geometry_l2.py tools/d07_h01_contact_calibration_l2.py tools/d07_h01_ttl_no_goal_l2.py tools/p2_g07_ci_moving_goal_oracle.py tools/p2_l3_live_session.py
           bash -n scripts/p2_no_goal_smoke_ci.sh
