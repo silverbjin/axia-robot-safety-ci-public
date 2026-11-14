@@ -33,7 +33,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: b8c927f5a0039babe77d13c040eaf8385db8d167
+          ref: 7060f848b8ffebc50f9edeb18bd19f0b5ce77623
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -41,7 +41,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 'b8c927f5a0039babe77d13c040eaf8385db8d167'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '7060f848b8ffebc50f9edeb18bd19f0b5ce77623'
           test "$ROS_DISTRO" = jazzy
           cd instructor
           mkdir -p results/p2-g07-ci-moving
@@ -85,7 +85,7 @@ jobs:
         run: |
           set -euo pipefail
           cd instructor
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 'b8c927f5a0039babe77d13c040eaf8385db8d167'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '7060f848b8ffebc50f9edeb18bd19f0b5ce77623'
           timeout --signal=TERM --kill-after=10s 900s \
             bash scripts/p2_no_goal_smoke_ci.sh || {
             echo 'AXIA_G07_CI_MOVING_GOAL_REAL_GAZEBO_BLOCKED'
