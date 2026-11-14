@@ -20,7 +20,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: e8bff0f0dee49894fb2768af42d1a5d26adda45c
+          ref: 1e16d7a3ff9ba6fcf83807a8514ad968635eff9c
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -28,9 +28,9 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 'e8bff0f0dee49894fb2768af42d1a5d26adda45c'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '1e16d7a3ff9ba6fcf83807a8514ad968635eff9c'
           cd instructor
-          python3 -m py_compile tools/d07_h01_oracle.py tools/d07_h01_geometry_l2.py tools/d07_h01_contact_calibration_l2.py
+          python3 -m py_compile tools/d07_h01_oracle.py tools/d07_h01_geometry_l2.py tools/d07_h01_contact_calibration_l2.py tools/d07_h01_ttl_no_goal_l2.py
           bash -n scripts/p2_no_goal_smoke_ci.sh
           for name in oracle runner_diagnostics costmap_roundtrip path_return costmap_spatial costmap_localization costmap_semantics drift drift_runner contact contact_calibration contact_calibration_runner live_ttl ttl_no_goal_runner clearing_residue admission_timing roi_clearing; do
             python3 -m unittest discover -s tests/unit -p "test_d07_h01_${name}.py" -v
