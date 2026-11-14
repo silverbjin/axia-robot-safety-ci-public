@@ -1,0 +1,46 @@
+name: AXIA P4 demo G02-G04 scoped evidence signoff audit L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-p4-demo-g02-g04-scoped-signoff-l0.yml']
+permissions:
+  contents: read
+jobs:
+  protected-past-evidence-audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    environment: axia-instructor-sealed
+    steps:
+      - name: Check exact private candidate sources, no ROS/Gazebo or Owner Goal
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 02916c9c46a6f61e5973d16f8a0066d715375282
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Historical scoped L0/L1 and L2 recorded evidence signoff
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = 02916c9c46a6f61e5973d16f8a0066d715375282
+          python3 -m unittest discover -s tests/unit -p test_p4_demo_g02_g04_scoped_signoff.py -v
+          python3 -m unittest discover -s tests/unit -p test_p4_demo_acceptance_profile.py -v
+          python3 tools/p4_demo_acceptance.py --verify-current \
+            --output "$RUNNER_TEMP/axia_demo_g02_g04_review_result.json"
+          python3 - "$RUNNER_TEMP/axia_demo_g02_g04_review_result.json" <<'PY'
+          import json,sys
+          obj=json.load(open(sys.argv[1]))
+          assert obj['status']=='HOLD'
+          assert obj['scenario_reused_evidence_count']==5
+          assert obj['legacy_g11_formal_accepted_count']==0
+          assert obj['blockers']==[
+              'G07_FIRST_CM_GUARD_TTL_VIOLATION_UNRESOLVED',
+              'S02_NATIVE_CONTACT_ZERO_NOT_VERIFIED',
+              'INSTRUCTOR_WSL2_INTEGRATED_DEMO_NOT_VERIFIED']
+          assert obj['certified_estop'] is False and obj['is_formally_accepted'] is False
+          print('AXIA_P4_DEMO_G02_G03_G04_SCOPED_TECHNICAL_SIGNOFF_L0_PASS_G07_S02_WSL2_HOLD')
+          PY
+      - name: Delete protected instructor checkout
+        if: always()
+        shell: bash
+        run: rm -rf -- .git docs tools tests configs ros2_ws training instructor
