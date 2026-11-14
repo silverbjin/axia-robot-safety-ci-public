@@ -93,3 +93,19 @@ def test_masked_rc3_without_goal_but_ready_startup_is_pregoal_not_shutdown(tmp_p
     assert r["status"]=="HOLD_PRE_GOAL_PHYSICAL"
     assert r["first_cleanup_failure"] is None
     assert r["owner_l3_accepted"] is False
+
+
+def test_goal_guard_latch_first_wins_over_cleanup_rc3(tmp_path):
+    from d06.live.d06_ci_shutdown_triage import review_cleanup
+    root,logfile,rcfile=fixture(tmp_path,rc=3,
+        marker="G07_CI_LAUNCH_LIVE_AFTER_MANAGED_EXIT_BUDGET")
+    (root/"g07_ci_moving"/"ci_moving_goal_result.json").write_text(
+        json.dumps({"status":"BLOCKED","goal_sent":True,"guard_latched":True,
+                    "first_guard_latch":{"reason":"UPSTREAM_STALE_AFTER_MOTION",
+                                          "cm_age_sec":0.15301809}}))
+    r=review_cleanup(root,logfile,rcfile)
+    assert r["status"]=="HOLD_G07_SAFETY_LATCH"
+    assert r["first_failure_phase"]=="GOAL_SAFETY_LATCH"
+    assert r["first_failure_gate"]=="UPSTREAM_STALE_AFTER_MOTION"
+    assert r["first_cleanup_failure"] is None
+    assert r["full_run_pass"] is False
