@@ -1,0 +1,32 @@
+name: AXIA P4 G07 localization startup fail-closed first-state probe L0 TDD
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-p4-g07-localization-first-state-l0.yml']
+permissions:
+  contents: read
+jobs:
+  no-goal-first-lifecycle-ack-triage:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    environment: axia-instructor-sealed
+    steps:
+      - name: Exact private source, no ROS or Goal
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: c2c097b290ce595486ba6a674ddfe492d23d0c80
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: RED/GREEN bounded read-only localization failure capture
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = c2c097b290ce595486ba6a674ddfe492d23d0c80
+          python3 -m unittest discover -s tests/unit -p test_p4_g07_localization_startup_failure_capture.py -v
+          bash -n scripts/p2_no_goal_smoke_ci.sh
+          echo AXIA_P4_G07_LOCALIZATION_STARTUP_FAILURE_CAPTURE_L0_PASS_NO_ROS_NO_GOAL
+      - name: Erase private checkout
+        if: always()
+        shell: bash
+        run: rm -rf -- .git docs ros2_ws scripts tools tests fixtures scenarios configs results training
