@@ -32,7 +32,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 8088c0b01af042cbadea504bc1a5876a40c082af
+          ref: 269275ce6563f70ef592e350b693431b59204280
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -40,7 +40,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '8088c0b01af042cbadea504bc1a5876a40c082af'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '269275ce6563f70ef592e350b693431b59204280'
           test "$(git -C ci-public-admission -c safe.directory="$PWD/ci-public-admission" rev-parse HEAD)" = '5b6b10322ee3682f43815cd1a8d4b8135811f8fc'
           ( cd ci-public-admission && python3 -m unittest discover -s tests -p test_d07_h01_public_contract.py -v )
           cd instructor
@@ -57,7 +57,8 @@ jobs:
           python3 -m unittest discover -s tests/unit -p test_d07_h01_contact_calibration.py -v
           python3 -m unittest discover -s tests/unit -p test_d07_h01_live_ttl.py -v
           python3 -m unittest discover -s tests/unit -p test_d07_h01_ttl_no_goal_runner.py -v
-          python3 -m py_compile tools/d07_h01_oracle.py tools/d07_h01_live_ttl.py tools/d07_h01_ttl_no_goal_l2.py
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_mvp_rmw_reuse.py -v
+          python3 -m py_compile tools/d07_h01_oracle.py tools/d07_h01_live_ttl.py tools/d07_h01_ttl_no_goal_l2.py tools/p2_g07_ci_moving_goal_oracle.py tools/p2_l3_live_session.py
           bash -n scripts/p2_no_goal_smoke_ci.sh
           echo 'AXIA_D07_H01_PUBLIC_ADMISSION_PRIVATE_ORACLE_SYNTAX_L0_PASS_NO_ROS_NO_GOAL'
       - name: Exact official Jazzy/Harmonic/Nav2 runtime 25+5 parity
@@ -95,7 +96,7 @@ jobs:
           AXIA_P2_SMOKE_RESULTS: results/d07-h01-ci/real-l2
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '8088c0b01af042cbadea504bc1a5876a40c082af'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '269275ce6563f70ef592e350b693431b59204280'
           cd instructor
           timeout --signal=TERM --kill-after=10s 870s bash scripts/p2_no_goal_smoke_ci.sh || {
             echo 'AXIA_D07_H01_REAL_GAZEBO_TTL_DIAGNOSTIC_BLOCKED_NO_GOAL'
@@ -118,7 +119,7 @@ jobs:
           assert audit['actual_header_age_verified'] is False
           assert audit['callback_diagnostic']['first_ttl_violation'] is None
           assert audit['callback_diagnostic']['first_safety_transition'] is None
-          assert audit['source_sha']=='8088c0b01af042cbadea504bc1a5876a40c082af'
+          assert audit['source_sha']=='269275ce6563f70ef592e350b693431b59204280'
           assert audit['certified_estop'] is False
           bag=root/'rosbag2'
           assert (bag/'metadata.yaml').is_file()
