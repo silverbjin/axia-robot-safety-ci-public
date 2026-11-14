@@ -77,3 +77,90 @@ jobs:
           path: results/d06-readonly-ros-l1/
           retention-days: 14
           if-no-files-found: warn
+
+  l1-rviz-xvfb-window:
+    needs: l0
+    runs-on: ubuntu-24.04
+    timeout-minutes: 24
+    container:
+      image: ros:jazzy-ros-base-noble
+    env:
+      DEBIAN_FRONTEND: noninteractive
+      LIBGL_ALWAYS_SOFTWARE: '1'
+      GALLIUM_DRIVER: llvmpipe
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install actual official RViz2 and virtual display (no private code)
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt-get update -qq
+          apt-get install -y -qq --no-install-recommends \
+            ros-jazzy-rviz2 ros-jazzy-rclpy ros-jazzy-visualization-msgs \
+            ros-jazzy-sensor-msgs ros-jazzy-nav-msgs ros-jazzy-nav2-msgs \
+            ros-jazzy-geometry-msgs libgl1-mesa-dri xvfb xauth x11-utils
+          bash -n d06/scripts/d06_rviz_sidecar.sh
+          echo 'D06_REAL_RVIZ2_XVFB_PREREQUISITES_INSTALLED NO_GOAL'
+      - name: Actual RViz2 window with exact D06 sidecar and real ROS MarkerArray
+        shell: bash
+        run: |
+          set -eo pipefail
+          source /opt/ros/jazzy/setup.bash
+          TESTROOT="$(mktemp -d)"
+          export HOME="$TESTROOT/home"
+          mkdir -p "$HOME"
+          OWNER="$HOME/axia_p2_private_evidence/p2-l3-owner-ci_l1"
+          OUT="$TESTROOT/evidence"
+          mkdir -p "$OWNER/G07" "$OUT"
+          echo 'afe4e9ae3f6542ef7b2bd3097ce5c15ae5a5ddcc' > "$OWNER/source.sha"
+          MARKER="$TESTROOT/started.marker"
+          touch "$MARKER"
+          sleep 1
+          printf 'ROS_DOMAIN_ID=83\nGZ_PARTITION=axia_p2_g07_ci_l1\n' > "$OWNER/G07/session.env"
+          export OUT MARKER
+          timeout --signal=TERM --kill-after=12s 100s \
+            xvfb-run -a -s '-screen 0 1530x900x24' bash -c '
+              set -eo pipefail
+              export QT_QPA_PLATFORM=xcb
+              bash d06/scripts/d06_rviz_sidecar.sh "$MARKER" "$OUT" \
+                afe4e9ae3f6542ef7b2bd3097ce5c15ae5a5ddcc \
+                > "$OUT/sidecar.log" 2>&1 &
+              PID=$!
+              trap "kill -TERM $PID 2>/dev/null || true" EXIT
+              READY=0
+              for i in $(seq 1 45);do
+                if grep -Fq D06_RVIZ_STARTED "$OUT/sidecar.log";then READY=1;break;fi
+                kill -0 "$PID" 2>/dev/null || break
+                sleep 1
+              done
+              cat "$OUT/sidecar.log"
+              if [[ "$READY" != 1 ]];then
+                tail -n 50 "$OUT/rviz.log" "$OUT/readonly_monitor.log" 2>/dev/null || true
+                echo "D06_XVFB_RVIZ_SIDECAR_NOT_READY"
+                exit 3
+              fi
+              xwininfo -root -tree > "$OUT/xwindows.txt"
+              grep -Ei "rviz|D06 G07" "$OUT/xwindows.txt" || {
+                tail -n 60 "$OUT/rviz.log" || true
+                echo "D06_RVIZ_WINDOW_NOT_DISPLAYED_XVFB"
+                exit 3
+              }
+              kill -0 "$PID"
+              kill -TERM "$PID" || true
+              wait "$PID" || true
+              echo "D06_RVIZ_XVFB_WINDOW_AND_MARKER_OBSERVER_L1_PASS"
+            '
+          grep -F 'D06_READONLY_MONITOR_STARTED' "$OUT/readonly_monitor.log"
+          grep -F 'D06_RVIZ_STARTED' "$OUT/sidecar.log"
+          echo 'D06_RVIZ_L1_XVFB_PASS NOT_WSLG NOT_GAZEBO NOT_OWNER_GOAL'
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: d06-xvfb-rviz-first-failure-logs
+          path: |
+            /tmp/**/evidence/rviz.log
+            /tmp/**/evidence/readonly_monitor.log
+            /tmp/**/evidence/sidecar.log
+          if-no-files-found: ignore
