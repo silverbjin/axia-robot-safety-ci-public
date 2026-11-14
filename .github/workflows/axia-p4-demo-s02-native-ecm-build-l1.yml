@@ -1,0 +1,41 @@
+name: AXIA P4 S02 Native physics ECM witness build (no ROS/no Goal)
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-p4-demo-s02-native-ecm-build-l1.yml']
+permissions:
+  contents: read
+jobs:
+  native-read-only-build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    environment: axia-instructor-sealed
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+      options: --dns 1.1.1.1 --dns 8.8.8.8
+    steps:
+      - name: Checkout pinned Instructor S02-only candidate
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 2f787c7a2f0c8847fd7c070772d73c8d494ba0f3
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          path: instructor
+          persist-credentials: false
+      - name: Compile scoped observer only; no Gazebo launch
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 2f787c7a2f0c8847fd7c070772d73c8d494ba0f3
+          command -v cmake
+          command -v c++
+          test -e /usr/include/gz/sim8/gz/sim/System.hh
+          cmake -S instructor/tools/native_s02 -B "$RUNNER_TEMP/s02-native-build" -DCMAKE_BUILD_TYPE=Release
+          cmake --build "$RUNNER_TEMP/s02-native-build" --parallel 2
+          test -s "$RUNNER_TEMP/s02-native-build/libaxia_s02_physics_witness.so"
+          python3 -m py_compile instructor/tools/p2_l3_world_overlay.py instructor/tools/p4_s02_physics_frame_contract.py
+          echo AXIA_S02_GAZEBO_HARMONIC_ECM_WITNESS_COMPILE_PASS_NO_ROS_NO_GOAL
+      - name: Purge temporary plugin and private Instructor source
+        if: always()
+        shell: bash
+        run: rm -rf -- instructor "$RUNNER_TEMP/s02-native-build"
