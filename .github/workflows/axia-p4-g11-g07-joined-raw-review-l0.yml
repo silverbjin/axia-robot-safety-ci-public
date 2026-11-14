@@ -1,0 +1,35 @@
+name: AXIA P4 G11 exact Owner G07 joined raw/TTL review L0 TDD
+on:
+  push:
+    branches:
+      - test/p4-g11-g07-joined-raw-review-20261114
+      - release/p2-g06-cm-ttl-20261110
+    paths:
+      - .github/workflows/axia-p4-g11-g07-joined-raw-review-l0.yml
+permissions:
+  contents: read
+jobs:
+  sealed-g07-readonly-original-goal-join:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    environment: axia-instructor-sealed
+    steps:
+      - name: Checkout exact private test source, no Goal
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: bd61a3ead47b92e916054eeba4ded5187c62cab2
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Offline same-Goal G07 TAR/copied SHA + first timing evidence TDD
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = bd61a3ead47b92e916054eeba4ded5187c62cab2
+          python3 -m unittest discover -s tests/unit -p test_p4_g11_g07_joined_raw_review.py -v
+          python3 -m py_compile tools/p4_g11_g07_joined_raw_review.py
+          echo AXIA_G11_G07_JOINED_RAW_L0_PASS_NO_ROS_NO_GOAL_FORMAL_HOLD
+      - name: Remove protected source including temporary fixtures
+        if: always()
+        shell: bash
+        run: rm -rf -- .git docs ros2_ws scripts tools tests fixtures scenarios configs results training
