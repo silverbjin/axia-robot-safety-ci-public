@@ -35,6 +35,17 @@ jobs:
           set -Eeuo pipefail
           test "$(git -C student_main rev-parse HEAD)" = d2f16eaf5b5fb60ad9b8009fe1532fa75363e971
           test "$(git -C student_d03 rev-parse HEAD)" = 4f74916a09f726ffd6978926adfc83ee9f528298
+          python3 -m py_compile public/tools/axia_p4_g12_release_inventory.py
           python3 -m unittest discover -s public/tests -p test_p4_g12_release_inventory.py -v
           python3 public/tools/axia_p4_g12_release_inventory.py             --student-main student_main             --student-d03 student_d03             --main-sha d2f16eaf5b5fb60ad9b8009fe1532fa75363e971             --d03-sha 4f74916a09f726ffd6978926adfc83ee9f528298             --runtime-digest sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e             --report "$RUNNER_TEMP/g12-release-inventory.json"
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          r=json.loads((Path(os.environ['RUNNER_TEMP'])/'g12-release-inventory.json').read_text())
+          assert r['status']=='HOLD_INCOMPLETE_STUDENT_RELEASE_INVENTORY'
+          assert set(('D03_NOT_IN_STUDENT_MAIN','ROOT_LICENSES_MD_MISSING','ROOT_VERSION_LOCK_MD_MISSING','THIRD_PARTY_ATTRIBUTION_NOT_LOCKED')).issubset(r['blockers'])
+          assert r['student_d03_skeleton_present'] and r['private_path_finding_count']==0
+          assert not r['formal_g12_accepted'] and not r['new_student_release']
+          print('AXIA_G12_REAL_STUDENT_MAIN_D03_LICENSING_GAPS_CONFIRMED_NOT_RELEASED')
+          PY
           echo AXIA_G12_REAL_STUDENT_RELEASE_AUDIT_SCOPED_PASS_NOT_RELEASED
