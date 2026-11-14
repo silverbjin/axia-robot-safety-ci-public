@@ -32,7 +32,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 47903392ed65dc36e5a49b566e867f7aad8e3196
+          ref: 2398fab3a9f4101c74a9e5a48f0707f847dd02eb
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -40,7 +40,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '47903392ed65dc36e5a49b566e867f7aad8e3196'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '2398fab3a9f4101c74a9e5a48f0707f847dd02eb'
           test "$(git -C ci-public-admission -c safe.directory="$PWD/ci-public-admission" rev-parse HEAD)" = '5b6b10322ee3682f43815cd1a8d4b8135811f8fc'
           ( cd ci-public-admission && python3 -m unittest discover -s tests -p test_d07_h01_public_contract.py -v )
           cd instructor
@@ -86,7 +86,7 @@ jobs:
           AXIA_P2_SMOKE_RESULTS: results/d07-h01-ci/real-l2
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '47903392ed65dc36e5a49b566e867f7aad8e3196'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '2398fab3a9f4101c74a9e5a48f0707f847dd02eb'
           cd instructor
           timeout --signal=TERM --kill-after=10s 870s bash scripts/p2_no_goal_smoke_ci.sh || {
             echo 'AXIA_D07_H01_REAL_GAZEBO_GEOMETRY_NO_GOAL_BLOCKED'
@@ -111,7 +111,7 @@ jobs:
               print('AXIA_D07_H01_CONTACT_HOLD_NO_GOAL_MOTION_NOT_ADMITTED')
           else:
               assert geo['contact_topic_proven'] is True
-          assert geo['source_sha']=='47903392ed65dc36e5a49b566e867f7aad8e3196'
+          assert geo['source_sha']=='2398fab3a9f4101c74a9e5a48f0707f847dd02eb'
           assert geo['goal_sent'] is False and geo['real_nav2'] is True
           assert geo['real_laser_scan'] is True and geo['actual_costmap_obstacle_observed'] is True
           assert geo['path_changed'] and geo['path_viable']
