@@ -11,7 +11,7 @@ on:
     # HOLD: only an explicit source-reviewed CI trigger after the CM
     # STOP-period cause has a GREEN regression may authorize the costly
     # simulation Goal. Editing this workflow alone never auto-moves a robot.
-    paths: ['.github/workflows/axia-p4-g07-rmw-cm-supervisor-window-real-l2.yml']
+    paths: ['.github/workflows/axia-p4-demo-g07-native-rpc-timing-real-l2.yml']
 permissions:
   contents: read
 concurrency:
