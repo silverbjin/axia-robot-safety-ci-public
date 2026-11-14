@@ -1,0 +1,70 @@
+name: AXIA P4 S02 Gazebo native positive contact calibration L2 NO-GOAL
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-p4-demo-s02-ecm-positive-native-l2.yml']
+permissions:
+  contents: read
+jobs:
+  native-physics-positive-control:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: axia-instructor-sealed
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+      options: --dns 1.1.1.1 --dns 8.8.8.8
+    steps:
+      - name: Exact sealed Instructor source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 02e89b2c01f88b50dbbce02387533da62b534dff
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          path: instructor
+          persist-credentials: false
+      - name: One CI-only native physics positive witness (NO ROS, NO Nav2, NO Goal)
+        shell: bash
+        env:
+          GZ_PARTITION: axia_p2_s02_cal_91
+          AXIA_P0_SIM_ONLY: '1'
+          AXIA_G07_CI_SIM_GOAL_ALLOWED: '0'
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 02e89b2c01f88b50dbbce02387533da62b534dff
+          if ! command -v c++ >/dev/null || ! test -e /usr/include/gz/sim8/gz/sim/System.hh;then
+            apt-get update -qq
+            DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends g++ make libgz-sim8-dev
+          fi
+          cmake -S instructor/tools/native_s02 -B "$RUNNER_TEMP/s02-cal-build" -DCMAKE_BUILD_TYPE=Release
+          cmake --build "$RUNNER_TEMP/s02-cal-build" --parallel 2
+          export GZ_SIM_SYSTEM_PLUGIN_PATH="$RUNNER_TEMP/s02-cal-build:${GZ_SIM_SYSTEM_PLUGIN_PATH:-}"
+          export AXIA_S02_ECM_WITNESS_REPORT="$RUNNER_TEMP/s02_calibration_native_ecm.json"
+          export AXIA_S02_WITNESS_SOURCE_SHA=02e89b2c01f88b50dbbce02387533da62b534dff
+          export AXIA_S02_WITNESS_SESSION=s02-native-positive-control-91
+          PYTHONPATH="$PWD/instructor/tools" python3 -c 'from p4_s02_native_control import build_native_positive_world;print(build_native_positive_world())' > "$RUNNER_TEMP/s02_calibration.sdf"
+          echo AXIA_S02_ECM_POSITIVE_NATIVE_GAZEBO_BEGIN_NO_GOAL
+          timeout --signal=INT --kill-after=8s 18s gz sim -s -r -v 1 "$RUNNER_TEMP/s02_calibration.sdf" > "$RUNNER_TEMP/s02_calibration.log" 2>&1 || sim_rc=$?
+          echo "AXIA_S02_ECM_CALIBRATION_GZ_EXIT=${sim_rc:-0}"
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          r=Path(os.environ['AXIA_S02_ECM_WITNESS_REPORT'])
+          assert r.is_file(), 'S02_POSITIVE_NATIVE_ECM_REPORT_MISSING'
+          w=json.loads(r.read_text())
+          summary={k:w.get(k) for k in (
+              'source_kind','sensor_found','component_found','first_iteration',
+              'last_iteration','observed_iterations','missing_iterations',
+              'positive_contacts','report_complete')}
+          print('AXIA_S02_ECM_ACTUAL_GAZEBO_POSITIVE_CONTROL '+json.dumps(summary,sort_keys=True))
+          assert w['source_kind']=='GZ_SIM8_ECM_CONTACT_SENSOR_DATA_EACH_STEP'
+          assert w['source_sha']=='02e89b2c01f88b50dbbce02387533da62b534dff'
+          assert w['sensor_found'] is True and w['component_found'] is True
+          assert w['report_complete'] is True and w['observed_iterations']>=50
+          assert w['missing_iterations']==0
+          assert w['positive_contacts']>0, 'NATIVE_ECM_POSITIVE_CONTACT_NOT_OBSERVED'
+          print('AXIA_S02_NATIVE_PHYSICS_POSITIVE_CALIBRATION_L2_PASS_NO_GOAL_ZERO_NOT_PROVEN')
+          PY
+      - name: Purge private calibration source and raw
+        if: always()
+        shell: bash
+        run: rm -rf -- instructor "$RUNNER_TEMP/s02-cal-build" "$RUNNER_TEMP/s02_calibration.sdf" "$RUNNER_TEMP/s02_calibration.log" "$RUNNER_TEMP/s02_calibration_native_ecm.json"
