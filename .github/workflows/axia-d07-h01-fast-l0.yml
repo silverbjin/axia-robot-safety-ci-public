@@ -20,7 +20,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 45c5bffeabf9c334d4c14c8a4c088b8dab557c1e
+          ref: 8b91a6a4955c9aae03921dfd56b95f4036c207e
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -28,7 +28,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '45c5bffeabf9c334d4c14c8a4c088b8dab557c1e'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '8b91a6a4955c9aae03921dfd56b95f4036c207e'
           cd instructor
           python3 -m py_compile tools/d07_h01_oracle.py tools/d07_h01_geometry_l2.py
           for name in oracle runner_diagnostics costmap_roundtrip path_return costmap_spatial costmap_localization costmap_semantics drift drift_runner contact clearing_residue admission_timing; do
