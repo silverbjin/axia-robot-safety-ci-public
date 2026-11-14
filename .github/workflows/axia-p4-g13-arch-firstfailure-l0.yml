@@ -13,7 +13,7 @@ jobs:
       - name: Exact candidate G13 shell source
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
-          ref: ebe66ca535f4ece2e11cd5ae46103c23c578e79e
+          ref: 53bcb816826fbee33f941b448b19677bf76d1289
           path: source
           persist-credentials: false
       - name: Assert architecture expression and no-run first-failure inspection
