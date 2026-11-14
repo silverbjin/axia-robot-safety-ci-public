@@ -18,14 +18,14 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: bd61a3ead47b92e916054eeba4ded5187c62cab2
+          ref: 84a311988a15bd577bc11e673d7ddfa8d5ef2b21
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Offline same-Goal G07 TAR/copied SHA + first timing evidence TDD
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git rev-parse HEAD)" = bd61a3ead47b92e916054eeba4ded5187c62cab2
+          test "$(git rev-parse HEAD)" = 84a311988a15bd577bc11e673d7ddfa8d5ef2b21
           python3 -m unittest discover -s tests/unit -p test_p4_g11_g07_joined_raw_review.py -v
           python3 -m py_compile tools/p4_g11_g07_joined_raw_review.py
           echo AXIA_G11_G07_JOINED_RAW_L0_PASS_NO_ROS_NO_GOAL_FORMAL_HOLD
