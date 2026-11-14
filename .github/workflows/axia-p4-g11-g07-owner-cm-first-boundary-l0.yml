@@ -15,14 +15,14 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: ac2e742c385d3e12fd5cf62aad8a7f6d1e6a9854
+          ref: b3348cf5a420bfba536aa8e48042c43dd9f1474b
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: First Guard CM internal TTL and partial capture truth
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git rev-parse HEAD)" = ac2e742c385d3e12fd5cf62aad8a7f6d1e6a9854
+          test "$(git rev-parse HEAD)" = b3348cf5a420bfba536aa8e48042c43dd9f1474b
           python3 -m unittest discover -s tests/unit -p test_p4_g11_g07_joined_raw_review.py -v
           python3 -m py_compile tools/p4_g11_g07_joined_raw_review.py
           echo AXIA_G11_FIRST_GUARD_CM_TTL_REGRESSION_L0_PASS_NO_ROS_NO_GOAL
