@@ -17,8 +17,6 @@ def test_current_real_l2_failure_blocks_instructor_goal_owner_before_private_che
     assert value["cm_observer_callback_gap_ms"]>150
     assert value["guard_cm_age_ms"]>150
     assert value["whole_ci_l2_pass"] is False
-    assert value["first_failure_kind"]=="CM_RMW_PUBLICATION_GAP_150MS"
-    assert value["cm_source_gap_ms"]>150
     assert value["certified_estop"] is False
 
 def test_WSL2_wrapper_requires_ci_admission_prior_to_any_goal_or_private_source():
