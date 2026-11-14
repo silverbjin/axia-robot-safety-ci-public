@@ -1,0 +1,44 @@
+name: D06 G11 final Owner pinned source static contract
+on:
+  push:
+    branches: ['release/d06-g07-owner-g11-pinned-20261115']
+    paths:
+      - '.github/workflows/d06-g11-owner-release-static-ci.yml'
+      - 'scripts/axia_p4_g11_owner_g07_rmw_provenance_once.sh'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  no-goal-source-pin:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Original G11 manual Owner consent and exact CI-verified source/tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          SCRIPT=scripts/axia_p4_g11_owner_g07_rmw_provenance_once.sh
+          bash -n "$SCRIPT"
+          python3 - "$SCRIPT" <<'PY'
+          from pathlib import Path
+          import sys
+          s=Path(sys.argv[1]).read_text()
+          assert 'PRIVATE_SHA="c44414f8e3bad37a349565f211d554540cccb062"' in s
+          assert 'PRIVATE_TREE="d2e3044689a5873cd61d6bc5f84a40b20a81f84e"' in s
+          assert "AXIA_P2_OWNER_PINNED_SHA=\"$PRIVATE_SHA\"" in s
+          assert "git -C \"$WORK/instructor\" rev-parse 'HEAD^{tree}'" in s
+          assert "gh auth status" in s
+          assert "YES-P2-G07-GOAL" in s
+          assert "AXIA_G11_RUN_CUSTODY_REQUIRED=1" in s
+          assert "p4_g11_g07_joined_raw_review.py" in s
+          assert "cm_rmw_provenance" in s
+          assert "first_guard_cm_delivery_boundary" in s
+          assert "AXIA_G07_CI_SIM_GOAL_ALLOWED" not in s
+          assert "AXIA_P2_GUARD_BYPASS" not in s
+          assert "CM_TTL_SEC=0.25" not in s
+          assert s.index("INTERACTIVE_OWNER_TTY_REQUIRED") < s.index("gh repo clone")
+          print("D06_G11_OWNER_PINNED_SHA_TREE_MANUAL_TTY_RAW_CUSTODY_RMW_STATIC_PASS NO_ROS_NO_GOAL")
+          PY
