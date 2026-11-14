@@ -1,0 +1,77 @@
+name: AXIA P4 G08 G11 historical requalification and WSL2 custody bootstrap L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-p4-g08-g11-custody-bootstrap-evidence-l0.yml']
+permissions:
+  contents: read
+jobs:
+  public-bootstrap-and-protected-g08-g11-fail-closed-matrix:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    environment: axia-instructor-sealed
+    steps:
+      - name: Checkout public bootstrap
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Public Owner WSL2 script syntax and no Goal source pin
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          bash -n scripts/axia_p4_g11_owner_custody_bootstrap.sh
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('scripts/axia_p4_g11_owner_custody_bootstrap.sh').read_text()
+          assert '04c13b63839e68822cba95a876106dbd0b13f227' in s
+          assert 'gh auth status' in s and 'git -C "$WORK/instructor" fetch' in s
+          assert 'AXIA_G11_PRIVATE_SOURCE_SHA' in s
+          assert 'ros2 launch' not in s and 'ros2 action send_goal' not in s
+          assert 'rclone' not in s and 'gh release upload' not in s
+          print('AXIA_P4_G11_PUBLIC_WSL2_SINGLE_COMMAND_NO_GOAL_STATIC_PASS')
+          PY
+      - name: Checkout sealed immutable historical ledger and G08 report
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 015db13e6d80293d6827e45f5ad345e2c1742f2
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          path: instructor
+          persist-credentials: false
+      - name: 24 candidates intact and 0 of 15 accepted until original raw
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C instructor rev-parse HEAD)" = '015db13e6d80293d6827e45f5ad345e2c1742f2'
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('instructor/docs/reports')
+          ledger=json.loads((root/'AXIA_P4_G11_COLD_RUN_EVIDENCE_LEDGER_20261113.json').read_text())
+          matrix=json.loads((root/'AXIA_P4_G08_G13_RELEASE_READINESS_MATRIX_20261113.json').read_text())
+          assert len(ledger['observed_sources'])==24
+          assert ledger['formal_accepted'] is False
+          assert ledger['g11']['formal_acceptance_counts']==dict.fromkeys(('S01','S02','S03','S04','S05'),0)
+          lc=ledger['g11']['owner_raw_custody_contract']
+          assert lc['private_tested_source_sha']=='04c13b63839e68822cba95a876106dbd0b13f227'
+          assert (lc['public_ci_red_run'],lc['public_ci_green_run'])==(43539237114,43539734289)
+          assert lc['public_unit_tests_passed']==15 and not lc['owner_wsl2_custody_run']
+          assert lc['original_raw_custodial_files_processed_this_task']==0
+          assert not ledger['g08']['requalification_review_20261114']['formal_g08_accepted']
+          assert not ledger['g08']['requalification_review_20261114']['original_archive_read_or_rehashed_this_task']
+          assert matrix['formal_accepted'] is False
+          assert matrix['g11']['formal_scenario_repeat_counts']==dict.fromkeys(('S01','S02','S03','S04','S05'),0)
+          m=matrix['g11']['owner_raw_custody']
+          assert m['unit_cases_passed']==15 and m['raw_files_copied_during_this_task']==0
+          assert not m['owner_wsl2_run'] and not m['raw_owner_manifest_verified']
+          assert m['remote_mirror_default_off'] is True
+          assert not matrix['g08']['g08_p0_run7_archive_review']['formal_accepted']
+          assert matrix['gates']['G11'].startswith('FORMAL_0_OF_15')
+          assert (root/'AXIA_P4_G08_G11_HISTORICAL_RAW_REQUALIFICATION_AND_CUSTODY_20261114_KO.md').is_file()
+          print('AXIA_P4_G08_G11_HISTORICAL_24_SOURCES_REVIEWED_NO_NEW_RUN')
+          print('AXIA_P4_G11_OWNER_RAW_CUSTODY_PUBLIC_L0_15_OF_15_SOURCE_BOUND_PASS')
+          print('AXIA_P4_G08_RUN7_ORIGINAL_NOT_LOCATED_WSL2_SEARCH_NOT_RUN')
+          print('AXIA_P4_G11_FORMAL_ZERO_OF_FIFTEEN_OWNER_RAW_NOT_CUSTODIED')
+          PY
+      - name: Erase sealed metadata
+        if: always()
+        shell: bash
+        run: rm -rf -- instructor
