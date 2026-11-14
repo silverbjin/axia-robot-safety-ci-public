@@ -123,3 +123,80 @@ def test_invalid_active_end_is_unknown_not_pass():
     r=inspect_native_guard(events,active_end=9.0)
     assert r["status"]=="NATIVE_GUARD_RECEIPT_UNVERIFIED"
     assert r["safety_pass"] is False
+
+
+
+def _native_with_cm_gap_windows(t, count, windows, *, truncated=False):
+    r=guard(t,count,0,cm_max=22.149998)
+    d=r["data"]["native_input_timing"]
+    d["cm_gap_windows"]=windows
+    d["cm_gap_windows_truncated"]=truncated
+    d["supervisor_gap_windows"]=[]
+    d["supervisor_gap_windows_truncated"]=False
+    return r
+
+
+def test_22s_gap_crossing_goal_boundary_does_not_become_moving_cm_ttl_violation():
+    # #43604558683: actual CLEAR/SLOW/STOP/odom & native shutdown all passed,
+    # but lifetime 22.15s max was falsely compared to active Goal 150ms.
+    events=[
+        _native_with_cm_gap_windows(19.95,0,[]),
+        {"kind":"owner_goal_published","t":20.0},
+        _native_with_cm_gap_windows(20.15,1,[
+            {"start_mono":-2.0,"end_mono":20.149998,
+             "gap_sec":22.149998}]),
+    ]
+    r=inspect_native_guard(events,active_end=20.2)
+    assert r["native_cm_gap_count_added_since_goal"]==1
+    assert r["native_cm_goal_scoped_gap_count"]==0
+    assert r["native_cm_boundary_straddling_gap_count"]==1
+    assert r["native_cm_gap_window_coverage_verified"] is True
+    assert r["native_cm_callback_max_gap_ms"] is None
+    assert r["status"]=="NATIVE_GUARD_INPUT_GAPS_NOT_OBSERVED"
+    assert r["safety_pass"] is False
+
+
+def test_real_native_cm_breach_fully_between_goal_and_stop_remains_blocked():
+    events=[
+        _native_with_cm_gap_windows(9.95,0,[]),
+        {"kind":"owner_goal_published","t":10.0},
+        _native_with_cm_gap_windows(10.49,1,[
+            {"start_mono":10.1,"end_mono":10.271215,
+             "gap_sec":.171215}]),
+    ]
+    r=inspect_native_guard(events,active_end=10.5)
+    assert r["status"]=="HOLD_NATIVE_GUARD_CM_INPUT_GAP_150MS"
+    assert r["native_cm_goal_scoped_gap_count"]==1
+    assert r["native_cm_callback_max_gap_ms"]==171.215
+    assert r["safety_pass"] is False
+
+
+def test_missing_or_truncated_boundary_windows_never_auto_approve():
+    for truncated in (False,True):
+        events=[
+            _native_with_cm_gap_windows(9.9,0,[]),
+            {"kind":"owner_goal_published","t":10.0},
+            _native_with_cm_gap_windows(10.49,1,[],truncated=truncated),
+        ]
+        r=inspect_native_guard(events,active_end=10.5)
+        assert r["status"] in (
+            "HOLD_NATIVE_GUARD_CM_INPUT_GAP_150MS",
+            "NATIVE_GUARD_SCOPE_METADATA_UNVERIFIED",
+        )
+        assert r["native_cm_gap_window_coverage_verified"] is False
+        assert r["safety_pass"] is False
+
+
+def test_guard_latch_during_goal_must_override_crossing_window_exclusion():
+    events=[
+        _native_with_cm_gap_windows(19.95,0,[]),
+        {"kind":"owner_goal_published","t":20.0},
+        _native_with_cm_gap_windows(20.15,1,[
+            {"start_mono":-2.0,"end_mono":20.149998,
+             "gap_sec":22.149998}]),
+        guard(20.17,1,0,latched=True),
+    ]
+    r=inspect_native_guard(events,active_end=20.2)
+    assert r["status"]=="HOLD_NATIVE_GUARD_FIRST_LATCH"
+    assert r["native_guard_latch_observed"] is True
+    assert r["owner_l3_accepted"] is False
