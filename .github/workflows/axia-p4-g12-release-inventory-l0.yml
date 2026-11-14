@@ -1,0 +1,40 @@
+name: AXIA P4 G12 Student main D03 release inventory and attribution L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-p4-g12-release-inventory-l0.yml']
+permissions:
+  contents: read
+jobs:
+  real-student-tree-and-release-gaps-not-a-release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Checkout public validator
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          path: public
+          persist-credentials: false
+      - name: Exact Student main latest audited source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: d2f16eaf5b5fb60ad9b8009fe1532fa75363e971
+          path: student_main
+          persist-credentials: false
+      - name: Exact separate Student D03 branch
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: 4f74916a09f726ffd6978926adfc83ee9f528298
+          path: student_d03
+          persist-credentials: false
+      - name: Source-pinned independent student skeleton audit, no teacher checkout
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C student_main rev-parse HEAD)" = d2f16eaf5b5fb60ad9b8009fe1532fa75363e971
+          test "$(git -C student_d03 rev-parse HEAD)" = 4f74916a09f726ffd6978926adfc83ee9f528298
+          python3 -m unittest discover -s public/tests -p test_p4_g12_release_inventory.py -v
+          python3 public/tools/axia_p4_g12_release_inventory.py             --student-main student_main             --student-d03 student_d03             --main-sha d2f16eaf5b5fb60ad9b8009fe1532fa75363e971             --d03-sha 4f74916a09f726ffd6978926adfc83ee9f528298             --runtime-digest sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e             --report "$RUNNER_TEMP/g12-release-inventory.json"
+          echo AXIA_G12_REAL_STUDENT_RELEASE_AUDIT_SCOPED_PASS_NOT_RELEASED
