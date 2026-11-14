@@ -52,7 +52,7 @@ jobs:
           ! grep -Fq 'REAL_JAZZY_HARMONIC_NO_GOAL_L2_PASS' "$RUNNER_TEMP/g13_inspect.log"
           echo AXIA_G13_PREVIOUS_FAILED_ORIGINAL_REVIEW_L0_PASS_NO_ROS_NO_GOAL
           # First normal stage MUST NOT be mistaken for the first failure.
-          printf '%s\\n' \
+          printf '%s\n' \
             'P2_STAGED_NO_GOAL_LOCALIZATION_START_ACK' \
             'P2_STAGED_NO_GOAL_BLOCKED:NAVIGATION_START:G07_NATIVE_LIFECYCLE_STARTUP_SERVICE_TIMEOUT:request_sent=True' \
             >"$ROOT/actual/staged_startup.log"
