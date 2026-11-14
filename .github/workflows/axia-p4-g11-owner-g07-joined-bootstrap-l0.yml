@@ -42,7 +42,7 @@ jobs:
           for forbidden in ('ros2 action send_goal','YES-P2-G07-GOAL\\n',
                             'rclone copy', 'gh release upload', 'git push'):
               assert forbidden not in s, forbidden
-          assert s.index('p2_owner_l3_wsl2.sh') < s.index('p4_g11_g07_joined_raw_review.py')
+          assert s.index('bash "$WORK/instructor/scripts/p2_owner_l3_wsl2.sh"') < s.index('python3 "$WORK/instructor/tools/p4_g11_g07_joined_raw_review.py"')
           print('AXIA_G11_OWNER_SINGLE_GOAL_TTY_MANUAL_CONSENT_STATIC_PASS')
           PY
       - name: Protected Instructor exact tree and no-goal reviewer exists
