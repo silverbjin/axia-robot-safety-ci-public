@@ -18,7 +18,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 647d5aeee1f90e9b9f9f38b5094e383960414d24
+          ref: 02e89b2c01f88b50dbbce02387533da62b534dff
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -26,7 +26,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 647d5aeee1f90e9b9f9f38b5094e383960414d24
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 02e89b2c01f88b50dbbce02387533da62b534dff
           bash -n instructor/scripts/p2_no_goal_smoke_ci.sh
           python3 -m py_compile instructor/tools/p2_l3_gz_fixture.py instructor/tools/p4_s02_native_contact_evidence.py
           echo AXIA_S02_REAL_CONTACT_L2_EXACT_PRIVATE_SOURCE_STATIC_PASS_NO_ROS_NO_GOAL
@@ -68,7 +68,7 @@ jobs:
           export GZ_SIM_SYSTEM_PLUGIN_PATH="$RUNNER_TEMP/s02-ecm-build:${GZ_SIM_SYSTEM_PLUGIN_PATH:-}"
           export AXIA_S02_ECM_WITNESS_CI=1
           export AXIA_S02_ECM_WITNESS_REPORT="$PWD/results/p4-s02-contact-no-goal-l2/s02_ecm_witness.json"
-          export AXIA_S02_WITNESS_SOURCE_SHA=647d5aeee1f90e9b9f9f38b5094e383960414d24
+          export AXIA_S02_WITNESS_SOURCE_SHA=02e89b2c01f88b50dbbce02387533da62b534dff
           export AXIA_S02_WITNESS_SESSION=s02-native-ecm-no-goal-86
           mkdir -p "$RUNNER_TEMP/axia_s02"
           echo AXIA_S02_NATIVE_ECM_GAZEBO_WITNESS_OPTIN_BUILD_PASS_GOAL_DENIED
@@ -118,6 +118,27 @@ jobs:
                     'missing_iterations','positive_contacts','report_complete')
               },sort_keys=True))
               print('AXIA_S02_ECM_NO_GOAL_CANNOT_SIGN_OFF_COLLISION_ZERO')
+          PY
+          # Fail-before-Gazebo classifier: earliest whitelisted marker only.
+          # Never expose private raw rosbag, launch arguments or tokens.
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,re
+          root=Path('results/p4-s02-contact-no-goal-l2')
+          smoke=Path(__import__('os').environ['RUNNER_TEMP'])/'axia_s02/smoke.log'
+          lines=smoke.read_text(errors='replace').splitlines() if smoke.exists() else []
+          def safe(line):
+              t=line.strip()
+              return bool(re.match(r'^(AXIA_|G07_|P2_|ROS_|NAV2_)',t)) and bool(re.search(
+                  r'BLOCKED|FAIL|MISSING|INVALID|ERROR|TIMEOUT|PARITY',t))
+          first=next((l.strip()[:190] for l in lines if safe(l)),'NONE')
+          print('AXIA_S02_PRE_GAZEBO_FIRST_FAILURE '+json.dumps({
+              'first_marker':first,'smoke_lines':len(lines),
+              'build_log_present':(root/'build.log').is_file(),
+              'world_overlay_present':(root/'g07_world_overlay.log').is_file(),
+              'launch_log_present':(root/'launch.log').is_file(),
+              'startup_verdict_present':(root/'startup_verdict.json').is_file()
+          },sort_keys=True))
           PY
           if (( rc != 0 ));then
             echo "AXIA_S02_REAL_NO_GOAL_NAV2_L2_BLOCKED_RC=$rc"
