@@ -11,6 +11,7 @@ import math
 from pathlib import Path
 
 CM_TTL_S = 0.15  # DIAGNOSTIC CONST; never modifies actual Guard timeout.
+SCAN_TTL_S = 0.30  # Do not modify actual Scan timeout.
 
 def _number(x):
     return type(x) in (float, int) and math.isfinite(x) and x >= 0
@@ -28,6 +29,13 @@ def classify_owner_field(record: dict) -> dict:
         "status": "INCONCLUSIVE_OWNER_ORIGINAL_NOT_FULLY_VERIFIED",
         "first_channel": None,
         "first_interval_sec": None,
+        "first_channel_limit_sec": None,
+        "scan_violated_before_guard_latch": False,
+        "scan_caused_guard_latch_proven": False,
+        "cm_publisher_healthy_proven": False,
+        "rmw_source_attribution": "UNVERIFIED",
+        "final_zero_after_guard_latch_observed": False,
+        "physical_stop_dwell_verified": False,
         "guard_latch_cm_age_sec": None,
         "guard_receive_lag_possible": False,
         "cm_publisher_stopped_proven": False,
@@ -42,18 +50,35 @@ def classify_owner_field(record: dict) -> dict:
     if isinstance(first, dict):
         gap = first.get("first_violation_sec")
         cap = first.get("limit_sec")
-        if first.get("channel") == "pre_guard" and _number(gap) and _number(cap):
-            out["first_channel"] = "pre_guard"
+        if (first.get("channel") in ("scan", "pre_guard")
+                and _number(gap) and _number(cap) and gap > cap):
+            out["first_channel"] = first["channel"]
             out["first_interval_sec"] = gap
+            out["first_channel_limit_sec"] = cap
+            tick = guard.get("tick_monotonic") if isinstance(guard, dict) else None
+            observed = first.get("first_violation_at")
+            # Chronology does not prove the scan breach caused the later latch.
+            out["scan_violated_before_guard_latch"] = (
+                first["channel"] == "scan" and _number(observed)
+                and _number(tick) and observed < tick)
     if not isinstance(guard, dict) or not _number(guard.get("cm_age_sec")):
         if record.get("status") == "BLOCKED":
             out["status"] = "HOLD_G07_UNCLASSIFIED_FIRST_FAILURE"
         return out
+    out["final_zero_after_guard_latch_observed"] = (
+        record.get("final_command_zero_after_latch") is True)
+    # Even an observed zero command does not prove physical /odom stop dwell.
+    rmw = record.get("first_cm_supervisor_rmw_window")
+    if isinstance(rmw, dict) and rmw.get("classification") == "UNVERIFIED":
+        out["rmw_source_attribution"] = "UNVERIFIED"
     age = guard["cm_age_sec"]
     out["guard_latch_cm_age_sec"] = age
     if (guard.get("reason") == "UPSTREAM_STALE_AFTER_MOTION"
             and age > CM_TTL_S):
-        out["status"] = "HOLD_G07_GUARD_CM_DELIVERY_TTL"
+        out["status"] = (
+            "HOLD_G07_SCAN_THEN_GUARD_CM_TTL"
+            if out["scan_violated_before_guard_latch"]
+            else "HOLD_G07_GUARD_CM_DELIVERY_TTL")
         if isinstance(skew, dict):
             guard_seen = skew.get("guard_cm_age_at_latch_sec")
             observer_seen = skew.get("observer_cm_age_at_latch_sec")
