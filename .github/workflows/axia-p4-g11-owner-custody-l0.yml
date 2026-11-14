@@ -15,14 +15,14 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 15528da4d3d3bf16d693904c313d8123a1833b50
+          ref: 04c13b63839e68822cba95a876106dbd0b13f227
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Fail closed G11 raw copy no Goal no ROS source registry and tamper tests
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git rev-parse HEAD)" = '15528da4d3d3bf16d693904c313d8123a1833b50'
+          test "$(git rev-parse HEAD)" = '04c13b63839e68822cba95a876106dbd0b13f227'
           python3 -m unittest discover -s tests/unit -p test_p4_g11_owner_raw_custody.py -v
           python3 -m py_compile tools/p3_owner_evidence_probe.py tools/p4_g11_owner_raw_custody.py
           bash -n scripts/p4_g11_owner_custody_once.sh
