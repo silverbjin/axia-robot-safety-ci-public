@@ -23,7 +23,8 @@ jobs:
         run: |
           set -Eeuo pipefail
           test "$(git rev-parse HEAD)" = '91a5c78b3992ada4a2dad70848f4919c67c58c19'
-          python3 -m py_compile tools/p4_g11_bundle_requalification_contract.py\n          python3 -m unittest discover -s tests/unit -p test_p4_g11_bundle_requalification_contract.py -v
+          python3 -m py_compile tools/p4_g11_bundle_requalification_contract.py
+          python3 -m unittest discover -s tests/unit -p test_p4_g11_bundle_requalification_contract.py -v
           echo AXIA_P4_G08_G11_704_REF_NOT_704_GOALS_RAW_SCOPE_L0_PASS_FORMAL_0_OF_15
       - name: Always erase private solution
         if: always()
