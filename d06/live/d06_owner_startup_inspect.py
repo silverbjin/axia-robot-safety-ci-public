@@ -37,6 +37,74 @@ def _file_json(path: Path) -> dict:
         return {}
 
 
+
+def _post_startup_evidence(g07: Path, *, nav2_ready: bool) -> dict:
+    """Inspect recorded downstream artifacts. No running-process claim is made.
+
+    File existence proves only that a phase emitted an artifact, not that
+    hardware or current ROS graph completed the phase successfully.
+    """
+    d = {
+        "post_startup_phase": "NOT_STARTED_OR_NOT_VERIFIED",
+        "owner_original_status": None,
+        "owner_wrapper_rc": None,
+        "live_goal_sent_reported": False,
+        "first_guard_latch_reason": None,
+        "post_startup_latest_log": None,
+    }
+    if not nav2_ready:
+        return d
+    d["post_startup_phase"] = "NAV2_READY_NEXT_STAGE_NOT_YET_OBSERVED"
+    if (g07/"corridor.log").is_file():
+        d["post_startup_phase"] = "CORRIDOR_CHECK_STARTED_OR_FAILED"
+        d["post_startup_latest_log"] = "corridor.log"
+    if _file_json(g07/"corridor.json"):
+        d["post_startup_phase"] = "CORRIDOR_RESULT_EXISTS_PREG0AL_NOT_VERIFIED"
+    elif (g07/"corridor.json").is_file():
+        d["post_startup_phase"] = "CORRIDOR_RESULT_EXISTS_PREG0AL_NOT_VERIFIED"
+    if (g07/"g07_shared_pregoal.log").is_file():
+        d["post_startup_phase"] = "PHYSICAL_PREG0AL_STARTED_OR_FAILED"
+        d["post_startup_latest_log"] = "g07_shared_pregoal.log"
+    pregoal = _file_json(g07/"g07_shared_pregoal"/"owner_pregoal_l2.json")
+    if (preg0al_status := pregoal.get("status")) == "P2_G07_OWNER_PREGOAL_L2_READY_NO_GOAL" and pregoal.get("goal_sent") is False:
+        d["post_startup_phase"] = "PHYSICAL_PREG0AL_READY_NO_GOAL"
+    elif preg0al_status:
+        d["post_startup_phase"] = "PHYSICAL_PREG0AL_BLOCKED_OR_UNVERIFIED"
+    if (g07/"live.log").is_file():
+        d["post_startup_phase"] = "LIVE_OBSERVER_STARTED_GOAL_UNVERIFIED"
+        d["post_startup_latest_log"] = "live.log"
+    live = _file_json(g07/"live"/"ci_moving_goal_result.json")
+    if live:
+        d["live_goal_sent_reported"] = live.get("goal_sent") is True
+        guard = live.get("first_guard_latch")
+        if isinstance(guard, dict) and isinstance(guard.get("reason"), str):
+            d["first_guard_latch_reason"] = guard["reason"]
+        if d["live_goal_sent_reported"]:
+            d["post_startup_phase"] = (
+                "LIVE_GOAL_SENT_BLOCKED_SAFETY_REVIEW"
+                if live.get("status") == "BLOCKED" or d["first_guard_latch_reason"]
+                else "LIVE_GOAL_SENT_RAW_REVIEW_REQUIRED"
+            )
+        else:
+            d["post_startup_phase"] = "LIVE_RESULT_EXISTS_GOAL_UNVERIFIED"
+    if (g07/"g07_ordered_shutdown.log").is_file():
+        d["post_startup_phase"] = "SHUTDOWN_STARTED_OR_FAILED"
+        d["post_startup_latest_log"] = "g07_ordered_shutdown.log"
+    shut = _file_json(g07/"g07_ordered_shutdown.json")
+    if shut:
+        d["post_startup_phase"] = "SHUTDOWN_RESULT_EXISTS_REVIEW_REQUIRED"
+    audit = _file_json(g07/"g07_shutdown_audit.json")
+    if audit:
+        d["post_startup_phase"] = "SHUTDOWN_AUDIT_EXISTS_REVIEW_REQUIRED"
+    summary = _file_json(g07.parent/"summary.json")
+    if summary:
+        d["owner_original_status"] = summary.get("status")
+        d["owner_wrapper_rc"] = summary.get("wrapper_rc")
+        d["post_startup_phase"] = "OWNER_EXIT_RECORDED_REVIEW_REQUIRED"
+        d["post_startup_latest_log"] = "summary.json"
+    return d
+
+
 def inspect_run(g07: Path, *, now: float | None = None) -> dict:
     """Summarize one original Owner run; NO safety verdict is inferred."""
     g07 = Path(g07)
@@ -49,8 +117,15 @@ def inspect_run(g07: Path, *, now: float | None = None) -> dict:
         "next_pending": None,
         "first_failed_gate": None,
         "last_stage_detail": None,
-        "elapsed_since_start_log_sec": None,
+        "startup_log_last_write_age_sec": None,
         "last_verdict_update_age_sec": None,
+        "startup_timeout_proven": False,
+        "post_startup_phase": "NOT_STARTED_OR_NOT_VERIFIED",
+        "owner_original_status": None,
+        "owner_wrapper_rc": None,
+        "live_goal_sent_reported": False,
+        "first_guard_latch_reason": None,
+        "post_startup_latest_log": None,
         "goal_sent": False,
         "acceptance_pass": False,
         "no_ros_no_goal_readonly": True,
@@ -61,7 +136,7 @@ def inspect_run(g07: Path, *, now: float | None = None) -> dict:
     current = time.time() if now is None else now
     result["status"] = "STARTUP_IN_PROGRESS_NO_GOAL"
     try:
-        result["elapsed_since_start_log_sec"] = round(
+        result["startup_log_last_write_age_sec"] = round(
             max(0., current - log.stat().st_mtime), 1)
         verdict_file = g07 / "startup_verdict.json"
         if verdict_file.is_file() and not verdict_file.is_symlink():
@@ -102,6 +177,8 @@ def inspect_run(g07: Path, *, now: float | None = None) -> dict:
         result["status"] = "UNTRUSTED_GOAL_SENT_IN_NO_GOAL_STARTUP_VERDICT"
     elif data.get("status") == "ERROR":
         result["status"] = "STARTUP_ERROR"
+    result.update(_post_startup_evidence(
+        g07, nav2_ready=(result["status"]=="STARTUP_READY_NO_GOAL")))
     return result
 
 
@@ -144,8 +221,12 @@ def main() -> int:
     print("OWNER_G07_DIR="+str(g07) if g07 else "OWNER_G07_DIR=NOT_LOCATED")
     for key in (
         "status", "last_completed", "next_pending", "first_failed_gate",
-        "last_stage_detail", "elapsed_since_start_log_sec",
-        "last_verdict_update_age_sec", "outer_startup_limit_sec"):
+        "last_stage_detail", "startup_log_last_write_age_sec",
+        "last_verdict_update_age_sec", "outer_startup_limit_sec",
+        "startup_timeout_proven", "post_startup_phase",
+        "post_startup_latest_log", "live_goal_sent_reported",
+        "first_guard_latch_reason", "owner_original_status",
+        "owner_wrapper_rc"):
         print(f"{key.upper()}={result[key]}")
     if g07:
         for name in ("staged_startup.log",
@@ -163,6 +244,8 @@ def main() -> int:
                 else:
                     lines = _last_log_lines(path, 3)
                     print(name+" LAST_LINES="+repr(lines))
+    print("INTERPRETATION=FILE_MTIME_AGE_IS_NOT_STARTUP_DURATION_OR_480S_TIMEOUT")
+    print("INTERPRETATION=RECORDED_POST_STARTUP_PHASE_NOT_CURRENT_PROCESS_HEALTH")
     print("INTERPRETATION=NEXT_PENDING_IS_NOT_PROVEN_ROOT_CAUSE")
     print("NOT_ACCEPTED_OWNER_L3_OR_PHYSICAL_ESTOP")
     return 0 if result["status"] != "NO_OWNER_STAGED_LOG" else 3
