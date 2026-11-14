@@ -52,7 +52,7 @@
 ## 화면과 터미널 분리
 
 - **Gazebo GUI:** 공식 TurtleBot3 Waffle, 실제 G07 물리 장애물, 실제 로봇 이동·감속·정지를 관찰한다. 원형 장애물 모델이며 사람형 외형·YOLO와의 통합은 이번 MVP 범위 밖.
-- **RViz2:** Fixed Frame: odom, RobotModel, TF, 원본 LaserScan /scan, Odometry /odom, 노랑 0.75m/빨강 0.40m 교육용 MarkerArray /axia/d06/rviz/bubble. 원형 표시는 공식 CM polygon 신호가 아니다.
+- **RViz2 (rviz2):** Fixed Frame: odom, RobotModel, TF, 원본 LaserScan /scan, Odometry /odom, 노랑 0.75m/빨강 0.40m 교육용 MarkerArray /axia/d06/rviz/bubble. 원형 표시는 공식 CM polygon 신호가 아니다.
 - **강사 터미널 A:** 원샷과 실제 Owner 수동 Goal 승인; 완료 후 G07 EVIDENCE=... 및 D06_GUI_EVIDENCE=... 출력 확인.
 - **강사 터미널 B (선택):** 현장 강사 A의 **정확한** D06_GUI_EVIDENCE 경로와 새 session_attachment.txt에서 ROS_DOMAIN_ID를 읽은 후 읽기 전용 구독. /cmd_vel을 publish하거나 Goal을 보내지 않는다.
 - **학생 터미널 S:** 기존 D06 Python TODO의 RED→GREEN 확인 후 화면 결과와 비교한다.
