@@ -35,7 +35,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-ci-public
-          ref: f3311a755b6aa0bf829ae384e54188e4b311dc59
+          ref: f21287a46c92f8c4d579ae083c939781b2ffe0e8
           path: ci-tools
           persist-credentials: false
 
@@ -121,10 +121,20 @@ jobs:
           set -euo pipefail
           cd instructor
           test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '97f2044404a8b90e9c8f4b3010c0796eef87feff'
+          # CI-only CM CFS scheduler witness, read-only /proc statistics.
+          # No ROS publisher, no Goal and NO WSL2 Owner admission from this diagnostic.
+          python3 ../ci-tools/d06/live/d06_cm_proc_sched_probe.py sample \
+            --output ../d06_g07_cm_sched_private.jsonl \
+            --partition axia_p2_ci_moving_83 --domain 83 \
+            --duration 900 --interval .025 \
+            > ../d06_g07_cm_sched_sampler.log 2>&1 &
+          SCHED_PROBE_PID=$!
           set +e
           timeout --signal=TERM --kill-after=10s 900s \
             bash scripts/p2_no_goal_smoke_ci.sh > ../d06_g07_sealed_runner.log 2>&1
           runner_rc=$?
+          kill -TERM "$SCHED_PROBE_PID" 2>/dev/null || true
+          wait "$SCHED_PROBE_PID" 2>/dev/null || true
           set -e
           echo "$runner_rc" > ../d06_g07_sealed_runner_rc
           if [[ "$runner_rc" != 0 ]];then
@@ -179,6 +189,17 @@ jobs:
           assert data['owner_l3_accepted'] is False
           print('AXIA_G07_CI_REAL_HARMONIC_NAV2_MOVING_GOAL_CLEAR_SLOW_STOP_L2_PASS_OWNER_L3_NOT_RUN')
           PY
+      - name: CI-only CM RMW first gap versus Linux scheduler read-only witness
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f ci-tools/d06/live/d06_cm_proc_sched_probe.py
+          python3 ci-tools/d06/live/d06_cm_proc_sched_probe.py analyze \
+            --events instructor/results/p2-g07-ci-moving/real-l2/g07_ci_moving/actual_ros_events.jsonl \
+            --samples d06_g07_cm_sched_private.jsonl
+          echo 'D06_CM_PROC_SCHED_DIAGNOSTIC_ONLY NOT_FULL_L2_ACCEPTANCE NO_OWNER_L3'
+
       - name: Post-Goal cross-node first CM TTL read-only diagnostic
         if: always()
         shell: bash
@@ -439,4 +460,4 @@ jobs:
       - name: Delete all Instructor source and raw ROS / Gazebo evidence
         if: always()
         shell: bash
-        run: rm -rf -- instructor ci-tools d06_g07_sealed_runner.log d06_g07_sealed_runner_rc
+        run: rm -rf -- instructor ci-tools d06_g07_sealed_runner.log d06_g07_sealed_runner_rc d06_g07_cm_sched_private.jsonl d06_g07_cm_sched_sampler.log
