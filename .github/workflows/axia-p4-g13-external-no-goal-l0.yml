@@ -13,7 +13,7 @@ jobs:
       - name: Pin exact public candidate script
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
-          ref: ded0b3ddbee8e7c9960c861621ccf17da7696677
+          ref: 4dce56374a71dd793baa8f415e969e424af1c9a9
           persist-credentials: false
       - name: Two individual external PC receipts required, never run Goal in CI
         shell: bash
