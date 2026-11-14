@@ -20,7 +20,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: d57d12e02c337f75d2148714e0a061504eb10d2f
+          ref: d6bab60d635bb15bd387dea18a661b9acb52399c
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -28,9 +28,9 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 'd57d12e02c337f75d2148714e0a061504eb10d2f'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 'd6bab60d635bb15bd387dea18a661b9acb52399c'
           cd instructor
-          python3 -m py_compile tools/d07_h01_native_costmap_layers.py tools/d07_h01_nav2_clear_config.py tools/d07_h01_path_cost_correlation.py tools/d07_h01_costmap_drift.py tools/d07_h01_oracle.py tools/d07_h01_geometry_l2.py tools/d07_h01_contact_calibration_l2.py tools/d07_h01_ttl_no_goal_l2.py tools/p2_g07_ci_moving_goal_oracle.py tools/p2_l3_live_session.py
+          python3 -m py_compile tools/d07_h01_amcl_pre_goal.py tools/d07_h01_native_costmap_layers.py tools/d07_h01_nav2_clear_config.py tools/d07_h01_path_cost_correlation.py tools/d07_h01_costmap_drift.py tools/d07_h01_oracle.py tools/d07_h01_geometry_l2.py tools/d07_h01_contact_calibration_l2.py tools/d07_h01_ttl_no_goal_l2.py tools/p2_g07_ci_moving_goal_oracle.py tools/p2_l3_live_session.py
           bash -n scripts/p2_no_goal_smoke_ci.sh
           for name in oracle runner_diagnostics costmap_roundtrip path_return costmap_spatial costmap_localization costmap_semantics drift drift_runner contact contact_calibration contact_calibration_runner live_ttl ttl_no_goal_runner mvp_rmw_reuse clearing_residue admission_timing roi_clearing costmap_cell_history roi_path_probe_gate path_cost_correlation geometry_native_contact live_obstacle_config native_layers amcl_pre_goal; do
             python3 -m unittest discover -s tests/unit -p "test_d07_h01_${name}.py" -v
