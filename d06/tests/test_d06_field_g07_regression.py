@@ -59,8 +59,8 @@ def test_successful_clear_does_not_hide_subsequent_slowdown_guard_latch():
 
 def test_private_source_pin_is_current_released_p4_g07_rmw_diagnostic():
     # The old eb984 Owner source was a real scoped success but lacks P4 first-RMW fields.
-    assert "d1769b8675c85e7ee564966637cef9113435904a" in W
-    assert "afe4e9ae3f6542ef7b2bd3097ce5c15ae5a5ddcc" in W
+    assert "67b8995cc7fdd506b12f348fc7e5241dcedddc67" in W
+    assert "c44414f8e3bad37a349565f211d554540cccb062" in W
     assert "axia_p4_g11_owner_g07_rmw_provenance_once.sh" in W
     assert "eb984b73138e592caa67426eed9c60dde2ca2ebd" not in W
     assert "YES-P2-G07-GOAL" in W
