@@ -27,7 +27,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: e5386a058fce423a872ee8c24930ec775a507e09
+          ref: 043f92599ddbf808d03b2b4f72688e2b61fb4e9e
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -35,7 +35,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-ci-public
-          ref: 8017d3b9cb718a2cd5b4db03924c1b22f3e7a816
+          ref: 85df52773bcdb8211454786b12c98b05d494089d
           path: ci-tools
           persist-credentials: false
 
@@ -85,7 +85,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 'e5386a058fce423a872ee8c24930ec775a507e09'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '043f92599ddbf808d03b2b4f72688e2b61fb4e9e'
           test "$ROS_DISTRO" = jazzy
           cd instructor
           mkdir -p results/p2-g07-ci-moving
@@ -129,7 +129,7 @@ jobs:
         run: |
           set -euo pipefail
           cd instructor
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 'e5386a058fce423a872ee8c24930ec775a507e09'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '043f92599ddbf808d03b2b4f72688e2b61fb4e9e'
           # Keep normal Owner-matched execution; /proc schedstat was unavailable
           # in diagnostic CI #43594781886, so do not burden full L2 with probe.
           set +e
