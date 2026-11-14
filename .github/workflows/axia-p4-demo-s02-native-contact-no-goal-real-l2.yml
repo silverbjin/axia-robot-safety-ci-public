@@ -18,7 +18,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: b95535b222454872940674f7bc1961d34027ffff
+          ref: afcfee1ce29d49d491280afecd398dfdb9c275df
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -26,7 +26,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = b95535b222454872940674f7bc1961d34027ffff
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = afcfee1ce29d49d491280afecd398dfdb9c275df
           bash -n instructor/scripts/p2_no_goal_smoke_ci.sh
           python3 -m py_compile instructor/tools/p2_l3_gz_fixture.py instructor/tools/p4_s02_native_contact_evidence.py
           echo AXIA_S02_REAL_CONTACT_L2_EXACT_PRIVATE_SOURCE_STATIC_PASS_NO_ROS_NO_GOAL
@@ -90,6 +90,44 @@ jobs:
           if (( rc != 0 ));then
             echo "AXIA_S02_REAL_NO_GOAL_NAV2_L2_BLOCKED_RC=$rc"
             grep -E 'P2_STAGED_NO_GOAL_BLOCKED|G07_.*BLOCKED|PARITY_BLOCKED|P2_L2_SMOKE_RC' "$RUNNER_TEMP/axia_s02/smoke.log" | tail -n 25 || true
+            # Diagnostic-only: extract first native Nav2 ACK failure and categories
+            # from exact private source logs, never print raw Owner/CI logs.
+            python3 - <<'PY'
+          import json,re
+          from pathlib import Path
+          root=Path('results/p4-s02-contact-no-goal-l2')
+          verdict=root/'g07_ordered_shutdown.json'
+          startup=root/'startup_verdict.json'
+          launch=root/'launch.log'
+          v=json.loads(verdict.read_text()) if verdict.exists() else {}
+          s=json.loads(startup.read_text()) if startup.exists() else {}
+          lines=launch.read_text(errors='replace').splitlines() if launch.exists() else []
+          tokens={
+            'navigation_manager':['lifecycle_manager_navigation'],
+            'localization_manager':['lifecycle_manager_localization'],
+            'collision_monitor':['collision_monitor'],
+            'bond_failure':['bond','broken'],
+            'lifecycle_change_failed':['failed to change state','failed transition'],
+            'service_timeout':['service timeout','timed out','timeout'],
+            'fatal_process':['process has died','segfault','sigabrt','sigsegv'],
+            'ros_callback_error':['executor','callback group','rclcpp'],
+          }
+          summary={k:sum(any(x in l.lower() for x in vals) for l in lines)
+                   for k,vals in tokens.items()}
+          print('AXIA_S02_NAV_ACK_FIRST_BOUNDARY '+json.dumps({
+            'first_failure':'NAVIGATION_SHUTDOWN_ACK_TIMEOUT'
+              if v.get('status','').endswith('NAVIGATION_SERVICE_TIMEOUT')
+              else v.get('status','UNKNOWN'),
+            'navigation_elapsed_sec':v.get('navigation_elapsed_sec'),
+            'navigation_ack':v.get('navigation_ack',False),
+            'localization_ack':v.get('localization_ack',False),
+            'cm_managed_by_navigation':v.get('cm_managed_by_navigation',False),
+            'startup_status':s.get('status'),
+            'goal_sent':s.get('goal_sent',None),
+            'launch_diagnostic_counts':summary,
+            'launch_line_count':len(lines),
+          },sort_keys=True))
+          PY
             exit 3
           fi
           python3 - <<'PY'
