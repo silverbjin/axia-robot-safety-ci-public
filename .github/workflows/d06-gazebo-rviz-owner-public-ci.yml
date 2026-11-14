@@ -24,7 +24,7 @@ jobs:
         run: |
           set -euo pipefail
           python -m pip install -q pytest==8.3.5 PyYAML==6.0.2
-          PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -q d06/tests/test_d06_gazebo_live_contract.py
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -q d06/tests/test_d06_gazebo_live_contract.py d06/tests/test_d06_field_g07_regression.py
           bash -n d06/scripts/d06_gazebo_rviz_owner_wsl2_once.sh
           bash -n d06/scripts/d06_rviz_sidecar.sh
           python -m py_compile d06/live/d06_readonly_monitor.py
