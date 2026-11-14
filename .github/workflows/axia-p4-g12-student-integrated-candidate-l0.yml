@@ -1,0 +1,61 @@
+name: AXIA P4 G12 student main plus D03 integration release blockers L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-p4-g12-student-integrated-candidate-l0.yml']
+permissions:
+  contents: read
+jobs:
+  student-public-candidate-license-hold:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - name: Pin independent public student integration candidate only
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: ad5dab222c4739603fb961bdd481d945636710f6
+          persist-credentials: false
+      - name: Check integration candidate has both student blocks and honest attribution HOLD
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = ad5dab222c4739603fb961bdd481d945636710f6
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+          root=Path('.')
+          required={
+            'block_A/day03/todo_safety.py','block_A/day03/p1_adapter_todo.py',
+            'block_A/tests/test_safety_public.py','block_A/tests/test_d03_adapter_public.py',
+            'block_B/block_b_todo.py','block_B/day04/D04_STUDENT_LAB_GUIDE_KO.md',
+            'block_B/day05/D05_STUDENT_LAB_GUIDE_KO.md',
+            'block_B/day06/safety_bubble_todo.py','block_B/day07/route_todo.py',
+            'LICENSES.md','VERSION_LOCK.md','THIRD_PARTY_ATTRIBUTION.md',
+          }
+          missing=sorted(p for p in required if not (root/p).is_file())
+          assert not missing, ('G12_RELEASE_DOCS_OR_COURSE_MISSING',missing)
+          lic=(root/'LICENSES.md').read_text()
+          version=(root/'VERSION_LOCK.md').read_text()
+          attribution=(root/'THIRD_PARTY_ATTRIBUTION.md').read_text()
+          readme=(root/'README.md').read_text()
+          assert 'REDISTRIBUTION_REVIEW_PENDING' in lic
+          assert 'G12_FULL_RELEASE=HOLD' in version
+          assert 'AGPL-3.0' in attribution and 'MIT' in attribution
+          assert '94d2dd500cb26027ee9c019f4d3a02029ac615cc' in attribution
+          assert '4f44c33cea12d4b5785e5e7c0a20c13d0c62a77de607ce96a40d6036c7d7bbcf' in attribution
+          assert '[D03' in readme and '[Block B' in readme
+          all_files=subprocess.check_output(['git','ls-files'],text=True).splitlines()
+          assert not any(p.lower().endswith(('.onnx','.pt','.dae'))
+                         for p in all_files)
+          assert not any(('instructor' in p.lower() or 'hidden_test' in p.lower()
+                         or '/solution' in p.lower())
+                         for p in all_files if p.startswith(('block_A/','block_B/')))
+          assert 'TODO_NOT_IMPLEMENTED' in (root/'block_A/day03/todo_safety.py').read_text()
+          assert 'TODO_D04_SELECT_PERSON' in (root/'block_B/block_b_todo.py').read_text()
+          print('AXIA_G12_BLOCK_A_D03_BLOCK_B_STUDENT_CANDIDATE_STATIC_PASS')
+          print('AXIA_G12_ATTRIBUTION_TRACED_LICENSE_RIGHTS_UNVERIFIED_RELEASE_HOLD')
+          print('AXIA_G12_NO_PRIVATE_ANSWERS_NO_MODELS_BUNDLED')
+          PY
+          python3 -m py_compile block_A/day03/todo_safety.py block_A/day03/p1_adapter_todo.py block_B/block_b_todo.py
+          echo AXIA_G12_MERGE_CANDIDATE_L0_PASS_NO_ROS_NO_GOAL
