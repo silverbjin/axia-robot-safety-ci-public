@@ -1,0 +1,41 @@
+name: AXIA D07 H01 pinned Instructor read-only oracle fast L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths:
+      - '.github/workflows/axia-d07-h01-fast-l0.yml'
+permissions:
+  contents: read
+concurrency:
+  group: axia-d07-h01-fast-l0
+  cancel-in-progress: false
+jobs:
+  private-unit-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    environment: axia-instructor-sealed
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Exact private Instructor source, never released to public artifacts
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: fe26cdf897b256f2c4de11b49cb436cee41eb932
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          path: instructor
+          persist-credentials: false
+      - name: H01 pure Python oracle and static runner regressions
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 'fe26cdf897b256f2c4de11b49cb436cee41eb932'
+          cd instructor
+          python3 -m py_compile tools/d07_h01_oracle.py tools/d07_h01_geometry_l2.py
+          for name in oracle runner_diagnostics costmap_roundtrip path_return costmap_spatial costmap_localization costmap_semantics; do
+            python3 -m unittest discover -s tests/unit -p "test_d07_h01_${name}.py" -v
+          done
+          echo 'AXIA_D07_H01_FAST_PUBLIC_SEALED_L0_PASS_NO_ROS_NO_GAZEBO_NO_GOAL'
+      - name: Destroy exact private source
+        if: always()
+        shell: bash
+        run: rm -rf -- instructor
