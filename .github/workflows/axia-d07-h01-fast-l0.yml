@@ -20,7 +20,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 3353e2c39b1923e4fc53772d5084d5a6f0e1a983
+          ref: a0b8b51c7e707fa8a3155fc11e1c36b798345545
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -28,7 +28,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '3353e2c39b1923e4fc53772d5084d5a6f0e1a983'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 'a0b8b51c7e707fa8a3155fc11e1c36b798345545'
           cd instructor
           python3 -m py_compile tools/d07_h01_costmap_drift.py tools/d07_h01_oracle.py tools/d07_h01_geometry_l2.py tools/d07_h01_contact_calibration_l2.py tools/d07_h01_ttl_no_goal_l2.py tools/p2_g07_ci_moving_goal_oracle.py tools/p2_l3_live_session.py
           bash -n scripts/p2_no_goal_smoke_ci.sh
