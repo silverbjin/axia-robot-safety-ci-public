@@ -1,0 +1,31 @@
+name: AXIA P4 G11 exact Owner runner raw archive custody L0 TDD
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-p4-g11-runner-raw-custody-l0.yml']
+permissions:
+  contents: read
+jobs:
+  sealed-runner-archive-custody-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    environment: axia-instructor-sealed
+    steps:
+      - name: Exact private Instructor source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 812f620c644cc07afc82e48f74256bc21d4bbf01
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Fail closed actual 14-topic bag and archived source custody contract
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = '812f620c644cc07afc82e48f74256bc21d4bbf01'
+          python3 -m unittest discover -s tests/unit -p test_p4_g11_session_archive_custody.py -v
+          echo AXIA_P4_G11_OWNER_RUN_RAW_CUSTODY_L0_PASS
+      - name: Private source cleanup
+        if: always()
+        shell: bash
+        run: rm -rf -- .git docs ros2_ws scripts tools tests fixtures scenarios configs results training
