@@ -12,7 +12,7 @@
 | 근거 | 수준 |
 |---|---|
 | D06 공식 CM 기존 공개 Actions #42656227824 | 실제 ROS L1 PASS, 합성 LaserScan 0.20/0.06/0.00m/s |
-| G07 기존 공개 Actions #43339521667 및 Owner ynAuVvkf | 실제 Gazebo L2/Owner 범위 한정 CLEAR→SLOW→STOP, odom dwell 약 1.032초 |
+| G07 기존 공개 Actions #43339521667 및 Owner ynAuVvkf | 실제 Gazebo L2/Owner L3 범위 한정 CLEAR→SLOW→STOP, odom dwell 약 1.032초 |
 | **새 D06 Gazebo GUI + RViz2 sidecar** | 공개 CI L0 계약과 WSL2 창 실측 별도. 새 GUI/ROS 통합은 아직 NOT_RUN |
 | 물리 충돌 없음 인증 또는 hardware E-Stop | NOT_RUN / NOT_CLAIMED |
 
