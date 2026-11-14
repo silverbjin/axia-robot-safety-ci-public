@@ -47,6 +47,7 @@ def inspect_native_guard(events):
         "native_cm_callback_max_gap_ms":None,
         "native_supervisor_callback_max_gap_ms":None,
         "native_guard_latch_observed":False,
+        "native_cm_last_receive_age_ms_at_latch":None,
         "observer_cm_gap_proves_guard_delay":False,
         "safety_pass":False,
         "owner_l3_accepted":False,
@@ -62,10 +63,16 @@ def inspect_native_guard(events):
     raw_guard=[e for e in events if isinstance(e,dict)
                and e.get("kind")=="guard" and _num(e.get("t"))
                and e["t"]>=goal and isinstance(e.get("data"),dict)]
-    if any(e["data"].get("latched") is True for e in raw_guard):
+    first_latch=next((e for e in sorted(raw_guard,key=lambda row:row["t"])
+                      if e["data"].get("latched") is True),None)
+    if first_latch is not None:
         report["native_guard_latch_observed"]=True
         report["status"]="HOLD_NATIVE_GUARD_FIRST_LATCH"
-        return report
+        diag=first_latch["data"].get("native_input_timing")
+        if isinstance(diag,dict) and diag.get("schema")==SCHEMA:
+            age=diag.get("cm_last_receive_age_sec")
+            if _num(age):
+                report["native_cm_last_receive_age_ms_at_latch"]=round(age*1000,3)
     snapshots=sorted((x for row in events if (x:=_snapshot(row)) is not None),
                      key=lambda x:x["t"])
     before=[x for x in snapshots if x["t"]<goal]
@@ -86,7 +93,9 @@ def inspect_native_guard(events):
         report["native_supervisor_callback_max_gap_ms"]=round(final["supervisor_max"]*1000,3)
     # A CM >150ms gap is a real direct Guard callback delivery boundary,
     # even if a separate Observer's callbacks were regular.
-    if cm>0:
+    if report["native_guard_latch_observed"]:
+        report["status"]="HOLD_NATIVE_GUARD_FIRST_LATCH"
+    elif cm>0:
         report["status"]="HOLD_NATIVE_GUARD_CM_INPUT_GAP_150MS"
     elif sup>0:
         report["status"]="HOLD_NATIVE_GUARD_SUPERVISOR_INPUT_GAP_150MS"
