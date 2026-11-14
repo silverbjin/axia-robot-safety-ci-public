@@ -1,0 +1,71 @@
+name: AXIA P4 G08 G11 submitted Owner raw 249-object evidence scope and formal HOLD L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-p4-g08-g11-owner-submitted-raw-review-matrix-l0.yml']
+permissions:
+  contents: read
+jobs:
+  sealed-exact-uploaded-custody-reviewed-scope:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: axia-instructor-sealed
+    steps:
+      - name: Checkout exact protected Instructor report and 11 tests, never Owner RAW
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: c2d7f0bfb501f28af5df6c1dd775322196d49a4c
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: No ROS no Goal; metadata-only source report truth, raw not uploaded
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = 'c2d7f0bfb501f28af5df6c1dd775322196d49a4c'
+          python3 -m unittest discover -s tests/unit -p test_p4_g11_bundle_requalification_contract.py -v
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          base=Path('docs/reports')
+          d=json.loads((base/'AXIA_P4_G11_COLD_RUN_EVIDENCE_LEDGER_20261113.json').read_text())
+          m=json.loads((base/'AXIA_P4_G08_G13_RELEASE_READINESS_MATRIX_20261113.json').read_text())
+          r=d['g11']['owner_uploaded_zip_review_20261114']
+          v=m['g11']['owner_submitted_zip_requalification']
+          assert d['formal_accepted'] is False and m['formal_accepted'] is False
+          assert len(d['observed_sources'])==24
+          assert d['g11']['formal_acceptance_counts']==dict.fromkeys(('S01','S02','S03','S04','S05'),0)
+          assert m['g11']['formal_scenario_repeat_counts']==dict.fromkeys(('S01','S02','S03','S04','S05'),0)
+          assert (r['manifest_file_references'],r['distinct_sha256_content_objects'],r['verified_unique_content_object_sha256_count'])==(704,249,249)
+          assert r['missing_object_count']==0 and r['duplicated_s01_p1_g00_restored_source_refs']==342
+          assert r['p0_run7_original_expected_sha256']=='90f786f7aa50f0e9d47ac242e2ce3276264616e498c68f873e5eaf905b78dfde'
+          assert r['p0_run7_original_archive_present_in_uploaded_zip'] is False
+          assert r['p1_g00_pr52_scoped_raw_runs']==3 and r['p1_g00_origin_pr52_public_ci']
+          assert len(set(r['p1_g00_pr52_actual_goal_uuids']))==3
+          assert r['p1_g00_sqlite_topic_counts']==[13,13,13]
+          assert r['p1_g00_bag_final_p2_guard_topic_present'] is False
+          assert r['p1_g00_formal_s01_repeat_credits']==0
+          assert r['s03_uploaded_original_rosbag_count']==0 and r['s05_uploaded_original_rosbag_count']==0
+          assert not r['owner_wsl2_new_ros_gazebo_goal_run'] and not r['original_raw_uploaded_to_public_ci']
+          assert r['public_synthetic_contract_red_run']==43542736146
+          assert r['public_synthetic_contract_green_run']==43543100438
+          assert r['public_synthetic_contract_tests_passed']==11
+          assert v['raw_files_copied_references']==704 and v['unique_objects_copied_and_verified_from_upload']==249
+          assert v['owner_wsl2_custody_script_run'] and not v['owner_wsl2_new_ros_gazebo_goal_run']
+          assert v['g11_formal_accepted_count']==0 and not v['owner_l3_formal_accepted']
+          assert not m['g08']['g08_p0_run7_archive_review']['owner_uploaded_zip_contains_original_run7_archive']
+          assert m['gates']['G11'].startswith('FORMAL_0_OF_15')
+          report=base/'AXIA_P4_G08_G11_UPLOADED_OWNER_RAW_OFFLINE_REQUALIFICATION_20261114_KO.md'
+          assert report.is_file()
+          text=report.read_text()
+          assert r['uploaded_zip_sha256'] in text
+          assert 'PR52' in text and '0/15' in text
+          print('AXIA_G11_UPLOADED_ZIP_704_REFERENCES_249_UNIQUE_LOCAL_HASH_PROOF_RECORDED')
+          print('AXIA_G08_PR52_G00_THREE_13_TOPIC_SCOPED_CANDIDATES_NOT_P0_RUN7_OWNER')
+          print('AXIA_G11_S03_S05_SUMMARIES_NOT_ORIGINAL_BAG')
+          print('AXIA_G08_G11_FORMAL_0_OF_15_OWNER_ROS_NOT_RUN_RAW_NOT_IN_PUBLIC_CI')
+          PY
+      - name: Always erase sealed private source
+        if: always()
+        shell: bash
+        run: rm -rf -- .git docs ros2_ws scripts tools tests fixtures scenarios configs results training
