@@ -102,8 +102,8 @@ fi
   echo 'AXIA_G13_USAGE=--LABEL_PC1_OR_PC2_AS_FIRST_ARGUMENT' >&2; exit 2;
 }
 LABEL="$1"
-PRIVATE_SHA='afe4e9ae3f6542ef7b2bd3097ce5c15ae5a5ddcc'
-PRIVATE_TREE='580dec5be1988b26d5189616b1b01559a0f1f9a5'
+PRIVATE_SHA='e730f0c682f9d13d58ba9790faec28abc1133589'
+PRIVATE_TREE='d62c74e07ad43009a6210fad3cb22cb8229241e9'
 if [[ ! -r /proc/sys/kernel/osrelease ]] ||
    ! grep -Eqi '(microsoft|wsl2)' /proc/sys/kernel/osrelease ||
    ! grep -q '24.04' /etc/os-release ||
