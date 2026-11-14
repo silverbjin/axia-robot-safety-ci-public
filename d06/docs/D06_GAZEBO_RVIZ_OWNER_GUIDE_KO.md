@@ -1,15 +1,21 @@
 # AXIA D06 — Gazebo GUI + RViz2 강사 Live Demo
 
-> **2026-11-14 FINAL OWNER ADMISSION: HOLD.** 실제 공개 Gazebo L2 [#43587404886](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43587404886)에서 CM RMW publication source gap=172.153ms >150ms가 재현되어 정식 CLEAR→SLOW→STOP+종료 전체 인수가 실패했다. **현재 WSL2 Owner 재실행 금지.** 최신 D06 원샷은 `d06/acceptance/d06_g07_final_owner_ci_gate.json`의 CI 승인 없이는 ROS/Gazebo/Goal 전에 자동 차단된다. 구형 SHA/구형 원샷은 이 차단을 제공하지 않으므로 사용하지 않는다.
+> **2026-11-15 FINAL OWNER ADMISSION: CI L2 3/3 PASS — WSL2 검수 1회 허용.** 새 Instructor SHA `c44414f8e3bad37a349565f211d554540cccb062` 및 동일 Docker digest로 실행한 [공개 실제 Gazebo L2 #43609296371](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43609296371)의 독립 cold-start 1·2·3회 모두 **CLEAR→SLOWDOWN→STOP, Scan 300ms·CM/Guard 150ms 경계, odom STOP 1초, Nav2 Lifecycle ACK, CM 정상 종료 및 원본 rosbag 검사까지 전체 SUCCESS**. 본 결과는 **CI에서 최종 Owner 시연 실행을 허용한다는 뜻**이지 사용자 WSL2 WSLg+RViz 화면 인수 성공이라는 뜻이 아니다.
 >
-> 공통 진단·원인 대조·RED→GREEN은 공개 CI에서 수행한다. 실제 전체 시연 조건(Scan<=300ms, CM/Supervisor/Guard<=150ms, odom STOP>=1초, 원본 bag/정상 종료)이 검증된 뒤에만 공개 CI 고정 SHA를 강사에게 최종 검수용으로 배포한다. 현재 수업에는 **공식 격리 CM ROS L1**을 대신 사용하며 기존 G07 성공 증거는 과거 증거로만 설명한다.
+> 최신 `d06/acceptance/d06_g07_final_owner_ci_gate.json`는 `ADMITTED_FINAL_OWNER_ONLY`이고 **강사 수동 `YES-P2-G07-GOAL`을 요구하는 최종 WSL2 1회**만 허용한다. 이전 WSL2/CI 간헐적 Scan·CM 지연은 사실이며 이력이 삭제되지 않았다. 새 현장 오류가 나오면 동일 현장 재시도 대신 최초 안전 상태 전이·최초 타이밍 경계를 공개 CI 회귀 RED→GREEN으로 재편입한다. 소프트웨어 정지는 인증된 E-Stop이 아니다.
 
+
+## 최종 WSL2 검수의 판정 경계 (2026-11-15)
+
+이번 최종 원샷은 **기존 실행의 재시도 반복이 아니라, 공개 CI 3회 PASS 이후 최초 강사 WSLg GUI+RViz 통합 인수 1회**이다. 실제 Gazebo 창·RViz 창이 동시에 표시·갱신되는지 강사가 직접 확인한다. 원본에서 CLEAR→SLOWDOWN→STOP 구간의 최초 Scan 300ms/CM·Supervisor·Guard 150ms 위반, Goal UUID 1개, `/cmd_vel` 소프트웨어 정지, `/odom` 정지 1초, 공식 Lifecycle ACK, CM 정상 종료, 14-topic bag 무결성 및 동일 세션 보관 증거를 확인한다.
+
+**GUI 미표시, 최초 데이터 위반, Guard 래치 또는 프로세스 비정상 종료 중 하나라도 발생하면 인수는 HOLD**이다. `D06_RVIZ_STARTED` 로그만으로 실제 WSLg 렌더링 성공을 주장하지 않는다. 강사는 추가 Goal을 보내지 않으며 실패 증거를 공개 CI의 비식별 회귀로 먼저 편입한다. 인수 후에도 기존 Draft PR의 `main` 병합은 별도 사용자 승인 전까지 금지한다.
 
 ## 목적과 범위
 - 일정: 2026-11-16 19:00–22:00, 이론 60분·실습 120분. 21:25–21:40 강사 Live Demo에 사용.
 - 목표 1: **거리 구간별 속도 제한 및 감속ㆍ정지 규칙 이해** — 실제 Waffle의 CLEAR→SLOWDOWN→STOP에서 CM 전 속도, CM 이후 속도, 최종 Guard 속도, odom 관측값을 비교한다.
 - 목표 2: **Safety Bubble 기반 안전제어 로직 설계 실습** — 학생 Python 정책(Stop 0.40m, Slow 0.75m, ratio=0.30, UNKNOWN)을 설명하고 공식 LaserScan+CM Zone/min_points=4 동작과 비교한다.
-- 새 ROS 안전 제어 코드, Goal·/cmd_vel publisher 및 TTL 변경은 **0**. 최신 P4 G11 공개 Release SHA d1769b8675c85e7ee564966637cef9113435904a를 호출한다. 해당 Release는 비공개 Instructor SHA afe4e9ae3f6542ef7b2bd3097ce5c15ae5a5ddcc 및 Git tree 580dec5be1988b26d5189616b1b01559a0f1f9a5를 검증하고 원본 RMW 진단·raw custody를 보존한다. 과거 eb984b7 G07 고정은 사용하지 않는다.
+- 새 ROS 안전 제어 코드, Goal·/cmd_vel publisher 및 TTL 변경은 **0**. 고정 G11 공개 Release SHA 67b8995cc7fdd506b12f348fc7e5241dcedddc67을 호출한다. 해당 Release는 비공개 Instructor SHA c44414f8e3bad37a349565f211d554540cccb062 및 Git tree d2e3044689a5873cd61d6bc5f84a40b20a81f84e를 검증하고 원본 RMW 진단·raw custody를 보존한다. 공개 G11 소스 전용 정적 CI #43609985698 PASS. 과거 eb984b7 G07 고정은 사용하지 않는다.
 - RViz marker의 원은 **교육용 표시**이지 공식 CM action 증거가 아니다. 실험은 SIMULATION ONLY. SW Stop과 실제 인증 E-Stop을 혼동하지 않는다.
 
 ## 검증 현황
@@ -18,7 +24,7 @@
 |---|---|
 | D06 공식 CM 기존 공개 Actions #42656227824 | 실제 ROS L1 PASS, 합성 LaserScan 0.20/0.06/0.00m/s |
 | G07 기존 공개 Actions #43339521667 및 Owner ynAuVvkf | 실제 Gazebo L2/Owner L3 범위 한정 CLEAR→SLOW→STOP, odom dwell 약 1.032초 |
-| **새 D06 Gazebo GUI + RViz2 sidecar** | 공개 CI L0 계약과 WSL2 창 실측 별도. 새 GUI/ROS 통합은 아직 NOT_RUN |
+| **새 D06 Gazebo GUI + RViz2 sidecar** | 공개 L0·실제 ROS/RViz Xvfb L1 PASS 및 G07 헤드리스 실제 Gazebo L2 동일 SHA 3회 PASS. **WSLg 동시 창/주행 Owner L3 NOT_RUN** |
 | 물리 충돌 없음 인증 또는 hardware E-Stop | NOT_RUN / NOT_CLAIMED |
 
 기존 G07 PASS를 이 신규 GUI의 PASS로 승격하지 않는다. 실제 Nav2 cmd 입력은 계속 달라질 수 있으므로 D06 합성 시험의 0.20→0.06m/s를 실제 모든 순간에 강요하지 않는다.
@@ -29,7 +35,7 @@
 
     (
       set -Eeuo pipefail
-      PUBLIC_SHA="c74f37bb7af8f31afcfae842f3d7eddc3f0d849f"
+      PUBLIC_SHA="6b717092eafa091f75551cc215a3f96786491000"
       LAB="$(mktemp -d "$HOME/axia_d06_gazebo_rviz_public_XXXXXXXX")"
       git -C "$LAB" init -q
       git -C "$LAB" remote add origin https://github.com/silverbjin/axia-robot-safety-ci-public.git
