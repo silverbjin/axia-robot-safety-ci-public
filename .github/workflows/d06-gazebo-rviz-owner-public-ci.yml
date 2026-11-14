@@ -30,3 +30,50 @@ jobs:
           python -m py_compile d06/live/d06_readonly_monitor.py
           bash d06/scripts/d06_gazebo_rviz_owner_wsl2_once.sh --self-check
           echo "D06_GAZEBO_RVIZ_L0_PASS ROS_GAZEBO_RVIZ_NOT_RUN"
+
+  l1-readonly-ros:
+    needs: l0
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    container:
+      image: ros:jazzy-ros-base-noble
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install only official Jazzy message/runtime dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt-get update -qq
+          apt-get install -y -qq --no-install-recommends \
+            ros-jazzy-rclpy ros-jazzy-sensor-msgs ros-jazzy-nav-msgs \
+            ros-jazzy-geometry-msgs ros-jazzy-visualization-msgs \
+            ros-jazzy-nav2-msgs ros-jazzy-ros2cli
+      - name: Real isolated ROS scan/odom observation and RViz marker reception
+        shell: bash
+        run: |
+          set -eo pipefail
+          source /opt/ros/jazzy/setup.bash
+          timeout --signal=TERM --kill-after=15s 100s \
+            python3 -u d06/live/d06_ros_l1_visual_probe.py \
+              --out results/d06-readonly-ros-l1
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          v=json.loads(Path('results/d06-readonly-ros-l1/verdict.json').read_text())
+          assert v['status']=='PASS_READONLY_REAL_ROS_L1'
+          assert v['ros_actual'] is True and v['gazebo_actual'] is False
+          assert v['cmd_vel_publisher_count']==0 and v['cmd_vel_published'] is False
+          assert [s['name'] for s in v['stages']]==['clear','slow','stop']
+          assert all(s['status']=='PASS' for s in v['stages'])
+          assert v['monitor_rc']==0
+          print('D06_GAZEBO_RVIZ_REAL_ROS_L1_PASS GAZEBO_NOT_RUN GUI_NOT_RUN')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d06-rviz-readonly-real-ros-l1
+          path: results/d06-readonly-ros-l1/
+          retention-days: 14
+          if-no-files-found: warn
