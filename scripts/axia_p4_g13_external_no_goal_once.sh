@@ -46,8 +46,8 @@ paths=[
   "smoke.log",
 ]
 markers=[
- ("CI_KERNEL_MODE_ON_WSL2",re.compile(r"mismatches=ci_kernel|\\\"ci_kernel\\\"\\s*:\\s*\\\"CI_NOT_WSL2_REQUIRED",re.I)),
- ("ENV_USERSpace_PARITY_BLOCKED",re.compile(r"AXIA_G07_ENV_PARITY_BLOCKED|P2_G07_NO_GOAL_CI_USERSPACE_PARITY_BLOCKED",re.I)),
+ ("CI_KERNEL_MODE_ON_WSL2",re.compile(r'mismatches=ci_kernel|"ci_kernel"\\s*:\\s*"CI_NOT_WSL2_REQUIRED"',re.I)),
+ ("ENV_USERSPACE_PARITY_BLOCKED",re.compile(r"AXIA_G07_ENV_PARITY_BLOCKED|P2_G07_NO_GOAL_CI_USERSPACE_PARITY_BLOCKED",re.I)),
  ("LOCALIZATION_START",re.compile(r"(?:P2_STAGED_NO_GOAL_BLOCKED|BLOCKED|ERROR).{0,240}LOCALIZATION_START|LOCALIZATION_START.{0,240}(?:BLOCKED|TIMEOUT|ERROR|FAILED)|lifecycle_manager_localization.*(?:timed out|failed|ERROR)",re.I)),
  ("NAVIGATION_START",re.compile(r"(?:P2_STAGED_NO_GOAL_BLOCKED|BLOCKED|ERROR).{0,240}NAVIGATION_START|NAVIGATION_START.{0,240}(?:BLOCKED|TIMEOUT|ERROR|FAILED)|lifecycle_manager_navigation.*(?:timed out|failed|ERROR)",re.I)),
  ("STARTUP_BLOCKED",re.compile(r"P2_STAGED_NO_GOAL_BLOCKED|G07_NATIVE_LIFECYCLE_STARTUP_SERVICE_TIMEOUT")),
