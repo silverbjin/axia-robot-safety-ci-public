@@ -6,7 +6,7 @@ from pathlib import Path
 import sys
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'d08/harness'))
-from d08_live_readonly_probe import diagnose_rgbd_alignment,select_pair
+from d08_live_readonly_probe import diagnose_rgbd_alignment,select_pair,diagnostic_blocker
 
 def meta(t,frame='axia_d08_rgbd_optical',enc='32FC1'):
     return {'stamp_ns':t,'frame':frame,'width':640,'height':480,'encoding':enc}
@@ -43,3 +43,13 @@ def test_wrong_depth_encoding_and_image_shape_still_fail_closed():
     assert diagnose_rgbd_alignment(rgb,wrong)['correct_geometry_encoding_pairs']==0
     wrong2=[{**meta(4_000_000_000),'width':320}]
     assert select_pair(rgb,wrong2) is None
+
+def test_owner_real_0ms_rgbd_with_yolo_tv_is_classified_not_blindly_depth_failed():
+    rgb=[meta(105600000000,enc='rgb8')]
+    depth=[meta(105600000000)]
+    data={'detections_count':86,'yolo_person_count':0}
+    assert diagnostic_blocker(rgb,depth,data)=='YOLO_PERSON_CLASS_NOT_DETECTED'
+    assert diagnose_rgbd_alignment(rgb,depth)['minimum_same_frame_skew_ms']==0.0
+    assert diagnostic_blocker(rgb,[],data)=='RGBD_REGISTERED_PAIR_NOT_FOUND'
+    assert diagnostic_blocker(rgb,depth,{'detections_count':0})=='YOLO_DETECTIONS_STREAM_MISSING'
+    assert diagnostic_blocker(rgb,depth,{'detections_count':3,'yolo_person_count':1})=='D05_ACTUAL_PERSON_RANGE_NOT_VERIFIED'
