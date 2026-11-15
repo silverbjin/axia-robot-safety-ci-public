@@ -27,7 +27,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 69a501dd3de88ce6c1abdac99abb317d91aa0ad1
+          ref: 3593125fdfe489aead3e892daf39563df0c0d4a0
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -43,7 +43,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-ci-public
-          ref: 59c0adaf589bf66e9208bcfa1b8a531389a6d74c
+          ref: 9acfc7f4d5817f12859b520e67a12ffb2d1ff132
           path: d06-visual
           persist-credentials: false
 
@@ -106,7 +106,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '69a501dd3de88ce6c1abdac99abb317d91aa0ad1'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '3593125fdfe489aead3e892daf39563df0c0d4a0'
           test "$ROS_DISTRO" = jazzy
           cd instructor
           mkdir -p results/p2-g07-ci-moving
@@ -188,7 +188,7 @@ jobs:
           source /opt/ros/jazzy/setup.bash
           set -u
           cd instructor
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '69a501dd3de88ce6c1abdac99abb317d91aa0ad1'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '3593125fdfe489aead3e892daf39563df0c0d4a0'
           # Actual read-only RViz and MarkerArray observer share ONE CI container
           # with the actual G07 moving Goal; no extra robot command publisher.
           export DISPLAY=:99 LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe
@@ -200,10 +200,46 @@ jobs:
             echo 'D06_GUI_CPU_PLAN_BLOCKED'; exit 3;
           }
           echo "D06_GUI_AFFINITY cpu=$D06_GUI_CPU bag=last_allowed_cpu rviz_fps=3"
+          # This is CI-only display orchestration, not an Owner Goal authorizer.
+          # Start sealed official G07 first; withhold its single CI Goal until
+          # actual Nav2 native lifecycle SMOKE_READY and visible RViz are proven.
+          export AXIA_D06_GUI_READY_FILE="$PWD/../d06_gui_load_evidence/d06_ready.token"
+          timeout --signal=TERM --kill-after=10s 900s \
+            bash scripts/p2_no_goal_smoke_ci.sh > ../d06_g07_sealed_runner.log 2>&1 &
+          runner_pid=$!
+          trap 'kill -TERM "$runner_pid" 2>/dev/null || true' EXIT
+          STARTUP="$PWD/results/p2-g07-ci-moving/real-l2/startup_verdict.json"
+          nav2_ready=false
+          for attempt in $(seq 1 1800);do
+            if [[ -s "$STARTUP" ]] && python3 - "$STARTUP" <<'PY'
+import json,sys
+try:
+  d=json.load(open(sys.argv[1],encoding="utf-8"))
+  assert d.get("status")=="SMOKE_READY"
+  assert d.get("goal_sent") is False
+except (OSError,ValueError,AssertionError):
+  raise SystemExit(3)
+PY
+            then
+              nav2_ready=true
+              break
+            fi
+            kill -0 "$runner_pid" 2>/dev/null || break
+            sleep .25
+          done
+          [[ "$nav2_ready" == true ]] || {
+            echo 'D06_GUI_L2_NATIVE_NAV2_STARTUP_NOT_READY_NO_GOAL'
+            exit 3
+          }
+          echo 'D06_GUI_L2_NAV2_LIFECYCLE_READY_BEFORE_VISUAL_LOAD_NO_GOAL'
           taskset -c "$D06_GUI_CPU" nice -n 19 Xvfb :99 -screen 0 1280x800x24 -nolisten tcp \
             > ../d06_gui_load_evidence/xvfb.log 2>&1 &
           xvfb_pid=$!
           cleanup_gui_test_only() {
+            if [[ "${runner_pid:-}" =~ ^[0-9]+$ ]];then
+              kill -TERM "$runner_pid" 2>/dev/null || true
+              wait "$runner_pid" 2>/dev/null || true
+            fi
             for pid in "${monitor_pid:-}" "${rviz_pid:-}" "${xvfb_pid:-}"; do
               [[ "$pid" =~ ^[0-9]+$ ]] || continue
               kill -TERM "$pid" 2>/dev/null || true
@@ -231,14 +267,17 @@ jobs:
             exit 3
           }
           echo 'D06_GUI_L2_REAL_RVIZ_WINDOW_AND_MARKER_MONITOR_CONCURRENT_WITH_GOAL_START'
-          echo "D06_GUI_ISOLATION_VISUAL_CPU=$D06_GUI_CPU SOURCE_PIN=59c0adaf589bf66e9208bcfa1b8a531389a6d74c"
+          echo "D06_GUI_ISOLATION_VISUAL_CPU=$D06_GUI_CPU SOURCE_PIN=9acfc7f4d5817f12859b520e67a12ffb2d1ff132"
+          printf 'D06_READONLY_GUI_READY\n' > "${AXIA_D06_GUI_READY_FILE}.tmp"
+          mv -f -- "${AXIA_D06_GUI_READY_FILE}.tmp" "$AXIA_D06_GUI_READY_FILE"
+          echo 'D06_GUI_L2_ATOMIC_DISPLAY_READY_ACK_BEFORE_ONE_CI_GOAL'
 
           # Keep normal Owner-matched execution; /proc schedstat was unavailable
           # in diagnostic CI #43594781886, so do not burden full L2 with probe.
           set +e
-          timeout --signal=TERM --kill-after=10s 900s \
-            bash scripts/p2_no_goal_smoke_ci.sh > ../d06_g07_sealed_runner.log 2>&1
+          wait "$runner_pid"
           runner_rc=$?
+          runner_pid=''
           set -e
           echo "$runner_rc" > ../d06_g07_sealed_runner_rc
           if [[ "$runner_rc" != 0 ]];then
@@ -255,6 +294,13 @@ jobs:
           p=Path('../d06_gui_load_evidence/readonly_samples.jsonl')
           assert p.is_file(), 'D06_GUI_L2_MONITOR_DID_NOT_RECORD'
           rows=[json.loads(x) for x in p.read_text().splitlines() if x]
+          goal_rows=[json.loads(x) for x in
+              Path('results/p2-g07-ci-moving/real-l2/g07_ci_moving/actual_ros_events.jsonl')
+              .read_text().splitlines() if x]
+          starts=[r['t'] for r in goal_rows if r.get('kind')=='owner_goal_published']
+          assert len(starts)==1, 'D06_GUI_L2_ONE_REAL_GOAL_NOT_PROVEN'
+          assert min(r['t_monotonic'] for r in rows)<starts[0]<max(r['t_monotonic'] for r in rows), \
+              'D06_GUI_L2_MONITOR_NOT_CONTINUOUS_ACROSS_ACTUAL_GOAL'
           assert len(rows)>=5, 'D06_GUI_L2_INSUFFICIENT_CONCURRENT_SAMPLES'
           assert max(r.get('actual_scan_messages',0) for r in rows)>=10, \
               'D06_GUI_L2_NO_REAL_SCAN_DURING_GOAL'
