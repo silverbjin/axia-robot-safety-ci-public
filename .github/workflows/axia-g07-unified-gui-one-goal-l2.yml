@@ -117,6 +117,9 @@ jobs:
           assert before and not changed,'AXIA_G07_EXISTING_ROS_PACKAGE_DRIFT_'+repr(changed)
           print('AXIA_G07_GUI_OVERLAY_BASE_VERSION_FROZEN_DIGEST_PLUS_OVERLAY_NOT_IDENTICAL')
           PY
+          set +u
+          source /opt/ros/jazzy/setup.bash
+          set -u
           for cmd in Xvfb rviz2 xwininfo gz;do command -v "$cmd" || exit 3;done
           echo AXIA_G07_REAL_GUI_L2_PREREQUISITES_PRESENT_NO_GOAL
       - name: Isolated S02 native physics observer build and identical positive calibration blob

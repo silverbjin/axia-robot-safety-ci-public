@@ -16,6 +16,9 @@ VISUAL="$2"
    -f "$VISUAL/d06/rviz/d06_safety_bubble.rviz" ]] || {
   echo 'G07_UNIFIED_GUI_PUBLIC_SOURCE_MISSING';exit 3;
 }
+set +u
+source /opt/ros/jazzy/setup.bash
+set -u
 for cmd in rviz2 gz xwininfo;do
   command -v "$cmd" >/dev/null || {
     echo "G07_UNIFIED_GUI_MISSING_EXACT_CMD=$cmd";exit 3;
@@ -65,9 +68,6 @@ done
   echo 'G07_UNIFIED_GUI_NOT_READY_REAL_NAV2_STARTUP_UNVERIFIED'
   exit 3
 }
-set +u
-source /opt/ros/jazzy/setup.bash
-set -u
 export DISPLAY="${DISPLAY:-:99}" LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe
 unset QT_QPA_PLATFORM || true
 # Read-only teaching monitor publishes /axia/d06/rviz/bubble MarkerArray only.
