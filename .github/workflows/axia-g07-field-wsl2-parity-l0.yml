@@ -1,0 +1,39 @@
+# Public-only sanitized field regression. No private checkout, ROS, Gazebo or Goal.
+name: AXIA G07 field persistent Owner parity L0
+on:
+  push:
+    branches: ['fix/g07-field-ci-wsl2-parity-20261115']
+    paths:
+      - '.github/workflows/axia-g07-field-wsl2-parity-l0.yml'
+      - 'd06/tests/test_g07_field_persistent_home_release_v3.py'
+      - 'd06/tests/fixtures/g07_field_first_guard_158ms_sanitized_v1.json'
+      - 'd06/live/g07_owner_field_preflight_v3.py'
+      - 'd06/scripts/g07_owner_field_readonly_preflight_v3.sh'
+      - 'scripts/axia_g07_field_readonly_wsl2_once.sh'
+  pull_request:
+    branches: ['integration/g07-unified-ci-20261115']
+    paths:
+      - '.github/workflows/axia-g07-field-wsl2-parity-l0.yml'
+      - 'd06/tests/test_g07_field_persistent_home_release_v3.py'
+      - 'd06/tests/fixtures/g07_field_first_guard_158ms_sanitized_v1.json'
+      - 'd06/live/g07_owner_field_preflight_v3.py'
+      - 'd06/scripts/g07_owner_field_readonly_preflight_v3.sh'
+      - 'scripts/axia_g07_field_readonly_wsl2_once.sh'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: axia-g07-field-parity-l0-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  field-fail-closed-no-ros-no-goal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: RED then GREEN - real sanitized Owner 158ms and persistent HOME parity
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest discover -s d06/tests -p 'test_g07_field_persistent_home_release_v3.py' -v
+          bash -n d06/scripts/g07_owner_field_readonly_preflight_v3.sh
+          echo AXIA_G07_FIELD_WSL2_L0_PASS_NO_ROS_NO_GOAL

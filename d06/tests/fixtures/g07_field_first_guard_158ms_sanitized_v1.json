@@ -1,0 +1,12 @@
+{
+  "schema": "axia.g07.field_first_failure_sanitized.v1",
+  "source_sha": "bc270e28620c1909fcb34669e6036504b5cae951",
+  "phase": "GOAL_WINDOW",
+  "first_transition": "UPSTREAM_STALE_AFTER_MOTION",
+  "cm_guard_age_sec": 0.158007666,
+  "cm_ttl_sec": 0.15,
+  "guard_last_emitted_is_zero": true,
+  "cm_rmw_epoch_jump_candidate": true,
+  "cm_publisher_stopped_proven": false,
+  "owner_full_raw_available_in_public_ci": false
+}
