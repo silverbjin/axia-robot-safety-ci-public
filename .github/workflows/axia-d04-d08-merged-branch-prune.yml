@@ -1,0 +1,42 @@
+name: AXIA D04-D08 Git ancestors safe branch prune (PUBLIC ONLY)
+on:
+  push:
+    branches: ['ops/d04-d08-merged-branch-prune-20261115']
+    paths:
+      - 'scripts/axia_d04_d08_safe_prune.py'
+      - 'tests/test_d04_d08_branch_prune_contract.py'
+      - '.github/workflows/axia-d04-d08-merged-branch-prune.yml'
+permissions:
+  contents: write
+jobs:
+  checked_public_main_ancestor_prune:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: RED GREEN static safety contracts before changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -v -s tests -p test_d04_d08_branch_prune_contract.py
+          python3 -m py_compile scripts/axia_d04_d08_safe_prune.py
+          echo AXIA_BRANCH_PRUNE_STATIC_SAFETY_PASS
+      - name: Exact main ancestor + no active PR + ref SHA checked DELETE
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/axia_d04_d08_safe_prune.py \
+            --repo "$GITHUB_REPOSITORY" --apply \
+            --out "$RUNNER_TEMP/axia_d04_d08_branch_cleanup.json"
+          echo AXIA_BRANCH_PRUNE_PUBLIC_REPO_DONE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: axia-d04-d08-public-merged-branch-cleanup-audit
+          path: ${{ runner.temp }}/axia_d04_d08_branch_cleanup.json
+          retention-days: 30
+          if-no-files-found: warn
