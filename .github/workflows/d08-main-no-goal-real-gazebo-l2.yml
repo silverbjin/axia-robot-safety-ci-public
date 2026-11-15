@@ -1,0 +1,415 @@
+name: D08 main public real Gazebo near/restore + exact C++ yolo_ros replay (NO GOAL)
+on:
+  push:
+    branches: ['main','release/d08-public-no-goal-ci-main-20261115']
+    paths:
+      - 'd08/**'
+      - '.github/workflows/d08-main-no-goal-real-gazebo-l2.yml'
+  pull_request:
+    paths:
+      - 'd08/**'
+      - '.github/workflows/d08-main-no-goal-real-gazebo-l2.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: d08-main-public-no-goal-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  l0-human-proxy-red-green:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Minimal original D08 public source and no-Goal regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install -q pytest==8.3.5
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -q \
+            d08/tests/test_d08_main_public_only_contract.py \
+            d08/tests/test_d08_collocated_human_proxy.py \
+            d08/tests/test_d08_g07_lidar_visible_proxy.py \
+            d08/tests/test_d08_rgbd_alignment_evidence.py \
+            d08/tests/test_d08_live_public_harness.py
+          python -m compileall -q d08/harness/d08_live_world.py \
+            d08/scripts/d08_public_gazebo_l2.py \
+            d08/scripts/d08_actual_rgb_onnx_probe.py \
+            d08/scripts/d08_ui9_yolo_replay_probe.py
+          echo D08_PUBLIC_MAIN_NO_GOAL_L0_PASS
+  gazebo-contact-positive-once:
+    needs: l0-human-proxy-red-green
+    runs-on: ubuntu-24.04
+    timeout-minutes: 22
+    container:
+      image: ros:jazzy-ros-base-noble
+    env:
+      DEBIAN_FRONTEND: noninteractive
+      MAKEFLAGS: -j2
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Install official Waffle/Gazebo RGBD (no modified ROS or Nav2)
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Actual #43053264733: apt-get update returned 0 despite
+          # archive.ubuntu.com/security.ubuntu.com DNS errors, then
+          # 'python3-venv has no installation candidate' obscured cause.
+          # Treat missing APT indices as INFRA BLOCKED, never Gazebo failed.
+          if ! apt-get update -qq \
+               -o APT::Update::Error-Mode=any \
+               -o Acquire::Retries=1; then
+            echo 'D08_CI_APT_REPOSITORY_UNREACHABLE: network/DNS prerequisite failed before ROS/Gazebo L2' >&2
+            exit 2
+          fi
+          apt-get install -y -qq --no-install-recommends \
+            git curl ca-certificates python3-yaml \
+            ros-jazzy-nav2-minimal-tb3-sim ros-jazzy-turtlebot3-gazebo \
+            ros-jazzy-ros-gz ros-jazzy-xacro ros-jazzy-rclpy \
+            ros-jazzy-nav2-collision-monitor \
+            ros-jazzy-sensor-msgs libgl1-mesa-dri libglx-mesa0 \
+            python3-numpy python3-venv xvfb xauth
+      - name: Validate the existing D04 human COLLADA asset SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/axia-d08-assets
+          curl --fail --location --retry 3 --connect-timeout 15 --max-time 100 \
+            -o /tmp/axia-d08-assets/walk.dae \
+            'https://fuel.gazebosim.org/1.0/Mingfei/models/actor/tip/files/meshes/walk.dae'
+          echo '49af0df3a319d1cb8ca2cebf02dbd00f625e5d5bec820bc5e109925b18b65c6e  /tmp/axia-d08-assets/walk.dae' | sha256sum -c -
+      - name: Real Gazebo grounded human RGBD and native LiDAR set_pose
+        shell: bash
+        run: |
+          set -eo pipefail
+          # ROS 2 setup.bash reads optional env vars, so do not enable nounset.
+          source /opt/ros/jazzy/setup.bash
+          python3 -u d08/scripts/d08_public_gazebo_l2.py \
+            --actor /tmp/axia-d08-assets/walk.dae \
+            --out results/d08-human-contact-calibration \
+            --lidar-pre-goal --cm-cadence-l1
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('results/d08-human-contact-calibration')
+          v=json.loads((root/'verdict.json').read_text())
+          assert v['status']=='D08_REAL_GAZEBO_WAFFLE_RGBD_NO_GOAL_PASS'
+          # Owner 1XZYehm8: old upstream intel depth + new 640x480 RGBD
+          # rendered concurrently under WSLg. Assert REAL official Waffle
+          # copied model has only D08 camera, without changing /opt/ros.
+          assert v['overlay_manifest']['d08_unused_upstream_depth_sensor_removed'] is True
+          import xml.etree.ElementTree as ET
+          robot=ET.parse(v['overlay_manifest']['robot_sdf']).getroot()
+          assert robot.find(".//sensor[@name='intel_realsense_r200_depth']") is None
+          assert robot.find(".//sensor[@name='axia_d08_registered_rgbd']") is not None
+          assert robot.find(".//sensor[@name='hls_lfcd_lds']/update_rate").text=='10'
+          print('D08_REAL_GAZEBO_SINGLE_RGBD_GPU_LOAD_L2_PASS')
+          assert v['actual_rgbd']['matched'] is True
+          assert v['contact_topic_proven'] is True
+          assert v['pregoal_lidar']['status']=='PASS_ACTUAL_GAZEBO_SET_POSE_PLUS_LIDAR'
+          assert v['pregoal_lidar']['slowzone_actual_rgbd']['matched'] is True, v
+          stop=v['pregoal_lidar']['stop_probe']
+          assert stop['status']=='PASS_REAL_STATIC_GAZEBO_STOPZONE_SCAN'
+          assert stop['candidate_dispatch_m']==.30
+          assert .14<=stop['actual_stop_front_m']<=.37,stop
+          assert stop['native_set_pose_ack'] is True
+          assert stop['actual_robot_moved'] is False
+          # Actual 640x480 registered RGBD AFTER stop set_pose at ~0.35m.
+          # Catch the old Owner pants-only screenshot on real Gazebo pixels.
+          assert v['actual_stop_rgbd']['matched'] is True,v
+          assert v['actual_stop_visual']['status']=='VISUAL_FRAMING_CANDIDATE',v
+          assert v['actual_stop_visual']['sampled_head_skin_pixels']>=50,v
+          assert v['actual_stop_visual']['sampled_shirt_green_pixels']>=150,v
+          assert v['actual_stop_visual']['sampled_navy_pants_pixels']>=150,v
+          assert v['actual_stop_visual']['yolo_person_detection_verified'] is False
+          print('D08_REAL_GAZEBO_STOPZONE_RGBD_FULLBODY_FRAMING_L2_PASS')
+          assert stop['owner_goal_sent'] is False
+          assert stop['collision_ground_truth'] is False
+          print('D08_REAL_GAZEBO_STATIC_STOPZONE_DISTANCE_L2_PASS')
+          # UI9 Owner fail at 1.35m: verify REAL Gazebo contact/human
+          # near-to-original restoration on native set_pose ACK + /scan.
+          ui9=v['ui9_reversible_pose']
+          assert ui9['status']=='PASS_ACTUAL_GAZEBO_UI9_NEAR_AND_RESTORE_NO_GOAL',ui9
+          assert ui9['near_world_xyz_m']==[-1.63,-.5,.24],ui9
+          assert ui9['far_world_xyz_m']==[-.58,-.5,.24],ui9
+          assert ui9['near_native_ack'] and ui9['far_native_ack'],ui9
+          assert ui9['near_actual_registered_rgbd']['matched'] is True,ui9
+          assert .14<=ui9['near_actual_scan']['front_m']<.4,ui9
+          assert ui9['far_actual_scan']['front_m']>.75,ui9
+          for key in ('near_actual_scan','far_actual_scan'):
+              assert ui9[key]['scan_count']>=20,ui9
+              assert ui9[key]['wall_gap_max_sec']<.5,ui9
+              assert ui9[key]['no_synthetic_scan'] is True,ui9
+          assert ui9['goal_sent'] is False and ui9['robot_moved'] is False
+          assert ui9['private_d05_verified'] is False
+          assert ui9['safety_ttl_modified'] is False
+          print('D08_UI9_REAL_GAZEBO_NEAR_RESTORE_L2_PASS')
+          # Owner AxvMA7TI: real /scan wall callback gaps reached 0.55s
+          # despite valid simulated sensor stamps. Monitor ACTUAL wall-time.
+          for phase in ('before','after'):
+              m=v['pregoal_lidar'][phase]
+              assert m['scan_count']>=20
+              assert m['wallclock_measured'] is True
+              assert m['wall_gap_max_sec'] < .5, (phase, m)
+              assert m['sim_stamp_period_median_sec'] <= .13, (phase, m)
+          print('D08_REAL_WALLCLOCK_SCAN_WATCHDOG_MARGIN_L2_PASS')
+          cm=v['cm_cadence_l1']
+          assert cm['status']=='REAL_NAV2_CM_L1_CADENCE_PASS',cm
+          assert cm['cm_lifecycle_finalized_before_signal'] is True,cm
+          assert cm['cm_exit_code']==0,cm
+          assert cm['cm_sigsegv_observed'] is False,cm
+          print('D08_REAL_NAV2_CM_ORDERED_LIFECYCLE_EXIT_ZERO_L2_PASS')
+          assert cm['synthetic_scan'] is True
+          assert cm['no_goal'] is True
+          assert cm['cmd_vel_robot_published'] is False
+          assert cm['private_guard_executed'] is False
+          assert cm['callback_wall_max_sec']<.15
+          assert cm['scan_qos_discovery_verified'] is True
+          assert cm['warmup_output_count']>=10
+          assert cm['output_count']>=74 and cm['input_count']==82,cm
+          assert cm['steady_delivery_ratio']>=.90,cm
+          # Owner ODDlcnNN: original test measured CM AFTER physical set_pose.
+          # This probe now mutates actual Gazebo while official CM is sending.
+          assert cm['gazebo_set_pose_during_cm'] is True,cm
+          assert cm['gazebo_concurrent_service_ack'] is True,cm
+          assert cm['cm_max_gap_during_gazebo_service_sec']<.15,cm
+          assert cm['stop_scan_is_synthetic_replay_of_real_gazebo_front'] is True
+          assert cm['measured_static_stop_front_replayed_m']<=.37
+          assert cm['stop_output_samples']>=15
+          # Owner l0KClvT6: after a genuine StopZone zero, continued
+          # 20Hz Supervisor input does not ensure CM keeps sending zero.
+          # Official Jazzy stop_pub_timeout=1s then ends output; Guard
+          # must fail-close at its UNCHANGED 150ms input TTL.
+          assert cm['post_stop_supervised_input_count']==100,cm
+          assert cm['post_stop_supervised_input_elapsed_sec']>=4.7,cm
+          assert cm['post_stop_native_cm_stop_pub_timeout_sec']==1.0,cm
+          assert cm['post_stop_guard_cm_ttl_sec_unchanged']==.15,cm
+          assert cm['post_stop_last_cm_output_age_sec']>.15,cm
+          assert cm['post_stop_guard_fail_closed_required'] is True,cm
+          print('D08_REAL_CM_POST_STOP_ZERO_TIMEOUT_5S_FAIL_CLOSED_L2_PASS')
+          assert cm['stop_zero_output_samples']>=15
+          print('D08_REAL_GAZEBO_SERVICE_DURING_NATIVE_CM_150MS_L2_PASS')
+          print('D08_REAL_MEASURED_STOP_FRONT_OFFICIAL_CM_REPLAY_ZERO_L2_PASS')
+          assert cm['output_speed_nonzero_count']>=20
+          print('D08_REAL_GAZEBO_CONCURRENT_CM_L1_PASS_NO_GOAL')
+          assert v['pregoal_lidar']['after']['front_m'] > 0.4
+          assert v['pregoal_lidar']['after']['front_m'] < 0.75
+          # Positive contact calibration already proven independently
+          # in public CI #42831813671; avoid a second calibration.
+          assert v['collision_ground_truth'] is False
+          assert v['goal_sent'] is False and v['cmd_vel_published'] is False
+          print('D08_G07_NO_GOAL_REAL_LIDAR_MOVE_L2_PASS')
+          print('D08_G07_ROBOT_NO_COLLISION_NOT_CLAIMED')
+          PY
+          # This asserts real camera *framing* only, not YOLO inference.
+          python3 d08/harness/d08_visible_person_frame.py \
+            results/d08-human-contact-calibration/real_gazebo_rgb.ppm
+      - name: BgYnTVv7 real Gazebo RGB -> exact pinned ONNX person class (NO GOAL)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m venv /tmp/axia_d08_onnx_venv
+          /tmp/axia_d08_onnx_venv/bin/pip install -q --disable-pip-version-check \
+            'onnxruntime==1.20.1' 'numpy==1.26.4' 'pillow==11.1.0'
+          curl --fail --location --retry 3 --connect-timeout 15 --max-time 160 \
+            -o /tmp/axia-d08-assets/yolo26n.onnx \
+            'https://huggingface.co/unileon-robotics/YOLO26-ONNX/resolve/main/yolo26n.onnx'
+          echo '4f44c33cea12d4b5785e5e7c0a20c13d0c62a77de607ce96a40d6036c7d7bbcf  /tmp/axia-d08-assets/yolo26n.onnx' | sha256sum -c -
+          source /tmp/axia_d08_onnx_venv/bin/activate
+          # No synthetic frame: these PPM files came from the earlier real
+          # Gazebo/Jazzy ROS Image callbacks in THIS job. Pre-Goal person class
+          # must be positive; RGB pixel counts alone are insufficient.
+          python3 d08/scripts/d08_actual_rgb_onnx_probe.py \
+            --frame results/d08-human-contact-calibration/real_gazebo_slowzone_rgb.ppm \
+            --stop-frame results/d08-human-contact-calibration/real_gazebo_stop_rgb.ppm \
+            --model /tmp/axia-d08-assets/yolo26n.onnx \
+            --report results/d08-human-contact-calibration/onnx_real_frame_verdict.json \
+            | tee /tmp/d08_bgyntv7_real_onnx.log
+          # New UI9 pre-Goal near frame MUST independently classify as
+          # person on exact pinned model, not just reused old Stop image.
+          python3 d08/scripts/d08_actual_rgb_onnx_probe.py \
+            --frame results/d08-human-contact-calibration/real_gazebo_ui9_near_rgb.ppm \
+            --stop-frame results/d08-human-contact-calibration/real_gazebo_stop_rgb.ppm \
+            --model /tmp/axia-d08-assets/yolo26n.onnx \
+            --report results/d08-human-contact-calibration/onnx_ui9_near_real_frame_verdict.json \
+            | tee /tmp/d08_ui9_near_real_onnx.log
+          grep -F 'D08_ACTUAL_ONNX_PERSON_FRAME_L2_PASS' /tmp/d08_ui9_near_real_onnx.log
+          echo 'D08_UI9_NEAR_ACTUAL_RGB_ONNX_PERSON_L2_PASS'
+          grep -F 'D08_ACTUAL_ONNX_PERSON_FRAME_L2_PASS' /tmp/d08_bgyntv7_real_onnx.log
+          ( cd results/d08-human-contact-calibration
+            sha256sum onnx_real_frame_verdict.json onnx_ui9_near_real_frame_verdict.json >> SHA256SUMS )
+      - name: Remove external mesh (not part of artifact)
+        if: always()
+        run: rm -f /tmp/axia-d08-assets/walk.dae
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d08-main-real-no-goal-evidence
+          path: results/d08-human-contact-calibration/
+          retention-days: 7
+          if-no-files-found: warn
+
+  real-gazebo-rgb-pinned-upstream-yolo-ros:
+    needs: gazebo-contact-positive-once
+    runs-on: ubuntu-24.04
+    timeout-minutes: 24
+    container:
+      image: ros:jazzy-ros-base-noble
+    env:
+      DEBIAN_FRONTEND: noninteractive
+      ROS_DOMAIN_ID: '69'
+      ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Download same-run real Gazebo L2 near RGB (exact same commit)
+        uses: actions/download-artifact@v4
+        with:
+          name: d08-main-real-no-goal-evidence
+          path: /tmp/d08-real-gazebo-evidence
+      - name: Verify real Gazebo frame and immutable upstream/model pins
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd /tmp/d08-real-gazebo-evidence
+          test -s real_gazebo_stop_rgb.ppm
+          test -s real_gazebo_slowzone_rgb.ppm
+          test -s real_gazebo_ui9_near_rgb.ppm
+          sha256sum -c SHA256SUMS
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          v=json.loads(Path('verdict.json').read_text())
+          assert v['status']=='D08_REAL_GAZEBO_WAFFLE_RGBD_NO_GOAL_PASS',v.get('status')
+          assert v['actual_stop_rgbd']['matched'] is True
+          assert v['pregoal_lidar']['stop_probe']['actual_stop_front_m']<.4
+          assert v['goal_sent'] is False
+          ui9=v['ui9_reversible_pose']
+          assert ui9['status']=='PASS_ACTUAL_GAZEBO_UI9_NEAR_AND_RESTORE_NO_GOAL'
+          assert ui9['near_native_ack'] is True and ui9['far_native_ack'] is True
+          assert ui9['near_actual_registered_rgbd']['matched'] is True
+          assert .14<=ui9['near_actual_scan']['front_m']<.4
+          assert ui9['far_actual_scan']['front_m']>.75
+          assert ui9['goal_sent'] is False and ui9['safety_ttl_modified'] is False
+          print('UI9_REAL_GAZEBO_NEAR_RESTORED_FRAME_SOURCE_VERIFIED')
+          PY
+      - name: Install exact ROS Jazzy C++ YOLO engine build dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! apt-get update -qq -o APT::Update::Error-Mode=any;then
+            echo 'UI9_INFRA_APT_DNS_BLOCKED'
+            exit 2
+          fi
+          apt-get install -y -qq --no-install-recommends \
+            git curl ca-certificates build-essential cmake python3-pip \
+            python3-colcon-common-extensions python3-rosdep python3-opencv \
+            libopencv-dev libyaml-cpp-dev libcurl4-openssl-dev libjpeg-dev \
+            ros-jazzy-rclpy ros-jazzy-rclcpp ros-jazzy-rclcpp-lifecycle \
+            ros-jazzy-sensor-msgs ros-jazzy-std-msgs \
+            ros-jazzy-geometry-msgs ros-jazzy-visualization-msgs \
+            ros-jazzy-message-filters ros-jazzy-tf2-ros \
+            ros-jazzy-cv-bridge ros-jazzy-image-transport \
+            ros-jazzy-vision-msgs ros-jazzy-pluginlib ros-jazzy-launch-ros \
+            ros-jazzy-ament-index-cpp ros-jazzy-ament-cmake \
+            ros-jazzy-ament-cmake-python
+      - name: Build upstream yolo_ros immutable SHA, no teacher code
+        shell: bash
+        run: |
+          set -eo pipefail
+          mkdir -p /tmp/axia_ui9_yolo_ws/src
+          git clone -q https://github.com/mgonzs13/yolo_ros.git \
+            /tmp/axia_ui9_yolo_ws/src/yolo_ros
+          git -C /tmp/axia_ui9_yolo_ws/src/yolo_ros checkout -q --detach \
+            94d2dd500cb26027ee9c019f4d3a02029ac615cc
+          test "$(git -C /tmp/axia_ui9_yolo_ws/src/yolo_ros rev-parse HEAD)" = \
+            94d2dd500cb26027ee9c019f4d3a02029ac615cc
+          cd /tmp/axia_ui9_yolo_ws
+          source /opt/ros/jazzy/setup.bash
+          if ! colcon build --merge-install --executor sequential \
+               --packages-up-to yolo_bringup \
+               --cmake-args -DBUILD_TESTING=OFF \
+               --event-handlers console_cohesion+ > /tmp/ui9_yolo_build.log 2>&1;then
+            tail -n 50 /tmp/ui9_yolo_build.log
+            echo 'UI9_PINNED_UPSTREAM_YOLO_BUILD_BLOCKED'
+            exit 2
+          fi
+          echo 'UI9_PINNED_UPSTREAM_YOLO_BUILD_PASS'
+      - name: Replay ACTUAL Gazebo Stop RGB into real ROS DetectionArray
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/axia_ui9_yolo_model
+          curl -fLsS --retry 3 --max-time 160 \
+            'https://huggingface.co/unileon-robotics/YOLO26-ONNX/resolve/main/yolo26n.onnx' \
+            -o /tmp/axia_ui9_yolo_model/yolo26n.onnx
+          echo '4f44c33cea12d4b5785e5e7c0a20c13d0c62a77de607ce96a40d6036c7d7bbcf  /tmp/axia_ui9_yolo_model/yolo26n.onnx' | sha256sum -c -
+          cat > /tmp/axia_ui9_yolo_model/d08_ui9_yolo.yaml <<'YAML'
+          /yolo/yolo_node:
+            ros__parameters:
+              use_sim_time: false
+              plugins: ["detection", "debug"]
+              cameras: ["cam0"]
+              cam0:
+                rgb_topic: /axia/d08/rgbd/image
+                image_reliability: 2
+              detection:
+                plugin: yolo_ros/DetectionPlugin
+                cameras: ["cam0"]
+                model_path: "/tmp/axia_ui9_yolo_model/yolo26n.onnx"
+                model_repo: ""
+                model_filename: ""
+                model_type: auto
+                provider: cpu
+                threshold: 0.25
+                iou: 0.45
+                n_threads: 2
+                max_fps: 5
+              debug:
+                plugin: yolo_ros/DebugPlugin
+                cameras: ["cam0"]
+          YAML
+          # ROS 2 setup scripts read optional environment variables.
+          # Owner UI9 real CI: AMENT_TRACE_SETUP_FILES was unset under -u.
+          set +u
+          source /opt/ros/jazzy/setup.bash
+          source /tmp/axia_ui9_yolo_ws/install/setup.bash
+          set -u
+          setsid ros2 launch yolo_bringup yolo.launch.py \
+            params_file:=/tmp/axia_ui9_yolo_model/d08_ui9_yolo.yaml \
+            > /tmp/ui9_yolo_runtime.log 2>&1 &
+          PID=$!
+          trap 'kill -- -"$PID" 2>/dev/null || true' EXIT
+          sleep 3
+          timeout --signal=TERM --kill-after=5s 65s \
+            python3 d08/scripts/d08_ui9_yolo_replay_probe.py \
+            --ppm /tmp/d08-real-gazebo-evidence/real_gazebo_ui9_near_rgb.ppm \
+            --out /tmp/axia_ui9_yolo_model/replay_verdict.json \
+            --timeout-s 55
+          echo 'UI9_REAL_YOLO_ROS_PERSON_DETECTION_L1_PASS'
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          v=json.loads(Path('/tmp/axia_ui9_yolo_model/replay_verdict.json').read_text())
+          assert v['status']=='PASS_REAL_YOLO_ROS_DETECTIONARRAY_REPLAY'
+          assert v['person_count']>=1 and v['person_max_score']>=.25
+          assert v['moving_goal_sent'] is False and v['roi_depth_d05_verified'] is False
+          print('UI9_EXACT_YOLO_ROS_REPLAY_L1_ONLY_D05_AND_WSLG_UNVERIFIED')
+          PY
+      - name: Upload only public-source, replay classification verdict
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d08-ui9-public-yolo-ros-replay-l1
+          path: /tmp/axia_ui9_yolo_model/replay_verdict.json
+          retention-days: 7
+          if-no-files-found: warn
