@@ -88,7 +88,7 @@ grep -qiE '(microsoft|wsl)' /proc/sys/kernel/osrelease || {
 [[ -f /opt/ros/jazzy/setup.bash && -n "${DISPLAY:-}" ]] || {
   echo 'D06_BLOCKED_ROS_JAZZY_OR_WSLG_DISPLAY_MISSING';exit 2;
 }
-for c in git gh bash ros2 gz colcon setsid timeout python3;do
+for c in git gh bash ros2 gz colcon setsid taskset timeout python3;do
   command -v "$c" >/dev/null || { echo "D06_BLOCKED_MISSING_CMD=$c";exit 2; }
 done
 gh auth status >/dev/null 2>&1 || {
