@@ -1,0 +1,46 @@
+name: AXIA D04-D08 public superseded source branches provenance prune
+on:
+  push:
+    branches: ['ops/d04-d08-merged-branch-prune-20261115']
+    paths:
+      - 'scripts/axia_d04_d08_superseded_public_prune.py'
+      - '.github/workflows/axia-d04-d08-superseded-public-prune.yml'
+permissions:
+  contents: write
+jobs:
+  closed_pr_successor_main_custody_guarded:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Static policy and immutable 9-branch closed-PR registry
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile scripts/axia_d04_d08_superseded_public_prune.py
+          python3 - <<'PY'
+          import importlib.util
+          spec=importlib.util.spec_from_file_location('prune','scripts/axia_d04_d08_superseded_public_prune.py')
+          module=importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(module)
+          assert len(module.SUPERSEDED)==2
+          assert all('d0' in name for name in module.SUPERSEDED)
+          assert all(a>0 and b>0 for a,b in module.SUPERSEDED.values())
+          print('AXIA_PUBLIC_SUPERSEDED_PRUNE_STATIC_GATE_PASS')
+          PY
+      - name: Delete only closed PR heads with merged successor ancestry and original SHA
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/axia_d04_d08_superseded_public_prune.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: axia-d04-d08-superseded-public-prune-audit
+          path: axia_d04_d08_superseded_public_branch_cleanup.json
+          retention-days: 30
+          if-no-files-found: warn
