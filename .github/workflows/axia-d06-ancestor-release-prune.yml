@@ -1,0 +1,46 @@
+name: AXIA D06 intermediate owner branch ancestor prune (PUBLIC ONLY)
+on:
+  push:
+    branches: ['ops/d04-d08-merged-branch-prune-20261115']
+    paths: ['.github/workflows/axia-d06-ancestor-release-prune.yml']
+permissions:
+  contents: write
+jobs:
+  verify_and_prune_no_open_pr:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - name: Exact old ref is ancestor of preserved newer G11 branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,subprocess
+          R='silverbjin/axia-robot-safety-ci-public'
+          old='release/d06-g07-observer-owner-20261115'
+          new='release/d06-g07-owner-g11-pinned-20261115'
+          def api(p,method='GET'):
+              x=subprocess.run(['gh','api','-X',method,p],
+                 capture_output=True,text=True,timeout=40)
+              if x.returncode:raise RuntimeError(x.stderr[:200])
+              return json.loads(x.stdout) if x.stdout.strip() else None
+          o=api(f'repos/{R}/branches/{old}')
+          n=api(f'repos/{R}/branches/{new}')
+          assert o['commit']['sha']=='f443fb4d6b246db2024dff225c7b77c97d7f50a9'
+          assert n['commit']['sha']=='67b8995cc7fdd506b12f348fc7e5241dcedddc67'
+          assert o.get('protected') is False
+          compare=api(f'repos/{R}/compare/{old}...{new}')
+          assert compare['behind_by']==0 and compare['ahead_by']>=1,compare
+          for page in range(1,20):
+              prs=api(f'repos/{R}/pulls?state=open&per_page=100&page={page}')
+              assert all(not any(p[z]['ref']==old and
+                (p[z].get('repo') or {}).get('full_name')==R
+                for z in ('head','base')) for p in prs)
+              if len(prs)<100:break
+          print('AXIA_D06_OLD_OWNER_ANCESTOR_VERIFIED',o['commit']['sha'],
+                'successor',n['commit']['sha'])
+          api(f'repos/{R}/git/refs/heads/{old}',method='DELETE')
+          print('AXIA_D06_OLD_OWNER_BRANCH_DELETED_IN_FAVOR_OF_G11_PINNED')
+          PY
