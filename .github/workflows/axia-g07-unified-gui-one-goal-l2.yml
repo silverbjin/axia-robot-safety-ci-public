@@ -43,7 +43,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-ci-public
-          ref: ac49b4b763fafcbf1dc4a6b06956f0d7647a3f3b
+          ref: 03da900557532faa924ec3c06b48853af09198df
           path: unified-public
           persist-credentials: false
       - name: Published D06 read-only viewer sources pinned at public main
@@ -57,7 +57,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C unified-public rev-parse HEAD)" = "ac49b4b763fafcbf1dc4a6b06956f0d7647a3f3b"
+          test "$(git -C unified-public rev-parse HEAD)" = "03da900557532faa924ec3c06b48853af09198df"
           test "$(git -C visual rev-parse HEAD)" = '0f66059d9110f8e667200bbca22396bd0c78c02e'
           export PYTHONPATH="$PWD/unified-public"
           python3 -m unittest discover -s unified-public/d06/tests -p 'test_g07_unified_first_timing_regression.py' -v
@@ -120,6 +120,9 @@ jobs:
           assert before and not changed,'AXIA_G07_EXISTING_ROS_PACKAGE_DRIFT_'+repr(changed)
           print('AXIA_G07_GUI_OVERLAY_BASE_VERSION_FROZEN_DIGEST_PLUS_OVERLAY_NOT_IDENTICAL')
           PY
+          set +u
+          source /opt/ros/jazzy/setup.bash
+          set -u
           for cmd in Xvfb rviz2 xwininfo gz;do command -v "$cmd" || exit 3;done
           echo AXIA_G07_REAL_GUI_L2_PREREQUISITES_PRESENT_NO_GOAL
       - name: Isolated S02 native physics observer build and identical positive calibration blob
