@@ -33,9 +33,9 @@ def test_old_owner_failure_is_preserved_after_new_independent_ci_l2_readmission(
     receipt = json.loads(GATE.read_text())
     # Original G85 failure remains, while later exact-source GUI-load L2 allows
     # a NEW single manual final WSL2 check; old admission is never replayed.
-    assert receipt["status"] == "ADMITTED_FINAL_OWNER_ONLY"
-    assert receipt["allow_one_final_wsl2_owner"] is True
-    assert receipt["allowed_final_owner_attempts"] == 1
+    assert receipt["status"] == "HOLD_OWNER_L3_FIRST_CM_SOURCE_TTL_GAP"
+    assert receipt["allow_one_final_wsl2_owner"] is False
+    assert receipt["allowed_final_owner_attempts"] == 0
     assert receipt["previous_failed_concurrent_gui_l2_run_id"] == 43664497257
     assert receipt["last_actual_concurrent_gui_l2_run_id"] == 43667573251
     assert receipt["owner_l3_accepted"] is False
