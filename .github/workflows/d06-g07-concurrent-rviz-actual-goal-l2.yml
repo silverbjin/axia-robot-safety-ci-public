@@ -43,7 +43,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-ci-public
-          ref: a7661402e8f9b753573db4b6745b1511a06c9776
+          ref: 59c0adaf589bf66e9208bcfa1b8a531389a6d74c
           path: d06-visual
           persist-credentials: false
 
@@ -187,7 +187,14 @@ jobs:
           # with the actual G07 moving Goal; no extra robot command publisher.
           export DISPLAY=:99 LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe
           mkdir -p ../d06_gui_load_evidence
-          Xvfb :99 -screen 0 1280x800x24 -nolisten tcp \
+          # Same CPU selection as Owner D06 sidecar; the G07 recorder
+          # remains pinned to the highest allowed CPU via private runner.
+          D06_GUI_CPU="$(/usr/bin/python3 ../d06-visual/d06/live/d06_gui_cpu_plan.py)"
+          [[ "$D06_GUI_CPU" =~ ^[0-9]+$ ]] || {
+            echo 'D06_GUI_CPU_PLAN_BLOCKED'; exit 3;
+          }
+          echo "D06_GUI_AFFINITY cpu=$D06_GUI_CPU bag=last_allowed_cpu rviz_fps=3"
+          taskset -c "$D06_GUI_CPU" nice -n 19 Xvfb :99 -screen 0 1280x800x24 -nolisten tcp \
             > ../d06_gui_load_evidence/xvfb.log 2>&1 &
           xvfb_pid=$!
           cleanup_gui_test_only() {
@@ -199,11 +206,11 @@ jobs:
           }
           trap cleanup_gui_test_only EXIT
           sleep 2
-          nice -n 15 rviz2 -d ../d06-visual/d06/rviz/d06_safety_bubble.rviz \
+          taskset -c "$D06_GUI_CPU" nice -n 19 rviz2 -d ../d06-visual/d06/rviz/d06_safety_bubble.rviz \
             --ros-args -p use_sim_time:=true \
             > ../d06_gui_load_evidence/rviz.log 2>&1 &
           rviz_pid=$!
-          nice -n 15 /usr/bin/python3 -u ../d06-visual/d06/live/d06_readonly_monitor.py \
+          taskset -c "$D06_GUI_CPU" nice -n 7 /usr/bin/python3 -u ../d06-visual/d06/live/d06_readonly_monitor.py \
             --out ../d06_gui_load_evidence \
             > ../d06_gui_load_evidence/monitor.log 2>&1 &
           monitor_pid=$!
@@ -218,6 +225,8 @@ jobs:
             exit 3
           }
           echo 'D06_GUI_L2_REAL_RVIZ_WINDOW_AND_MARKER_MONITOR_CONCURRENT_WITH_GOAL_START'
+          echo "D06_GUI_ISOLATION_VISUAL_CPU=$D06_GUI_CPU SOURCE_PIN=59c0adaf589bf66e9208bcfa1b8a531389a6d74c"
+
           # Keep normal Owner-matched execution; /proc schedstat was unavailable
           # in diagnostic CI #43594781886, so do not burden full L2 with probe.
           set +e
