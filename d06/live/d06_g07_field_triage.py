@@ -21,7 +21,14 @@ def classify_owner_field(record: dict) -> dict:
 
     Observed callback gap cannot alone attribute CM publisher vs DDS vs executor.
     """
+    # Actual Owner G07 places first callback gaps under pre_latch_delivery_diagnostics.
+    # Historical fixtures used a top-level first_timing_violation; retain both.
+    # Never convert one Observer callback interval into proven Guard/RMW causation.
+    nested = record.get("pre_latch_delivery_diagnostics")
+    nested = nested if isinstance(nested, dict) else {}
     first = record.get("first_timing_violation")
+    if not isinstance(first, dict):
+        first = nested.get("first_timing_violation")
     guard = record.get("first_guard_latch")
     skew = record.get("cm_guard_receive_skew")
     out = {
@@ -30,6 +37,9 @@ def classify_owner_field(record: dict) -> dict:
         "first_channel": None,
         "first_interval_sec": None,
         "first_channel_limit_sec": None,
+        "first_observer_scan_gap_sec": None,
+        "first_cm_rmw_source_gap_sec": None,
+        "cm_callback_processing_delay_proven": False,
         "scan_violated_before_guard_latch": False,
         "scan_caused_guard_latch_proven": False,
         "cm_publisher_healthy_proven": False,
@@ -61,6 +71,20 @@ def classify_owner_field(record: dict) -> dict:
             out["scan_violated_before_guard_latch"] = (
                 first["channel"] == "scan" and _number(observed)
                 and _number(tick) and observed < tick)
+    scan = nested.get("channels", {}).get("scan") if isinstance(nested.get("channels"), dict) else None
+    if isinstance(scan, dict):
+        observed_gap = scan.get("first_violation_sec")
+        if _number(observed_gap) and observed_gap > SCAN_TTL_S:
+            out["first_observer_scan_gap_sec"] = observed_gap
+    rmw_window = record.get("first_cm_supervisor_rmw_window")
+    if isinstance(rmw_window, dict):
+        source_gap = rmw_window.get("cm_source_gap_sec")
+        if _number(source_gap) and source_gap > CM_TTL_S:
+            out["first_cm_rmw_source_gap_sec"] = source_gap
+        # Owner source/receive timestamps do not identify an executor stall.
+        out["cm_callback_processing_delay_proven"] = (
+            rmw_window.get("cm_callback_processing_delay_proven") is True
+        )
     if not isinstance(guard, dict) or not _number(guard.get("cm_age_sec")):
         if record.get("status") == "BLOCKED":
             out["status"] = "HOLD_G07_UNCLASSIFIED_FIRST_FAILURE"
