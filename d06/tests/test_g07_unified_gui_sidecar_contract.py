@@ -42,5 +42,24 @@ class UnifiedGuiSidecarContract(unittest.TestCase):
         self.assertGreaterEqual(source,0,"CI_GUI_OVERLAY_ROS_ENV_NOT_SOURCED")
         self.assertLess(source,lookup,"CI_GUI_RVIZ_BIN_DISCOVERY_BEFORE_ROS_SETUP")
 
+    def test_renderer_and_readonly_observer_use_distinct_advisory_cpus(self):
+        # Actual #43683837146: a native 150ms CM/Guard deadline was exceeded
+        # while Xvfb+Gazebo GUI+RViz were on unrestricted host cores.
+        # Isolate only display workloads; never move CM/Guard/Nav2 or bag.
+        from d06.live.d06_gui_cpu_plan import select_cpu, select_monitor_cpu
+        self.assertEqual(select_cpu({2,3,4,5}),2)
+        self.assertEqual(select_monitor_cpu({2,3,4,5}),4)
+        self.assertNotEqual(select_cpu({2,3,4,5}),select_monitor_cpu({2,3,4,5}))
+        with self.assertRaises(ValueError):
+            select_monitor_cpu({2,3,4})
+        s=SCRIPT.read_text()
+        self.assertIn('d06_gui_cpu_plan.py',s)
+        self.assertIn('--role monitor',s)
+        self.assertIn('taskset -c "$GUI_CPU" nice -n 19 rviz2',s)
+        self.assertIn('taskset -c "$GUI_CPU" nice -n 19 gz sim -g',s)
+        self.assertIn('taskset -c "$MONITOR_CPU" nice -n 15 python3',s)
+        self.assertIn('G07_UNIFIED_GUI_CPU_PARTITION',s)
+        self.assertNotIn('taskset -cp',s)  # No re-affinity of existing safety nodes.
+
 if __name__=="__main__":
     unittest.main()

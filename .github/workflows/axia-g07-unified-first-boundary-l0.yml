@@ -12,6 +12,7 @@ on:
       - 'd06/live/d06_guard_cm_first_latch_join.py'
       - 'd06/tests/test_g07_unified_gui_sidecar_contract.py'
       - 'd06/scripts/g07_unified_ci_readonly_display.sh'
+      - 'd06/live/d06_gui_cpu_plan.py'
 permissions:
   contents: read
 jobs:
