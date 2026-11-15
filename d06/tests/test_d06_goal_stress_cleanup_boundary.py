@@ -23,7 +23,7 @@ def test_stress_must_cover_moving_goal_and_stop_only_after_real_oracle():
                      "real_gazebo_world":True,"odom_stopped_dwell_sec":0.75})=="CONTINUE_GOAL_STRESS"
     assert decision({"status":"CI_GAZEBO_MOVING_GOAL_CANDIDATE","goal_sent":True,
                      "real_gazebo_world":True,"odom_stopped_dwell_sec":1.013,
-                     "guard_latched":False})=="STOP_AFTER_VERIFIED_GOAL_ORACLE"
+                     "guard_latched":False,"owner_l3_accepted":False})=="STOP_AFTER_VERIFIED_GOAL_ORACLE"
     assert decision({"status":"NUMERICAL_CANDIDATE","goal_sent":True,
                      "odom_stopped_dwell_sec":1.15})=="CONTINUE_GOAL_STRESS"
 
