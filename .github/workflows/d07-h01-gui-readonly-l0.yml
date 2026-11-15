@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 633c8829fb57e3e6f007a20e5e58af26739e5d1f
+          ref: a32c1bac74f52d794cb5b0e765fc6f891b85d8bb
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -23,9 +23,10 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor rev-parse HEAD)" = '633c8829fb57e3e6f007a20e5e58af26739e5d1f'
+          test "$(git -C instructor rev-parse HEAD)" = 'a32c1bac74f52d794cb5b0e765fc6f891b85d8bb'
           cd instructor
           python3 -m unittest discover -s tests/unit -p test_d07_h01_gui_owner_contract.py -v
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_path_visual.py -v
           echo D07_H01_GUI_L0_PASS_NO_ROS_NO_GAZEBO_NO_GOAL
       - name: Destroy private checkout
         if: always()
