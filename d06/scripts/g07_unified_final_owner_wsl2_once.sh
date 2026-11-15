@@ -42,7 +42,7 @@ fi
 # Admission receipt is source-locked to this exact public checkout. Fail
 # BEFORE private download, ROS startup, TTY consent or any real Goal.
 # The receipt is NOT an Owner acceptance verdict; only CI preflight admission.
-GATE="$ROOT/d06/acceptance/d06_g07_final_owner_ci_gate.json"
+GATE="$ROOT/d06/acceptance/g07_unified_final_owner_ci_gate.json"
 GATE_VERIFY="$ROOT/d06/live/g07_unified_final_owner_gate.py"
 if ! /usr/bin/python3 "$GATE_VERIFY" --gate "$GATE" --private-sha "$P4_OWNER_PRIVATE_SHA" --release-sha "$P4_PUBLIC_RELEASE_SHA";then
   echo 'AXIA_G07_FINAL_OWNER_BLOCKED_CI_GUI_L2_OR_PIN_MISMATCH_NO_ROS_NO_GOAL'
