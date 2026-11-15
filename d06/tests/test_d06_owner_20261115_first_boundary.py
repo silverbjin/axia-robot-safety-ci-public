@@ -29,11 +29,15 @@ def test_owner_first_guard_and_scan_boundaries_are_not_lost_under_nested_diagnos
     assert result["owner_l3_accepted"] is False
 
 
-def test_new_owner_failure_revokes_old_admission_without_erasing_three_ci_successes():
+def test_old_owner_failure_is_preserved_after_new_independent_ci_l2_readmission():
     receipt = json.loads(GATE.read_text())
-    assert receipt["status"] == "HOLD_OWNER_L3_FIRST_SAFETY_BOUNDARY"
-    assert receipt["allow_one_final_wsl2_owner"] is False
-    assert receipt["allowed_final_owner_attempts"] == 0
+    # Original G85 failure remains, while later exact-source GUI-load L2 allows
+    # a NEW single manual final WSL2 check; old admission is never replayed.
+    assert receipt["status"] == "ADMITTED_FINAL_OWNER_ONLY"
+    assert receipt["allow_one_final_wsl2_owner"] is True
+    assert receipt["allowed_final_owner_attempts"] == 1
+    assert receipt["previous_failed_concurrent_gui_l2_run_id"] == 43664497257
+    assert receipt["last_actual_concurrent_gui_l2_run_id"] == 43667573251
     assert receipt["owner_l3_accepted"] is False
     assert receipt["attempt_results"] == ["PASS", "PASS", "PASS"]
     assert receipt["last_real_gazebo_ci_run_id"] == 43609296371
