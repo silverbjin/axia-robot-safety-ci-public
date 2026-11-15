@@ -2,7 +2,7 @@
 name: AXIA G07 field official CM scheduler sealed L0
 on:
   push:
-    branches: ['fix/g07-field-ci-wsl2-parity-20261115']
+    branches: ['release/g07-field-ttl-ci-20261115']
     paths: ['.github/workflows/axia-g07-field-private-cm-scheduler-l0.yml']
   pull_request:
     branches: ['integration/g07-unified-ci-20261115']
