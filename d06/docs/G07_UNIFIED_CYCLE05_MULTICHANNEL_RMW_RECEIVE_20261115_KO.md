@@ -20,7 +20,7 @@
 - 정적 검증은 스케줄러 원인 확정이 아니며 실제 L2 안전 주기 개선 여부가 필요.
 
 ## 4. 검증 게이트 및 다음 단계
-- 실제 L2 후보: [#43692909902](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43692909902) — **실행 결과 대기(문서 작성 시점)**. 비공개 SHA `5a70ab6...`, public GUI source `70f9d4ec...`; 위반 또는 shutdown 실패하면 기존 후보를 Owner에 배포하지 않음.
+- 실제 L2 후보: [#43692909902](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43692909902) — **FAIL_PRE_GOAL_NATIVE_STOP_CPU_ADMISSION**: 공통 Goal 관측기에 4코어 CI 중 CPU 1개만 남겨서 `p4_g07_prearmed_stop.py` 원래의 2코어 최소 요구를 만족하지 못했다. 실제 오류 `RuntimeError:G07_PREARMED_CPU_ISOLATION_NOT_AVAILABLE_NO_GOAL`가 Goal 전 발생. 새로운 안전정책 우회 없이 사이클 06에서 개선한다. 비공개 SHA `5a70ab6...`, public GUI source `70f9d4ec...`; 위반 또는 shutdown 실패하면 기존 후보를 Owner에 배포하지 않음.
 - Owner WSL2 신규 Goal **NOT_RUN**, 기존 성공 P4 `db1eec05...` 불변, main 병합 없음.
 - 사용자 증거 수집: `d06/live/g07_owner_evidence_bundle.py`가 나중에 Owner exit에서 원본·GUI·G11 자료를 로컬 단일 압축 디렉터리와 SHA256SUMS로 보존하도록 공개 CI L0 테스트됨; 실제 WSL2 보존은 미검증.
 - 교육 교훈: **RMW source 간격과 RMW receive/콜백 간격의 인과를 분리하고 첫 위반을 재현해야 한다**. 짧은 CM source gap을 포함한 실패를 임의로 PASS 처리하지 않는다.
