@@ -138,7 +138,15 @@ jobs:
           DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
             --no-upgrade ros-jazzy-rviz2 ros-jazzy-visualization-msgs \
             xvfb xauth x11-utils libgl1-mesa-dri
-          for cmd in rviz2 Xvfb xwininfo; do command -v "$cmd" >/dev/null; done
+          set +u
+          source /opt/ros/jazzy/setup.bash
+          set -u
+          for cmd in rviz2 Xvfb xwininfo; do
+            command -v "$cmd" >/dev/null || {
+              echo "D06_GUI_OVERLAY_MISSING_CMD=$cmd"
+              exit 3
+            }
+          done
           dpkg-query -W -f='${binary:Package}\t${Version}\n' 'ros-jazzy-*' \
             2>/dev/null | sort > /tmp/d06_ros_packages_after.txt
           python3 - <<'PY'
@@ -170,6 +178,9 @@ jobs:
           AXIA_P2_SMOKE_RESULTS: results/p2-g07-ci-moving/real-l2
         run: |
           set -euo pipefail
+          set +u
+          source /opt/ros/jazzy/setup.bash
+          set -u
           cd instructor
           test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 'c44414f8e3bad37a349565f211d554540cccb062'
           # Actual read-only RViz and MarkerArray observer share ONE CI container
