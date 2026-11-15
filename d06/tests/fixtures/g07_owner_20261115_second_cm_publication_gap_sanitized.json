@@ -1,0 +1,49 @@
+{
+  "schema": "axia.d06.owner_first_guard_cm_source_gap_sanitized_v1",
+  "origin": {
+    "scope": "one user-supplied WSL2 G07 real Goal, 2026-11-15",
+    "raw_private_exported": false,
+    "ci_gazebo_replayed": false
+  },
+  "first_guard_latch": {
+    "reason": "UPSTREAM_STALE_AFTER_MOTION",
+    "channel": "guard_internal_cm",
+    "measured_age_ms": 169.168036,
+    "limit_ms": 150,
+    "exceeded_ms": 19.168036,
+    "supervisor_age_ms": 0.575855,
+    "supervisor_fsm": "NORMAL"
+  },
+  "post_latch_joined_pair": {
+    "kind": "pre_guard",
+    "rmw_source_gap_ms": 184.414666,
+    "rmw_received_gap_ms": 184.358695,
+    "observer_callback_gap_ms": 223.656034,
+    "publication_sequence_gap": 1,
+    "upstream_supervisor_publications_during_window": 4,
+    "upstream_supervisor_max_coverage_gap_ms": 89.04962
+  },
+  "observation_window": {
+    "first_pre_latch_observer_violation": null,
+    "pre_latch_rmw_pair_complete": false,
+    "joined_second_cm_packet_observed_only_after_guard_latch": true,
+    "first_guard_latch_precedes_final_stop_verification": true
+  },
+  "owner_verdict": {
+    "owner_raw_capture_formal_attested": false,
+    "original_rosbag_sqlite_quick_check": "ok",
+    "original_recorded_topics": 14,
+    "goal_completion_verified": false,
+    "native_shutdown_ack_verified": false,
+    "collision_monitor_clean_exit_verified": false,
+    "collision_monitor_late_process_exit_code": -11,
+    "owner_l3_accepted": false,
+    "certified_estop": false
+  },
+  "unknowns": [
+    "CM callback processing duration not directly instrumented",
+    "Linux/WSL2 CPU scheduler causal attribution unproven",
+    "whether RViz missing meshes caused CM scheduling gap unproven",
+    "CM process -11 exit chronology versus earlier Guard latch not root cause"
+  ]
+}
