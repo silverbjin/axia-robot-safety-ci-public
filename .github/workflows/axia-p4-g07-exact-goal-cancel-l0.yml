@@ -14,13 +14,13 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: ada89792a9e52cf82dcfc7ff639e14fdb6015528
+          ref: 2e35662cfdd52172e2fa3753faa612daf5e4958e
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git rev-parse HEAD)" = ada89792a9e52cf82dcfc7ff639e14fdb6015528
+          test "$(git rev-parse HEAD)" = 2e35662cfdd52172e2fa3753faa612daf5e4958e
           python3 -m unittest discover -s tests/unit -p test_p4_g07_exact_goal_cancel.py -v
           echo AXIA_P4_G07_EXACT_NAV2_GOAL_CANCEL_BEFORE_SHUTDOWN_L0_PASS_NO_GOAL
       - if: always()
