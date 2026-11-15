@@ -18,10 +18,11 @@ FIRST_CM_JOIN="$ROOT/d06/live/d06_guard_cm_first_latch_join.py"
 RVIZ_CONFIG="$ROOT/d06/rviz/d06_safety_bubble.rviz"
 
 self_check() {
-  for p in "$SIDECAR" "$MONITOR" "$TRIAGE" "$RVIZ_CONFIG" "$GUI_CPU_SELECTOR" "$FIRST_CM_JOIN" "$ROOT/d06/live/g07_unified_final_owner_gate.py" "$ROOT/d06/acceptance/g07_unified_final_owner_ci_gate.json"; do
+  for p in "$ROOT/d06/scripts/g07_shared_gui_clients.sh" "$SIDECAR" "$MONITOR" "$TRIAGE" "$RVIZ_CONFIG" "$GUI_CPU_SELECTOR" "$FIRST_CM_JOIN" "$ROOT/d06/live/g07_unified_final_owner_gate.py" "$ROOT/d06/acceptance/g07_unified_final_owner_ci_gate.json"; do
     [[ -s "$p" ]] || { echo "D06_STATIC_BLOCKED_FILE_MISSING=$p";return 2; }
   done
   bash -n "$SIDECAR"
+  bash -n "$ROOT/d06/scripts/g07_shared_gui_clients.sh"
   /usr/bin/python3 "$ROOT/d06/live/g07_unified_final_owner_gate.py" --gate "$ROOT/d06/acceptance/g07_unified_final_owner_ci_gate.json" --private-sha "$P4_OWNER_PRIVATE_SHA" --release-sha "$P4_PUBLIC_RELEASE_SHA"
   /usr/bin/python3 -m py_compile "$MONITOR" "$TRIAGE" "$GUI_CPU_SELECTOR" "$FIRST_CM_JOIN"
   [[ "$P4_PUBLIC_RELEASE_SHA" =~ ^[0-9a-f]{40}$ &&
@@ -182,6 +183,11 @@ if ! mkdir -m 700 "$ATTEMPT_ROOT/$ATTEMPT_NAME" 2>/dev/null;then
 fi
 printf 'private_sha=%s\nci_run=%s\n' "$P4_OWNER_PRIVATE_SHA" 43685818018 > "$ATTEMPT_ROOT/$ATTEMPT_NAME/source.txt"
 echo 'G07_OWNER_FINAL_SINGLE_ATTEMPT_RESERVED; manual TTY Goal still required'
+# Same sole external Gazebo -g, RViz2 and read-only Marker observer
+# process implementation as CI, not the legacy embedded Gazebo GUI.
+# Private P4 shared launch must honor this BEFORE any moving Goal.
+export AXIA_G07_UNIFIED_GUI_SIDECAR=1
+export AXIA_G07_GUI_READY_ATTESTATION_PATH="$OUT/display_attestation.json"
 touch "$MARKER"
 bash "$SIDECAR" "$MARKER" "$OUT" "$P4_OWNER_PRIVATE_SHA" \
   > "$OUT/sidecar.log" 2>&1 & SIDECAR_PID=$!
