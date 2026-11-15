@@ -1,0 +1,34 @@
+# Public CI-first, NO ROS, NO Goal: exact Cycle16 L2 evidence admission and historical attempt preservation.
+name: AXIA G07 Cycle16 Owner one-shot release L0
+on:
+  push:
+    branches: ['release/g07-cycle16-owner-wsl2-20261116']
+    paths:
+      - '.github/workflows/axia-g07-cycle16-owner-release-l0.yml'
+      - 'd06/tests/test_g07_cycle16_owner_release_v4.py'
+      - 'd06/live/g07_cycle16_owner_ci_gate_v4.py'
+      - 'd06/acceptance/g07_cycle16_owner_ci_gate_v3.json'
+      - 'd06/scripts/g07_cycle16_owner_wsl2_once.sh'
+      - 'scripts/axia_g07_cycle16_p4_owner_once.sh'
+      - 'scripts/axia_g07_cycle16_owner_wsl2_bootstrap.sh'
+      - 'd06/docs/G07_CYCLE17_OWNER_RELEASE_20261116_KO.md'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: axia-g07-cycle16-release-l0-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  public-l0-no-ros-no-goal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Strict source & historical evidence RED or GREEN
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest discover -s d06/tests -p 'test_g07_cycle16_owner_release_v4.py' -v
+          bash -n d06/scripts/g07_cycle16_owner_wsl2_once.sh
+          bash -n scripts/axia_g07_cycle16_p4_owner_once.sh
+          bash -n scripts/axia_g07_cycle16_owner_wsl2_bootstrap.sh
+          echo AXIA_G07_CYCLE16_OWNER_RELEASE_PUBLIC_L0_PASS_NO_ROS_NO_GOAL_OWNER_L3_NOT_RUN
