@@ -238,12 +238,12 @@ jobs:
           taskset -c "$D06_STRESS_CPU" nice -n 10 \
             timeout --signal=TERM --kill-after=2s 220s python3 -u - \
               > ../d06_gui_load_evidence/cm_low_priority_cpu_load.log 2>&1 <<'PY' &
-import time
-until=time.monotonic()+210
-x=0.1
-while time.monotonic()<until:
-    x=(x*1.00000001+0.1)%99999.0
-PY
+          import time
+          until=time.monotonic()+210
+          x=0.1
+          while time.monotonic()<until:
+              x=(x*1.00000001+0.1)%99999.0
+          PY
           cm_load_pid=$!
           echo 'D06_REAL_G07_CI_WSL2_LIKE_CM_CORE_CONTENTION_NICE10_STARTED_NO_GOAL'
           taskset -c "$D06_GUI_CPU" nice -n 19 Xvfb :99 -screen 0 1280x800x24 -nolisten tcp \
