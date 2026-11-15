@@ -18,6 +18,9 @@ jobs:
     environment: axia-instructor-sealed
     timeout-minutes: 12
     steps:
+      - name: Start sanitized checkpoint
+        run: |
+          echo RUNNER_INITIALIZED_NO_PRIVATE_DATA > field-l0-result.txt
       - name: Checkout exact private candidate, never publish solution
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -31,12 +34,31 @@ jobs:
           set -Eeuo pipefail
           test "$(git -C instructor rev-parse HEAD)" = 8a8cf5286d90eb2f41ea1c0d2465211add5fc395
           cd instructor
-          python3 -m unittest discover -s tests/unit -p 'test_g07_field_official_cm_cpu_parity_20261115.py' -v
-          python3 -m unittest discover -s tests/unit -p 'test_p4_g07_goal_observer_cpu_parity_20261115.py' -v
-          bash -n scripts/p2_no_goal_smoke_ci.sh
-          bash -n scripts/p2_owner_l3_wsl2.sh
-          python3 -m py_compile tools/p2_g07_official_cm_cpu_affinity.py tools/p2_g07_goal_observer_cpu_plan.py
+          set +e
+          python3 -m unittest discover -s tests/unit -p 'test_g07_field_official_cm_cpu_parity_20261115.py' -v >../sealed-test-1.log 2>&1
+          rc1=$?
+          python3 -m unittest discover -s tests/unit -p 'test_p4_g07_goal_observer_cpu_parity_20261115.py' -v >../sealed-test-2.log 2>&1
+          rc2=$?
+          bash -n scripts/p2_no_goal_smoke_ci.sh; rc3=$?
+          bash -n scripts/p2_owner_l3_wsl2.sh; rc4=$?
+          python3 -m py_compile tools/p2_g07_official_cm_cpu_affinity.py tools/p2_g07_goal_observer_cpu_plan.py; rc5=$?
+          set -e
+          cd ..
+          printf 'CHECKOUT_OK_NO_PRIVATE_CONTENT\nTEST_FIELD_RC=%s\nTEST_PRIOR_CPU_RC=%s\nBASH_CI_RC=%s\nBASH_OWNER_RC=%s\nCOMPILE_RC=%s\n' "$rc1" "$rc2" "$rc3" "$rc4" "$rc5" > field-l0-result.txt
+          for f in sealed-test-1.log sealed-test-2.log;do
+            grep -E '^(FAIL|ERROR): test_[a-z0-9_]+|^Ran [0-9]+ tests|^FAILED \(' "$f" >> field-l0-result.txt || true
+          done
+          cat field-l0-result.txt
+          if (( rc1+rc2+rc3+rc4+rc5 != 0 ));then exit 3;fi
           echo AXIA_G07_FIELD_CM_SCHEDULER_L0_PASS_NO_ROS_NO_GOAL
+      - name: Publish only sanitized test verdict
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: axia-g07-field-sealed-l0-verdict
+          path: field-l0-result.txt
+          if-no-files-found: error
+          retention-days: 3
       - name: Delete all sealed instructor source
         if: always()
-        run: rm -rf -- instructor
+        run: rm -rf -- instructor sealed-test-1.log sealed-test-2.log
