@@ -68,7 +68,8 @@ else
     echo "D06_FINAL_OWNER_GATE_SHA_MISMATCH pinned_instructor_or_public_release_mismatch"
     exit 3
   fi
-  echo "D06_FINAL_OWNER_BLOCKED_CI_L2_HOLD latest_real_G07_CI_failed; inspect_d06_public_Draft_PR108"
+  echo "D06_FINAL_OWNER_BLOCKED_CI_L2_HOLD_OR_OWNER_L3_FIRST_SAFETY_BOUNDARY; inspect_public_Draft_PR108"
+  echo "D06_PREVIOUS_CI_L2_3OF3_PASS_IS_HISTORICAL_NOT_RE_ADMISSION_AFTER_L3_FAILURE"
   echo "D06_OWNER_NO_ROS_NO_GAZEBO_NO_GOAL_UNTIL_PUBLIC_L2_FULL_GREEN"
   exit 3
 fi
