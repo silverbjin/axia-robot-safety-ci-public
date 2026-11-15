@@ -1,0 +1,41 @@
+name: AXIA G07 final Owner v2 public bootstrap admission NO ROS/Goal L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths:
+      - '.github/workflows/axia-g07-final-owner-v2-bootstrap-l0.yml'
+      - 'scripts/axia_g07_final_owner_v2_wsl2_bootstrap.sh'
+permissions:
+  contents: read
+jobs:
+  owner-v2-pinned-no-goal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - name: Public release candidate
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Exact tested public v2 candidate
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-ci-public
+          ref: 8b9e44f4b622210831dd68055dad3efe8a293c92
+          path: unified-public
+          persist-credentials: false
+      - name: Exact shared Gazebo/RViz bytes and source-locked manual Owner with no TTY
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C unified-public rev-parse HEAD)" = 8b9e44f4b622210831dd68055dad3efe8a293c92
+          test "$(git -C unified-public rev-parse HEAD^{tree})" = 9e33400972463d42627c37a35f02f5a3dcb87be8
+          test "$(git -C unified-public hash-object d06/scripts/g07_shared_gui_clients.sh)" = 5962cefbe5cb771c09873ae0ae139948b37ae81b
+          bash -n scripts/axia_g07_final_owner_v2_wsl2_bootstrap.sh
+          bash scripts/axia_g07_final_owner_v2_wsl2_bootstrap.sh --self-check
+          boot_rc=0
+          bash scripts/axia_g07_final_owner_v2_wsl2_bootstrap.sh >/tmp/axia-g07-v2-noninteractive.log 2>&1 || boot_rc=$?
+          test "$boot_rc" -eq 3
+          grep -Fq 'AXIA_G07_BOOTSTRAP_TTY_REQUIRED_NO_ROS_NO_GOAL' /tmp/axia-g07-v2-noninteractive.log
+          bash unified-public/d06/scripts/g07_unified_final_owner_wsl2_v2_once.sh --self-check
+          bash unified-public/d06/scripts/g07_unified_final_owner_wsl2_v2_once.sh --admission-check
+          bash scripts/axia_g07_unified_p4_owner_once.sh --self-check
+          bash scripts/axia_g07_unified_p4_owner_once.sh --admission-check
+          echo 'AXIA_G07_FINAL_OWNER_V2_BOOTSTRAP_CI_NO_ROS_NO_GOAL_PASS_OWNER_L3_NOT_RUN'
