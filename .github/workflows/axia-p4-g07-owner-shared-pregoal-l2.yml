@@ -1,0 +1,79 @@
+name: AXIA P4 G07 exact shared CI Owner executable no-Goal Nav2 startup L2
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-p4-g07-owner-shared-pregoal-l2.yml']
+permissions:
+  contents: read
+jobs:
+  real-pre-goal-nav2-shared:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 17
+    environment: axia-instructor-sealed
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+      options: --dns 1.1.1.1 --dns 8.8.8.8
+    steps:
+      - name: Pin exact candidate into sealed CI
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 2ff1b4fdb89c4f512f5f42174c4ebb98055f7d04
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Actually run shared executable (Owner manual-Goal blocked in CI)
+        shell: bash
+        env:
+          ROS_DOMAIN_ID: '88'
+          ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+          GZ_PARTITION: axia_p2_p4_shared_88
+          AXIA_P0_SIM_ONLY: '1'
+          AXIA_P2_G07_PHYSICAL_PREFLIGHT: '1'
+          AXIA_P2_G07_OWNER_PARITY_CHECK: '1'
+          AXIA_G07_OWNER_STARTUP_PARITY: '1'
+          AXIA_G07_CI_OWNER_BAG_PARITY: '1'
+          AXIA_G07_CI_SIM_GOAL_ALLOWED: '0'
+          AXIA_G07_SHUTDOWN_L2_ONLY: '1'
+          AXIA_P4_G07_SHARED_PREFLIGHT_ONLY: '1'
+          AXIA_P2_SMOKE_RESULTS: results/p4-g07-shared-pregoal-l2
+        run: |
+          set -Eeuo pipefail
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 2ff1b4fdb89c4f512f5f42174c4ebb98055f7d04
+          set +u
+          source /opt/ros/jazzy/setup.bash
+          set -u
+          bash -n scripts/p4_g07_shared_runtime.sh scripts/p2_no_goal_smoke_ci.sh
+          set +e
+          timeout --signal=TERM --kill-after=10s 650s bash scripts/p2_no_goal_smoke_ci.sh >"$RUNNER_TEMP/p4_shared_pregoal.log" 2>&1
+          rc=$?
+          set -e
+          python3 - "$rc" <<'PY'
+          import sys,json
+          from pathlib import Path
+          root=Path('results/p4-g07-shared-pregoal-l2')
+          rc=int(sys.argv[1])
+          s=json.loads((root/'startup_verdict.json').read_text()) if (root/'startup_verdict.json').exists() else {}
+          nav=json.loads((root/'startup_verdict.navigation_start.native.json').read_text()) if (root/'startup_verdict.navigation_start.native.json').exists() else {}
+          loc=json.loads((root/'startup_verdict.localization_start.native.json').read_text()) if (root/'startup_verdict.localization_start.native.json').exists() else {}
+          sd=json.loads((root/'g07_ordered_shutdown.json').read_text()) if (root/'g07_ordered_shutdown.json').exists() else {}
+          print('AXIA_P4_G07_SHARED_PREGOAL_FIRST_BOUNDARY '+json.dumps({
+              'run_rc':rc,'startup_status':s.get('status'),'failed_gate':s.get('failed_gate'),
+              'goal_sent':s.get('goal_sent'),'navigation_status':nav.get('status'),
+              'navigation_request_sent':nav.get('request_sent'),
+              'navigation_elapsed_sec':nav.get('elapsed_sec'),
+              'localization_status':loc.get('status'),
+              'ordered_shutdown_status':sd.get('status')},sort_keys=True))
+          assert s.get('status')=='SMOKE_READY' and s.get('goal_sent') is False
+          assert nav.get('status')=='ACK' and loc.get('status')=='ACK'
+          assert sd.get('status')=='NAV2_LIFECYCLE_SHUTDOWN_ACK'
+          assert rc==0
+          PY
+          grep -F 'AXIA_P4_G07_SHARED_PREGOAL_PARITY_RUN_ADMITTED_GOAL_DISABLED' "$RUNNER_TEMP/p4_shared_pregoal.log"
+          grep -F 'AXIA_G07_SHARED_LAUNCH_EXECUTED mode=ci-headless' "$RUNNER_TEMP/p4_shared_pregoal.log"
+          grep -F 'AXIA_G07_SHARED_BAG_EXECUTED topics=14' "$RUNNER_TEMP/p4_shared_pregoal.log"
+          grep -F 'AXIA_G07_SHARED_STAGED_RUNNER_READY NO_GOAL' "$RUNNER_TEMP/p4_shared_pregoal.log"
+          echo AXIA_P4_G07_SHARED_CI_OWNER_EXECUTOR_NAV2_STARTUP_NO_GOAL_L2_PASS_OWNER_WSL2_NOT_RUN
+      - name: Purge private source and all raw Gazebo/ROS logs
+        if: always()
+        shell: bash
+        run: rm -rf -- .git docs tools tests configs scripts ros2_ws results "$RUNNER_TEMP/p4_shared_pregoal.log"
