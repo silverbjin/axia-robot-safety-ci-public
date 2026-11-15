@@ -1,0 +1,31 @@
+name: AXIA instructor WSL2 branch cleanup wrapper PUBLIC source verify
+on:
+  push:
+    branches: ['ops/d04-d08-merged-branch-prune-20261115']
+    paths:
+      - 'scripts/axia_d04_d08_instructor_branch_cleanup_once.sh'
+      - '.github/workflows/axia-d04-d08-instructor-owner-wrapper-static.yml'
+permissions:
+  contents: read
+jobs:
+  public_pinned_wrapper_static_only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Verify shell syntax and public pinned Python source blobs
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n scripts/axia_d04_d08_instructor_branch_cleanup_once.sh
+          SRC=4c5cae16f11a2d7ef952e6ced028d58328417453
+          BASE="https://raw.githubusercontent.com/silverbjin/axia-robot-safety-ci-public/$SRC/scripts"
+          curl -fLsS --retry 3 "$BASE/axia_d04_d08_safe_prune.py" -o /tmp/axia_main_prune.py
+          curl -fLsS --retry 3 "$BASE/axia_d04_d08_instructor_superseded_prune.py" -o /tmp/axia_superseded_prune.py
+          test "$(git hash-object /tmp/axia_main_prune.py)" = f4523059d8700832c0d6d4a5527821355a5430b8
+          test "$(git hash-object /tmp/axia_superseded_prune.py)" = c0fb29bb285f1ad90906350cd811fc5aadd18f69
+          python3 -m py_compile /tmp/axia_main_prune.py /tmp/axia_superseded_prune.py
+          echo AXIA_INSTRUCTOR_OWNER_BRANCH_PRUNE_PINNED_PUBLIC_STATIC_PASS
+          echo NO_PRIVATE_ACTIONS_NO_BRANCH_DELETE_NO_ROS_NO_GOAL
