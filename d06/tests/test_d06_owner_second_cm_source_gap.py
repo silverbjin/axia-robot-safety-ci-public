@@ -23,6 +23,8 @@ def test_guard_first_threshold_crossed_before_post_latch_cm_callback():
     assert got["observer_gap_ms"]==223.656034
     assert got["sequence_increment"]==1
     assert got["supervisor_publications_inside_cm_gap"]==4
+    assert got["cm_upstream_cmd_vel_smoothed_messages_in_source_gap"]==3
+    assert DATA["post_latch_joined_pair"]["confirmed_cmd_vel_smoothed_nonzero_mps"]>0
     assert got["upstream_max_gap_ms"]==89.04962
     assert got["cm_publisher_interval_gap_confirmed_post_latch"] is True
     assert got["cm_callback_processing_delay_proven"] is False
