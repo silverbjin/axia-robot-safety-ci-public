@@ -8,7 +8,8 @@
 name: AXIA G07 Unified GUI stress - original P4 one simulation Goal L2
 on:
   push:
-    branches: [integration/g07-unified-ci-20261115]
+    branches: [release/p2-g06-cm-ttl-20261110]
+    # Protected CI-only L2 tests run on authorized release branch, not this integration branch.
     # HOLD: only an explicit source-reviewed CI trigger after the CM
     # STOP-period cause has a GREEN regression may authorize the costly
     # simulation Goal. Editing this workflow alone never auto-moves a robot.
