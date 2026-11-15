@@ -1,0 +1,59 @@
+{
+  "schema": "axia.d06.g07_owner_first_safety_boundary_sanitized_v1",
+  "origin": "owner_wsl2_2026_11_15_manual_sanitization",
+  "provenance": "relative_times_only_no_uuid_no_original_paths_no_raw_ros_messages",
+  "status": "BLOCKED",
+  "goal_sent": true,
+  "goal_start_monotonic_rel_sec": 0,
+  "pre_latch_delivery_diagnostics": {
+    "diagnostic_only": true,
+    "first_timing_violation": {
+      "channel": "guard",
+      "first_violation_from": 1.095964041,
+      "first_violation_at": 1.258738236,
+      "first_violation_sec": 0.162774195,
+      "limit_sec": 0.15,
+      "first_violation_stage": "UNKNOWN_STOP_TIME"
+    },
+    "channels": {
+      "guard": {
+        "first_violation_sec": 0.162774195
+      },
+      "pre_guard": {
+        "first_violation_sec": 0.165159385
+      },
+      "scan": {
+        "first_violation_sec": 0.333397997,
+        "limit_sec": 0.3,
+        "first_violation_at": 1.622336211
+      }
+    }
+  },
+  "first_guard_latch": {
+    "reason": "UPSTREAM_STALE_AFTER_MOTION",
+    "tick_monotonic": 9.296786913,
+    "cm_age_sec": 0.166509123,
+    "supervisor_age_sec": 0.056089811,
+    "supervisor_authorized_goal": true,
+    "supervisor_fsm": "NORMAL",
+    "latched": true
+  },
+  "cm_guard_receive_skew": {
+    "classification": "GUARD_RECEIPT_LAG_CANDIDATE",
+    "observer_newer_cm_samples": 1,
+    "cm_publisher_stopped_proven": false
+  },
+  "first_cm_supervisor_rmw_window": {
+    "status": "CM_SOURCE_GAP_EXCEEDS_150MS",
+    "cm_source_gap_sec": 0.15287898,
+    "cm_publication_sequence_gap": 1,
+    "upstream_publications_inside_gap": 3,
+    "upstream_max_coverage_gap_sec": 0.060066921,
+    "cm_callback_processing_delay_proven": false,
+    "classification": "CM_POST_INPUT_EXECUTION_OR_SCHEDULING_GAP_CANDIDATE"
+  },
+  "raw_capture_complete": false,
+  "stop_ack_verified": false,
+  "owner_l3_accepted": false,
+  "certified_estop": false
+}
