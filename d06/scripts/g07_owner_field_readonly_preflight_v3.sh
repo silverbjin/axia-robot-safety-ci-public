@@ -8,7 +8,10 @@ SOURCE="bc270e28620c1909fcb34669e6036504b5cae951"
 RUN=43693480829
 if [[ "$#" -eq 1 && "$1" == "--self-check" ]];then
   bash -n "$0"
-  python3 -m py_compile "$ROOT/d06/live/g07_owner_field_preflight_v3.py"
+  python3 - "$ROOT/d06/live/g07_owner_field_preflight_v3.py" <<'PY'
+import ast, pathlib, sys
+ast.parse(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
+PY
   echo AXIA_G07_OWNER_FIELD_PREFLIGHT_STATIC_OK_NO_ROS_NO_GOAL
   exit 0
 fi
