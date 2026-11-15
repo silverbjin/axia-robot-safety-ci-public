@@ -14,14 +14,14 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 92d56d587b100f18126f0e7d5785eb415613e48a
+          ref: db1eec05e01e1db0d0d2e0c05610806ef4e499f9
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: REPLAY owner first Guard and CI 400ms RMW receipt from blocking evidence writer
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git rev-parse HEAD)" = 92d56d587b100f18126f0e7d5785eb415613e48a
+          test "$(git rev-parse HEAD)" = db1eec05e01e1db0d0d2e0c05610806ef4e499f9
           python3 -m unittest discover -s tests/unit -p test_p4_g07_owner_observer_async_evidence.py -v
           python3 -m unittest discover -s tests/unit -p test_p4_g07_owner_brxs_guard_clock_regression.py -v
           echo AXIA_P4_G07_OBSERVER_SLOW_FLUSH_OFF_EXECUTOR_GREEN_NO_ROS_NO_GOAL
