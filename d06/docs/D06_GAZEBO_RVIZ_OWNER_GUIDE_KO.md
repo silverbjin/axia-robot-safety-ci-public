@@ -1,22 +1,23 @@
 # AXIA D06 — Gazebo GUI + RViz2 강사 Live Demo
 
-> **2026-11-15 OWNER G85 L3 FAILURE — D06 Gazebo GUI + RViz2 재실행 금지.** 과거 [실제 Gazebo L2 3/3 #43609296371](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43609296371) 성공과 별개로 실제 Owner 최초 허가 1회에서 Guard 상태 Observer 162.774ms·Scan Observer 333.398ms·CM RMW 발행 152.879ms 및 Guard 내부 CM age 166.509ms >150ms가 확인돼 `UPSTREAM_STALE_AFTER_MOTION` 안전 래치가 발생했다. 정식 STOP/odom dwell/clean shutdown/원본 custody 인수 실패.
+> **2026-11-15 최종 Owner L3 검사 1회 재허가 — 아직 WSLg 미실행.** 기존 Owner G85 실패에서 Guard 내부 CM age 166.509ms(150ms 초과)와 CM RMW 발행 공백 152.879ms를 확인해 인수를 중단했다. 해당 원본과 비식별 첫 위반 증거는 그대로 유지한다. 과거 headless L2 3/3 #43609296371은 역사적 PASS로만 기록한다.
 >
-> **현 공개 게이트: `HOLD_OWNER_L3_FIRST_SAFETY_BOUNDARY`, `allow_one_final_wsl2_owner=false`.** 이전 owner executable SHA `6b717092eafa091f75551cc215a3f96786491000`는 이미 허용 1회를 사용했으므로 **다시 실행하면 안 된다**. 새 GitHub 고정 SHA·새 인수 게이트·실제 GUI-부하 Gazebo L2 검증 전에 Owner Goal을 재시도하지 않는다. L0 RED→GREEN은 사후 원인 보고 누락과 안전 게이트 보호를 해결했을 뿐, 실제 CM 지연 원인은 확정하지 않았다.
+> **새 실제 동시 GUI 부하 Gazebo L2 PASS:** [Actions #43667573251](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43667573251), 새 private exact `3593125fdfe489aead3e892daf39563df0c0d4a0`. Nav2 startup READY 후 Xvfb RViz2/읽기 전용 MarkerArray가 실제 Goal과 동시 동작하고 Scan 194.015ms, CM 137.714ms, RMW source 138.149ms, /odom STOP dwell 1.013s, Guard 래치 없음, native Navigation/Localization ACK, CM exit0 및 14-topic bag 검증까지 **같은 L2 실행에서 PASS**했다. 과거 동시 GUI 부하 실패 #43664497257는 기록에 보존한다.
 >
-> D06 수업은 기존 검증된 **공식 CM 격리 ROS L1**로 진행한다. 자세한 회귀 순서는 [CI 우선 지침](D06_OWNER_FIRST_SAFETY_BOUNDARY_CI_FIRST_TDD_PROMPT_20261115_KO.md)을 참조한다. RViz 원은 교육용이며 Software Stop과 인증된 HW E-Stop은 다르다.
+> **공개 승인: `ADMITTED_FINAL_OWNER_ONLY`, `allow_one_final_wsl2_owner=true`, `allowed_final_owner_attempts=1`.** 실제 WSL2 WSLg Gazebo+RViz 두 창의 동시 표시, ROS/Guard 타이밍, 원본 보관·정상 종료는 **Owner L3 NOT_RUN / NOT_ACCEPTED**이며 CI Xvfb 성공으로 자동 승격하지 않는다. 이전 실행 SHA `6b717092eafa091f75551cc215a3f96786491000`은 재사용하지 않는다. 새 승인된 공개 브랜치의 정확한 고정 SHA만 실행한다. 사용자 TTY에서 `YES-P2-G07-GOAL` 수동 동의는 유지한다.
+>
+> MVP 강의에서는 L3 최종 검수 성공 시에만 B Live를 사용한다. 검수 실패 또는 수업 전 미검수면 기존 공식 Collision Monitor 격리 ROS L1 시연 A를 선택한다. SW Stop/교육용 RViz 링은 인증된 HW E-Stop/공식 CM 내부 판정이 아니다.
 
-## 최종 WSL2 검수의 판정 경계 — 2026-11-15 L3 실패 기록
+## 최종 WSL2 검수 판정 범위
 
-이번 최종 원샷은 공개 CI 3회 PASS 이후 최초 강사 WSLg GUI+RViz 통합 인수 1회였으나 **Guard CM TTL 초과로 실패한 실행**이다. 실제 Gazebo 창·RViz 창이 동시에 표시·갱신되는지 강사가 직접 확인한다. 원본에서 CLEAR→SLOWDOWN→STOP 구간의 최초 Scan 300ms/CM·Supervisor·Guard 150ms 위반, Goal UUID 1개, `/cmd_vel` 소프트웨어 정지, `/odom` 정지 1초, 공식 Lifecycle ACK, CM 정상 종료, 14-topic bag 무결성 및 동일 세션 보관 증거를 확인한다.
+새 Owner 한 번은 Gazebo와 RViz2가 실제 WSLg 화면에서 동시에 갱신되는지 강사가 직접 확인한다. 같은 Goal 원본에서 CLEAR→SLOWDOWN→STOP, 최초 `/scan` 300ms / CM·Supervisor·Guard 150ms의 모든 경계, Guard 첫 latch 부재, `/odom` 정지 유지 1초, native Nav2 Lifecycle Navigation·Localization ACK, CM clean exit0, 14-topic raw bag/원본 SHA256을 모두 검토한다.
 
-**GUI 미표시, 최초 데이터 위반, Guard 래치 또는 프로세스 비정상 종료 중 하나라도 발생하면 인수는 HOLD**이다. `D06_RVIZ_STARTED` 로그만으로 실제 WSLg 렌더링 성공을 주장하지 않는다. 강사는 추가 Goal을 보내지 않으며 실패 증거를 공개 CI의 비식별 회귀로 먼저 편입한다. 인수 후에도 기존 Draft PR의 `main` 병합은 별도 사용자 승인 전까지 금지한다.
-
+**RViz 시작 로그만으로 GUI 인수가 아님.** 어떤 안전 입력이나 TTL 위반, 강제 종료가 먼저 관측되면 즉시 HOLD로 판정하고 현장 Goal을 되풀이하지 않는다. `main 병합`은 Owner 별도 승인이 없으면 하지 않는다.
 ## 목적과 범위
 - 일정: 2026-11-16 19:00–22:00, 이론 60분·실습 120분. 21:25–21:40 강사 Live Demo에 사용.
 - 목표 1: **거리 구간별 속도 제한 및 감속ㆍ정지 규칙 이해** — 실제 Waffle의 CLEAR→SLOWDOWN→STOP에서 CM 전 속도, CM 이후 속도, 최종 Guard 속도, odom 관측값을 비교한다.
 - 목표 2: **Safety Bubble 기반 안전제어 로직 설계 실습** — 학생 Python 정책(Stop 0.40m, Slow 0.75m, ratio=0.30, UNKNOWN)을 설명하고 공식 LaserScan+CM Zone/min_points=4 동작과 비교한다.
-- 새 ROS 안전 제어 코드, Goal·/cmd_vel publisher 및 TTL 변경은 **0**. 고정 G11 공개 Release SHA 67b8995cc7fdd506b12f348fc7e5241dcedddc67을 호출한다. 해당 Release는 비공개 Instructor SHA c44414f8e3bad37a349565f211d554540cccb062 및 Git tree d2e3044689a5873cd61d6bc5f84a40b20a81f84e를 검증하고 원본 RMW 진단·raw custody를 보존한다. 공개 G11 소스 전용 정적 CI #43609985698 PASS. 과거 eb984b7 G07 고정은 사용하지 않는다.
+- 새 ROS 안전 제어 코드, Goal·/cmd_vel publisher 및 TTL 변경은 **0**. 신규 고정 G11 공개 Release SHA `f443fb4d6b246db2024dff225c7b77c97d7f50a9`는 비공개 Instructor SHA `3593125fdfe489aead3e892daf39563df0c0d4a0`, Git tree `3ebf3efa35340dabab75a18418788c53ae54f308`을 검증하고 원본 RMW 진단·raw custody를 보존한다. 새 정적 출고 CI #43668013942 PASS. 이전 G11 SHA 67b8995 및 오래된 eb984b7은 새 최종 Owner 인수에 재사용하지 않는다.
 - RViz marker의 원은 **교육용 표시**이지 공식 CM action 증거가 아니다. 실험은 SIMULATION ONLY. SW Stop과 실제 인증 E-Stop을 혼동하지 않는다.
 
 ## 검증 현황
@@ -25,21 +26,36 @@
 |---|---|
 | D06 공식 CM 기존 공개 Actions #42656227824 | 실제 ROS L1 PASS, 합성 LaserScan 0.20/0.06/0.00m/s |
 | G07 기존 공개 Actions #43339521667 및 Owner ynAuVvkf | 실제 Gazebo L2/Owner L3 범위 한정 CLEAR→SLOW→STOP, odom dwell 약 1.032초 |
-| **새 D06 Gazebo GUI + RViz2 sidecar** | 공개 L0·실제 ROS/RViz Xvfb L1 PASS 및 G07 헤드리스 실제 Gazebo L2 동일 SHA 3회 PASS. **WSLg 동시 창/주행 Owner L3 NOT_RUN** |
+| **새 D06 Gazebo GUI + RViz2 sidecar** | 공개 L0·실제 ROS/RViz Xvfb L1 PASS 및 **동시 RViz 실제 Gazebo L2 #43667573251 PASS**, 실제 WSLg Owner L3는 아직 NOT_RUN |
 | 물리 충돌 없음 인증 또는 hardware E-Stop | NOT_RUN / NOT_CLAIMED |
 
 기존 G07 PASS를 이 신규 GUI의 PASS로 승격하지 않는다. 실제 Nav2 cmd 입력은 계속 달라질 수 있으므로 D06 합성 시험의 0.20→0.06m/s를 실제 모든 순간에 강요하지 않는다.
 
-## 강사 WSL2 원샷: 터미널 A — 현재 **재실행 금지**
+## 강사 WSL2 원샷: 터미널 A — 새 정확한 실행 SHA 1회
 
-최초 실행 시 사용한 과거 SHA `6b717092eafa091f75551cc215a3f96786491000`와 해당 `--self-check` 경로는 과거 실행 사실을 기록하기 위한 정보일 뿐 **새 Goal 실행 권한을 제공하지 않는다**. 새 공개 HEAD의 실행기는 TTY·ROS·Gazebo·Goal 실행 전에 안전 HOLD로 차단해야 한다.
+대상 환경: WSL2 Ubuntu 24.04, ROS 2 Jazzy, Gazebo Harmonic, WSLg, `git`, `gh auth status`(비공개 Instructor 접근), `taskset`, `rviz2`. 기존 Gazebo/Owner 세션은 사전에 정상 종료하고 **실제 TTY로만 수행**한다.
 
-- 원본 증거: `EVIDENCE=/home/.../axia_p2_private_evidence/p2-l3-owner-.../` (공개 업로드 금지)
-- 공개 비식별 fixture: `d06/tests/fixtures/g07_owner_20261115_first_boundary_sanitized.json`
-- 현재 허용된 강사 시연: 공식 격리 CM L1 (no moving Goal). 완료 증거는 로봇 주행 L3가 아님.
-- 새 OWNER L3 인수 허가는 실제 UI-부하 Gazebo L2와 모든 안전 데이터 주기·STOP·종료·14-topic raw 검증 뒤 별도 승인한다. `YES-P2-G07-GOAL` 수동 입력도 현재는 허용되지 않는다.
-- 구 스크립트의 예상 출력은 실제 성공 증거가 아니며 SW Stop은 인증 E-Stop이 아니다.
+새 공개 PR #108의 최종 CI PASS 커밋을 인계받아 `PUBLIC_SHA`에 정확히 지정한 다음, 아래 원샷에서 `git fetch`로 고정된 소스를 내려받아 실행한다. **유동 브랜치 HEAD나 과거 `6b7170...` SHA로 Goal을 실행하지 말 것.**
 
+~~~bash
+(
+  set -Eeuo pipefail
+  PUBLIC_SHA="<PR108_최종_CI_PASS_40자리_SHA>"
+  WORK="$(mktemp -d "$HOME/axia_d06_owner_final.XXXXXXXX")"
+  git -C "$WORK" init -q
+  git -C "$WORK" remote add origin https://github.com/silverbjin/axia-robot-safety-ci-public.git
+  git -C "$WORK" fetch --depth 1 -q origin "$PUBLIC_SHA"
+  git -C "$WORK" checkout -q --detach FETCH_HEAD
+  test "$(git -C "$WORK" rev-parse HEAD)" = "$PUBLIC_SHA"
+  SCRIPT="$WORK/d06/scripts/d06_gazebo_rviz_owner_wsl2_once.sh"
+  bash "$SCRIPT" --self-check
+  bash "$SCRIPT"
+)
+~~~
+
+한 개의 기존 G07 Goal을 실행할 때에만 터미널 A에서 `YES-P2-G07-GOAL`을 **수동 입력**한다. 이는 소프트웨어 시뮬레이션 승인이지 인증 E-Stop이 아니다. 임의 `yes` 자동 승인이나 CI에서 Owner TTY 통과를 위조하지 않는다.
+
+필수 출력: `D06_G07_OWNER_ORIGINAL`, `D06_GUI_EVIDENCE`, `D06_GUI_OWNER_WRAPPER_RC`, `P4_G11_OWNER_RC`. 스크립트 RC0이라도 화면 실측과 원본 병합 검토 없이는 L3 PASS로 승격하지 않는다. 실패 시 새 Goal 재시도 대신 최초 안전 상태 전이/최초 타이밍 위반 원본을 비식별 공개 CI RED→GREEN으로 편입한다.
 ## 화면과 터미널 분리
 
 - **Gazebo GUI:** 공식 TurtleBot3 Waffle, 실제 G07 물리 장애물, 실제 로봇 이동·감속·정지를 관찰한다. 원형 장애물 모델이며 사람형 외형·YOLO와의 통합은 이번 MVP 범위 밖.
@@ -83,7 +99,7 @@ RED→GREEN→REFACTOR→REVIEW→COMMIT. 학생 공개 TODO와 Instructor priva
 - 과거 G07 Owner L3 scoped PASS는 실제였으나, 이후 간헐적 CM/Guard 150ms 타이밍 오류가 재발하여 최신 통합 스테이징에서도 Owner 정식 인수는 HOLD.
 - 이번 G07 Owner 최초 /cmd_vel_pre_guard 관측 공백 **172.739ms > 150ms**, Guard 내부 마지막 CM 수신 나이 **181.552ms > 150ms**, Supervisor 나이 56.141ms로 정상. 동시 관찰기의 더 최신 CM 샘플은 Guard 수신 지연 *가능성*이며 CM 발행 정상 증명은 아님.
 - 실제 launch.log에는 Controller 20Hz 루프가 약 5.46Hz로 떨어지는 경고도 있음. WSL2 GUI CPU 경합 가설은 있어도 **인과 확정은 아직 불가**.
-- D06 UI만 nice 15, RViz2 frame rate 8, 교육용 MarkerArray 1Hz로 하향. 이 조치는 CPU 부하 완화 **후보**로 실제 Guard TTL 문제의 영구 수정이 입증된 것은 아님. Supervisor/CM/Guard/Goal/공식 Nav2 안전 TTL은 전혀 변경하지 않는다.
+- 기존 UI nice 15/8fps 후보는 CI 동시부하 L2에서 안정성을 입증하지 못했다. 새 UI는 첫 CPU RViz nice 19, 3fps, 교육용 관찰기 nice 7, 증거 Recorder 마지막 CPU, Scenario Verifier Observer 중간 CPU로 분리했다. 이 조치는 CPU 부하 완화 **후보**로 실제 Guard TTL 문제의 영구 수정이 입증된 것은 아님. Supervisor/CM/Guard/Goal/공식 Nav2 안전 TTL은 전혀 변경하지 않는다.
 - 신규 실패가 반복되면 D06_GUI_EVIDENCE/sidecar.log와 private P4 G11 원본 첫 RMW gap/Guard latch를 결합한다. 가장 마지막 Python exception이 아니라 최초 안전 상태 전이와 첫 CM source/receive 위반을 우선하고, 원본은 공개 업로드하지 않는다.
 - D06_G07_POSTRUN_TRIAGE는 비식별 경계 분류로 언제나 safety_pass=false. 실제 Gazebo GUI+RViz WSL2 인수 전 새 Live PASS를 선언하지 않는다.
 
