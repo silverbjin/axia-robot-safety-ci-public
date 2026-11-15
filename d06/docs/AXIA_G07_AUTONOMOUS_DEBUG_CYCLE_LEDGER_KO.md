@@ -17,3 +17,8 @@
 2. [사이클 02 — CI 근거 고정 및 Owner 1회 실행 자동화](./G07_UNIFIED_CYCLE02_OWNER_FINAL_ADMISSION_20261115_KO.md): L0 20 PASS + Public Release Bootstrap L0 PASS; Owner WSLg 미실행.
 
 [최종 WSL2 원샷 실행 가이드](./G07_FINAL_OWNER_WSL2_ONE_SHOT_GUIDE_20261115_KO.md)
+
+3. [Cycle 03 — Owner 최초 Guard 불일치/RMW 시계 분리, CI·Owner GUI 실행 일치, 증거 묶음](./G07_UNIFIED_CYCLE03_OWNER_LATCH_RUNTIME_PARITY_20261115_KO.md): L0 PASS, 실제 GUI L2 #43690412617 종료 첫 서비스 발견 FAIL.
+4. [Cycle 04 — Nav2 Shutdown 첫 서비스 발견](./G07_UNIFIED_CYCLE04_NAV2_SERVICE_DISCOVERY_20261115_KO.md): L0 PASS, 실제 GUI L2 #43690918618 결과 확인 대기.
+
+[CI First 실행 지침/새 창 프롬프트](./AXIA_G07_CI_FIRST_RUNTIME_PARITY_DEBUG_STANDARD_20261115_KO.md)
