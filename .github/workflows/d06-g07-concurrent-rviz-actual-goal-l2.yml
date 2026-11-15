@@ -43,7 +43,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-ci-public
-          ref: 772071d35e79f6df200c548b88259c12b0fb9b4e
+          ref: cac588be85f04dbef9d0150fa1ddf5ac3cbdb31a
           path: d06-visual
           persist-credentials: false
 
@@ -232,6 +232,25 @@ jobs:
             exit 3
           }
           echo 'D06_GUI_L2_NAV2_LIFECYCLE_READY_BEFORE_VISUAL_LOAD_NO_GOAL'
+          # Physical G07 Gazebo set_pose + two REAL LaserScan acknowledgements
+          # must complete BEFORE test-only display rendering CPU load begins.
+          # The CI-only single Goal is still held behind visible RViz token.
+          PREGOAL="$PWD/results/p2-g07-ci-moving/real-l2/g07_ci_pregoal/owner_pregoal_l2.json"
+          physical_ready=false
+          for attempt in $(seq 1 900);do
+            if /usr/bin/python3 ../d06-visual/d06/live/d06_ci_physical_pregoal_barrier.py \
+                --receipt "$PREGOAL" >/dev/null 2>&1;then
+              physical_ready=true
+              break
+            fi
+            kill -0 "$runner_pid" 2>/dev/null || break
+            sleep .25
+          done
+          if [[ "$physical_ready" != true ]];then
+            echo 'D06_G07_PHYSICAL_PREG0AL_NO_GOAL_BEFORE_GUI_NOT_READY'
+            exit 3
+          fi
+          echo 'D06_G07_NATIVE_PHYSICAL_PREG0AL_READY_BEFORE_REAL_RVIZ_AND_GOAL'
           # Bounded GUI-side work models WSLg renderer contention WITHOUT
           # loading the exact-owned official CM CPU. CM has its own CPU 1.
           # GUI core is 0; Verifier middle cores; recorder highest core.
@@ -290,7 +309,7 @@ jobs:
             exit 3
           }
           echo 'D06_GUI_L2_REAL_RVIZ_WINDOW_AND_MARKER_MONITOR_CONCURRENT_WITH_GOAL_START'
-          echo "D06_GUI_ISOLATION_VISUAL_CPU=$D06_GUI_CPU SOURCE_PIN=772071d35e79f6df200c548b88259c12b0fb9b4e"
+          echo "D06_GUI_ISOLATION_VISUAL_CPU=$D06_GUI_CPU SOURCE_PIN=cac588be85f04dbef9d0150fa1ddf5ac3cbdb31a"
           printf 'D06_READONLY_GUI_READY\n' > "${AXIA_D06_GUI_READY_FILE}.tmp"
           mv -f -- "${AXIA_D06_GUI_READY_FILE}.tmp" "$AXIA_D06_GUI_READY_FILE"
           echo 'D06_GUI_L2_ATOMIC_DISPLAY_READY_ACK_BEFORE_ONE_CI_GOAL'
