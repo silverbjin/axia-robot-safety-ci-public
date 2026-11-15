@@ -1,0 +1,30 @@
+name: AXIA P4 G07 Owner Brxs first Guard 151ms and RMW clock step regression L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-p4-g07-owner-brxs-first-guard-clock-step-l0.yml']
+permissions:
+  contents: read
+jobs:
+  first-guard-and-clock-domain:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    environment: axia-instructor-sealed
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 266cdd9c5c2a9f7330f7d98dc2bacaf18fc7d268
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: RED sanitized Owner first 151ms Guard TTL and later cross-topic clock step
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = 266cdd9c5c2a9f7330f7d98dc2bacaf18fc7d268
+          python3 -m unittest discover -s tests/unit -p test_p4_g07_owner_brxs_guard_clock_regression.py -v
+          echo AXIA_P4_G07_OWNER_BRXS_FIRST_GUARD_CLOCK_DOMAIN_L0_GREEN_NO_ROS_NO_GOAL
+      - name: Remove sealed private Instructor source
+        if: always()
+        shell: bash
+        run: rm -rf -- .git tools tests scripts docs configs ros2_ws
