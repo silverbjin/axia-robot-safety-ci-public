@@ -27,5 +27,20 @@ class UnifiedGuiSidecarContract(unittest.TestCase):
                   "YES-P2-G07-GOAL","p2_owner_l3_wsl2.sh"):
             self.assertNotIn(x,s)
 
+    def test_ros_environment_is_sourced_before_rviz_command_discovery(self):
+        s=SCRIPT.read_text()
+        self.assertIn("source /opt/ros/jazzy/setup.bash",s)
+        self.assertLess(s.index("source /opt/ros/jazzy/setup.bash"),
+                        s.index("for cmd in rviz2 gz xwininfo"),
+                        "CI_GUI_SIDECAR_ROS_PATH_MUST_BE_ACTIVE_BEFORE_RVIZ_CHECK")
+
+    def test_gui_l2_overlay_sources_ros_before_rviz_lookup(self):
+        workflow=(ROOT/".github/workflows/axia-g07-unified-gui-one-goal-l2.yml").read_text()
+        overlay=workflow.split("      - name: Install test-only official RViz and Xvfb overlay",1)[1].split("      - name: Isolated S02",1)[0]
+        lookup=overlay.index("for cmd in Xvfb rviz2 xwininfo gz")
+        source=overlay.find("source /opt/ros/jazzy/setup.bash")
+        self.assertGreaterEqual(source,0,"CI_GUI_OVERLAY_ROS_ENV_NOT_SOURCED")
+        self.assertLess(source,lookup,"CI_GUI_RVIZ_BIN_DISCOVERY_BEFORE_ROS_SETUP")
+
 if __name__=="__main__":
     unittest.main()
