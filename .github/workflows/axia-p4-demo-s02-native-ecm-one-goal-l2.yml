@@ -33,7 +33,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: d6e4c628dcb9140e8e67debf086d87dae2fd5505
+          ref: 4f455963aec7d7dc1f0493380a2b4ca6d683484e
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -41,7 +41,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 'd6e4c628dcb9140e8e67debf086d87dae2fd5505'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '4f455963aec7d7dc1f0493380a2b4ca6d683484e'
           test "$ROS_DISTRO" = jazzy
           cd instructor
           mkdir -p results/p2-g07-ci-moving
@@ -74,7 +74,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           cd instructor
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 'd6e4c628dcb9140e8e67debf086d87dae2fd5505'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '4f455963aec7d7dc1f0493380a2b4ca6d683484e'
           test "$(git hash-object tools/native_s02/s02_physics_witness.cc)" = 2035cf411972e35fa7d9b6d16766bbc784051ff8
           if ! command -v c++ >/dev/null || ! test -e /usr/include/gz/sim8/gz/sim/System.hh;then
             apt-get update -qq
@@ -101,16 +101,28 @@ jobs:
         run: |
           set -euo pipefail
           cd instructor
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 'd6e4c628dcb9140e8e67debf086d87dae2fd5505'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '4f455963aec7d7dc1f0493380a2b4ca6d683484e'
           export GZ_SIM_SYSTEM_PLUGIN_PATH="$RUNNER_TEMP/s02-native-one-goal-build:${GZ_SIM_SYSTEM_PLUGIN_PATH:-}"
           export AXIA_S02_ECM_WITNESS_CI=1 AXIA_S02_ECM_WITNESS_MOVING_ALLOWED=1
-          export AXIA_S02_WITNESS_SOURCE_SHA=d6e4c628dcb9140e8e67debf086d87dae2fd5505
+          export AXIA_S02_WITNESS_SOURCE_SHA=4f455963aec7d7dc1f0493380a2b4ca6d683484e
           export AXIA_S02_WITNESS_SESSION=s02_live_one_goal_83
           export AXIA_S02_ECM_WITNESS_REPORT="$PWD/results/p2-g07-ci-moving/real-l2/s02_ecm_witness.json"
           echo AXIA_S02_PUBLIC_SIM_ONLY_ONE_GOAL_NATIVE_CONTACT_WITNESS_ARMED
           timeout --signal=TERM --kill-after=10s 900s \
             bash scripts/p2_no_goal_smoke_ci.sh || {
             echo 'AXIA_G07_CI_MOVING_GOAL_REAL_GAZEBO_BLOCKED'
+            if [[ -f results/p2-g07-ci-moving/real-l2/g07_ordered_shutdown.json ]];then
+              python3 - <<'PY'
+import json
+from pathlib import Path
+v=json.loads(Path('results/p2-g07-ci-moving/real-l2/g07_ordered_shutdown.json').read_text())
+print('AXIA_S02_CI_NAV_FIRST_ACK_BOUNDARY '+json.dumps({
+ k:v.get(k) for k in ('status','cm_managed_by_navigation',
+ 'navigation_ack','navigation_request_sent','navigation_elapsed_sec',
+ 's02_ci_shutdown_graph_observation','localization_ack')
+},sort_keys=True))
+PY
+            fi
             for f in results/p2-g07-ci-moving/real-l2/{staged_startup,launch,g07_ci_pregoal,g07_ci_moving,g07_ordered_shutdown,rosbag}.log \
                results/p2-g07-ci-moving/real-l2/{teardown,teardown_processes}.txt;do
               if [[ -f "$f" ]];then echo "--- $(basename "$f") ---";tail -n 80 "$f";fi
@@ -214,7 +226,7 @@ jobs:
             'graceful_teardown':'P2_L2_GRACEFUL_TEARDOWN' in
               (root/'teardown.txt').read_text() if (root/'teardown.txt').is_file() else False}
           result=review(w,g,calibration,counts,clean,
-              source_sha='d6e4c628dcb9140e8e67debf086d87dae2fd5505',native_blob_sha=blob)
+              source_sha='4f455963aec7d7dc1f0493380a2b4ca6d683484e',native_blob_sha=blob)
           result['original_native_witness_sha256']=hashlib.sha256(witness.read_bytes()).hexdigest()
           result['original_bag_sqlite_sha256']=hashlib.sha256(dbs[0].read_bytes()).hexdigest()
           (root/'s02_same_goal_native_review.json').write_text(
