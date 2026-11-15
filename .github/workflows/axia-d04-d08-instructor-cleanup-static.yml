@@ -1,0 +1,27 @@
+name: AXIA private Instructor branch prune script PUBLIC static contract ONLY
+on:
+  push:
+    branches: ['ops/d04-d08-merged-branch-prune-20261115']
+    paths:
+      - 'scripts/axia_d04_d08_instructor_superseded_prune.py'
+      - 'tests/test_d04_d08_instructor_cleanup_public_contract.py'
+      - '.github/workflows/axia-d04-d08-instructor-cleanup-static.yml'
+permissions:
+  contents: read
+jobs:
+  private-owner-script-static-no-private-checkout:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Verify private branch deletion is owner-only and CLI explicit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -v -s tests -p test_d04_d08_instructor_cleanup_public_contract.py
+          python3 -m py_compile scripts/axia_d04_d08_instructor_superseded_prune.py
+          echo AXIA_INSTRUCTOR_BRANCH_PRUNE_PUBLIC_STATIC_ONLY_PASS
+          echo PRIVATE_GITHUB_ACTIONS_NOT_USED
+          echo PRIVATE_BRANCH_DELETION_NOT_PERFORMED
