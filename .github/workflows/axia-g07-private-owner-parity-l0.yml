@@ -1,0 +1,29 @@
+name: AXIA G07 P4 Owner-CI exact GUI process parity private L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-g07-private-owner-parity-l0.yml']
+permissions:
+  contents: read
+jobs:
+  sealed-g07-private-no-goal:
+    runs-on: ubuntu-24.04
+    environment: axia-instructor-sealed
+    timeout-minutes: 7
+    steps:
+      - name: Sealed Instructor exact RED candidate
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: c3e3db2e8c4391eb59f9174c60586c388734730e
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          path: instructor
+          persist-credentials: false
+      - name: Shared P4 launch and one Goal executor parity; no ROS or Goal
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C instructor rev-parse HEAD)" = "c3e3db2e8c4391eb59f9174c60586c388734730e"
+          cd instructor
+          python3 -m unittest discover -s tests/unit -p 'test_p4_g07_ci_owner_gui_launch_parity_20261115.py' -v
+          echo AXIA_G07_OWNER_CI_SAME_EXECUTOR_L0_PASS_NO_ROS_NO_GOAL
