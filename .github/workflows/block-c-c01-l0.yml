@@ -1,0 +1,32 @@
+name: AXIA Block C C01 public pinned-student L0
+on:
+  pull_request:
+    paths: ['block_c/**', '.github/workflows/block-c-c01-l0.yml']
+  push:
+    branches: ['feat/block-c-c01-*']
+    paths: ['block_c/**', '.github/workflows/block-c-c01-l0.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  fixture-pinned:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: 8ae9d1d6512cf486b4e10770cb9f3df77a606523
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install pytest==8.3.5
+      - shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = '8ae9d1d6512cf486b4e10770cb9f3df77a606523'
+          bash block_C/scripts/c01_fixture_once.sh --check
+          test ! -d block_C/instructor
+          test ! -d block_C/hidden_tests
+          echo C01_PUBLIC_PINNED_STUDENT_L0_PASS_NO_ROS
