@@ -1,4 +1,4 @@
-# D06 only: RViz2 READ-ONLY displays; yellow/red rings are classroom annotations.
+# D06 NOT_OFFICIAL_CM safety verdict: RViz2 READ-ONLY displays; yellow/red rings are classroom annotations.
 # The rings are not official Collision Monitor polygon/action ground truth.
 Panels:
   - Class: rviz_common/Displays
@@ -109,7 +109,7 @@ Visualization Manager:
   Global Options:
     Background Color: 32; 35; 42
     Fixed Frame: odom
-    Frame Rate: 8
+    Frame Rate: 3
   Name: D06 G07 Safety Bubble Observation ONLY
   Tools:
     - Class: rviz_default_plugins/Interact
