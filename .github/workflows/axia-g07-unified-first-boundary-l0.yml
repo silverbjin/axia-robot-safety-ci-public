@@ -10,6 +10,8 @@ on:
       - 'd06/live/d06_sensor_rmw_first_delivery.py'
       - 'd06/live/d06_native_guard_vs_observer.py'
       - 'd06/live/d06_guard_cm_first_latch_join.py'
+      - 'd06/tests/test_g07_unified_gui_sidecar_contract.py'
+      - 'd06/scripts/g07_unified_ci_readonly_display.sh'
 permissions:
   contents: read
 jobs:
@@ -24,4 +26,5 @@ jobs:
         run: |
           set -Eeuo pipefail
           python3 -m unittest discover -s d06/tests -p 'test_g07_unified_first_timing_regression.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_g07_unified_gui_sidecar_contract.py' -v
           echo AXIA_G07_UNIFIED_FIRST_BOUNDARY_L0_PASS_NO_ROS_NO_GOAL_OWNER_HOLD
