@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: a530fee71104e274da64591152f32ee8565dae3c
+          ref: dff047f1fc931952caa6e2ca933121ad1d554445
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -23,7 +23,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor rev-parse HEAD)" = 'a530fee71104e274da64591152f32ee8565dae3c'
+          test "$(git -C instructor rev-parse HEAD)" = 'dff047f1fc931952caa6e2ca933121ad1d554445'
           cd instructor
           python3 -m unittest discover -s tests/unit -p test_d07_h01_gui_owner_contract.py -v
           python3 -m unittest discover -s tests/unit -p test_d07_h01_path_visual.py -v
