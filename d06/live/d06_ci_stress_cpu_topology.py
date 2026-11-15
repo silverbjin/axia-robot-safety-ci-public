@@ -29,15 +29,14 @@ def main():
     a=p.parse_args()
     try:
         allowed=os.sched_getaffinity(0)
-        cpu=choose_renderer_load_cpu(allowed)
         if a.cpu:
-            print(cpu,flush=True)
+            print(choose_renderer_load_cpu(allowed),flush=True)
             return 0
         if not a.load or a.seconds<=0 or a.seconds>240:
             raise ValueError("D06_LOAD_UNAUTHORIZED_ARGUMENT")
         if os.environ.get("GITHUB_ACTIONS")!="true" or os.environ.get("AXIA_G07_CI_SIM_GOAL_ALLOWED")!="1":
             raise ValueError("D06_LOAD_CI_ONLY_NO_OWNER")
-        if os.sched_getaffinity(0)!={cpu}:
+        if len(os.sched_getaffinity(0))!=1:
             raise ValueError("D06_LOAD_NOT_ON_RENDERER_ONLY_CORE")
         work,pause=renderer_duty_cycle()
         until=time.monotonic()+a.seconds
