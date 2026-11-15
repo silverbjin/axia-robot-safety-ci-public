@@ -24,42 +24,6 @@ for cmd in rviz2 gz xwininfo;do
     echo "G07_UNIFIED_GUI_MISSING_EXACT_CMD=$cmd";exit 3;
   }
 done
-GUI_PLAN="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)/live/d06_gui_cpu_plan.py"
-command -v taskset >/dev/null || { echo 'G07_UNIFIED_GUI_TASKSET_MISSING';exit 3; }
-GUI_CPU="$(python3 "$GUI_PLAN")" || {
-  echo 'G07_UNIFIED_GUI_CPU_SELECTION_UNVERIFIED_NO_GOAL';exit 3;
-}
-MONITOR_CPU="$(python3 "$GUI_PLAN" --role monitor)" || {
-  echo 'G07_UNIFIED_GUI_MONITOR_CPU_UNVERIFIED_NO_GOAL';exit 3;
-}
-[[ "$GUI_CPU" =~ ^[0-9]+$ && "$MONITOR_CPU" =~ ^[0-9]+$ &&
-    "$GUI_CPU" != "$MONITOR_CPU" ]] || {
-  echo 'G07_UNIFIED_GUI_CPU_ROLE_OVERLAP_NO_GOAL';exit 3;
-}
-echo "G07_UNIFIED_GUI_CPU_PARTITION renderer=$GUI_CPU observer=$MONITOR_CPU safety_processes_unmodified=true cm_core_isolation_proven=false"
-mkdir -p "$RESULTS/visual-readonly"
-EVID="$RESULTS/visual-readonly"
-rviz_pid='' monitor_pid='' gz_pid=''
-cleanup() {
-  trap - EXIT INT TERM
-  set +e
-  for pid in "$monitor_pid" "$rviz_pid" "$gz_pid";do
-    [[ "$pid" =~ ^[0-9]+$ ]] || continue
-    kill -TERM -- "-$pid" 2>/dev/null || true
-    for i in {1..10};do
-      kill -0 "$pid" 2>/dev/null || break
-      sleep 0.1
-    done
-    if kill -0 "$pid" 2>/dev/null;then
-      kill -KILL -- "-$pid" 2>/dev/null || true
-    fi
-    wait "$pid" 2>/dev/null || true
-  done
-  echo 'G07_UNIFIED_GUI_SIDECAR_TERMINATED_DISPLAY_ONLY'
-}
-trap cleanup EXIT
-trap 'exit 0' TERM
-trap 'exit 130' INT
 # P4 stage is authoritative. Never infer startup from a file that is
 # stale or reports a Goal. This process does not gate/control the Goal.
 ready=0
@@ -81,54 +45,11 @@ done
   echo 'G07_UNIFIED_GUI_NOT_READY_REAL_NAV2_STARTUP_UNVERIFIED'
   exit 3
 }
-export DISPLAY="${DISPLAY:-:99}" LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe
+export DISPLAY="${DISPLAY:-:99}"
 unset QT_QPA_PLATFORM || true
-# Read-only teaching monitor publishes /axia/d06/rviz/bubble MarkerArray only.
-# It subscribes to /scan /odom /cmd_vel*; no alternative Goal executor.
-setsid taskset -c "$MONITOR_CPU" nice -n 15 python3 -u "$VISUAL/d06/live/d06_readonly_monitor.py"   --out "$EVID" > "$EVID/monitor.log" 2>&1 &
-monitor_pid=$!
-setsid taskset -c "$GUI_CPU" nice -n 19 rviz2 -d "$VISUAL/d06/rviz/d06_safety_bubble.rviz"   --ros-args -p use_sim_time:=true > "$EVID/rviz.log" 2>&1 &
-rviz_pid=$!
-# This connects a DISPLAY-only Gazebo GUI client to the existing Harmonic
-# server. The original P4 server/runner is never relaunched.
-setsid taskset -c "$GUI_CPU" nice -n 19 gz sim -g > "$EVID/gz_gui.log" 2>&1 &
-gz_pid=$!
-windows=0
-for i in {1..80};do
-  if ! kill -0 "$monitor_pid" 2>/dev/null ||
-     ! kill -0 "$rviz_pid" 2>/dev/null ||
-     ! kill -0 "$gz_pid" 2>/dev/null;then
-    echo 'G07_UNIFIED_GUI_CHILD_EARLY_EXIT';exit 3
-  fi
-  xwininfo -root -tree > "$EVID/windows.txt" 2>&1 || true
-  if grep -Eiq 'rviz' "$EVID/windows.txt" &&
-      grep -Eiq 'gazebo|gz sim' "$EVID/windows.txt";then
-    windows=1;break
-  fi
-  sleep 0.5
-done
-[[ "$windows" == 1 ]] || {
-  echo 'G07_UNIFIED_GUI_DISPLAY_WINDOW_UNVERIFIED_RVIZ_OR_GAZEBO'
-  exit 3
-}
-export GUI_CPU MONITOR_CPU
-python3 - "$EVID/display_attestation.json" <<'PY'
-import json,sys,time,os
-with open(sys.argv[1],"x",encoding="utf-8") as f:
-    json.dump({"schema":"axia.g07.gui_xvfb_attestation_v1",
-               "display_started_monotonic":time.monotonic(),
-               "real_rviz_window":True,"real_gazebo_gui_window":True,
-               "display":"Xvfb","wslg_verified":False,
-               "renderer_cpu":int(os.environ["GUI_CPU"]),
-               "monitor_cpu":int(os.environ["MONITOR_CPU"]),
-               "new_cmd_vel_publisher_authorized":False,
-               "owner_l3_accepted":False,"certified_estop":False},f)
-print("G07_UNIFIED_GUI_DISPLAY_WINDOW_XVFB_PASS_SAME_SESSION_NO_GOAL_AUTHORITY",flush=True)
-PY
-while kill -0 "$rviz_pid" 2>/dev/null &&
-      kill -0 "$monitor_pid" 2>/dev/null &&
-      kill -0 "$gz_pid" 2>/dev/null;do
-  sleep 1
-done
-echo 'G07_UNIFIED_GUI_CHILD_EXITED_EARLY_UNVERIFIED'
-exit 3
+# The same GUI process launcher is used in Owner WSLg and CI Xvfb.
+# DISPLAY_WINDOW and real marker attestations belong to the shared helper.
+UNIFIED="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
+mkdir -p "$RESULTS/visual-readonly"
+EVID="$RESULTS/visual-readonly"
+exec bash "$UNIFIED/d06/scripts/g07_shared_gui_clients.sh" ci "$EVID" "$VISUAL" "$UNIFIED"

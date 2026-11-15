@@ -10,34 +10,6 @@ PUBLIC_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 RVIZ_CONFIG="$PUBLIC_ROOT/d06/rviz/d06_safety_bubble.rviz"
 MONITOR="$PUBLIC_ROOT/d06/live/d06_readonly_monitor.py"
 GUI_CPU_SELECTOR="$PUBLIC_ROOT/d06/live/d06_gui_cpu_plan.py"
-rviz_pid=''; monitor_pid=''
-cleanup() {
-  trap - EXIT INT TERM
-  set +e
-  for pid in "$monitor_pid" "$rviz_pid";do
-    [[ "$pid" =~ ^[0-9]+$ ]] || continue
-    kill -INT -- "-$pid" 2>/dev/null || true
-    for i in {1..15};do
-      kill -0 "$pid" 2>/dev/null || break
-      sleep 0.1
-    done
-    if kill -0 "$pid" 2>/dev/null;then
-      kill -TERM -- "-$pid" 2>/dev/null || true
-      for i in {1..15};do
-        kill -0 "$pid" 2>/dev/null || break
-        sleep 0.1
-      done
-    fi
-    if kill -0 "$pid" 2>/dev/null;then
-      kill -KILL -- "-$pid" 2>/dev/null || true
-    fi
-    wait "$pid" 2>/dev/null || true
-  done
-  echo 'D06_RVIZ_SIDECAR_CLEANED D06_GUI_NOT_ACCEPTANCE'
-}
-trap cleanup EXIT
-trap 'exit 130' INT
-trap 'exit 143' TERM
 session=''
 for attempt in $(seq 1 600);do
   mapfile -d '' -t matches < <(find "$BASE" -maxdepth 3 -type f \
@@ -94,37 +66,7 @@ if [[ "$nav2_ready" != true ]];then
   echo 'D06_GUI_NAV2_STARTUP_MISSING_OR_UNVERIFIED';exit 3;
 fi
 echo 'D06_GUI_NAV2_STARTUP_READY_NO_GOAL'
-GUI_CPU="$("/usr/bin/python3" "$GUI_CPU_SELECTOR")" || {
-  echo 'D06_GUI_AFFINITY_BLOCKED_BEFORE_RVIZ_AND_MONITOR';exit 3;
-}
-MONITOR_CPU="$("/usr/bin/python3" "$GUI_CPU_SELECTOR" --role monitor)" || {
-  echo 'D06_MONITOR_AFFINITY_BLOCKED_BEFORE_RVIZ_AND_MONITOR';exit 3;
-}
-[[ "$GUI_CPU" =~ ^[0-9]+$ ]] || {
-  echo 'D06_GUI_AFFINITY_INVALID_CPU';exit 3;
-}
-[[ "$MONITOR_CPU" =~ ^[0-9]+$ && "$GUI_CPU" != "$MONITOR_CPU" ]] || {
-  echo 'D06_MONITOR_CPU_ROLE_OVERLAP_BLOCKED';exit 3;
-}
-echo "D06_MVP_CPU_PARTITION display=$GUI_CPU monitor=$MONITOR_CPU cm_cpu_affinity_unverified=true bag=LAST_ALLOWED_CPU safety_priorities_unchanged=true"
-echo "D06_GUI_AFFINITY cpu=$GUI_CPU recorder_uses_max_allowed_cpu=true rendering_budget_fps=3"
-setsid taskset -c "$GUI_CPU" nice -n 19 rviz2 -d "$RVIZ_CONFIG" --ros-args -p use_sim_time:=true \
-  > "$OUT/rviz.log" 2>&1 & rviz_pid=$!
-setsid taskset -c "$MONITOR_CPU" nice -n 15 /usr/bin/python3 -u "$MONITOR" --out "$OUT" \
-  > "$OUT/readonly_monitor.log" 2>&1 & monitor_pid=$!
-sleep 3
-if ! kill -0 "$rviz_pid" 2>/dev/null || ! kill -0 "$monitor_pid" 2>/dev/null;then
-  echo 'D06_RVIZ_DIAGNOSTICS early_child_exit; inspect RViz GL/WSLg and observer traceback'
-  echo 'D06_RVIZ_BLOCKED_EARLY_CHILD_EXIT'
-  tail -n 12 "$OUT/rviz.log" || true
-  tail -n 12 "$OUT/readonly_monitor.log" || true
-  exit 2
-fi
-echo "D06_RVIZ_STARTED domain=$ros_domain rviz_pid=$rviz_pid monitor_pid=$monitor_pid"
-echo "D06_RVIZ_DIAGNOSTICS observer=nice15 cpu=$MONITOR_CPU rviz=nice19 cpu=$GUI_CPU role_cpu_separated=true owner_safety_priorities_unchanged"
-echo 'D06_GUI_NOT_ACCEPTANCE: visual WSL2 check still required'
-while kill -0 "$rviz_pid" 2>/dev/null && kill -0 "$monitor_pid" 2>/dev/null;do
-  sleep 1
-done
-echo 'D06_RVIZ_SIDECAR_EXITED_BEFORE_OWNER_COMPLETION'
-exit 2
+# The exact same three display clients + CPU/nice topology as public CI.
+# The private shared P4 launcher is source-pinned and headless only when
+# AXIA_G07_UNIFIED_GUI_SIDECAR=1. The Goal remains strictly manual.
+exec bash "$PUBLIC_ROOT/d06/scripts/g07_shared_gui_clients.sh" owner "$OUT" "$PUBLIC_ROOT" "$PUBLIC_ROOT"
