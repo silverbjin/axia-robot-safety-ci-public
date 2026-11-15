@@ -31,3 +31,7 @@
 6. [CI-first 재현·실행기 동일성 표준 프롬프트](./AXIA_G07_CI_FIRST_RUNTIME_PARITY_DEBUG_STANDARD_20261115_KO.md): 현장 오류의 최초 safety transition/타이밍과 임의 인수 승격 금지.
 
 6. [사이클 06 — Prearmed STOP 2-CPU 제약](./G07_UNIFIED_CYCLE06_PREARMED_STOP_CPU_INVARIANT_20261115_KO.md): 첫 L2 #43692909902 Goal 전 BLOCKED, sealed L0 RED #43693340153 → GREEN #43693435159, 새 L2 #43693480829 진행 중.
+
+7. [사이클 07 — 실제 L2 근거 고정 및 Owner v2 배포](./G07_UNIFIED_CYCLE07_FINAL_OWNER_V2_CI_PARITY_20261115_KO.md): #43693480829 실제 GUI L2 PASS_SCOPED, sealed Owner release L0 #43694023013, v2 gate #43694275463, final bootstrap #43694440201 PASS. Owner WSL2 NOT_RUN.
+
+**사용자 최종 1회 인수:** [v2 WSL2 단일 실행 가이드](./G07_FINAL_OWNER_WSL2_V2_ONE_SHOT_GUIDE_20261115_KO.md). 이전 v1 인수 스크립트는 재사용 금지.

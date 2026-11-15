@@ -1,7 +1,7 @@
 # AXIA G07 개발 사이클 06 — 원본 Prearmed STOP 2-CPU 제약과 GUI·Goal Observer 공통 배치
 
 - 일자: 2026-11-15
-- 상태: **강사용 sealed L0 GREEN / 실제 Gazebo L2 진행 / Owner WSL2 NOT_RUN / MVP HOLD**.
+- 상태: **강사용 sealed L0 GREEN / 실제 Gazebo L2 PASS_SCOPED / Owner WSL2 NOT_RUN / MVP HOLD**.
 - 기존 P4 실제 PASS `db1eec05e01e1db0d0d2e0c05610806ef4e499f9` 및 원본 Safety TTL 변경 없음.
 - 공통 실행기 후보: Instructor `fix/g07-ci-owner-runtime-parity-20261115`, SHA `bc270e28620c1909fcb34669e6036504b5cae951`.
 
@@ -16,7 +16,7 @@
 3. GREEN `bc270e28620c1909fcb34669e6036504b5cae951` — `tools/p2_g07_goal_observer_cpu_plan.py`에서 허용 CPU N>=4이고 Goal Observer 선택 2개 미만이면 penultimate GUI 관측 CPU를 낮은 우선순위 read-only Marker 모니터와 **공유**해 native STOP용 CPU 최소 2개를 보존. GUI renderer 첫 코어, rosbag 마지막 코어와는 계속 분리. N>=5인 경우 penultimate monitor와 분리 유지.
 4. 공개 sealed CI [#43693435159](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43693435159) **SUCCESS (GREEN)**.
 5. CI/Owner 스크립트 모두 동일 `tools/p2_g07_goal_observer_cpu_plan.py`를 사용하고 같은 `tools/p2_g07_ci_moving_goal.py` 안에서 실제 프로세스 affinity를 Goal 이전 검증. Guard/CM/Nav2 프로세스 affinity는 변경하지 않는다.
-6. 실제 Gazebo+Xvfb/RViz 동시 1-Goal L2: [#43693480829](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43693480829) **실행 중(작성 시점)**. 이 결과가 나올 때까지 새로운 Owner 배포 및 MVP 인수 승격 금지.
+6. 실제 Gazebo+Xvfb/RViz 동시 1-Goal L2: [#43693480829](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43693480829) **SUCCESS / 실제 Gazebo Harmonic+공식 Nav2+외부 Gazebo GUI/RViz Xvfb L2 1회 PASS** (Private `bc270e28620c1909fcb34669e6036504b5cae951`, Public L2 workflow `29dfd7a1a36e45d130d803e1b8a46cad191de50f`). CPU readback `cpus=1,2`, Goal 전 Prearmed STOP 준비 성공. CLEAR→SLOW→STOP; exact CancelGoal ACK; Odom zero dwell **1.016659s**; CM max **141.483ms** (<150), Guard **64.882ms**, Supervisor **81.140ms**, Scan **190.864ms** (<300), Odom **139.586ms**, Clock **105.497ms**, CM RMW source max **139.004ms** (<150). Nav2 Navigation/Localization lifecycle shutdown ACK, CM exit0, S02 native contact0, original 14-topic bag 검증 PASS. 최초 Guard latch 없음. **CI 1회·Xvfb 한정, Owner WSLg 미검증, MVP HOLD**.
 
 ## C. 핵심 실행기 파일
 - Instructor `tools/p2_g07_goal_observer_cpu_plan.py`: 사용 가능한 CPU 산출 (4-core: `1,2`; 8-core: `1,2,3,4,5`).
