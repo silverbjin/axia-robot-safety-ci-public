@@ -60,7 +60,7 @@ def classify_owner_field(record: dict) -> dict:
     if isinstance(first, dict):
         gap = first.get("first_violation_sec")
         cap = first.get("limit_sec")
-        if (first.get("channel") in ("scan", "pre_guard")
+        if (first.get("channel") in ("scan", "pre_guard", "guard")
                 and _number(gap) and _number(cap) and gap > cap):
             out["first_channel"] = first["channel"]
             out["first_interval_sec"] = gap
