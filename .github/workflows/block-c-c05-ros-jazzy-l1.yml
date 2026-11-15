@@ -46,7 +46,9 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
+          set +u  # ROS setup may legitimately inspect unset AMENT_TRACE_SETUP_FILES
           source /opt/ros/jazzy/setup.bash
+          set -u
           export ROS_DOMAIN_ID=81
           export PYTHONPATH="$PWD/block_c/transport${PYTHONPATH:+:$PYTHONPATH}"
           timeout --signal=TERM --kill-after=8s 70s python3 -u block_c/transport/ros_l1_probe.py \

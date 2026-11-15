@@ -47,3 +47,11 @@ def test_sample_jsonl_and_source_provenance():
     data=[json.loads(x) for x in (ROOT/'transport'/'sample_events.jsonl').read_text().splitlines()]
     assert data==sample_events()
     assert all(e['source']=='SYNTHETIC_COURSE_FIXTURE' for e in data)
+
+
+def test_ros_setup_sourcing_is_not_blocked_by_nounset():
+    """Regression for Jazzy /opt/ros/jazzy/setup.bash AMENT_TRACE_SETUP_FILES unset."""
+    workflow=(ROOT.parent/'.github/workflows/block-c-c05-ros-jazzy-l1.yml').read_text()
+    src=workflow.index('source /opt/ros/jazzy/setup.bash')
+    assert 'set +u' in workflow[src-90:src], 'must suspend nounset before ROS setup'
+    assert 'set -u' in workflow[src:src+90], 'restore nounset after ROS setup'
