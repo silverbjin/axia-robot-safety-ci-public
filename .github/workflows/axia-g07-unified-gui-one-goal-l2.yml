@@ -35,7 +35,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: db1eec05e01e1db0d0d2e0c05610806ef4e499f9
+          ref: e3706dfeec14f20699c99f8995a2ec68180a24aa
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -43,7 +43,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-ci-public
-          ref: a54caa3d6074c535a0942fccde6b631d6b5a45e8
+          ref: 70f9d4ece5c405cff0fb2d17843391856f3d8c08
           path: unified-public
           persist-credentials: false
       - name: Published D06 read-only viewer sources pinned at public main
@@ -57,7 +57,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C unified-public rev-parse HEAD)" = "a54caa3d6074c535a0942fccde6b631d6b5a45e8"
+          test "$(git -C unified-public rev-parse HEAD)" = "70f9d4ece5c405cff0fb2d17843391856f3d8c08"
           test "$(git -C visual rev-parse HEAD)" = '0f66059d9110f8e667200bbca22396bd0c78c02e'
           export PYTHONPATH="$PWD/unified-public"
           python3 -m unittest discover -s unified-public/d06/tests -p 'test_g07_unified_first_timing_regression.py' -v
@@ -76,7 +76,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 'db1eec05e01e1db0d0d2e0c05610806ef4e499f9'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 'e3706dfeec14f20699c99f8995a2ec68180a24aa'
           test "$ROS_DISTRO" = jazzy
           cd instructor
           mkdir -p results/p2-g07-ci-moving
@@ -138,7 +138,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           cd instructor
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 'db1eec05e01e1db0d0d2e0c05610806ef4e499f9'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 'e3706dfeec14f20699c99f8995a2ec68180a24aa'
           test "$(git hash-object tools/native_s02/s02_physics_witness.cc)" = 2035cf411972e35fa7d9b6d16766bbc784051ff8
           if ! command -v c++ >/dev/null || ! test -e /usr/include/gz/sim8/gz/sim/System.hh;then
             apt-get update -qq
@@ -165,10 +165,10 @@ jobs:
         run: |
           set -euo pipefail
           cd instructor
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 'db1eec05e01e1db0d0d2e0c05610806ef4e499f9'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 'e3706dfeec14f20699c99f8995a2ec68180a24aa'
           export GZ_SIM_SYSTEM_PLUGIN_PATH="$RUNNER_TEMP/s02-native-one-goal-build:${GZ_SIM_SYSTEM_PLUGIN_PATH:-}"
           export AXIA_S02_ECM_WITNESS_CI=1 AXIA_S02_ECM_WITNESS_MOVING_ALLOWED=1
-          export AXIA_S02_WITNESS_SOURCE_SHA=db1eec05e01e1db0d0d2e0c05610806ef4e499f9
+          export AXIA_S02_WITNESS_SOURCE_SHA=e3706dfeec14f20699c99f8995a2ec68180a24aa
           export AXIA_S02_WITNESS_SESSION=s02_live_one_goal_83
           export AXIA_S02_ECM_WITNESS_REPORT="$PWD/results/p2-g07-ci-moving/real-l2/s02_ecm_witness.json"
           echo AXIA_S02_PUBLIC_SIM_ONLY_ONE_GOAL_NATIVE_CONTACT_WITNESS_ARMED
@@ -187,6 +187,10 @@ jobs:
           # Only DISPLAY sidecar. Original P4 private Goal/STOP/Cancel/Shutdown
           # remains the single authority. This creates an Xvfb GUI overlay;
           # it is NOT real WSLg and is NOT equivalent to unchanged image bytes.
+          # Shared P4 CI and Owner launcher run the same external GUI clients;
+          # before one Goal each must attest actual display readiness.
+          export AXIA_G07_UNIFIED_GUI_SIDECAR=1
+          export AXIA_G07_GUI_READY_ATTESTATION_PATH="$PWD/results/p2-g07-ci-moving/real-l2/visual-readonly/display_attestation.json"
           export DISPLAY=:99 LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe
           mkdir -p results/p2-g07-ci-moving/real-l2/visual-readonly
           Xvfb :99 -screen 0 1530x900x24             > results/p2-g07-ci-moving/real-l2/visual-readonly/xvfb.log 2>&1 &
@@ -328,7 +332,7 @@ jobs:
             'graceful_teardown':'P2_L2_GRACEFUL_TEARDOWN' in
               (root/'teardown.txt').read_text() if (root/'teardown.txt').is_file() else False}
           result=review(w,g,calibration,counts,clean,
-              source_sha='db1eec05e01e1db0d0d2e0c05610806ef4e499f9',native_blob_sha=blob)
+              source_sha='e3706dfeec14f20699c99f8995a2ec68180a24aa',native_blob_sha=blob)
           result['original_native_witness_sha256']=hashlib.sha256(witness.read_bytes()).hexdigest()
           result['original_bag_sqlite_sha256']=hashlib.sha256(dbs[0].read_bytes()).hexdigest()
           (root/'s02_same_goal_native_review.json').write_text(
@@ -518,7 +522,7 @@ jobs:
           overlap=any(x.get('actual_scan_messages',0)>0 and
                       goal[0]<=x.get('t_monotonic',-1)<=goal[0]+60 for x in obs)
           print('AXIA_G07_GUI_STRESS_CI_PROVENANCE '+json.dumps({
-              'same_p4_source':'db1eec05e01e1db0d0d2e0c05610806ef4e499f9',
+              'same_p4_source':'e3706dfeec14f20699c99f8995a2ec68180a24aa',
               'rviz_and_gazebo_gui_xvfb':actual_both,
               'display_before_original_goal':started_before_goal,
               'real_scan_during_goal_window':overlap,
