@@ -12,8 +12,8 @@ G=D06/"docs/D06_GAZEBO_RVIZ_OWNER_GUIDE_KO.md"
 
 def test_reuse_pinned_owner_and_keep_tty_goal_consent():
     src=W.read_text()
-    for token in ("67b8995cc7fdd506b12f348fc7e5241dcedddc67",
-        "c44414f8e3bad37a349565f211d554540cccb062",
+    for token in ("f443fb4d6b246db2024dff225c7b77c97d7f50a9",
+        "3593125fdfe489aead3e892daf39563df0c0d4a0",
         "axia_p4_g11_owner_g07_rmw_provenance_once.sh",
         "YES-P2-G07-GOAL","AXIA_P2_OWNER_PINNED_SHA",
         "gh auth status","--self-check","D06_GAZEBO_GUI_NOT_YET_VERIFIED"):
