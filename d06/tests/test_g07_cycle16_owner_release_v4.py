@@ -94,6 +94,21 @@ class TestOwnerCycle16(unittest.TestCase):
             self.assertIn("NO_ROS_NO_GOAL",r.stdout)
             self.assertFalse((Path(tmp)/".axia_g07_final_owner_attempts").exists())
 
+    def test_bootstrap_immutable_release_tree_selfcheck_no_ros(self):
+        bootstrap=ROOT/"scripts/axia_g07_cycle16_owner_wsl2_bootstrap.sh"
+        text=bootstrap.read_text()
+        self.assertIn("dd425003b9a8c6891330744f33330f6a206eb2e8",text)
+        self.assertIn("bdf887e169127f3ebb704aef885cacd926d3b554",text)
+        self.assertIn(PRIVATE,text)
+        self.assertNotIn("AXIA_MVP_DEMO_ACCEPTED=PASS",text)
+        with tempfile.TemporaryDirectory() as tmp:
+            result=subprocess.run(["bash",str(bootstrap),"--self-check"],
+                                  cwd=tmp,env={**os.environ,"HOME":tmp},
+                                  capture_output=True,text=True,timeout=10)
+            self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+            self.assertIn("NO_ROS_NO_GOAL",result.stdout)
+            self.assertFalse((Path(tmp)/".axia_g07_final_owner_attempts").exists())
+
     def test_gate_cli_from_arbitrary_home_is_readonly(self):
         with tempfile.TemporaryDirectory() as tmp:
             r=subprocess.run(["python3",str(MODULE),"--gate",str(GATE),
