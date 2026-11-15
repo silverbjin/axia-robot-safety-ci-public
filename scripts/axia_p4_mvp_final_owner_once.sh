@@ -177,7 +177,10 @@ try:
        valid_rmw and all(x is not None and 0<=x<0.15 for x in maxima.values())
        and all(type(result.get(k)) in (int,float)
                and 0<=result[k]<=limit for k,limit in requirements.items())
-       and result.get("status")=="CI_GAZEBO_MOVING_GOAL_CANDIDATE"
+       and result.get("status")=="NUMERICAL_CANDIDATE"
+       and result.get("common_g07_ci_oracle_status")=="CI_GAZEBO_MOVING_GOAL_CANDIDATE"
+       and result.get("shared_execution_mode")=="owner"
+       and result.get("owner_authority_verified") is True
        and result.get("guard_latched") is False
        and result.get("first_timing_violation") is None
        and type(result.get("odom_stopped_dwell_sec")) in (int,float)
