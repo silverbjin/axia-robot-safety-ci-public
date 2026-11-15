@@ -14,13 +14,13 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 5fa75f4202a0b43c25d3c962fd5980eccfa263ad
+          ref: 36b38c28c86be7299e87b44ae7d3c9007fd3b9c7
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git rev-parse HEAD)" = 5fa75f4202a0b43c25d3c962fd5980eccfa263ad
+          test "$(git rev-parse HEAD)" = 36b38c28c86be7299e87b44ae7d3c9007fd3b9c7
           python3 -m unittest discover -s tests/unit -p test_p4_g07_cm_tf_bounded.py -v
           echo AXIA_P4_G07_CM_TF_BOUNDED_L0_PASS_NO_ROS_NO_GOAL
       - if: always()
