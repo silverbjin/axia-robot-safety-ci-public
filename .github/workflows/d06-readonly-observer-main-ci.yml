@@ -1,0 +1,89 @@
+name: D06 read-only ROS L1 public acceptance (NO G07 GOAL)
+on:
+  push:
+    branches: ['release/d06-readonly-observer-main-20261115']
+    paths:
+      - 'd06/live/d06_readonly_monitor.py'
+      - 'd06/live/d06_ros_l1_visual_probe.py'
+      - 'd06/rviz/d06_safety_bubble.rviz'
+      - 'd06/tests/test_d06_readonly_public_contract.py'
+      - '.github/workflows/d06-readonly-observer-main-ci.yml'
+  pull_request:
+    paths:
+      - 'd06/live/d06_readonly_monitor.py'
+      - 'd06/live/d06_ros_l1_visual_probe.py'
+      - 'd06/rviz/d06_safety_bubble.rviz'
+      - 'd06/tests/test_d06_readonly_public_contract.py'
+      - '.github/workflows/d06-readonly-observer-main-ci.yml'
+permissions:
+  contents: read
+jobs:
+  d06-public-source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: No Goal, no private checkout, markers only source contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install -q pytest==8.3.5
+          python -m pytest -q d06/tests/test_d06_readonly_public_contract.py
+          python -m py_compile d06/live/d06_readonly_monitor.py d06/live/d06_ros_l1_visual_probe.py
+          echo D06_PUBLIC_READONLY_SOURCE_L0_PASS
+  d06-real-isolated-ros:
+    needs: d06-public-source
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    container:
+      image: ros:jazzy-ros-base-noble
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Official Jazzy ROS message packages only
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! apt-get update -qq -o APT::Update::Error-Mode=any; then
+            echo D06_CI_APT_INFRA_BLOCKED
+            exit 2
+          fi
+          apt-get install -y -qq --no-install-recommends \
+            ros-jazzy-rclpy ros-jazzy-sensor-msgs ros-jazzy-nav-msgs \
+            ros-jazzy-geometry-msgs ros-jazzy-visualization-msgs \
+            ros-jazzy-nav2-msgs
+      - name: Actual ROS LaserScan Odometry and read-only MarkerArray
+        shell: bash
+        run: |
+          set -eo pipefail
+          source /opt/ros/jazzy/setup.bash
+          timeout --signal=TERM --kill-after=10s 100s \
+            python3 -u d06/live/d06_ros_l1_visual_probe.py \
+              --out results/d06-readonly-public-l1
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          v=json.loads(Path('results/d06-readonly-public-l1/verdict.json').read_text())
+          assert v['status']=='PASS_READONLY_REAL_ROS_L1',v
+          assert v['ros_actual'] is True and v['gazebo_actual'] is False
+          assert v['goal_sent'] is False and v['cmd_vel_published'] is False
+          assert v['cmd_vel_publisher_count']==0
+          assert [s['name'] for s in v['stages']]==['clear','slow','stop']
+          assert all(s['status']=='PASS' for s in v['stages'])
+          assert v['monitor_rc']==0
+          print('D06_PUBLIC_READONLY_ROS_L1_PASS NO_GOAL NO_CMD_VEL')
+          print('D06_WSLG_G07_L3_HOLD: full moving CM-Guard TTL not accepted')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d06-public-readonly-ros-l1
+          path: results/d06-readonly-public-l1
+          retention-days: 7
+          if-no-files-found: warn
