@@ -11,6 +11,11 @@ import json
 import math
 from pathlib import Path
 import re
+import sys
+
+# Owner invokes this file from $HOME, not from its Git checkout.
+if __package__ in (None,""):
+    sys.path.insert(0,str(Path(__file__).resolve().parents[2]))
 
 SCHEMA="axia.g07.field_first_failure_sanitized.v1"
 CM_HARD_MS=150
