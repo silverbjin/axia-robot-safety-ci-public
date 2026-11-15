@@ -49,8 +49,8 @@ def test_failed_gui_load_l2_cannot_re_admit_without_new_real_gui_l2_success():
     x=json.loads(FIX.read_text())
     g=json.loads(GATE.read_text())
     assert g["whole_ci_l2_pass"] is True  # Historical no-GUI 3/3 must remain.
-    assert g["status"]=="ADMITTED_FINAL_OWNER_ONLY"
-    assert g["allow_one_final_wsl2_owner"] is True
+    assert g["status"]=="HOLD_OWNER_L3_FIRST_CM_SOURCE_TTL_GAP"
+    assert g["allow_one_final_wsl2_owner"] is False
     assert g["previous_failed_concurrent_gui_l2_run_id"] == x["origin"]["public_actions_run_id"]
     assert g["last_actual_concurrent_gui_l2_run_id"] == 43667573251
     assert g["last_actual_concurrent_gui_l2_pass"] is True
