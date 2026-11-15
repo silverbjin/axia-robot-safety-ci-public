@@ -1,25 +1,25 @@
 #!/usr/bin/env bash
 # AXIA P4 reduced-demo: final one manually consented G07 GUI Goal, archived raw + first RMW/Guard provenance.
-# Current shared executor scoped CI real Goal #43670809154 PASS, pinned source; prior #43665710312 fail preserved. Owner WSL2 NOT_RUN.
+# Exact new shared executor/async evidence CI Goal #43674784552 PASS. Prior failures #43674054563 and Owner Brxs5kxL preserved; Owner WSL2 new attempt NOT_RUN.
 # Owner has not run. This wrapper NEVER asserts AXIA_MVP_DEMO_ACCEPTED.
 # No simulated Goal in CI, no implicit consent, no public RAW upload.
 set -Eeuo pipefail
 umask 077
-PRIVATE_SHA="116144d1f549d24a2f1ed83fdf85723e7f148595"
-PRIVATE_TREE="b194bace4e8eb3a7307e39bd70f1588df48209f2"
-readonly CI_S02_G07_L2_RUN=43670809154
-readonly AXIA_P4_G07_RMW_SOURCE_MAX_SEC=0.130046
+PRIVATE_SHA="db1eec05e01e1db0d0d2e0c05610806ef4e499f9"
+PRIVATE_TREE="005cc352d63067beb9d34397e51b51f7974ce7ef"
+readonly CI_S02_G07_L2_RUN=43674784552
+readonly AXIA_P4_G07_RMW_SOURCE_MAX_SEC=0.12971
 readonly AXIA_G07_REAL_EXACT_NAV2_GOAL_CANCEL_ACK_BEFORE_LIFECYCLE_PASS=true
 readonly AXIA_P4_SHARED_GOAL_CI_ACCEPTED=true
-readonly CI_S02_G07_SCOPE="ONE_REAL_NAV2_GOAL_7_PERIODS_NATIVE_S02_CONTACT_ZERO_EXACT_CANCEL_NAV2_LIFECYCLE_CM_EXIT0_OWNER_NOT_RUN"
-# Actual #43670809154, exact 116144 source. Values are observed CI maxima.
+readonly CI_S02_G07_SCOPE="G07_SHARED_ASYNC_EVIDENCE_GUARD_40MS_FIRST_CLOCK_DOMAIN_7_TTL_S02_ZERO_CANCEL_ACK_NAV2_CM_EXIT0_OWNER_NOT_RUN"
+# Actual #43674784552, exact 116144 source. Values are observed CI maxima.
 # No inference that intermittent 175ms/368ms history is fully eliminated.
-readonly CI_G07_PERIODS_JSON='{"source":0.074066135,"cm":0.130512144,"guard":0.074540860,"supervisor":0.074057813,"scan":0.206914262,"odom":0.130341872,"clock":0.097161493}'
-# Source+tree are from exact successful CI #43670809154; WSLg/kernel/DDS parity NOT proven.
+readonly CI_G07_PERIODS_JSON='{"source":0.073281726,"cm":0.132621561,"guard":0.04869535,"supervisor":0.074191285,"scan":0.198307533,"odom":0.128494472,"clock":0.105464129}'
+# Source+tree are from exact successful CI #43674784552; WSLg/kernel/DDS parity NOT proven.
 axia_p4_ci_scoped_admission() {
-  [[ "$PRIVATE_SHA" == "116144d1f549d24a2f1ed83fdf85723e7f148595" &&
-     "$PRIVATE_TREE" == "b194bace4e8eb3a7307e39bd70f1588df48209f2" &&
-     "$CI_S02_G07_L2_RUN" == 43670809154 &&
+  [[ "$PRIVATE_SHA" == "db1eec05e01e1db0d0d2e0c05610806ef4e499f9" &&
+     "$PRIVATE_TREE" == "005cc352d63067beb9d34397e51b51f7974ce7ef" &&
+     "$CI_S02_G07_L2_RUN" == 43674784552 &&
      "$AXIA_P4_SHARED_GOAL_CI_ACCEPTED" == true &&
      "$AXIA_G07_REAL_EXACT_NAV2_GOAL_CANCEL_ACK_BEFORE_LIFECYCLE_PASS" == true ]] || {
     echo AXIA_P4_OWNER_CI_PIN_OR_CANCEL_PROOF_MISMATCH_NO_GOAL >&2;return 3;
@@ -35,7 +35,7 @@ if (set(rows)!=set(limits) or
     raise SystemExit("AXIA_P4_OWNER_CI_SEVEN_PERIODS_UNVERIFIED")
 print("AXIA_P4_OWNER_CI_SEVEN_PERIODS_BOUNDED_SCOPED_PASS")
 PY
-  [[ "$AXIA_P4_G07_RMW_SOURCE_MAX_SEC" == "0.130046" ]] || {
+  [[ "$AXIA_P4_G07_RMW_SOURCE_MAX_SEC" == "0.12971" ]] || {
     echo AXIA_P4_OWNER_CI_CM_RMW_SOURCE_NOT_PINNED >&2;return 3;
   }
   echo "AXIA_P4_OWNER_CI_SCOPED_READY_FOR_ONE_MANUAL_TTY private_sha=$PRIVATE_SHA tree=$PRIVATE_TREE ci_run=$CI_S02_G07_L2_RUN"
@@ -90,10 +90,15 @@ git -C "$WORK/instructor" -c advice.detachedHead=false checkout --quiet --detach
   echo 'AXIA_G11_G07_BLOCKED_PRIVATE_SOURCE_OR_TREE_MISMATCH' >&2;exit 2;
 }
 test -f "$WORK/instructor/tools/p4_g11_g07_joined_raw_review.py"
+# Exact frozen Owner/CI shared first-failure remedy must exist BEFORE moving Goal.
+test -f "$WORK/instructor/tools/p4_g07_evidence_pump.py"
+test -f "$WORK/instructor/tools/p4_g07_rmw_clock_domain.py"
+test -f "$WORK/instructor/ros2_ws/src/axia_safety_supervisor/axia_safety_supervisor/p4_g07_guard_tick_policy.py"
+echo 'AXIA_P4_OWNER_SAME_CI_EXECUTOR_G07_ASYNC_EVIDENCE_GUARD_40MS_CLOCK_DOMAIN_SOURCE_PIN_VERIFIED_NO_GOAL'
 echo "AXIA_G11_G07_PRIVATE_SOURCE_AND_TREE_VERIFIED sha=$PRIVATE_SHA"
 echo 'SIMULATION ONLY: one final WSL2 G07 Goal after Owner manual controlling TTY consent.'
 echo 'Scope: one real Goal, original 14-topic bag, first CM source/receive to Guard, ordered Nav2/CM clean exit.'
-echo 'CI #43670809154 scoped success: 7 channel TTL, S02 native zero, Nav2 exact Goal cancel ACK and CM clean exit. Older CM 161ms breach is not proven permanently fixed.'
+echo 'CI #43674784552 scoped success: 7-channel TTL, shared async evidence, G07-only Guard 40ms, S02 native zero, Goal Cancel and CM exit0. Earlier Owner 151.8ms/CM clock-step and other intermittent failures are NOT proven permanently eliminated.'
 echo 'AXIA_MVP_DEMO_ACCEPTED=HOLD until Owner original raw and first timing boundary review.'
 echo 'G11 0/15, G12 HOLD, G13 0/2 remain v1-only and do NOT block reduced demo.'
 echo 'The private Owner runner requires YES-P2-G07-GOAL; this wrapper never supplies consent.'
