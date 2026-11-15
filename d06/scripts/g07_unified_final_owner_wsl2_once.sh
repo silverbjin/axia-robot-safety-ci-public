@@ -15,10 +15,11 @@ MONITOR="$ROOT/d06/live/d06_readonly_monitor.py"
 TRIAGE="$ROOT/d06/live/d06_g07_field_triage.py"
 GUI_CPU_SELECTOR="$ROOT/d06/live/d06_gui_cpu_plan.py"
 FIRST_CM_JOIN="$ROOT/d06/live/d06_guard_cm_first_latch_join.py"
+BUNDLE_COLLECTOR="$ROOT/d06/live/g07_owner_evidence_bundle.py"
 RVIZ_CONFIG="$ROOT/d06/rviz/d06_safety_bubble.rviz"
 
 self_check() {
-  for p in "$ROOT/d06/scripts/g07_shared_gui_clients.sh" "$SIDECAR" "$MONITOR" "$TRIAGE" "$RVIZ_CONFIG" "$GUI_CPU_SELECTOR" "$FIRST_CM_JOIN" "$ROOT/d06/live/g07_unified_final_owner_gate.py" "$ROOT/d06/acceptance/g07_unified_final_owner_ci_gate.json"; do
+  for p in "$ROOT/d06/scripts/g07_shared_gui_clients.sh" "$SIDECAR" "$MONITOR" "$TRIAGE" "$RVIZ_CONFIG" "$GUI_CPU_SELECTOR" "$FIRST_CM_JOIN" "$ROOT/d06/live/g07_unified_final_owner_gate.py" "$BUNDLE_COLLECTOR" "$ROOT/d06/acceptance/g07_unified_final_owner_ci_gate.json"; do
     [[ -s "$p" ]] || { echo "D06_STATIC_BLOCKED_FILE_MISSING=$p";return 2; }
   done
   bash -n "$SIDECAR"
@@ -146,6 +147,16 @@ cleanup() {
   tail -n 35 "$OUT/sidecar.log" 2>/dev/null || true
   (cd "$OUT" && find . -type f ! -name SHA256SUMS -print0 |
     sort -z | xargs -0 -r sha256sum > SHA256SUMS)
+  # ALWAYS collect on exit, including GUARD_LATCH, pre-Goal startup failure,
+  # incomplete rosbag, and shutdown errors. No private evidence upload.
+  bundle_args=(--home "$HOME" --gui-root "$OUT" --status-code "$rc")
+  [[ -z "${owner_root:-}" ]] || bundle_args+=(--owner-root "$owner_root")
+  if /usr/bin/python3 "$BUNDLE_COLLECTOR" "${bundle_args[@]}";then
+    echo 'AXIA_G07_OWNER_SUPPORT_BUNDLE_CAPTURE_COMPLETE_PRIVATE_ONLY'
+  else
+    echo 'AXIA_G07_OWNER_SUPPORT_BUNDLE_CAPTURE_FAILED_RETAIN_ALL_ORIGINALS'
+    if [[ "$rc" == 0 ]];then rc=3;fi
+  fi
   echo "D06_GUI_EVIDENCE=$OUT"
   echo "D06_GUI_OWNER_WRAPPER_RC=$rc P4_G11_OWNER_RC=$OWNER_RC"
   echo 'AXIA_G07_OWNER_WSLG_NOT_CI_VERIFIED: screenshot_and_Original_RAW_review_required'
