@@ -1,0 +1,47 @@
+{
+  "schema": "axia.g07.unified_gui_l2_first_multichannel_gap_sanitized_v1",
+  "actual_ci_run_id": 43690918618,
+  "first_timing_violation": {
+    "channel": "odom",
+    "first_violation_from": 367.36402588,
+    "first_violation_at": 367.719907854,
+    "measured_gap_sec": 0.355881974,
+    "limit_sec": 0.3,
+    "phase": "PRE_STOP"
+  },
+  "observer_max_gap_sec": {
+    "clock": 0.339158738,
+    "cm": 0.383109139,
+    "guard": 0.364427292,
+    "odom": 0.355881974,
+    "scan": 0.373624092,
+    "source": 0.352278586,
+    "supervisor": 0.352722632
+  },
+  "cm_rmw": {
+    "cm_source_max_gap_sec": 0.131984,
+    "first_cm_observer_gap_sec": 0.383109139,
+    "first_cm_received_gap_sec": 0.377049077,
+    "first_cm_source_gap_sec": 0.070891726,
+    "publication_sequence_increment": 1
+  },
+  "first_guard_latch": null,
+  "original_safety_ttl_sec": {
+    "source": 0.15,
+    "cm": 0.15,
+    "guard": 0.15,
+    "supervisor": 0.15,
+    "scan": 0.3,
+    "odom": 0.3,
+    "clock": 0.3
+  },
+  "observed_goal_cancel_ack": false,
+  "full_demo_accepted": false,
+  "owner_l3_accepted": false,
+  "certified_estop": false,
+  "supported_claims": {
+    "cm_publisher_stopped_proven": false,
+    "observer_process_stall_proven": false,
+    "rmw_receive_delay_candidate": true
+  }
+}
