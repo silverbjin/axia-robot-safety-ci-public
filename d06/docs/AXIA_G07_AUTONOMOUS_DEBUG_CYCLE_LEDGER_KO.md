@@ -10,6 +10,10 @@
 
 ## 사이클
 
-1. [사이클 01 — GUI CPU 경합 완화 후보](./G07_UNIFIED_CYCLE01_GUI_CPU_PARTITION_20261115_KO.md): L0 GREEN, L2 Run #43685818018 진행 중. 기록 시점 Owner HOLD.
+1. [사이클 01 — GUI CPU 경합 완화 후보](./G07_UNIFIED_CYCLE01_GUI_CPU_PARTITION_20261115_KO.md): L0 및 실제 GUI L2 PASS, Owner WSLg L3 NOT_RUN. 교육용 보고서 완료.
 
 각 기록에는 실제 출력·검증 수준·원본 Run·미검증 항목과 변경 파일/커밋을 포함한다.
+
+2. [사이클 02 — CI 근거 고정 및 Owner 1회 실행 자동화](./G07_UNIFIED_CYCLE02_OWNER_FINAL_ADMISSION_20261115_KO.md): L0 20 PASS + Public Release Bootstrap L0 PASS; Owner WSLg 미실행.
+
+[최종 WSL2 원샷 실행 가이드](./G07_FINAL_OWNER_WSL2_ONE_SHOT_GUIDE_20261115_KO.md)
