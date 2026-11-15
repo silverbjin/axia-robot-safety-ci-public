@@ -19,7 +19,8 @@ def test_ui9_real_native_pose_and_bounded_scan_are_required():
 def test_real_pixels_go_to_pinned_inference_and_ros_detection_array():
     assert "D08_ACTUAL_ONNX_PERSON_FRAME_L2_PASS" in ONNX.read_text()
     s=YOLO.read_text()
-    assert "DetectionArray" in s and "UI9_REAL_YOLO_ROS_PERSON_DETECTION_L1_PASS" in s
+    assert "DetectionArray" in s and "real_ros_yolo_ros_detection_array" in s
+    assert "UI9_REAL_YOLO_ROS_PERSON_DETECTION_L1_PASS" in WF.read_text()
     assert "ROS sensor_msgs/Image REPLAY" in s
     assert "send_goal_async(" not in s
 
