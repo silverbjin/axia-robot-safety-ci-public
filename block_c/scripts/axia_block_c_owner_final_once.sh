@@ -42,8 +42,9 @@ finalize() {
   trap - EXIT
   local verdict=HOLD
   if [[ $rc -eq 0 && "$READY" == 1 ]]; then verdict=READY_FOR_OWNER_APPROVAL; fi
+  local custody_ok=1
   if command -v python3 >/dev/null 2>&1; then
-    python3 - "$RUN" "$STATUS_FILE" "$verdict" "$rc" "$LAST_STAGE" "$INSTRUCTOR_SHA" "$STUDENT_SHA" "$PUBLIC_CI_SHA" <<'PY' || true
+    python3 - "$RUN" "$STATUS_FILE" "$verdict" "$rc" "$LAST_STAGE" "$INSTRUCTOR_SHA" "$STUDENT_SHA" "$PUBLIC_CI_SHA" <<'PY' || custody_ok=0
 import json,sys
 from pathlib import Path
 run,stages,status,rc,last,inst,student,public=sys.argv[1:]
@@ -64,10 +65,25 @@ report={'schema_version':1,'profile':'BLOCK_C_EDUCATION_MVP_D09_D12',
                       'four 3-hour classroom rehearsals']}
 Path(run,'verdict.json').write_text(json.dumps(report,indent=2,sort_keys=True)+'\n')
 PY
+  else
+    custody_ok=0
   fi
-  tar -C "$RUN" -czf "$RUN/AXIA_BLOCK_C_OWNER_EVIDENCE.tar.gz" evidence verdict.json lab 2>/dev/null || true
-  if [[ -f "$RUN/AXIA_BLOCK_C_OWNER_EVIDENCE.tar.gz" ]]; then
-    (cd "$RUN" && sha256sum AXIA_BLOCK_C_OWNER_EVIDENCE.tar.gz > AXIA_BLOCK_C_OWNER_EVIDENCE.tar.gz.sha256) || true
+  if [[ "$custody_ok" == 1 && -s "$RUN/verdict.json" ]] && \
+      tar -C "$RUN" -czf "$RUN/AXIA_BLOCK_C_OWNER_EVIDENCE.tar.gz" evidence verdict.json lab && \
+      (cd "$RUN" && sha256sum AXIA_BLOCK_C_OWNER_EVIDENCE.tar.gz > AXIA_BLOCK_C_OWNER_EVIDENCE.tar.gz.sha256); then
+    : # Evidence archive and SHA256 exist, so the declared verdict may be emitted.
+  else
+    custody_ok=0
+  fi
+  if [[ "$custody_ok" != 1 ]]; then
+    echo BLOCK_C_EVIDENCE_CUSTODY_BLOCKED >&2
+    verdict=HOLD
+    rc=1
+    printf '{"status":"HOLD","release_approved":false,"owner_wsl2_verified":false,"last_stage":"EVIDENCE_CUSTODY","release_decision":"HOLD"}\n' > "$RUN/verdict.json" || true
+    tar -C "$RUN" -czf "$RUN/AXIA_BLOCK_C_OWNER_EVIDENCE.tar.gz" evidence verdict.json lab 2>/dev/null || true
+    if [[ -f "$RUN/AXIA_BLOCK_C_OWNER_EVIDENCE.tar.gz" ]]; then
+      (cd "$RUN" && sha256sum AXIA_BLOCK_C_OWNER_EVIDENCE.tar.gz > AXIA_BLOCK_C_OWNER_EVIDENCE.tar.gz.sha256) || true
+    fi
   fi
   if [[ "$verdict" == HOLD ]]; then
     printf 'BLOCK_C_OWNER_ACCEPTED=HOLD\n'

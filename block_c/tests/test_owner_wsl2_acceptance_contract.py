@@ -105,3 +105,11 @@ def test_owner_evidence_contains_model_artifacts_and_ros_domain_isolation():
     assert 'AXIA_BLOCK_C_OWNER_EVIDENCE.tar.gz.sha256' in src
     assert 'BLOCK_C_OWNER_ISOLATED_ROS_DOMAIN_ID=' in src
     assert 'export ROS_DOMAIN_ID="${ROS_DOMAIN_ID:-' not in src
+
+
+def test_no_release_ready_if_evidence_archive_or_sha256_fails():
+    src=RUNNER.read_text()
+    assert 'BLOCK_C_EVIDENCE_CUSTODY_BLOCKED' in src
+    assert 'custody_ok=0' in src
+    assert 'verdict=HOLD' in src
+    assert 'sha256sum AXIA_BLOCK_C_OWNER_EVIDENCE.tar.gz' in src
