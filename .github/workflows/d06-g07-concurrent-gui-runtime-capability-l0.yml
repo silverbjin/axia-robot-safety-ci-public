@@ -1,0 +1,31 @@
+name: D06 G07 pinned runtime GUI capability L0 (no Goal)
+on:
+  push:
+    branches: [feature/d06-gazebo-rviz-owner-20261114]
+    paths: ['.github/workflows/d06-g07-concurrent-gui-runtime-capability-l0.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  pinned-runtime-capability:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+      options: --dns 1.1.1.1 --dns 8.8.8.8
+    steps:
+      - name: Exact immutable runtime concurrent GUI capability (NO ROS runtime / NO Goal)
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          echo "AXIA_D06_GUI_LOAD_CAPABILITY_PROBE_START no_goal=true no_private=true"
+          for c in rviz2 Xvfb; do
+            if command -v "$c" >/dev/null 2>&1; then
+              echo "AXIA_D06_GUI_RUNTIME_CMD_AVAILABLE=$c"
+            else
+              echo "AXIA_D06_GUI_LOAD_PARITY_NOT_READY_MISSING_CMD=$c"
+            fi
+          done
+          test -s /opt/ros/jazzy/setup.bash
+          echo "AXIA_D06_GUI_L2_NOT_RUN_OWNER_L3_HOLD"
+          # Capability probe is always no-Goal; success is NOT GUI load coverage.
