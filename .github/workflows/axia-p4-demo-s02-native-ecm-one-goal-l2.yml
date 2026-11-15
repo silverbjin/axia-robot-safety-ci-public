@@ -113,15 +113,15 @@ jobs:
             echo 'AXIA_G07_CI_MOVING_GOAL_REAL_GAZEBO_BLOCKED'
             if [[ -f results/p2-g07-ci-moving/real-l2/g07_ordered_shutdown.json ]];then
               python3 - <<'PY'
-import json
-from pathlib import Path
-v=json.loads(Path('results/p2-g07-ci-moving/real-l2/g07_ordered_shutdown.json').read_text())
-print('AXIA_S02_CI_NAV_FIRST_ACK_BOUNDARY '+json.dumps({
- k:v.get(k) for k in ('status','cm_managed_by_navigation',
- 'navigation_ack','navigation_request_sent','navigation_elapsed_sec',
- 's02_ci_shutdown_graph_observation','localization_ack')
-},sort_keys=True))
-PY
+          import json
+          from pathlib import Path
+          v=json.loads(Path('results/p2-g07-ci-moving/real-l2/g07_ordered_shutdown.json').read_text())
+          print('AXIA_S02_CI_NAV_FIRST_ACK_BOUNDARY '+json.dumps({
+           k:v.get(k) for k in ('status','cm_managed_by_navigation',
+           'navigation_ack','navigation_request_sent','navigation_elapsed_sec',
+           's02_ci_shutdown_graph_observation','localization_ack')
+          },sort_keys=True))
+          PY
             fi
             for f in results/p2-g07-ci-moving/real-l2/{staged_startup,launch,g07_ci_pregoal,g07_ci_moving,g07_ordered_shutdown,rosbag}.log \
                results/p2-g07-ci-moving/real-l2/{teardown,teardown_processes}.txt;do
