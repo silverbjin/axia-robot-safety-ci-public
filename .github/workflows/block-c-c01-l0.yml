@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 8ae9d1d6512cf486b4e10770cb9f3df77a606523
+          ref: 766ef987fc0357fdf171fa0926dbef65c6aae972
           persist-credentials: false
       - uses: actions/setup-python@v5
         with:
@@ -25,8 +25,15 @@ jobs:
       - shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = '8ae9d1d6512cf486b4e10770cb9f3df77a606523'
-          bash block_C/scripts/c01_fixture_once.sh --check
+          test "$(git rev-parse HEAD)" = '766ef987fc0357fdf171fa0926dbef65c6aae972'
+          AXIA_C01_EVIDENCE_DIR=results/c01 bash block_C/scripts/c01_fixture_once.sh --check
           test ! -d block_C/instructor
           test ! -d block_C/hidden_tests
           echo C01_PUBLIC_PINNED_STUDENT_L0_PASS_NO_ROS
+      - name: Persist C01 public L0 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: c01-public-l0-evidence
+          path: results/c01/
+          if-no-files-found: warn
