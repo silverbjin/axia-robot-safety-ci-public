@@ -22,16 +22,20 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 2656d4427053ad038db391ed115f9af99b68af00
+          ref: 8a8cf5286d90eb2f41ea1c0d2465211add5fc395
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
       - name: Field CM scheduling RED or GREEN
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor rev-parse HEAD)" = 2656d4427053ad038db391ed115f9af99b68af00
+          test "$(git -C instructor rev-parse HEAD)" = 8a8cf5286d90eb2f41ea1c0d2465211add5fc395
           cd instructor
           python3 -m unittest discover -s tests/unit -p 'test_g07_field_official_cm_cpu_parity_20261115.py' -v
+          python3 -m unittest discover -s tests/unit -p 'test_p4_g07_goal_observer_cpu_parity_20261115.py' -v
+          bash -n scripts/p2_no_goal_smoke_ci.sh
+          bash -n scripts/p2_owner_l3_wsl2.sh
+          python3 -m py_compile tools/p2_g07_official_cm_cpu_affinity.py tools/p2_g07_goal_observer_cpu_plan.py
           echo AXIA_G07_FIELD_CM_SCHEDULER_L0_PASS_NO_ROS_NO_GOAL
       - name: Delete all sealed instructor source
         if: always()
