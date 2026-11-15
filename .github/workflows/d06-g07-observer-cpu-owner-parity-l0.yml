@@ -15,7 +15,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: b7e40864d475ef52f21def788f196075479e0eb1
+          ref: 54c1eeaa58f51d662451f04d138bc14eb497e891
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -23,13 +23,14 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor rev-parse HEAD)" = 'b7e40864d475ef52f21def788f196075479e0eb1'
+          test "$(git -C instructor rev-parse HEAD)" = '54c1eeaa58f51d662451f04d138bc14eb497e891'
           bash -n instructor/scripts/p2_owner_l3_wsl2.sh
           bash -n instructor/scripts/p2_no_goal_smoke_ci.sh
           python3 -m py_compile instructor/tools/p2_g07_observer_cpu_plan.py
           python3 -m py_compile instructor/tools/p2_g07_official_cm_cpu_affinity.py
           python3 instructor/tests/unit/test_p2_g07_observer_cpu_reservation_20261115.py
           python3 instructor/tests/unit/test_p2_g07_official_cm_core_affinity_20261115.py
+          python3 instructor/tests/unit/test_p2_g07_cm_affinity_restore_before_shutdown.py
           echo 'D06_G07_OBSERVER_CPU_OWNER_CI_PARITY_L0_PASS_NO_ROS_NO_GOAL'
       - name: Delete all private source; retain only sanitized job verdict
         if: always()
