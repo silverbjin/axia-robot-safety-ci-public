@@ -1,0 +1,47 @@
+{
+  "schema": "axia.g07.unified_gui_real_l2_first_native_latch_sanitized_v1",
+  "origin": {
+    "public_actions_run_id": 43683837146,
+    "public_workflow_sha": "7633e37908372cac913f63f540ca19cadf698a49",
+    "p4_tested_private_source_sha": "db1eec05e01e1db0d0d2e0c05610806ef4e499f9",
+    "runtime_digest": "sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e",
+    "actual_gazebo_nav2_sim_goal": true,
+    "rviz_and_gazebo_gui_xvfb_in_goal_window": true,
+    "owner_wslg_verified": false,
+    "raw_private_goal_uuid_or_ros_messages_included": false
+  },
+  "first_guard_latch": {
+    "reason": "UPSTREAM_STALE_AFTER_MOTION",
+    "channel": "guard_internal_cm",
+    "measured_age_ms": 154.238454,
+    "limit_ms": 150,
+    "supervisor_age_ms": 7.311674,
+    "supervisor_fsm": "NORMAL"
+  },
+  "post_latch_joined_pair": {
+    "rmw_source_gap_ms": 170.642126,
+    "rmw_received_gap_ms": null,
+    "observer_callback_gap_ms": null,
+    "publication_sequence_gap": 1,
+    "upstream_supervisor_publications_during_window": 3,
+    "upstream_supervisor_max_coverage_gap_ms": 49.920437
+  },
+  "observation_window": {
+    "first_pre_latch_observer_violation": null,
+    "pre_latch_rmw_pair_complete": false,
+    "joined_second_cm_packet_observed_only_after_guard_latch": true,
+    "native_stop_rpc_overlap_observed": true,
+    "native_stop_rpc_caused_cm_delay_proven": false,
+    "cm_internal_processing_delay_proven": false
+  },
+  "result": {
+    "original_p4_goal_completion_verified": false,
+    "first_safety_transition": "UPSTREAM_STALE_AFTER_MOTION",
+    "native_contact_zero_accepted": false,
+    "ordered_nav2_shutdown_ack_verified": false,
+    "cm_clean_exit_verified": false,
+    "safety_pass": false,
+    "owner_l3_accepted": false,
+    "certified_estop": false
+  }
+}

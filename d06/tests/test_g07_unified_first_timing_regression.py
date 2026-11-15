@@ -98,5 +98,33 @@ class UnifiedG07FirstBoundary(unittest.TestCase):
         self.assertFalse(CI["result"]["owner_l3_accepted"])
         self.assertFalse(CI["result"]["certified_estop"])
 
+    def test_new_same_p4_source_gui_first_guard_latch_154ms_source_170ms_receipt_unknown(self):
+        # New actual #43683837146: separate from older D06 GUI #43676794777
+        # and Owner cWID; never infer RMW receive or STOP-RPC causality.
+        record=json.loads((ROOT / "d06/tests/fixtures/g07_ci_20261115_unified_gui_guard_latch_154ms_sanitized.json").read_text())
+        self.assertEqual(record["origin"]["public_actions_run_id"],43683837146)
+        self.assertEqual(record["origin"]["p4_tested_private_source_sha"],
+                         "db1eec05e01e1db0d0d2e0c05610806ef4e499f9")
+        self.assertTrue(record["origin"]["rviz_and_gazebo_gui_xvfb_in_goal_window"])
+        got=analyze_first_latch(record)
+        self.assertEqual(got["status"],"HOLD_GUARD_TTL_CM_SOURCE_GAP_RECEIVE_UNVERIFIED")
+        self.assertEqual(got["first_safety_transition"],"UPSTREAM_STALE_AFTER_MOTION")
+        self.assertEqual(got["first_boundary"],"guard_internal_cm")
+        self.assertAlmostEqual(got["cm_age_at_latch_ms"],154.238454,places=6)
+        self.assertAlmostEqual(got["earliest_native_threshold_crossing_ms_before_latch"],4.238454,places=6)
+        self.assertAlmostEqual(got["cm_source_gap_ms"],170.642126,places=6)
+        self.assertIsNone(got["cm_receive_gap_ms"])
+        self.assertIsNone(got["observer_gap_ms"])
+        self.assertEqual(got["sequence_increment"],1)
+        self.assertEqual(got["supervisor_publications_inside_cm_gap"],3)
+        self.assertTrue(got["pre_latch_cm_observer_evidence_right_censored"])
+        self.assertTrue(got["cm_publisher_interval_gap_confirmed_post_latch"])
+        self.assertFalse(got["cm_callback_processing_delay_proven"])
+        self.assertFalse(got["actual_root_cause_sched_or_cm_execution_proven"])
+        self.assertFalse(got["safety_pass"])
+        self.assertFalse(got["owner_l3_accepted"])
+        self.assertFalse(record["observation_window"]["native_stop_rpc_caused_cm_delay_proven"])
+        self.assertFalse(record["result"]["ordered_nav2_shutdown_ack_verified"])
+
 if __name__=="__main__":
     unittest.main()
