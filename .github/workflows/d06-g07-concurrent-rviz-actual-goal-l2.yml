@@ -43,7 +43,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-ci-public
-          ref: cac588be85f04dbef9d0150fa1ddf5ac3cbdb31a
+          ref: d0b398e5aa1f23bf950bbba93ed815c7d6288138
           path: d06-visual
           persist-credentials: false
 
@@ -196,6 +196,12 @@ jobs:
           # Same CPU selection as Owner D06 sidecar; the G07 recorder
           # remains pinned to the highest allowed CPU via private runner.
           D06_GUI_CPU="$(/usr/bin/python3 ../d06-visual/d06/live/d06_gui_cpu_plan.py)"
+          D06_MONITOR_CPU="$(/usr/bin/python3 ../d06-visual/d06/live/d06_gui_cpu_plan.py --role monitor)"
+          [[ "$D06_MONITOR_CPU" =~ ^[0-9]+$ && "$D06_MONITOR_CPU" != "$D06_GUI_CPU" ]] || {
+            echo 'D06_MONITOR_CPU_ROLE_SEPARATION_BLOCKED_NO_GOAL'; exit 3;
+          }
+          export D06_MONITOR_CPU_FOR_ORACLE="$D06_MONITOR_CPU"
+          echo "D06_MVP_CPU_PARTITION display=$D06_GUI_CPU monitor=$D06_MONITOR_CPU official_cm=SECOND_ALLOWED_CPU recorder=LAST_ALLOWED_CPU"
           [[ "$D06_GUI_CPU" =~ ^[0-9]+$ ]] || {
             echo 'D06_GUI_CPU_PLAN_BLOCKED'; exit 3;
           }
@@ -294,7 +300,7 @@ jobs:
             --ros-args -p use_sim_time:=true \
             > ../d06_gui_load_evidence/rviz.log 2>&1 &
           rviz_pid=$!
-          taskset -c "$D06_GUI_CPU" nice -n 7 /usr/bin/python3 -u ../d06-visual/d06/live/d06_readonly_monitor.py \
+          taskset -c "$D06_MONITOR_CPU" nice -n 7 /usr/bin/python3 -u ../d06-visual/d06/live/d06_readonly_monitor.py \
             --out ../d06_gui_load_evidence \
             > ../d06_gui_load_evidence/monitor.log 2>&1 &
           monitor_pid=$!
@@ -309,7 +315,7 @@ jobs:
             exit 3
           }
           echo 'D06_GUI_L2_REAL_RVIZ_WINDOW_AND_MARKER_MONITOR_CONCURRENT_WITH_GOAL_START'
-          echo "D06_GUI_ISOLATION_VISUAL_CPU=$D06_GUI_CPU SOURCE_PIN=cac588be85f04dbef9d0150fa1ddf5ac3cbdb31a"
+          echo "D06_GUI_ISOLATION_VISUAL_CPU=$D06_GUI_CPU SOURCE_PIN=d0b398e5aa1f23bf950bbba93ed815c7d6288138"
           printf 'D06_READONLY_GUI_READY\n' > "${AXIA_D06_GUI_READY_FILE}.tmp"
           mv -f -- "${AXIA_D06_GUI_READY_FILE}.tmp" "$AXIA_D06_GUI_READY_FILE"
           echo 'D06_GUI_L2_ATOMIC_DISPLAY_READY_ACK_BEFORE_ONE_CI_GOAL'
@@ -393,6 +399,9 @@ jobs:
           startup=json.loads((root/'startup_verdict.json').read_text())
           cm_cpu=json.loads((root/"g07_cm_cpu_affinity.json").read_text())
           assert cm_cpu["cm_core"] != int(__import__("os").environ["D06_GUI_CPU_FOR_ORACLE"])
+          assert cm_cpu["cm_core"] != int(__import__("os").environ["D06_MONITOR_CPU_FOR_ORACLE"])
+          assert int(__import__("os").environ["D06_GUI_CPU_FOR_ORACLE"]) != int(__import__("os").environ["D06_MONITOR_CPU_FOR_ORACLE"])
+          print('D06_L2_LATEST_MVP_RENDER_MONITOR_CM_CPU_DISJOINT_PASS')
           assert cm_cpu["status"]=="G07_OFFICIAL_CM_CORE_AFFINITY_READBACK_NO_GOAL"
           assert cm_cpu["goal_sent"] is False
           assert cm_cpu["guard_policy_modified"] is False
