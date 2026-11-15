@@ -76,6 +76,36 @@ if (( ${#RUN_ROOTS[@]} != 1 ));then
   exit 3
 fi
 RUN_ROOT="${RUN_ROOTS[0]}"
+# Fail at the earliest pre-Goal lifecycle boundary, not at downstream missing
+# action/14-topic/RMW files. This still preserves private archive/custody.
+if [[ "$OWNER_RC" != 0 && -f "$RUN_ROOT/G07/first_startup_boundary.json" ]]; then
+  if python3 - "$RUN_ROOT/G07/first_startup_boundary.json" \
+       "$RUN_ROOT/G07/startup_verdict.json" <<'PY'
+import json,sys
+from pathlib import Path
+try:
+    first=json.loads(Path(sys.argv[1]).read_text())
+    startup=json.loads(Path(sys.argv[2]).read_text())
+    blocked=(startup.get("goal_sent") is False and
+             first.get("first_failure_phase")=="PRE_GOAL" and
+             str(first.get("first_failure","")).startswith("NAVIGATION_STARTUP_") and
+             first.get("owner_accepted") is False)
+    if not blocked:sys.exit(3)
+    print("AXIA_P4_OWNER_FIRST_PREGOAL_BOUNDARY_LOCKED_NO_GOAL_RAW "+json.dumps({
+        k:first.get(k) for k in ("first_failure",
+             "navigation_request_sent","navigation_startup_callback_seen",
+             "navigation_elapsed_sec","downstream_unverified")
+    },sort_keys=True))
+except (OSError,ValueError,KeyError,TypeError):
+    sys.exit(3)
+PY
+  then
+    echo "AXIA_P4_OWNER_FIRST_FAILURE_ORIGINAL=$RUN_ROOT/G07/first_startup_boundary.json"
+    echo "AXIA_G11_G07_PRIVATE_ORIGINAL=$RUN_ROOT.tar.gz"
+    echo 'AXIA_MVP_DEMO_ACCEPTED=HOLD NO_GOAL_NO_RMW_OR_CONTACT_PROOF'
+    exit 3
+  fi
+fi
 MANIFEST="$(
 python3 - "$HOME" "$RUN_ROOT" <<'PY'
 from pathlib import Path
