@@ -36,6 +36,7 @@ def annotated_zone(front_m, age_s):
 def run(out: Path):
     # ROS is imported ONLY at runtime. CI L0 imports pure helpers without ROS.
     import rclpy
+    from rclpy.executors import ExternalShutdownException
     from rclpy.node import Node
     from rclpy.parameter import Parameter
     from rclpy.qos import qos_profile_sensor_data
@@ -155,7 +156,7 @@ def run(out: Path):
                         "zone": zone, "front_m": state["front"],
                         "cm_vx": state["cm_vx"], "odom_vx": state["odom_vx"],
                         "evidence_only": True}, ensure_ascii=False), flush=True)
-        except KeyboardInterrupt:
+        except (KeyboardInterrupt, ExternalShutdownException):
             pass
         finally:
             node.destroy_node()
