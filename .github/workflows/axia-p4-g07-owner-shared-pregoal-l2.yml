@@ -71,7 +71,7 @@ jobs:
           grep -F 'AXIA_P4_G07_SHARED_PREGOAL_PARITY_RUN_ADMITTED_GOAL_DISABLED' "$RUNNER_TEMP/p4_shared_pregoal.log"
           grep -F 'AXIA_G07_SHARED_LAUNCH_EXECUTED mode=ci-headless' "$RUNNER_TEMP/p4_shared_pregoal.log"
           grep -F 'AXIA_G07_SHARED_BAG_EXECUTED topics=14' "$RUNNER_TEMP/p4_shared_pregoal.log"
-          grep -F 'AXIA_G07_SHARED_STAGED_RUNNER_READY NO_GOAL' "$RUNNER_TEMP/p4_shared_pregoal.log"
+          grep -F 'AXIA_G07_SHARED_STAGED_RUNNER_READY NO_GOAL' results/p4-g07-shared-pregoal-l2/staged_startup.log
           echo AXIA_P4_G07_SHARED_CI_OWNER_EXECUTOR_NAV2_STARTUP_NO_GOAL_L2_PASS_OWNER_WSL2_NOT_RUN
       - name: Purge private source and all raw Gazebo/ROS logs
         if: always()
