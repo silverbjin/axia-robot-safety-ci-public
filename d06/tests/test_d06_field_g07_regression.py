@@ -69,8 +69,11 @@ def test_private_source_pin_is_current_released_p4_g07_rmw_diagnostic():
 
 
 def test_readonly_gui_does_not_compete_at_normal_safety_priority():
-    assert "nice -n 15" in SIDECAR
-    assert "Frame Rate: 8" in RVIZ
+    assert "taskset -c" in SIDECAR
+    assert "nice -n 19 rviz2" in SIDECAR
+    assert "nice -n 7 /usr/bin/python3" in SIDECAR
+    assert "d06_gui_cpu_plan.py" in SIDECAR
+    assert "Frame Rate: 3" in RVIZ
     assert "D06_RVIZ_DIAGNOSTICS" in SIDECAR
     assert "D06_RVIZ_NOT_CONFIRMED" in W
     assert "D06_RVIZ_SIDECAR_EXITED_BEFORE_OWNER_COMPLETION" in W
