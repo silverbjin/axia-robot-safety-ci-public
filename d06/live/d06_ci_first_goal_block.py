@@ -64,7 +64,7 @@ def classify_first_goal_block(report):
         (r"^RuntimeError:GOAL_TERMINATED_DURING_", "GOAL_TERMINATED"),
         (r"^RuntimeError:GUARD_LATCH_DURING_", "NATIVE_GUARD_FIRST"),
     ):
-        match = re.match(prefix + PHASE + r"(?=\\W|$)", reason)
+        match = re.match(prefix + PHASE + r"(?=[^A-Za-z0-9_]|$)", reason)
         if match:
             if classification == "NATIVE_GUARD_FIRST":
                 result.update(status="HOLD_G07_FIRST_NATIVE_GUARD_LATCH",
