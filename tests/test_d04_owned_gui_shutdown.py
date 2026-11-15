@@ -33,11 +33,18 @@ def _alive(pid):
 def _create_orphan_within_owned_session(tmp_path, ignore_signals=False):
     """Child stays in parent's start_new_session session after parent exits."""
     child = tmp_path / "fake_yolo_image_view.py"
+    # RED #43671451021: parent prints the PID BEFORE the child has
+    # installed SIGINT/SIGTERM ignore handlers. An immediate stop_owned()
+    # could kill it with SIGINT and report no shutdown_escalated. Require
+    # a child-authored readiness marker AFTER handler installation.
+    ready = tmp_path / "fake_yolo_image_view.ready"
     script = """
-import signal, time
+import signal, time, sys
+from pathlib import Path
 if %s:
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     signal.signal(signal.SIGTERM, signal.SIG_IGN)
+Path(sys.argv[1]).write_text('READY\\n')
 while True:
     time.sleep(0.3)
 """ % ignore_signals
@@ -45,10 +52,10 @@ while True:
     parent = subprocess.Popen(
         [sys.executable, "-c",
          "import subprocess,sys;"
-         "c=subprocess.Popen([sys.executable,sys.argv[1]],"
+         "c=subprocess.Popen([sys.executable,sys.argv[1],sys.argv[2]],"
          "stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,"
          "stderr=subprocess.DEVNULL);print(c.pid,flush=True)",
-         str(child)],
+         str(child), str(ready)],
         stdin=subprocess.DEVNULL,
         stdout=subprocess.PIPE,
         stderr=subprocess.DEVNULL,
@@ -58,6 +65,12 @@ while True:
     pid = int(parent.stdout.readline().strip())
     parent.wait(timeout=5)
     assert parent.returncode == 0
+    until = time.monotonic() + 5.
+    while not ready.is_file() and time.monotonic() < until:
+        if not _alive(pid):
+            break
+        time.sleep(0.01)
+    assert ready.is_file(), "D04_FIXTURE_CHILD_SIGNAL_HANDLERS_NOT_READY"
     assert _alive(pid)
     return parent, pid
 
