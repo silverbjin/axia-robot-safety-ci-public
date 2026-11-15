@@ -40,9 +40,9 @@ jobs:
           print(f"AXIA_P4_FINAL_OWNER_EMBEDDED_PYTHON_AST_PASS blocks={len(blocks)}")
           PY
           bash "$script" --self-check
-          grep -Fq "4f455963aec7d7dc1f0493380a2b4ca6d683484e" "$script"
-          grep -Fq "bc88743d72404ab0b7cd4786f5843a9cb0098089" "$script"
-          grep -Fq "43661587471" "$script"
+          grep -Fq "d3ad8987d7e10208981691a764592fafa1746263" "$script"
+          grep -Fq "28a51df564faae518e511eb67fbe2edc5639c9b8" "$script"
+          grep -Fq "43665710312" "$script"
           grep -Fq "AXIA_G11_RUN_CUSTODY_REQUIRED=1" "$script"
           grep -Fq -- "--mvp-relocated-obstacle" "$script"
           grep -Fq "YES-P2-G07-GOAL" "$script"
@@ -53,5 +53,11 @@ jobs:
             exit 3
           fi
           grep -Fq "AXIA_P4_FINAL_OWNER_BLOCKED_CONTROLLING_TTY_REQUIRED_NO_GOAL" "$RUNNER_TEMP/s02_owner_no_tty.log"
+          if bash "$script" --admission-check >"$RUNNER_TEMP/g07_admission.log" 2>&1;then
+            echo AXIA_P4_OWNER_FALSE_ADMISSION_READY
+            exit 3
+          fi
+          grep -Fq "AXIA_P4_OWNER_ADMISSION_BLOCKED_FIRST_CM_150MS_GUARD_STALE" "$RUNNER_TEMP/g07_admission.log"
+          echo AXIA_P4_OWNER_LATEST_CI_FIRST_CM_161MS_SAFETY_HOLD_L0_PASS
           echo AXIA_P4_FINAL_OWNER_NO_TTY_NEGATIVE_L0_PASS
-          echo AXIA_P4_FINAL_OWNER_ONE_TTY_PREPARED_NO_ROS_NO_GOAL_OWNER_NOT_RUN
+          echo AXIA_P4_FINAL_OWNER_EXECUTOR_PINNED_BUT_GOAL_BLOCKED_OWNER_NOT_RUN
