@@ -61,5 +61,14 @@ class UnifiedGuiSidecarContract(unittest.TestCase):
         self.assertIn('G07_UNIFIED_GUI_CPU_PARTITION',s)
         self.assertNotIn('taskset -cp',s)  # No re-affinity of existing safety nodes.
 
+    def test_gui_l2_cpu_admission_is_checked_before_p4_one_goal(self):
+        workflow=(ROOT/".github/workflows/axia-g07-unified-gui-one-goal-l2.yml").read_text()
+        cpu_check="python3 unified-public/d06/live/d06_gui_cpu_plan.py"
+        self.assertIn(cpu_check,workflow)
+        self.assertIn("python3 unified-public/d06/live/d06_gui_cpu_plan.py --role monitor",workflow)
+        self.assertLess(workflow.index(cpu_check),
+                        workflow.index("      - name: Real Harmonic official TB3 Waffle and Nav2 ONE bounded simulation Goal"))
+        self.assertIn("G07_UNIFIED_GUI_CPU_PREFLIGHT_NO_GOAL_PASS",workflow)
+
 if __name__=="__main__":
     unittest.main()
