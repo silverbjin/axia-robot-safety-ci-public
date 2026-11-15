@@ -22,14 +22,14 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 5eb4d22897064345ef6e1f3f336d587ea94ebd2e
+          ref: 0c25c3ff6739d7824f4301cfee116cf41e0be425
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
       - name: Field CM scheduling RED or GREEN
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor rev-parse HEAD)" = 5eb4d22897064345ef6e1f3f336d587ea94ebd2e
+          test "$(git -C instructor rev-parse HEAD)" = 0c25c3ff6739d7824f4301cfee116cf41e0be425
           cd instructor
           set +e
           python3 -m unittest discover -s tests/unit -p 'test_g07_field_official_cm_cpu_parity_20261115.py' -v >../sealed-test-1.log 2>&1
