@@ -68,6 +68,32 @@ source /opt/ros/jazzy/setup.bash
 set -u
 printf 'D06_OWNER_SESSION=%s\nROS_DOMAIN_ID=%s\nGZ_PARTITION=%s\n' \
   "$owner_dir" "$ros_domain" "$partition" > "$OUT/session_attachment.txt"
+# Display-only work starts AFTER actual Nav2 Lifecycle startup acknowledgement.
+# This avoids overloading localization/navigation initialization on WSLg.
+# A JSON file alone is not proof of a Goal; status must be SMOKE_READY and
+# the same session must still have goal_sent=false at this boundary.
+NAV2_READY="$owner_dir/G07/startup_verdict.json"
+nav2_ready=false
+for attempt in $(seq 1 960);do
+  if [[ -s "$NAV2_READY" ]] && /usr/bin/python3 - "$NAV2_READY" <<'PY'
+import json,sys
+try:
+    d=json.load(open(sys.argv[1],encoding="utf-8"))
+    assert d.get("status")=="SMOKE_READY"
+    assert d.get("goal_sent") is False
+except (OSError,ValueError,AssertionError):
+    raise SystemExit(3)
+PY
+  then
+    nav2_ready=true
+    break
+  fi
+  sleep .25
+done
+if [[ "$nav2_ready" != true ]];then
+  echo 'D06_GUI_NAV2_STARTUP_MISSING_OR_UNVERIFIED';exit 3;
+fi
+echo 'D06_GUI_NAV2_STARTUP_READY_NO_GOAL'
 GUI_CPU="$("/usr/bin/python3" "$GUI_CPU_SELECTOR")" || {
   echo 'D06_GUI_AFFINITY_BLOCKED_BEFORE_RVIZ_AND_MONITOR';exit 3;
 }
