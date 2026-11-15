@@ -17,7 +17,7 @@ jobs:
           set -Eeuo pipefail
           script=scripts/axia_p4_mvp_final_owner_once.sh
           bash -n "$script"
-          "$script" --self-check
+          bash "$script" --self-check
           grep -Fq "4f455963aec7d7dc1f0493380a2b4ca6d683484e" "$script"
           grep -Fq "bc88743d72404ab0b7cd4786f5843a9cb0098089" "$script"
           grep -Fq "43661587471" "$script"
