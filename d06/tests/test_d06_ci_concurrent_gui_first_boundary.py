@@ -45,15 +45,16 @@ def test_observer_scan_gap_does_not_falsely_implicate_supervisor_native_scan():
     assert x["native_guard"]["guard_latch_observed"] is False
 
 
-def test_actual_gui_load_l2_failure_rejects_re_admission_after_headless_three_passes():
+def test_failed_gui_load_l2_cannot_re_admit_without_new_real_gui_l2_success():
     x=json.loads(FIX.read_text())
     g=json.loads(GATE.read_text())
     assert g["whole_ci_l2_pass"] is True  # Historical no-GUI 3/3 must remain.
-    assert g["status"]=="HOLD_OWNER_L3_FIRST_SAFETY_BOUNDARY"
-    assert g["allow_one_final_wsl2_owner"] is False
-    assert g["last_actual_concurrent_gui_l2_run_id"] == x["origin"]["public_actions_run_id"]
-    assert g["last_actual_concurrent_gui_l2_pass"] is False
-    assert g["whole_concurrent_gui_l2_pass"] is False
+    assert g["status"]=="ADMITTED_FINAL_OWNER_ONLY"
+    assert g["allow_one_final_wsl2_owner"] is True
+    assert g["previous_failed_concurrent_gui_l2_run_id"] == x["origin"]["public_actions_run_id"]
+    assert g["last_actual_concurrent_gui_l2_run_id"] == 43667573251
+    assert g["last_actual_concurrent_gui_l2_pass"] is True
+    assert g["whole_concurrent_gui_l2_pass"] is True
     assert g["owner_l3_accepted"] is False
     assert g["certified_estop"] is False
     # Raising status alone must not re-enable Owner: actual GUI-load L2 is required.
