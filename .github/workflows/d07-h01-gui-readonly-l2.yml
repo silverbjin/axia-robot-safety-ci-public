@@ -1,0 +1,153 @@
+# Scope: one actual ROS2 Jazzy/Gazebo Harmonic H01 stationary Waffle,
+# native physical obstacle and official ComputePathToPose Path -> RViz2.
+# Absolutely NO NavigateToPose, NO cmd_vel, NO G07 motion admission.
+name: D07 H01 physical Gazebo read-only RViz2 3-phase L2
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/d07-h01-gui-readonly-l2.yml']
+permissions:
+  contents: read
+concurrency:
+  group: d07-h01-physical-gui-l2-readonly
+  cancel-in-progress: false
+jobs:
+  real-physical-gui:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    environment: axia-instructor-sealed
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+      options: --dns 1.1.1.1 --dns 8.8.8.8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Clone exact sealed Instructor candidate
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: dff047f1fc931952caa6e2ca933121ad1d554445
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          path: instructor
+          persist-credentials: false
+      - name: Exact private commit and targeted L0 prior to any ROS process
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 'dff047f1fc931952caa6e2ca933121ad1d554445'
+          cd instructor
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_gui_owner_contract.py -v
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_path_visual.py -v
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_gui_evidence.py -v
+          python3 -m py_compile tools/d07_h01_geometry_l2.py tools/d07_h01_path_visual.py
+          bash -n scripts/d07_h01_gui_no_goal_once.sh
+          bash -n scripts/p2_no_goal_smoke_ci.sh
+          bash scripts/d07_h01_gui_no_goal_once.sh --self-check
+          echo D07_H01_GUI_SEALED_L0_PASS_NO_GAZEBO_NO_GOAL
+      - name: Minimal Xvfb and RViz2 prerequisites in pinned H01 runtime
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          set +u; source /opt/ros/jazzy/setup.bash; set -u
+          missing=()
+          command -v Xvfb >/dev/null || missing+=(xvfb)
+          command -v xwininfo >/dev/null || missing+=(x11-utils)
+          command -v rviz2 >/dev/null || missing+=(ros-jazzy-rviz2)
+          if (( ${#missing[@]} )); then
+            echo "D07_H01_GUI_MISSING_RUNTIME_PACKAGES=${missing[*]}"
+            apt-get update -qq
+            DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends "${missing[@]}"
+          fi
+          for x in Xvfb xwininfo rviz2 gz ros2 colcon; do command -v "$x" >/dev/null; done
+          echo D07_H01_GUI_REQUIRED_X11_ROS_COMPONENTS_PRESENT
+      - name: One REAL H01 Gazebo physical obstacle + official Nav2 Path + RViz2 L2
+        shell: bash
+        env:
+          ROS_DOMAIN_ID: '95'
+          ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+          GZ_PARTITION: axia_p2_d07_h01_gui_95
+          AXIA_P0_SIM_ONLY: '1'
+          AXIA_D07_H01_GUI_NO_GOAL: '1'
+          AXIA_D07_GUI_HOLD_S: '8'
+          AXIA_G07_CI_SIM_GOAL_ALLOWED: '0'
+          AXIA_P2_G07_PHYSICAL_PREFLIGHT: '1'
+          AXIA_G07_OWNER_STARTUP_PARITY: '1'
+          AXIA_G07_CI_OWNER_BAG_PARITY: '0'
+          AXIA_G07_CI_OWNER_OBSERVER_PARITY: '1'
+          AXIA_P2_SMOKE_RESULTS: results/d07-h01-gui-ci/real-l2
+          AXIA_D07_GUI_EVIDENCE_DIR: results/d07-h01-gui-ci/rviz
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          QT_QPA_PLATFORM: xcb
+          QT_X11_NO_MITSHM: '1'
+        run: |
+          set -Eeuo pipefail
+          export DISPLAY=:99
+          mkdir -p instructor/results/d07-h01-gui-ci
+          Xvfb :99 -screen 0 1600x900x24 -nolisten tcp \
+            > instructor/results/d07-h01-gui-ci/xvfb.log 2>&1 &
+          XVPID=$!
+          trap 'kill "$XVPID" 2>/dev/null || true' EXIT
+          sleep 2
+          cd instructor
+          set +e
+          timeout --signal=TERM --kill-after=12s 910s \
+            bash scripts/d07_h01_gui_no_goal_once.sh --run \
+            > results/d07-h01-gui-ci/live_stdout.log 2>&1 &
+          OWNER=$!
+          RVIZ=0
+          GAZEBO=0
+          for i in $(seq 1 450); do
+            if ! kill -0 "$OWNER" 2>/dev/null; then break; fi
+            windows="$(xwininfo -root -tree 2>/dev/null || true)"
+            if grep -Eiq 'RViz' <<<"$windows"; then RVIZ=1;fi
+            if grep -Eiq 'Gazebo' <<<"$windows"; then GAZEBO=1;fi
+            if [[ "$RVIZ" == 1 && "$GAZEBO" == 1 ]]; then break;fi
+            sleep 2
+          done
+          wait "$OWNER"
+          RC=$?
+          set -e
+          echo "D07_H01_GUI_RUNTIME_RC=$RC RVIZ_X11=$RVIZ GAZEBO_X11=$GAZEBO"
+          if [[ "$RC" != 0 ]]; then
+            for f in results/d07-h01-gui-ci/{real-l2,rviz}/*.log results/d07-h01-gui-ci/live_stdout.log; do
+              if [[ -f "$f" ]];then echo "--- $f ---";tail -n 75 "$f";fi
+            done
+            exit 2
+          fi
+          [[ "$RVIZ" == 1 && "$GAZEBO" == 1 ]] || {
+            echo D07_H01_GUI_X11_WINDOW_ABSENT; exit 2;
+          }
+          python3 - <<'PY'
+          import json,sys
+          from pathlib import Path
+          sys.path.insert(0,'tools')
+          from d07_h01_path_visual import assess_gui_stages
+          root=Path('results/d07-h01-gui-ci/real-l2')
+          geo=json.loads((root/'d07_h01_geometry/d07_h01_geometry.json').read_text())
+          lines=(root/'d07_h01_geometry/phase_evidence.jsonl').read_text().splitlines()
+          phases=[json.loads(x) for x in lines]
+          assert geo['source_sha']=='dff047f1fc931952caa6e2ca933121ad1d554445'
+          assert geo['goal_sent'] is False
+          assert geo['real_nav2'] is True
+          assert geo['real_laser_scan'] is True
+          assert geo['actual_costmap_obstacle_observed'] is True
+          assert geo['route_oracle']['geometry_ready'] is True
+          assert geo['obstacle_restored_away'] is True
+          assert geo['certified_estop'] is False
+          assert geo['formal_accepted'] is False
+          report=assess_gui_stages(
+              phases,source_sha='dff047f1fc931952caa6e2ca933121ad1d554445',actual_ros=True,
+              actual_gazebo=geo['obstacle_pose_native_ack'] is True,
+              rviz_window=True)
+          (root/'d07_h01_gui_verdict.json').write_text(
+              json.dumps(report,sort_keys=True,indent=2)+'\n')
+          print('D07_H01_GUI_REAL_PHASES',json.dumps(phases,sort_keys=True))
+          print('D07_H01_GUI_EVIDENCE',json.dumps(report,sort_keys=True))
+          assert report['ready'] is True,report
+          print('D07_H01_GUI_NO_MOVING_GOAL_L2_PASS')
+          print('D07_H01_OWNER_WSL2_GUI_L3_NOT_RUN')
+          print('D07_H01_MOVING_CONTROLLER_CONTACT_AND_TTL_NOT_VERIFIED')
+          PY
+      - name: Always delete sealed Instructor and original private data
+        if: always()
+        shell: bash
+        run: rm -rf -- instructor
