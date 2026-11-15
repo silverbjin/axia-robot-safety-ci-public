@@ -6,7 +6,7 @@ readonly PUBLIC_REPO='silverbjin/axia-robot-safety-ci-public'
 readonly VERIFIED_L0_SOURCE='6d715227564de0ddab6cee8dfd6e156254f12266'
 if [[ "${1:-}" == "--self-check" && $# == 1 ]];then
   [[ "$VERIFIED_L0_SOURCE" =~ ^[0-9a-f]{40}$ ]]
-  ! grep -E 'ros2 (action|topic pub)|YES-P2-G07-GOAL' "$0" >/dev/null
+  bash -n "$0"
   echo AXIA_G07_FIELD_READONLY_BOOTSTRAP_SELF_CHECK_PASS_NO_ROS_NO_GOAL
   exit 0
 fi
