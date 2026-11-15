@@ -3,9 +3,9 @@
 # SIM ONLY, SINGLE MANUAL TTY GOAL. Never changes safety TTL or Guard.
 set -Eeuo pipefail
 umask 077
-readonly P4_PUBLIC_RELEASE_SHA='67b8995cc7fdd506b12f348fc7e5241dcedddc67'
-readonly P4_OWNER_PRIVATE_SHA='c44414f8e3bad37a349565f211d554540cccb062'
-readonly P4_OWNER_PRIVATE_TREE='d2e3044689a5873cd61d6bc5f84a40b20a81f84e'
+readonly P4_PUBLIC_RELEASE_SHA='f443fb4d6b246db2024dff225c7b77c97d7f50a9'
+readonly P4_OWNER_PRIVATE_SHA='3593125fdfe489aead3e892daf39563df0c0d4a0'
+readonly P4_OWNER_PRIVATE_TREE='3ebf3efa35340dabab75a18418788c53ae54f308'
 readonly P4_G11_SCRIPT='scripts/axia_p4_g11_owner_g07_rmw_provenance_once.sh'
 # The G11 owner release itself sets AXIA_P2_OWNER_PINNED_SHA and collects
 # YES-P2-G07-GOAL on a physical TTY. No AXIA_G07_CI_SIM_GOAL_ALLOWED override.
@@ -54,6 +54,13 @@ if not (
     and value.get('allow_one_final_wsl2_owner') is True
     and value.get('whole_ci_l2_pass') is True
     and value.get("whole_concurrent_gui_l2_pass") is True
+    and value.get("last_actual_concurrent_gui_l2_pass") is True
+    and value.get("last_actual_concurrent_gui_l2_run_id")==43667573251
+    and value.get("last_actual_concurrent_gui_l2_workflow_sha")=="8eeb69c442a60be434d8c4fc1a153788aebed7e3"
+    and value.get("last_actual_concurrent_gui_l2_instructor_sha")==sys.argv[2]
+    and value.get("allowed_final_owner_attempts")==1
+    and value.get("actual_wslg_simultaneous_gazebo_rviz_verified") is False
+    and value.get("owner_l3_accepted") is False
     and value.get('private_instructor_sha')==sys.argv[2]
     and value.get('p4_release_sha')==sys.argv[3]
     and type(value.get('last_real_gazebo_ci_run_id')) is int
@@ -63,7 +70,7 @@ if not (
     raise SystemExit(3)
 PY
 then
-  echo "D06_FINAL_OWNER_ADMISSION_ACCEPTED exact_source_ci_full_gazebo_l2_verified"
+  echo "D06_FINAL_OWNER_ADMISSION_ACCEPTED exact_source_ci_concurrent_rviz_real_gazebo_l2_verified OWNER_WSLG_NOT_RUN"
 else
   admission_rc=$?
   if [[ "$admission_rc" == 4 ]]; then
