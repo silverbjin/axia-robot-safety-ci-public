@@ -6,7 +6,7 @@
     "private_instructor_source_sha": "6e402e30f5036285f067b5dffed085eff41af599",
     "source_run_scope": "D06_CONCURRENT_GUI_REAL_GAZEBO_L2_FAIL_ONLY",
     "sanitized_intervals_only": true,
-    "raw_event_timestamps_or_goal_uuid_included": false
+    "raw_private_event_data_included": false
   },
   "safety_contract_ms": {
     "cm_source": 150,
