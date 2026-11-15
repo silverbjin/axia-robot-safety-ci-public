@@ -15,14 +15,14 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: db66ee840e432a610f2d142937d9ec59543ea44d
+          ref: 800ee08b219ed2b4e7087374edb7fa4d765f5b3d
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: G00-G10 scoped pass reuse vs mandatory safety blockers
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git rev-parse HEAD)" = db66ee840e432a610f2d142937d9ec59543ea44d
+          test "$(git rev-parse HEAD)" = 800ee08b219ed2b4e7087374edb7fa4d765f5b3d
           python3 -m unittest discover -s tests/unit -p test_p4_demo_acceptance_profile.py -v
           python3 tools/p4_demo_acceptance.py --verify-current             --output "$RUNNER_TEMP/axia_mvp_demo_acceptance_result.json"
           python3 - "$RUNNER_TEMP/axia_mvp_demo_acceptance_result.json" <<'PY'
@@ -46,6 +46,20 @@ jobs:
           assert ci['owner_wsl2_timing_verified'] is False
           assert status['s02_contact']['ci_scoped_current_pinned_source_review']['native_observed_iterations']==27508
           assert status['s02_contact']['ci_scoped_current_pinned_source_review']['native_positive_contacts']==0
+          latest=status["g07_first_timing_violation"]["ci_scoped_latest_observer_nonblocking_review"]
+          assert latest["ci_run_id"]==43674784552
+          assert latest["private_source_sha"]=="db1eec05e01e1db0d0d2e0c05610806ef4e499f9"
+          assert latest["seven_channel_observed_max_sec"]["guard"]<0.15
+          assert latest["seven_channel_observed_max_sec"]["clock"]<0.30
+          assert latest["native_s02_same_goal_iterations"]==28801
+          assert latest["native_s02_obstacle_positive_contacts"]==0
+          assert latest["owner_verification"] is False
+          assert latest["intermittent_failure_eliminated_proven"] is False
+          owner=status["wsl2_integrated"]["ci_to_owner_manual_tty_prepared"]
+          assert owner["public_bootstrap_commit_sha"]=="57c9b4d8718f693d76dffd6e46b22139266dcd85"
+          assert owner["public_static_ci_run_id"]==43675281953
+          assert owner["owner_manual_tty_one_goal_pending"] is True
+          print("AXIA_P4_G07_OWNER_BRXS_FIRST_151MS_NEW_ASYNC_CI_PASS_GLOBAL_HOLD_L0_VERIFIED")
           print('AXIA_P4_CURRENT_G07_S02_CI_EVIDENCE_LINKED_GLOBAL_OWNER_HOLD_L0_PASS')
           print("AXIA_MVP_DEMO_PROFILE_ADOPTED_HOLD_SAFETY_GATES_NOT_BYPASSED_L0_PASS_NO_ROS_NO_GOAL")
           PY
