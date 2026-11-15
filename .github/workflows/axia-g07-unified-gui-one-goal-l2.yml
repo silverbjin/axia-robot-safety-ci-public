@@ -35,7 +35,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: e3706dfeec14f20699c99f8995a2ec68180a24aa
+          ref: 36ce8e6909193413181fad965d6f63b06c187fb2
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -76,7 +76,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 'e3706dfeec14f20699c99f8995a2ec68180a24aa'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '36ce8e6909193413181fad965d6f63b06c187fb2'
           test "$ROS_DISTRO" = jazzy
           cd instructor
           mkdir -p results/p2-g07-ci-moving
@@ -138,7 +138,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           cd instructor
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 'e3706dfeec14f20699c99f8995a2ec68180a24aa'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '36ce8e6909193413181fad965d6f63b06c187fb2'
           test "$(git hash-object tools/native_s02/s02_physics_witness.cc)" = 2035cf411972e35fa7d9b6d16766bbc784051ff8
           if ! command -v c++ >/dev/null || ! test -e /usr/include/gz/sim8/gz/sim/System.hh;then
             apt-get update -qq
@@ -165,10 +165,10 @@ jobs:
         run: |
           set -euo pipefail
           cd instructor
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 'e3706dfeec14f20699c99f8995a2ec68180a24aa'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '36ce8e6909193413181fad965d6f63b06c187fb2'
           export GZ_SIM_SYSTEM_PLUGIN_PATH="$RUNNER_TEMP/s02-native-one-goal-build:${GZ_SIM_SYSTEM_PLUGIN_PATH:-}"
           export AXIA_S02_ECM_WITNESS_CI=1 AXIA_S02_ECM_WITNESS_MOVING_ALLOWED=1
-          export AXIA_S02_WITNESS_SOURCE_SHA=e3706dfeec14f20699c99f8995a2ec68180a24aa
+          export AXIA_S02_WITNESS_SOURCE_SHA=36ce8e6909193413181fad965d6f63b06c187fb2
           export AXIA_S02_WITNESS_SESSION=s02_live_one_goal_83
           export AXIA_S02_ECM_WITNESS_REPORT="$PWD/results/p2-g07-ci-moving/real-l2/s02_ecm_witness.json"
           echo AXIA_S02_PUBLIC_SIM_ONLY_ONE_GOAL_NATIVE_CONTACT_WITNESS_ARMED
@@ -332,7 +332,7 @@ jobs:
             'graceful_teardown':'P2_L2_GRACEFUL_TEARDOWN' in
               (root/'teardown.txt').read_text() if (root/'teardown.txt').is_file() else False}
           result=review(w,g,calibration,counts,clean,
-              source_sha='e3706dfeec14f20699c99f8995a2ec68180a24aa',native_blob_sha=blob)
+              source_sha='36ce8e6909193413181fad965d6f63b06c187fb2',native_blob_sha=blob)
           result['original_native_witness_sha256']=hashlib.sha256(witness.read_bytes()).hexdigest()
           result['original_bag_sqlite_sha256']=hashlib.sha256(dbs[0].read_bytes()).hexdigest()
           (root/'s02_same_goal_native_review.json').write_text(
@@ -522,7 +522,7 @@ jobs:
           overlap=any(x.get('actual_scan_messages',0)>0 and
                       goal[0]<=x.get('t_monotonic',-1)<=goal[0]+60 for x in obs)
           print('AXIA_G07_GUI_STRESS_CI_PROVENANCE '+json.dumps({
-              'same_p4_source':'e3706dfeec14f20699c99f8995a2ec68180a24aa',
+              'same_p4_source':'36ce8e6909193413181fad965d6f63b06c187fb2',
               'rviz_and_gazebo_gui_xvfb':actual_both,
               'display_before_original_goal':started_before_goal,
               'real_scan_during_goal_window':overlap,
