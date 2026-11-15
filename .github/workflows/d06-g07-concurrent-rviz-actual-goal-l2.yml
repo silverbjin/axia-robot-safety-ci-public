@@ -212,14 +212,14 @@ jobs:
           nav2_ready=false
           for attempt in $(seq 1 1800);do
             if [[ -s "$STARTUP" ]] && python3 - "$STARTUP" <<'PY'
-import json,sys
-try:
-  d=json.load(open(sys.argv[1],encoding="utf-8"))
-  assert d.get("status")=="SMOKE_READY"
-  assert d.get("goal_sent") is False
-except (OSError,ValueError,AssertionError):
-  raise SystemExit(3)
-PY
+          import json,sys
+          try:
+            d=json.load(open(sys.argv[1],encoding="utf-8"))
+            assert d.get("status")=="SMOKE_READY"
+            assert d.get("goal_sent") is False
+          except (OSError,ValueError,AssertionError):
+            raise SystemExit(3)
+          PY
             then
               nav2_ready=true
               break
