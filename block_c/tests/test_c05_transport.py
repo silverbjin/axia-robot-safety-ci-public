@@ -55,3 +55,11 @@ def test_ros_setup_sourcing_is_not_blocked_by_nounset():
     src=workflow.index('source /opt/ros/jazzy/setup.bash')
     assert 'set +u' in workflow[src-90:src], 'must suspend nounset before ROS setup'
     assert 'set -u' in workflow[src:src+90], 'restore nounset after ROS setup'
+
+
+def test_ros_jazzy_diagnosticstatus_byte_wire_regression():
+    """Observed real ROS -6 PyBytes_Check(field) on assigning int to .level."""
+    bridge=(ROOT/'transport'/'ros_diagnostic_bridge.py').read_text()
+    probe=(ROOT/'transport'/'ros_l1_probe.py').read_text()
+    assert 'status.level=bytes([view[\'level\']])' in bridge
+    assert "msg.status[0].level[0]" in probe

@@ -42,7 +42,7 @@ def run_ros(events_path:Path,period_sec=0.1,max_messages=12):
             self.gate.accept(event,arrival_mono_ns=now_mono,arrival_wall_ns=now_wall)
             view=to_diagnostic_payload(event)
             status=DiagnosticStatus();status.name='AXIA Block C Synthetic Anomaly (EDUCATION ONLY)'
-            status.level=view['level'];status.message=view['message'];status.hardware_id=view['hardware_id']
+            status.level=bytes([view['level']]);status.message=view['message'];status.hardware_id=view['hardware_id']
             vals={k:v for k,v in view.items() if k not in ('topic','level','message','hardware_id')}
             vals['ingress_monotonic_ns']=now_mono;vals['ingress_wall_ns']=now_wall
             status.values=[KeyValue(key=str(k),value='' if v is None else str(v)) for k,v in vals.items()]

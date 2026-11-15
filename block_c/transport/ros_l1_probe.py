@@ -20,7 +20,7 @@ def main():
     def got(msg):
         if msg.status:
             observed.append({'stamp_sec':msg.header.stamp.sec,'stamp_nanosec':msg.header.stamp.nanosec,
-                             'level':int(msg.status[0].level),'message':msg.status[0].message,
+                             'level':msg.status[0].level[0],'message':msg.status[0].message,
                              'name':msg.status[0].name,'keys':{p.key:p.value for p in msg.status[0].values}})
             seen_at.append(time.monotonic_ns())
     sub=listener.create_subscription(DiagnosticArray,TOPIC,got,10)
