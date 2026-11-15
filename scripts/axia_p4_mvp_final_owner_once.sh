@@ -13,7 +13,7 @@ readonly CI_S02_G07_SCOPE="REAL_ONE_G07_GOAL_ECM_NATIVE_CONTACT_ZERO_14TOPIC_7TT
 if [[ "${1:-}" == '--self-check' ]]; then
   [[ $# -eq 1 && "$PRIVATE_SHA" =~ ^[0-9a-f]{40}$ &&
      "$PRIVATE_TREE" =~ ^[0-9a-f]{40}$ ]] || exit 2
-  printf 'AXIA_P4_FINAL_OWNER_STATIC_L0_PASS private_sha=%s tree=%s ci_run=%s OWNER_NOT_RUN NO_ROS_NO_GOAL\\n' \\
+  printf 'AXIA_P4_FINAL_OWNER_STATIC_L0_PASS private_sha=%s tree=%s ci_run=%s OWNER_NOT_RUN NO_ROS_NO_GOAL\n' \
     "$PRIVATE_SHA" "$PRIVATE_TREE" "$CI_S02_G07_L2_RUN"
   exit 0
 fi
