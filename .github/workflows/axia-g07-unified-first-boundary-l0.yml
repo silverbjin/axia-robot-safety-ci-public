@@ -14,6 +14,10 @@ on:
       - 'd06/tests/test_g07_unified_gui_sidecar_contract.py'
       - 'd06/scripts/g07_unified_ci_readonly_display.sh'
       - 'd06/live/d06_gui_cpu_plan.py'
+      - 'd06/tests/test_g07_unified_final_owner_admission.py'
+      - 'd06/live/g07_unified_final_owner_gate.py'
+      - 'd06/scripts/g07_unified_final_owner_wsl2_once.sh'
+      - 'd06/acceptance/g07_unified_final_owner_ci_gate.json'
 permissions:
   contents: read
 jobs:
@@ -29,4 +33,5 @@ jobs:
           set -Eeuo pipefail
           python3 -m unittest discover -s d06/tests -p 'test_g07_unified_first_timing_regression.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_g07_unified_gui_sidecar_contract.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_g07_unified_final_owner_admission.py' -v
           echo AXIA_G07_UNIFIED_FIRST_BOUNDARY_L0_PASS_NO_ROS_NO_GOAL_OWNER_HOLD
