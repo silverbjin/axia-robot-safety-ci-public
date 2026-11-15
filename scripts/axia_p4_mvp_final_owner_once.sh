@@ -115,7 +115,7 @@ echo "AXIA_G11_G07_JOINED_REVIEW_EXIT_CODE=$REVIEW_RC"
 # G07 only: read the already-recorded original Observer ledger (NOT ROS).
 # Compare CM publisher/receive times and actual Guard FIRST TTL transition
 # even when the Owner Goal was stopped and the original custody is INCOMPLETE.
-RMW_OUT="$HOME/.axia_p4_g11_session_custody/reviews/g07-rmw-$(date -u +%Y%m%dT%H%M%SZ)-$.json"
+RMW_OUT="$HOME/.axia_p4_g11_session_custody/reviews/g07-rmw-$(date -u +%Y%m%dT%H%M%SZ)-$$.json"
 RMW_RC=0
 python3 - "$WORK/instructor/tools" "$RUN_ROOT/G07/live" "$RMW_OUT" <<'PY' || RMW_RC=$?
 from pathlib import Path
@@ -140,6 +140,51 @@ try:
     upstream=cm_upstream_rmw_gap_window(rows,goal_start=goal_start,end=at)
     boundary=first_guard_cm_delivery_boundary(
         rows,result.get("first_guard_latch"),goal_start=goal_start)
+    cm_rows=[v for v in rows if v.get("kind")=="pre_guard"
+             and isinstance(v.get("t"),(int,float))
+             and goal_start<=v["t"]<=at]
+    source_gaps=[]; receive_gaps=[]; observer_gaps=[]
+    valid_rmw=(len(cm_rows)>=10 and all(
+        type(v.get("rmw_source_ns")) is int and v["rmw_source_ns"]>0
+        and type(v.get("rmw_received_ns")) is int
+        and v["rmw_received_ns"]>=v["rmw_source_ns"]
+        and type(v.get("rmw_publication_seq")) is int
+        for v in cm_rows))
+    if valid_rmw:
+        for left,right in zip(cm_rows,cm_rows[1:]):
+            source_gaps.append((right["rmw_source_ns"]-left["rmw_source_ns"])/1e9)
+            receive_gaps.append((right["rmw_received_ns"]-left["rmw_received_ns"])/1e9)
+            observer_gaps.append(right["t"]-left["t"])
+            if right["rmw_publication_seq"]!=left["rmw_publication_seq"]+1:
+                valid_rmw=False
+    maxima={
+       "cm_source_sec":max(source_gaps) if source_gaps else None,
+       "cm_receive_sec":max(receive_gaps) if receive_gaps else None,
+       "cm_observer_sec":max(observer_gaps) if observer_gaps else None,
+    }
+    requirements={
+       "max_source_interval_sec":0.15,
+       "max_cm_interval_sec":0.15,
+       "max_guard_interval_sec":0.15,
+       "max_supervisor_fsm_interval_sec":0.15,
+       "max_scan_interval_sec":0.30,
+       "max_odom_interval_sec":0.30,
+       "max_clock_interval_sec":0.30,
+    }
+    # Numeric candidate only. A first Guard latch, any missing proof, or a
+    # 150ms CM publisher/receive gap blocks this Owner postrun review.
+    safety_timing_candidate=(
+       valid_rmw and all(x is not None and 0<=x<0.15 for x in maxima.values())
+       and all(type(result.get(k)) in (int,float)
+               and 0<=result[k]<=limit for k,limit in requirements.items())
+       and result.get("status")=="CI_GAZEBO_MOVING_GOAL_CANDIDATE"
+       and result.get("guard_latched") is False
+       and result.get("first_timing_violation") is None
+       and type(result.get("odom_stopped_dwell_sec")) in (int,float)
+       and result["odom_stopped_dwell_sec"]>=1.0
+       and rmw["status"]=="NO_CM_OBSERVED_GAP_IN_BOUND"
+       and upstream["status"]=="NO_CM_SOURCE_GAP_OBSERVED"
+       and boundary["status"]=="NO_FIRST_GUARD_LATCH_TRACE")
     report={
         "schema":"axia_p4_g07_owner_rmw_postrun_diagnostic_v1",
         "created_utc":datetime.now(timezone.utc).isoformat(),
@@ -150,7 +195,10 @@ try:
         "safety_ttl_formally_assessed":False,
         "owner_l3_accepted":False,"formal_accepted":False,
         "g11_formal_count":0,"certified_estop":False,
-        "no_ros_no_goal_no_upload":True
+        "read_only_reviewer_no_new_ros_goal_no_upload":True,
+        "owner_safety_timing_numeric_candidate":bool(safety_timing_candidate),
+        "max_cm_rmw_observed_intervals":maxima,
+        "raw_original_review_required":True
     }
     output.parent.mkdir(parents=True,exist_ok=True,mode=0o700)
     fd=os.open(output,os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600)
@@ -165,6 +213,10 @@ try:
         boundary["first_timing_violation"],sort_keys=True))
     print("AXIA_G11_G07_RMW_PRIVATE_REVIEW="+str(output))
     print("AXIA_G11_G07_RMW_NO_AUTO_GOAL_NO_UPLOAD_FORMAL_HOLD")
+    print("AXIA_P4_FINAL_OWNER_FIRST_TIMING_NUMERIC_CANDIDATE="+
+          str(bool(safety_timing_candidate)).lower())
+    if not safety_timing_candidate:
+        raise ValueError("FIRST_CM_SOURCE_RECEIVE_GUARD_TIMING_UNVERIFIED_OR_BREACHED")
 except (OSError,ValueError,TypeError,KeyError) as exc:
     print("AXIA_G11_G07_RMW_READONLY_BLOCKED "+type(exc).__name__+":"+str(exc),
           file=sys.stderr)
