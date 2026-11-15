@@ -4,13 +4,15 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parents[2]
 WRAPPER=(ROOT/"d06/scripts/d06_gazebo_rviz_owner_wsl2_once.sh").read_text()
 
-def test_three_identical_source_real_l2_cold_starts_admit_only_one_final_owner_check():
+def test_three_l2_passes_remain_historical_after_one_owner_l3_failure():
     value=json.loads((ROOT/"d06/acceptance/d06_g07_final_owner_ci_gate.json").read_text())
     assert value["schema"]=="axia.d06.final_owner_ci_gate_v1"
-    assert value["status"]=="ADMITTED_FINAL_OWNER_ONLY"
-    assert value["allow_one_final_wsl2_owner"] is True
+    assert value["status"]=="HOLD_OWNER_L3_FIRST_SAFETY_BOUNDARY"
+    assert value["allow_one_final_wsl2_owner"] is False
+    assert value["allowed_final_owner_attempts"] == 0
     assert value["whole_ci_l2_pass"] is True
     assert value["last_real_gazebo_ci_run_id"]==43609296371
+    assert value["last_owner_failure_class"]=="GUARD_CM_TTL_AFTER_RMW_SOURCE_AND_OBSERVER_GAPS"
     assert value["last_real_gazebo_ci_attempt"]==3
     assert value["last_real_gazebo_ci_job_id"]==132492476795
     assert value["current_ci_instructor_candidate_sha"]=="c44414f8e3bad37a349565f211d554540cccb062"
