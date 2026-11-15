@@ -27,7 +27,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: b7e40864d475ef52f21def788f196075479e0eb1
+          ref: 6e402e30f5036285f067b5dffed085eff41af599
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -106,7 +106,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 'b7e40864d475ef52f21def788f196075479e0eb1'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '6e402e30f5036285f067b5dffed085eff41af599'
           test "$ROS_DISTRO" = jazzy
           cd instructor
           mkdir -p results/p2-g07-ci-moving
@@ -188,7 +188,7 @@ jobs:
           source /opt/ros/jazzy/setup.bash
           set -u
           cd instructor
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 'b7e40864d475ef52f21def788f196075479e0eb1'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '6e402e30f5036285f067b5dffed085eff41af599'
           # Actual read-only RViz and MarkerArray observer share ONE CI container
           # with the actual G07 moving Goal; no extra robot command publisher.
           export DISPLAY=:99 LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe
@@ -378,6 +378,11 @@ jobs:
           assert cm_cpu["goal_sent"] is False
           assert cm_cpu["guard_policy_modified"] is False
           assert cm_cpu["allowed_cpu_count"]>=4 and cm_cpu["thread_count"]>=1
+          cm_restored=json.loads((root/"g07_cm_cpu_affinity_restored.json").read_text())
+          assert cm_restored["status"]=="G07_OFFICIAL_CM_AFFINITY_RESTORED_BEFORE_NAV2_SHUTDOWN"
+          assert cm_restored["cm_pid"]==cm_cpu["cm_pid"]
+          assert cm_restored["actual_native_shutdown_ack"] is False
+          print('D06_REAL_G07_CI_OFFICIAL_CM_THREAD_MASK_RESTORED_BEFORE_NATIVE_SHUTDOWN_PASS')
           print('D06_REAL_G07_CI_OFFICIAL_CM_OWNED_CPU_ISOLATION_READBACK_L2_PASS')
           preg=json.loads((root/'g07_ci_pregoal/owner_pregoal_l2.json').read_text())
           data=json.loads((root/'g07_ci_moving/ci_moving_goal_result.json').read_text())
