@@ -43,7 +43,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-ci-public
-          ref: 85e834ccc464a83fae2ba658e859178287da6f0d
+          ref: 772071d35e79f6df200c548b88259c12b0fb9b4e
           path: d06-visual
           persist-credentials: false
 
@@ -232,20 +232,21 @@ jobs:
             exit 3
           }
           echo 'D06_GUI_L2_NAV2_LIFECYCLE_READY_BEFORE_VISUAL_LOAD_NO_GOAL'
-          # Bounded test-only scheduler contention on the reserved CM CPU.
-          # Low priority; does not modify ROS runtime, CM, Guard, TTL or Goal.
-          D06_STRESS_CPU="$(python3 -c 'import os; x=sorted(os.sched_getaffinity(0)); assert len(x)>=4; print(x[1])')"
+          # Bounded GUI-side work models WSLg renderer contention WITHOUT
+          # loading the exact-owned official CM CPU. CM has its own CPU 1.
+          # GUI core is 0; Verifier middle cores; recorder highest core.
+          D06_STRESS_CPU="$(/usr/bin/python3 ../d06-visual/d06/live/d06_ci_stress_cpu_topology.py --cpu)"
+          export D06_GUI_CPU_FOR_ORACLE="$D06_GUI_CPU"
+          [[ "$D06_STRESS_CPU" == "$D06_GUI_CPU" ]] || {
+            echo 'D06_RENDERER_LOAD_NOT_ON_GUI_ONLY_CPU';exit 3;
+          }
           taskset -c "$D06_STRESS_CPU" nice -n 10 \
-            timeout --signal=TERM --kill-after=2s 220s python3 -u - \
-              > ../d06_gui_load_evidence/cm_low_priority_cpu_load.log 2>&1 <<'PY' &
-          import time
-          until=time.monotonic()+210
-          x=0.1
-          while time.monotonic()<until:
-              x=(x*1.00000001+0.1)%99999.0
-          PY
+            timeout --signal=TERM --kill-after=2s 220s \
+            /usr/bin/python3 -u ../d06-visual/d06/live/d06_ci_stress_cpu_topology.py \
+              --load --seconds 210 \
+              > ../d06_gui_load_evidence/cm_low_priority_cpu_load.log 2>&1 &
           cm_load_pid=$!
-          echo 'D06_REAL_G07_CI_WSL2_LIKE_CM_CORE_CONTENTION_NICE10_STARTED_NO_GOAL'
+          echo 'D06_REAL_G07_CI_WSL2_LIKE_RENDERER_CPU_CONTENTION_25PCT_NICE10_STARTED_NO_GOAL_CM_CORE_DISJOINT'
           taskset -c "$D06_GUI_CPU" nice -n 19 Xvfb :99 -screen 0 1280x800x24 -nolisten tcp \
             > ../d06_gui_load_evidence/xvfb.log 2>&1 &
           xvfb_pid=$!
@@ -289,7 +290,7 @@ jobs:
             exit 3
           }
           echo 'D06_GUI_L2_REAL_RVIZ_WINDOW_AND_MARKER_MONITOR_CONCURRENT_WITH_GOAL_START'
-          echo "D06_GUI_ISOLATION_VISUAL_CPU=$D06_GUI_CPU SOURCE_PIN=85e834ccc464a83fae2ba658e859178287da6f0d"
+          echo "D06_GUI_ISOLATION_VISUAL_CPU=$D06_GUI_CPU SOURCE_PIN=772071d35e79f6df200c548b88259c12b0fb9b4e"
           printf 'D06_READONLY_GUI_READY\n' > "${AXIA_D06_GUI_READY_FILE}.tmp"
           mv -f -- "${AXIA_D06_GUI_READY_FILE}.tmp" "$AXIA_D06_GUI_READY_FILE"
           echo 'D06_GUI_L2_ATOMIC_DISPLAY_READY_ACK_BEFORE_ONE_CI_GOAL'
@@ -372,6 +373,7 @@ jobs:
           root=Path('results/p2-g07-ci-moving/real-l2')
           startup=json.loads((root/'startup_verdict.json').read_text())
           cm_cpu=json.loads((root/"g07_cm_cpu_affinity.json").read_text())
+          assert cm_cpu["cm_core"] != int(__import__("os").environ["D06_GUI_CPU_FOR_ORACLE"])
           assert cm_cpu["status"]=="G07_OFFICIAL_CM_CORE_AFFINITY_READBACK_NO_GOAL"
           assert cm_cpu["goal_sent"] is False
           assert cm_cpu["guard_policy_modified"] is False
