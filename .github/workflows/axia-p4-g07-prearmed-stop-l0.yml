@@ -14,13 +14,13 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 2fbb6679d0bfd0b361aa626c6ecd7e26a13b0a4a
+          ref: 528d583bc941985710bf4f314ae08c4bd5108a76
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git rev-parse HEAD)" = 2fbb6679d0bfd0b361aa626c6ecd7e26a13b0a4a
+          test "$(git rev-parse HEAD)" = 528d583bc941985710bf4f314ae08c4bd5108a76
           python3 -m unittest discover -s tests/unit -p test_p4_g07_prearmed_stop.py -v
           echo AXIA_P4_G07_PREARMED_STOP_L0_GREEN_NO_ROS_NO_GOAL
       - if: always()
