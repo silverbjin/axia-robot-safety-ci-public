@@ -37,6 +37,14 @@ else
   if ! GIT_TERMINAL_PROMPT=0 git clone --quiet --depth 1 --branch "$STUDENT_BRANCH" "$STUDENT_URL" "$SOURCE" >"$RUN/git.stdout.log" 2>"$RUN/git.stderr.log"; then
     echo C01_GIT_CLONE_BLOCKED >&2; cat "$RUN/git.stderr.log" >&2; exit 2
   fi
+  # A teaching branch may advance to C-06. Rehydrate the immutable C-01
+  # reviewed commit instead of expecting its SHA to equal the moving branch HEAD.
+  if ! GIT_TERMINAL_PROMPT=0 git -C "$SOURCE" fetch --quiet --depth 1 origin "$PINNED_STUDENT_SHA"        >"$RUN/pinned_git.stdout.log" 2>"$RUN/pinned_git.stderr.log"; then
+    echo C01_PINNED_COMMIT_FETCH_BLOCKED >&2; cat "$RUN/pinned_git.stderr.log" >&2; exit 2
+  fi
+  if ! git -C "$SOURCE" checkout --quiet --detach "$PINNED_STUDENT_SHA"        >"$RUN/pinned_checkout.stdout.log" 2>"$RUN/pinned_checkout.stderr.log"; then
+    echo C01_PINNED_COMMIT_CHECKOUT_BLOCKED >&2; cat "$RUN/pinned_checkout.stderr.log" >&2; exit 2
+  fi
 fi
 ACTUAL="$(git -C "$SOURCE" rev-parse HEAD 2>/dev/null || true)"
 if [[ "$ACTUAL" != "$PINNED_STUDENT_SHA" ]]; then
