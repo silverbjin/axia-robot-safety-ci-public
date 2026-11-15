@@ -42,3 +42,14 @@ ROS 2 Jazzy / Gazebo Harmonic / 공식 Nav2 Collision Monitor / TurtleBot3 Waffl
 - 신규 공개 실제 L2에서 **동시 렌더링 부하, Scan≤300ms, CM/Supervisor/Guard≤150ms, CLEAR→SLOWDOWN→STOP, odom≥1s, lifecycle ACK/CM exit0, 원본 무결성**이 모두 확인되기 전에는 owner 재입장 금지.
 - 한 번의 실제 Owner WSLg 검수에서 GUI 두 창 갱신 및 원본 주행/정지가 함께 입증되기 전에는 D06_GAZEBO_RVIZ_L3_ACCEPTED 금지.
 - 각 작업은 경로·명령·실제 출력·검증 수준·미검증·브랜치/커밋을 제출. 안전 부정 증거를 누락하거나 FAIL을 PASS로 변환하지 않는다.
+
+## 부록: 공개 실제 GUI 동시부하 L2 최초 전달지연 — 2026-11-15
+
+- 새 실제 Gazebo+RViz2+Xvfb+MarkerArray 관찰기 같은 컨테이너에서 실행, 1회 Goal 실제 수행: public Actions #43664497257, source c017907570922e1d19e6c4901b38f6bd395b51cc, **전체 L2 FAIL**.
+- 해당 실행에선 RViz 실제 창 생성 성공. /odom Observer 첫 간격 365.941227ms (>300ms); /scan Observer 428.090958ms (>300ms)이지만 Supervisor native scan gap delta=0. Observer gap을 native sensor safety failure라 단정 금지.
+- CM 전체 RMW source 최대 139.491ms (<150ms). 다른 최초 RMW 창에서 CM source 69.596117ms인데 receive 393.579510ms, Observer callback 397.164783ms. 분류: RMW_RECEIVE_DELAY_CANDIDATE. native Guard latch 미관찰. DDS/스케줄링/Observer 내부 원인 특정 불가.
+- 원래 Owner WSL2 G85의 CM RMW source 152.878980ms 및 Guard internal cm age 166.509123ms (>150ms), UPSTREAM_STALE_AFTER_MOTION 와 같은 원인이라고 입증되지 않음. 실제 CI 시연은 odom STOP 1초 일부 관측과 무관하게 전체 Goal timing oracle 및 lifecycle shutdown FAIL.
+- 신규 sanitized fixture: d06/tests/fixtures/g07_ci_20261115_concurrent_gui_first_boundary_sanitized.json; test: d06/tests/test_d06_ci_concurrent_gui_first_boundary.py. RED #43664968558: 83 passed, 1 failed(실제 GUI L2 실패를 gate가 누락). GREEN #43665049485: L0 84 passed, 실제 ROS L1 및 RViz Xvfb L1 PASS. **신규 GUI 동시부하 실제 L2 자체는 RED 유지**.
+- 안전 게이트는 기존 headless 3/3 기록을 지우지 않으나, 재인수 허가에 whole_concurrent_gui_l2_pass=true를 추가 요구. 현재 false. status=HOLD_OWNER_L3_FIRST_SAFETY_BOUNDARY, allow_one_final_wsl2_owner=false, allowed_final_owner_attempts=0.
+- 절차 다음 단계: native Guard 콜백, CM source/RMW receive, Observer 시각을 동일 Goal 창에서 대조하고 최소 GUI 렌더링 부하 개입 후보를 계측→실제 동시부하 L2 GREEN으로 확인. 성공하지 않으면 Owner WSL2 재시도 및 PASS 주장 금지.
+- 실제 GUI 부하용 공식 공개 실행 위치는 release/p2-g06-cm-ttl-20261110 의 .github/workflows/d06-g07-concurrent-rviz-actual-goal-l2.yml. Feature 브랜치의 시험 workflow 복제본은 제거.
