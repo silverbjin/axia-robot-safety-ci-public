@@ -43,7 +43,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-ci-public
-          ref: 03da900557532faa924ec3c06b48853af09198df
+          ref: a54caa3d6074c535a0942fccde6b631d6b5a45e8
           path: unified-public
           persist-credentials: false
       - name: Published D06 read-only viewer sources pinned at public main
@@ -57,7 +57,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C unified-public rev-parse HEAD)" = "03da900557532faa924ec3c06b48853af09198df"
+          test "$(git -C unified-public rev-parse HEAD)" = "a54caa3d6074c535a0942fccde6b631d6b5a45e8"
           test "$(git -C visual rev-parse HEAD)" = '0f66059d9110f8e667200bbca22396bd0c78c02e'
           export PYTHONPATH="$PWD/unified-public"
           python3 -m unittest discover -s unified-public/d06/tests -p 'test_g07_unified_first_timing_regression.py' -v
@@ -125,6 +125,14 @@ jobs:
           set -u
           for cmd in Xvfb rviz2 xwininfo gz;do command -v "$cmd" || exit 3;done
           echo AXIA_G07_REAL_GUI_L2_PREREQUISITES_PRESENT_NO_GOAL
+      - name: CI-only GUI role CPU preflight before original P4 Goal (no safety process changes)
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          GUI_CPU="$(python3 unified-public/d06/live/d06_gui_cpu_plan.py)"
+          MONITOR_CPU="$(python3 unified-public/d06/live/d06_gui_cpu_plan.py --role monitor)"
+          [[ "$GUI_CPU" =~ ^[0-9]+$ && "$MONITOR_CPU" =~ ^[0-9]+$ && "$GUI_CPU" != "$MONITOR_CPU" ]]
+          echo "G07_UNIFIED_GUI_CPU_PREFLIGHT_NO_GOAL_PASS renderer=$GUI_CPU observer=$MONITOR_CPU"
       - name: Isolated S02 native physics observer build and identical positive calibration blob
         shell: bash
         run: |
