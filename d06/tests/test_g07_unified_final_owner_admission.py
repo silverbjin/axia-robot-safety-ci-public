@@ -107,5 +107,18 @@ class FinalOwnerAdmission(unittest.TestCase):
         self.assertNotIn('create_publisher(Twist',src)
         self.assertNotIn('create_publisher(Pose',src)
 
+    def test_owner_self_check_and_ci_receipt_readonly_cli(self):
+        self_check=subprocess.run(["bash",str(SCRIPT),"--self-check"],
+            capture_output=True,text=True,timeout=10)
+        self.assertEqual(self_check.returncode,0,
+                         self_check.stdout+self_check.stderr)
+        self.assertIn("D06_OWNER_RVIZ_STATIC_PASS",self_check.stdout)
+        admission=subprocess.run(["bash",str(SCRIPT),"--admission-check"],
+            capture_output=True,text=True,timeout=10)
+        self.assertEqual(admission.returncode,0,
+                         admission.stdout+admission.stderr)
+        self.assertIn('"manual_attempt_allowed": true',admission.stdout)
+        self.assertIn('"owner_l3_accepted": false',admission.stdout)
+
 if __name__=="__main__":
     unittest.main()
