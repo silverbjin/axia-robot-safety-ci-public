@@ -9,9 +9,9 @@ GATE=json.loads((ROOT/"d06/acceptance/d06_g07_final_owner_ci_gate.json").read_te
 WRAPPER=(ROOT/"d06/scripts/d06_gazebo_rviz_owner_wsl2_once.sh").read_text()
 
 def test_actual_new_gui_load_full_l2_is_required_before_owner_readmission():
-    assert GATE["status"]=="ADMITTED_FINAL_OWNER_ONLY"
-    assert GATE["allow_one_final_wsl2_owner"] is True
-    assert GATE["allowed_final_owner_attempts"]==1
+    assert GATE["status"]=="HOLD_OWNER_L3_FIRST_CM_SOURCE_TTL_GAP"
+    assert GATE["allow_one_final_wsl2_owner"] is False
+    assert GATE["allowed_final_owner_attempts"]==0
     assert GATE["whole_concurrent_gui_l2_pass"] is True
     assert GATE["last_actual_concurrent_gui_l2_pass"] is True
     assert GATE["last_actual_concurrent_gui_l2_run_id"]==43667573251
