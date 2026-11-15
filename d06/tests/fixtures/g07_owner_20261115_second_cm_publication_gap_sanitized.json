@@ -21,7 +21,10 @@
     "observer_callback_gap_ms": 223.656034,
     "publication_sequence_gap": 1,
     "upstream_supervisor_publications_during_window": 4,
-    "upstream_supervisor_max_coverage_gap_ms": 89.04962
+    "upstream_supervisor_max_coverage_gap_ms": 89.04962,
+    "confirmed_cm_upstream_cmd_vel_smoothed_bag_messages_in_source_gap": 3,
+    "confirmed_cmd_vel_smoothed_nonzero_mps": 0.087457,
+    "cm_input_topic_confirmed_official_nav2_default": "/cmd_vel_smoothed"
   },
   "observation_window": {
     "first_pre_latch_observer_violation": null,
@@ -44,6 +47,7 @@
     "CM callback processing duration not directly instrumented",
     "Linux/WSL2 CPU scheduler causal attribution unproven",
     "whether RViz missing meshes caused CM scheduling gap unproven",
-    "CM process -11 exit chronology versus earlier Guard latch not root cause"
+    "CM process -11 exit chronology versus earlier Guard latch not root cause",
+    "Bag proves three nonzero /cmd_vel_smoothed receipts inside gap; exact CM callback processing timestamps not directly observed"
   ]
 }
