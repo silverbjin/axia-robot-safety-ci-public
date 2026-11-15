@@ -1,5 +1,11 @@
 # AXIA D06 — Gazebo GUI + RViz2 강사 Live Demo
 
+> **2026-11-15 업데이트 — 두 번째 Owner WSL2 L3 실패로 최종 Goal 재실행 허가 철회.** 이전 본문에서 설명한 `ADMITTED_FINAL_OWNER_ONLY` 및 새 단일 인수 명령은 **이제 효력이 없다**. 현재 공개 게이트는 `HOLD_OWNER_L3_FIRST_CM_SOURCE_TTL_GAP`, `allow_one_final_wsl2_owner=false`, `allowed_final_owner_attempts=0`이다. 새 Owner Goal을 현장에서 반복하지 않는다.
+>
+> 두 번째 Owner에서 Guard `UPSTREAM_STALE_AFTER_MOTION` 첫 래치: native CM age 169.168ms > 150ms. 나중에 완성된 연속 RMW CM source gap 184.415ms(상위 `/cmd_vel_smoothed` 비영 명령 3건과 Supervisor 메시지 4건 동시 존재). 첫 pre-latch `first_timing_violation=null`은 우측 검열된 관찰 결과이지 PASS가 아니다. 이전 공개 GUI L2 #43667573251의 PASS는 역사적 증거로만 보존한다.
+>
+> 최근 공개 CI는 최초 CM source/Guard 래치 결합, Goal 전 안전 게이트 차단, RViz 리소스 및 종료 예외를 재현·수정했다. **CM 전용 CPU 배치+주행 구간 한정 경쟁 부하**를 넣은 실제 GUI L2가 별도 검증 대상이다. 모든 safety/Goal/odometry/Native Nav2 Shutdown/CM clean exit가 같은 실행에서 GREEN이 되기 전에는 L3를 재허가하지 않는다. 수업은 공식 CM 격리 ROS L1 대체 시연을 사용한다.
+
 > **2026-11-15 최종 Owner L3 검사 1회 재허가 — 아직 WSLg 미실행.** 기존 Owner G85 실패에서 Guard 내부 CM age 166.509ms(150ms 초과)와 CM RMW 발행 공백 152.879ms를 확인해 인수를 중단했다. 해당 원본과 비식별 첫 위반 증거는 그대로 유지한다. 과거 headless L2 3/3 #43609296371은 역사적 PASS로만 기록한다.
 >
 > **새 실제 동시 GUI 부하 Gazebo L2 PASS:** [Actions #43667573251](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43667573251), 새 private exact `3593125fdfe489aead3e892daf39563df0c0d4a0`. Nav2 startup READY 후 Xvfb RViz2/읽기 전용 MarkerArray가 실제 Goal과 동시 동작하고 Scan 194.015ms, CM 137.714ms, RMW source 138.149ms, /odom STOP dwell 1.013s, Guard 래치 없음, native Navigation/Localization ACK, CM exit0 및 14-topic bag 검증까지 **같은 L2 실행에서 PASS**했다. 과거 동시 GUI 부하 실패 #43664497257는 기록에 보존한다.
@@ -31,9 +37,9 @@
 
 기존 G07 PASS를 이 신규 GUI의 PASS로 승격하지 않는다. 실제 Nav2 cmd 입력은 계속 달라질 수 있으므로 D06 합성 시험의 0.20→0.06m/s를 실제 모든 순간에 강요하지 않는다.
 
-## 강사 WSL2 원샷: 터미널 A — 새 정확한 실행 SHA 1회
+## 이전 WSL2 원샷 기록 — **REVOKED / DO NOT RUN**
 
-대상 환경: WSL2 Ubuntu 24.04, ROS 2 Jazzy, Gazebo Harmonic, WSLg, `git`, `gh auth status`(비공개 Instructor 접근), `taskset`, `rviz2`. 기존 Gazebo/Owner 세션은 사전에 정상 종료하고 **실제 TTY로만 수행**한다.
+**아래 명령은 과거 실패를 재현하기 위한 기록일 뿐 실행 허가가 아니다.** 대상 환경: WSL2 Ubuntu 24.04, ROS 2 Jazzy, Gazebo Harmonic, WSLg, `git`, `gh auth status`(비공개 Instructor 접근), `taskset`, `rviz2`. 기존 Gazebo/Owner 세션은 사전에 정상 종료하고 **실제 TTY로만 수행**한다.
 
 새 공개 PR #108의 최종 CI PASS 커밋을 인계받아 `PUBLIC_SHA`에 정확히 지정한 다음, 아래 원샷에서 `git fetch`로 고정된 소스를 내려받아 실행한다. **유동 브랜치 HEAD나 과거 `6b7170...` SHA로 Goal을 실행하지 말 것.**
 
