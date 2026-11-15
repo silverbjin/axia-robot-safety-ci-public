@@ -18,6 +18,7 @@ on:
       - 'd06/live/g07_unified_final_owner_gate.py'
       - 'd06/scripts/g07_unified_final_owner_wsl2_once.sh'
       - 'd06/acceptance/g07_unified_final_owner_ci_gate.json'
+      - 'scripts/axia_g07_final_owner_wsl2_bootstrap.sh'
 permissions:
   contents: read
 jobs:

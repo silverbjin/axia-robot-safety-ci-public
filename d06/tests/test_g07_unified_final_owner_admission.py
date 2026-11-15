@@ -120,5 +120,25 @@ class FinalOwnerAdmission(unittest.TestCase):
         self.assertIn('"manual_attempt_allowed": true',admission.stdout)
         self.assertIn('"owner_l3_accepted": false',admission.stdout)
 
+    def test_exact_public_wsl2_bootstrap_never_bypasses_tty_or_goal_authority(self):
+        boot=ROOT/"scripts/axia_g07_final_owner_wsl2_bootstrap.sh"
+        self.assertTrue(boot.is_file(),"AXIA_G07_PUBLIC_WSL2_BOOTSTRAP_MISSING")
+        contents=boot.read_text()
+        self.assertIn("3259ad996010de5cead595a2eeb42ff644ca9ad6",contents)
+        self.assertIn("967b485d4614d7562524803f07a80a4367420963",contents)
+        self.assertIn("git -C",contents)
+        self.assertIn("g07_unified_final_owner_wsl2_once.sh",contents)
+        self.assertIn("AXIA_G07_BOOTSTRAP_TTY_REQUIRED_NO_ROS_NO_GOAL",contents)
+        self.assertNotIn('printf "YES-P2-G07-GOAL"',contents)
+        syntax=subprocess.run(["bash","-n",str(boot)],capture_output=True,text=True)
+        self.assertEqual(syntax.returncode,0,syntax.stderr)
+        selfcheck=subprocess.run(["bash",str(boot),"--self-check"],capture_output=True,text=True,timeout=5)
+        self.assertEqual(selfcheck.returncode,0,selfcheck.stderr)
+        self.assertIn("AXIA_G07_FINAL_BOOTSTRAP_STATIC_PASS",selfcheck.stdout)
+        no_tty=subprocess.run(["bash",str(boot)],capture_output=True,text=True,
+            env={"PATH":os.environ.get("PATH",""),"HOME":os.environ.get("HOME","/tmp")},timeout=5)
+        self.assertNotEqual(no_tty.returncode,0)
+        self.assertIn("AXIA_G07_BOOTSTRAP_TTY_REQUIRED_NO_ROS_NO_GOAL",no_tty.stdout+no_tty.stderr)
+
 if __name__=="__main__":
     unittest.main()
