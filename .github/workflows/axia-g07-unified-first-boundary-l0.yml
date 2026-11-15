@@ -4,6 +4,7 @@ on:
     branches: [integration/g07-unified-ci-20261115]
     paths:
       - '.github/workflows/axia-g07-unified-first-boundary-l0.yml'
+      - '.github/workflows/axia-g07-unified-gui-one-goal-l2.yml'
       - 'd06/tests/test_g07_unified_first_timing_regression.py'
       - 'd06/tests/fixtures/g07_ci_20261115_first_162ms_no_latch_sanitized.json'
       - 'd06/tests/fixtures/g07_owner_20261115_second_cm_publication_gap_sanitized.json'
