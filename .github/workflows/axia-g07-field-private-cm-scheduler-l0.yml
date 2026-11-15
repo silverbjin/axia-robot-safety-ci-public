@@ -1,0 +1,38 @@
+# Exact sealed Instructor candidate; no ROS, no Goal, no release authority.
+name: AXIA G07 field official CM scheduler sealed L0
+on:
+  push:
+    branches: ['fix/g07-field-ci-wsl2-parity-20261115']
+    paths: ['.github/workflows/axia-g07-field-private-cm-scheduler-l0.yml']
+  pull_request:
+    branches: ['integration/g07-unified-ci-20261115']
+    paths: ['.github/workflows/axia-g07-field-private-cm-scheduler-l0.yml']
+permissions:
+  contents: read
+concurrency:
+  group: axia-g07-field-cm-scheduler-sealed-l0
+  cancel-in-progress: false
+jobs:
+  sealed-private-no-ros-no-goal:
+    runs-on: ubuntu-24.04
+    environment: axia-instructor-sealed
+    timeout-minutes: 12
+    steps:
+      - name: Checkout exact private candidate, never publish solution
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 2656d4427053ad038db391ed115f9af99b68af00
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          path: instructor
+          persist-credentials: false
+      - name: Field CM scheduling RED or GREEN
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C instructor rev-parse HEAD)" = 2656d4427053ad038db391ed115f9af99b68af00
+          cd instructor
+          python3 -m unittest discover -s tests/unit -p 'test_g07_field_official_cm_cpu_parity_20261115.py' -v
+          echo AXIA_G07_FIELD_CM_SCHEDULER_L0_PASS_NO_ROS_NO_GOAL
+      - name: Delete all sealed instructor source
+        if: always()
+        run: rm -rf -- instructor
