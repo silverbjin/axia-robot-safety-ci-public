@@ -1,0 +1,36 @@
+name: D06 G07 Owner exact source and tree release L0
+on:
+  push:
+    branches: [release/d06-g07-observer-owner-20261115]
+    paths:
+      - '.github/workflows/d06-g07-owner-release-source-pin-l0.yml'
+      - 'scripts/axia_p4_g11_owner_g07_rmw_provenance_once.sh'
+permissions:
+  contents: read
+jobs:
+  static-release-pin:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Exact immutable G11 Owner source contract; no private clone and no ROS
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          F=scripts/axia_p4_g11_owner_g07_rmw_provenance_once.sh
+          bash -n "$F"
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('scripts/axia_p4_g11_owner_g07_rmw_provenance_once.sh').read_text()
+          assert 'PRIVATE_SHA="3593125fdfe489aead3e892daf39563df0c0d4a0"' in s
+          assert 'PRIVATE_TREE="3ebf3efa35340dabab75a18418788c53ae54f308"' in s
+          assert 'YES-P2-G07-GOAL' in s
+          assert 'AXIA_P2_OWNER_PINNED_SHA="$PRIVATE_SHA"' in s
+          assert 'git -C "$WORK/instructor" rev-parse \'HEAD^{tree}\'' in s
+          assert 'AXIA_G07_CI_SIM_GOAL_ALLOWED=1' not in s
+          assert 'AXIA_P2_GUARD_BYPASS' not in s
+          print('D06_G11_OWNER_EXACT_PUBLIC_RELEASE_PRIVATE_TREE_PIN_L0_PASS_NO_ROS_NO_GOAL')
+          PY
+          echo 'D06_G11_PRIVATE_SOURCE_AND_TREE_RUNTIME_VERIFICATION_REMAINS_OWNER_L3_ONLY'
