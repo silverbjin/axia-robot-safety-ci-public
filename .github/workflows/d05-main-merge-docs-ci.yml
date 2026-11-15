@@ -1,0 +1,35 @@
+name: D05 public main-merge ledger contract (NO ROS, NO GOAL)
+on:
+  push:
+    branches: ['docs/d05-main-consolidation-20261115']
+    paths:
+      - '.github/workflows/d05-main-merge-docs-ci.yml'
+      - 'tests/test_d05_main_integration_ledger.py'
+      - 'docs/D05_MAIN_INTEGRATION_BRANCH_LEDGER_20261115_KO.md'
+  pull_request:
+    paths:
+      - '.github/workflows/d05-main-merge-docs-ci.yml'
+      - 'tests/test_d05_main_integration_ledger.py'
+      - 'docs/D05_MAIN_INTEGRATION_BRANCH_LEDGER_20261115_KO.md'
+permissions:
+  contents: read
+jobs:
+  d05-docs-main-public-l0:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify D05 source ledger and no protected checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install -q pytest==8.3.5
+          python -m pytest -q tests/test_d05_main_integration_ledger.py
+          echo 'D05_MAIN_CONSOLIDATION_PUBLIC_DOCS_PASS'
+          echo 'NO_ROS_NO_GOAL_NO_PRIVATE_CHECKOUT'
+          echo 'D05_LIVE_GAZEBO_AND_OWNER_WSL2_NOT_REEXECUTED_DOCS_ONLY'
