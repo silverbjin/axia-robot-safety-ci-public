@@ -14,14 +14,14 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 21e9c4de6d71d24baaa68329c99383e8eeaf19af
+          ref: 44a2f7a375aef4714710b46e511b8c88d3dffc5b
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Model process scheduler time vs CM gap, no ROS
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git rev-parse HEAD)" = 21e9c4de6d71d24baaa68329c99383e8eeaf19af
+          test "$(git rev-parse HEAD)" = 44a2f7a375aef4714710b46e511b8c88d3dffc5b
           python3 -m unittest discover -s tests/unit -p test_p4_g07_cm_proc_sched.py -v
           echo AXIA_P4_G07_FIRST_CM_SCHEDSTAT_L0_PASS_NO_GOAL
       - name: Remove sealed source
