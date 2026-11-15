@@ -28,7 +28,7 @@ self_check() {
   /usr/bin/python3 -m py_compile "$MONITOR" "$TRIAGE" "$GUI_CPU_SELECTOR" "$FIRST_CM_JOIN"
   [[ "$P4_OWNER_PRIVATE_SHA" =~ ^[0-9a-f]{40}$ &&
      "$P4_OWNER_PRIVATE_TREE" =~ ^[0-9a-f]{40}$ ]] || return 2
-  echo "D06_OWNER_RVIZ_STATIC_PASS private_p4_g07_sha=$P4_OWNER_PRIVATE_SHA GAZEBO_NOT_RUN RVIZ_NOT_RUN"
+  echo "D06_OWNER_RVIZ_STATIC_PASS private_p4_g07_sha=$P4_OWNER_PRIVATE_SHA GAZEBO_NOT_RUN RVIZ_NOT_RUN NO_ROS_NO_GOAL"
 }
 if [[ "$#" -eq 1 && "$1" == --self-check ]];then
   self_check;exit $?
@@ -190,6 +190,9 @@ echo AXIA_G07_CYCLE16_REAL_GUI_L2_CI_RUN_SUCCESS_VERIFIED_NO_GOAL
 # Exact new source+CI run defines ONE candidate; old failed attempts of
 # different SHAs stay present and are NEVER deleted or retried.
 ATTEMPT_ROOT="$HOME/.axia_g07_final_owner_attempts"
+[[ ! -L "$ATTEMPT_ROOT" && ( ! -e "$ATTEMPT_ROOT" || -d "$ATTEMPT_ROOT" ) ]] || {
+  echo AXIA_G07_CYCLE16_ATTEMPT_STATE_UNTRUSTED_NO_GOAL;exit 3;
+}
 mkdir -p "$ATTEMPT_ROOT"
 chmod 700 "$ATTEMPT_ROOT"
 ATTEMPT_NAME="$P4_OWNER_PRIVATE_SHA-43727149856"
@@ -220,6 +223,21 @@ else
   OWNER_RC=$?
 fi
 if (( OWNER_RC != 0 ));then exit "$OWNER_RC";fi
+# Bind this release-margin check to EXACTLY the new run, never a previous
+# successful recording. All old Owner Originals and locks are preserved.
+mapfile -d '' -t cycle16_runs < <(
+  find "$HOME/axia_p2_private_evidence" -mindepth 2 -maxdepth 2 \
+    -type f -name summary.json -newer "$MARKER" -print0 2>/dev/null
+)
+if (( ${#cycle16_runs[@]} != 1 ));then
+  echo "AXIA_G07_CYCLE16_POSTRUN_ROOT_AMBIGUOUS_HOLD count=${#cycle16_runs[@]}"
+  exit 3
+fi
+owner_root="$(dirname "${cycle16_runs[0]}")"
+[[ -r "$owner_root/source.sha" &&
+   "$(cat "$owner_root/source.sha")" == "$P4_OWNER_PRIVATE_SHA" ]] || {
+  echo AXIA_G07_CYCLE16_POSTRUN_SOURCE_MISMATCH_HOLD;exit 3;
+}
 # The real Owner 7-channel intervals must independently meet the CI release
 # headroom; never infer WSLg timing from Actions/Xvfb.
 if ! python3 - "$owner_root/G07/live/ci_moving_goal_result.json" <<'PY'
