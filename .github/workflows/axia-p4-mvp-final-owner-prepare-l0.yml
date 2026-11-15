@@ -1,0 +1,34 @@
+name: AXIA P4 reduced demo one final Owner TTY admission source L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-p4-mvp-final-owner-prepare-l0.yml']
+permissions:
+  contents: read
+jobs:
+  read-only-final-owner-admission:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Exact current CI evidence pinned and strict one-Goal TTY contract
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          script=scripts/axia_p4_mvp_final_owner_once.sh
+          bash -n "$script"
+          "$script" --self-check
+          grep -Fq "4f455963aec7d7dc1f0493380a2b4ca6d683484e" "$script"
+          grep -Fq "bc88743d72404ab0b7cd4786f5843a9cb0098089" "$script"
+          grep -Fq "43661587471" "$script"
+          grep -Fq "AXIA_G11_RUN_CUSTODY_REQUIRED=1" "$script"
+          grep -Fq -- "--mvp-relocated-obstacle" "$script"
+          grep -Fq "YES-P2-G07-GOAL" "$script"
+          grep -Fq "AXIA_MVP_DEMO_ACCEPTED=HOLD" "$script"
+          if bash "$script" >"$RUNNER_TEMP/s02_owner_no_tty.log" 2>&1;then
+            echo AXIA_P4_OWNER_FALSE_NO_TTY_GOAL_ALLOWED
+            exit 3
+          fi
+          grep -Fq "AXIA_P4_FINAL_OWNER_BLOCKED_CONTROLLING_TTY_REQUIRED_NO_GOAL" "$RUNNER_TEMP/s02_owner_no_tty.log"
+          echo AXIA_P4_FINAL_OWNER_NO_TTY_NEGATIVE_L0_PASS
+          echo AXIA_P4_FINAL_OWNER_ONE_TTY_PREPARED_NO_ROS_NO_GOAL_OWNER_NOT_RUN
