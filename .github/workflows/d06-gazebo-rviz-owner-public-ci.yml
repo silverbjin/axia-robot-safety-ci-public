@@ -131,6 +131,9 @@ jobs:
           MARKER="$TESTROOT/started.marker"
           touch "$MARKER"
           sleep 1
+           # L1 display-only fixture; never claim real Nav2 startup.
+           printf '{"status":"SMOKE_READY","goal_sent":false}\n' > "$OWNER/G07/startup_verdict.json"
+           echo 'D06_GUI_L1_STARTUP_FIXTURE_ONLY_REAL_NAV2_NOT_RUN'
           printf 'ROS_DOMAIN_ID=83\nGZ_PARTITION=axia_p2_g07_ci_l1\n' > "$OWNER/G07/session.env"
           export OUT MARKER
           timeout --signal=TERM --kill-after=12s 100s \
