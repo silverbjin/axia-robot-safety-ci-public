@@ -144,7 +144,7 @@ def from_original_events(rows, verdict):
         "observation_window":{
             "first_pre_latch_observer_violation":None,
             "pre_latch_rmw_pair_complete":False,
-            "joined_second_cm_packet_observed_only_after_guard_latch":_valid(tick) and a["t"]<tick<b["t"]}}
+            "joined_second_cm_packet_observed_only_after_guard_latch":_valid(tick) and a["t"]<tick<b["t"]}
     }
 
 def main():
