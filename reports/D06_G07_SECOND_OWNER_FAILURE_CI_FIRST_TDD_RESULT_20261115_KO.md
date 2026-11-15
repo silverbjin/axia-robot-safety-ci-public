@@ -51,3 +51,27 @@
 `RED → GREEN → REFACTOR → REVIEW → COMMIT`. 공개 CI의 L0/L1 PASS는 해당 범위까지만. 원격 공개 CI L2 FAIL이면 Owner L3 NOT_READY. 실제 사용자의 WSLg에서 실행하지 않았으므로 PASS라고 보고하지 않는다. 공식 CM/Guard/Scan 안전 TTL 완화 없음. 첫 타이밍 위반이 무효화되었다는 주장을 피하고, native Guard safety path와 independent diagnostic observer를 분리한다.
 
 관련 전체 프롬프트: `d06/docs/D06_FIRST_CM_GUARD_WSL2_CI_FIRST_TDD_PROMPT_20261115_KO.md`.
+
+## 7. 현재 AXIA MVP 최신 버전 재검토 및 D06 선택 적용 (2026-11-15 오후)
+
+### 실제 최신 저장소 기준과 소스 재사용 판단
+
+- Public `main` `6a19f5a96aab55d0c97505963f468b93fb6d3494` (D06/D07 교육·공식 Nav2 READ-ONLY 범위만 main 통합). Instructor `main` `2fc87f7c134896849ed299c2d68b329c8b8125f5`, Student `main` `e707c1b03cd20889eb84250a24322161a6147196`. 세 main을 이번 D06 개발에 병합하지 않았다.
+- 최신 Public `main`의 `d06/live/d06_readonly_monitor.py`, `d06/rviz/d06_safety_bubble.rviz`, `d06/live/d06_ros_l1_visual_probe.py`는 D06 개발 브랜치와 각각 Git blob이 **완전히 동일**. 코드 중복 이식 불필요; 기존 PASS 보존.
+- P4의 `AXIA_MVP_DEMO_ACCEPTED` 축소 인수 프로파일: Instructor 후보 ref `ed096eac8427fe18496eccde348da315ec366632`의 `docs/acceptance/AXIA_MVP_DEMO_ACCEPTANCE_PROFILE_V1_KO.md`, `configs/axia_mvp_demo_acceptance_v1.json`. **현재 HOLD**. 강사 시연용 G11 15회 반복/G12 TODO 릴리스/G13 2PC와 별도지만, G07 최초 TTL 위반 해결, S02 native contact 0, G02~G04 서면 검수, 사용자 WSL2 통합 실제 실행·승인 필수. D06 공개 Owner Gate를 임의로 ACCEPTED로 승격하지 않음.
+- 실제 최신 P4 G07 공통 소스에서 Observer 측 RMW `received/callback` 간격은 **Native Guard 내부 CM 수신 TTL과 별도**라는 진단 방법을 재사용하고, CI/Owner 동일 Goal 경로·출처 검증은 유지. CM/Guard/Scan TTL, Goal 수동 TTY, 공식 Nav2 안전 설정 변경 없음.
+
+### 선별 시도한 최소 개선 및 실제 검증
+
+- 변경 경로: 공개 D06 `d06/live/d06_gui_cpu_plan.py` (`--role monitor`), `d06/scripts/d06_rviz_sidecar.sh` (교육용 MarkerArray Subscriber를 RViz GUI CPU가 아닌 중간 CPU에 배치), 신규 `d06/tests/test_d06_latest_mvp_observer_cpu_partition.py`. Owner 배포 후보이지만 Owner L3 **차단 상태**.
+- 공개 source-only `RED` [#43676010727](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43676010727): 역할 분리 CLI 부재 / 동일 GUI CPU 기존 sidecar로 **3개 신규 테스트 실패**.
+- 공개 source-only `GREEN` [#43676083228](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43676083228): **L0 111 passed**, 실제 ROS L1 PASS, RViz Xvfb L1 PASS. 스크립트 bash -n, Owner fail-closed 검증 포함. 이는 실제 Gazebo/Nav2 Goal 성능 검증이 아니다.
+- 공개 실제 Gazebo+RViz Xvfb 단일 Goal [#43676192483](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43676192483), workflow source `dcfb82f8853bec63b601cf1eaf366e2e5f9685c2`, Public D06 pinned SHA `d0b398e5aa1f23bf950bbba93ed815c7d6288138`: **FULL L2 FAIL**. 4역할 CPU 배치 출력은 `display=0 monitor=2`, CM source max `91.306ms` (150ms 이내), Native Guard latch 미관찰, 그러나 독립 Observer `odom` 첫 gap `368.392ms` 및 `scan` 첫 gap `388.215ms` (300ms 초과). CM 원본 first-gap으로 분류되지 않았으며, Goal STOP/odom dwell/native Nav2 shutdown·CM clean exit의 적격 원본 결합을 확보하지 못함.
+- **판정:** GUI CPU/MarkerArray 모니터 격리는 안전 런타임의 무변경 후보이지만 새 L2 실증에서 이점 미확인. 따라서 **L0/L1 개선 후보만 GREEN**, 실제 L2 출시·Owner WSL2 적용은 HOLD. 특히 4-core 환경에서 `monitor`와 Scenario Verifier 중간 CPU가 공유될 수 있으므로, 새로운 실제 사용 조건에서 Native 안전 / Observer scheduling을 별도로 계측해야 한다. 이번 변경을 'WSL2 오류 해결 완료'라고 주장하지 않는다.
+- P4 축소 프로파일의 기존 5개 시나리오 성공 증거는 역사적으로 재사용할 뿐, D06의 새 GUI 부하와 Owner WSLg 화면/CM TTL 인수 증거로 전용하지 않는다. G11 15회 반복 테스트를 새로 수행하지 않았다.
+
+### 다음 최소 실행 경계 (추가 현장 재시도 금지)
+
+1. Public CI에서 실제 native Guard 내부 CM 수신 및 `/cmd_vel_pre_guard` RMW source/receive 경계와 **Scenario Verifier/교육용 Observer의 독립 callback gap**을 분리: CPU 0=GUI, 1=CM, 중간=Verifier/교육용 Monitor, 최후=bag 역할이 4-core에서 경쟁한다는 가설을 확인한다. 파라미터·TTL 완화 금지.
+2. 시연 인수에는 동일 CI 실제 Gazebo/Xvfb Goal에서 first Guard latch 없음, CM/Guard <=150ms, Scan <=300ms, CLEAR/SLOWDOWN/STOP, /odom dwell>=1s, official Nav2 native Lifecycle ACK, CM clean exit0, 14-topic raw custody가 함께 있어야 한다. 최신 L2는 이 조건을 충족하지 못했다.
+3. 공개 Source+L1 Green과 역사적 L2 Green을 합쳐 **새 통합 L2 PASS**로 만들지 않는다. Owner `ADMITTED_FINAL_OWNER_ONLY` 재발급 금지, `main` 병합 금지, 학생 TODO/비공개 강사 정답 변경 없음. D06 수업은 공식 CM 격리 L1 대체 경로 유지.
