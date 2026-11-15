@@ -25,7 +25,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: dff047f1fc931952caa6e2ca933121ad1d554445
+          ref: bfe433fd995a9712c780ce462c308406f730e638
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -33,7 +33,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 'dff047f1fc931952caa6e2ca933121ad1d554445'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 'bfe433fd995a9712c780ce462c308406f730e638'
           cd instructor
           python3 -m unittest discover -s tests/unit -p test_d07_h01_gui_owner_contract.py -v
           python3 -m unittest discover -s tests/unit -p test_d07_h01_path_visual.py -v
@@ -125,7 +125,7 @@ jobs:
           geo=json.loads((root/'d07_h01_geometry/d07_h01_geometry.json').read_text())
           lines=(root/'d07_h01_geometry/phase_evidence.jsonl').read_text().splitlines()
           phases=[json.loads(x) for x in lines]
-          assert geo['source_sha']=='dff047f1fc931952caa6e2ca933121ad1d554445'
+          assert geo['source_sha']=='bfe433fd995a9712c780ce462c308406f730e638'
           assert geo['goal_sent'] is False
           assert geo['real_nav2'] is True
           assert geo['real_laser_scan'] is True
@@ -135,7 +135,7 @@ jobs:
           assert geo['certified_estop'] is False
           assert geo['formal_accepted'] is False
           report=assess_gui_stages(
-              phases,source_sha='dff047f1fc931952caa6e2ca933121ad1d554445',actual_ros=True,
+              phases,source_sha='bfe433fd995a9712c780ce462c308406f730e638',actual_ros=True,
               actual_gazebo=geo['obstacle_pose_native_ack'] is True,
               rviz_window=True)
           (root/'d07_h01_gui_verdict.json').write_text(
