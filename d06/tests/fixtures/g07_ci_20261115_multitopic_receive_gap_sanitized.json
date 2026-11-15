@@ -1,0 +1,38 @@
+{
+  "schema": "axia.g07.ci_multitopic_pre_stop_receive_gap_sanitized_v1",
+  "origin": {
+    "public_ci_run_id": 43690918618,
+    "private_candidate_sha": "36ce8e6909193413181fad965d6f63b06c187fb2",
+    "scope": "REAL_GAZEBO_XVFB_GUI_GOAL",
+    "formal_accepted": false,
+    "raw_private_uploaded": false
+  },
+  "first_observer_violation": {
+    "channel": "odom",
+    "from_mono_sec": 367.36402588,
+    "to_mono_sec": 367.719907854,
+    "gap_sec": 0.355881973999999,
+    "limit_sec": 0.3,
+    "stage": "PRE_STOP"
+  },
+  "seven_channel_max_gap_sec": {
+    "clock": 0.33915873799998053,
+    "cm": 0.3831091389999983,
+    "guard": 0.3644272920000162,
+    "odom": 0.355881973999999,
+    "scan": 0.373624092,
+    "source": 0.3522785860000113,
+    "supervisor": 0.35272263199999543
+  },
+  "first_cm_rmw_pair": {
+    "rmw_source_gap_sec": 0.070891726,
+    "rmw_received_gap_sec": 0.377049077,
+    "observer_callback_gap_sec": 0.383109139,
+    "publication_sequence_gap": 1
+  },
+  "native_guard_latch_observed": false,
+  "native_cm_publish_max_gap_sec": 0.131984,
+  "failure": "ACTUAL_MOVING_GOAL_CI_ORACLE_SAFETY_DELIVERY_TTL_BOUNDARY_max_source_interval_sec",
+  "actual_owner_wslg_verified": false,
+  "verified_root_cause": false
+}

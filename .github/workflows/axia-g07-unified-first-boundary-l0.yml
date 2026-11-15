@@ -12,6 +12,9 @@ on:
       - 'd06/live/d06_native_guard_vs_observer.py'
       - 'd06/live/d06_guard_cm_first_latch_join.py'
       - 'd06/live/d06_guard_first_mismatch_triage.py'
+      - 'd06/live/d06_ci_multitopic_receive_gap_triage.py'
+      - 'd06/tests/test_g07_ci_multitopic_first_receive_gap_20261115.py'
+      - 'd06/tests/fixtures/g07_ci_20261115_multitopic_receive_gap_sanitized.json'
       - 'd06/tests/test_g07_owner_first_mismatch_clockstep_regression.py'
       - 'd06/live/g07_owner_evidence_bundle.py'
       - 'd06/tests/test_g07_owner_evidence_bundle_contract.py'
@@ -44,4 +47,5 @@ jobs:
           python3 -m unittest discover -s d06/tests -p 'test_g07_unified_final_owner_admission.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_g07_owner_first_mismatch_clockstep_regression.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_g07_owner_evidence_bundle_contract.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_g07_ci_multitopic_first_receive_gap_20261115.py' -v
           echo AXIA_G07_UNIFIED_FIRST_BOUNDARY_L0_PASS_NO_ROS_NO_GOAL_OWNER_HOLD
