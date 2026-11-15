@@ -1,15 +1,21 @@
 #!/usr/bin/env bash
 # AXIA P4 reduced-demo: final one manually consented G07 GUI Goal, archived raw + first RMW/Guard provenance.
-# CI S02 same-Goal native physics zero #43661587471 is scoped technical PASS.
+# Current shared executor CI real Goal #43665710312 is FAILURE (CM source 161.2ms, Guard 155.6ms); no Owner admission.
 # Owner has not run. This wrapper NEVER asserts AXIA_MVP_DEMO_ACCEPTED.
 # No simulated Goal in CI, no implicit consent, no public RAW upload.
 set -Eeuo pipefail
 umask 077
-PRIVATE_SHA="4f455963aec7d7dc1f0493380a2b4ca6d683484e"
-PRIVATE_TREE="bc88743d72404ab0b7cd4786f5843a9cb0098089"
-readonly CI_S02_G07_L2_RUN=43661587471
-readonly CI_S02_G07_SCOPE="REAL_ONE_G07_GOAL_ECM_NATIVE_CONTACT_ZERO_14TOPIC_7TTL_NAV2_CM_EXIT"
+PRIVATE_SHA="d3ad8987d7e10208981691a764592fafa1746263"
+PRIVATE_TREE="28a51df564faae518e511eb67fbe2edc5639c9b8"
+readonly CI_S02_G07_L2_RUN=43665710312
+readonly AXIA_P4_SHARED_GOAL_CI_ACCEPTED=false
+readonly CI_S02_G07_SCOPE="FIRST_CM_RMW_SOURCE_161MS_GUARD_155MS_STALE_STOP_HOLD"
 # Source+tree are from the single actual CI success; WSLg/kernel/DDS parity is NOT proven.
+if [[ "${1:-}" == '--admission-check' ]];then
+  echo "AXIA_P4_OWNER_ADMISSION_BLOCKED_FIRST_CM_150MS_GUARD_STALE latest_ci_l2=$CI_S02_G07_L2_RUN private_sha=$PRIVATE_SHA"
+  echo 'AXIA_MVP_DEMO_ACCEPTED=HOLD GOAL_NOT_SENT_OWNER_NOT_RUN'
+  exit 3
+fi
 if [[ "${1:-}" == '--self-check' ]]; then
   [[ $# -eq 1 && "$PRIVATE_SHA" =~ ^[0-9a-f]{40}$ &&
      "$PRIVATE_TREE" =~ ^[0-9a-f]{40}$ ]] || exit 2
@@ -23,6 +29,13 @@ fi
 [[ -t 0 && -t 1 && -r /dev/tty ]] || {
   echo 'AXIA_P4_FINAL_OWNER_BLOCKED_CONTROLLING_TTY_REQUIRED_NO_GOAL' >&2; exit 2;
 }
+# All actual Owner runs are blocked until the EXACT shared-runtime single-Goal
+# safety regression has public CI GREEN. This check runs BEFORE private clone,
+# Goal consent, ROS or Gazebo. Headless --admission-check is available for CI.
+if [[ "$AXIA_P4_SHARED_GOAL_CI_ACCEPTED" != true ]];then
+  echo "AXIA_P4_OWNER_ADMISSION_BLOCKED_FIRST_CM_150MS_GUARD_STALE latest_ci_l2=$CI_S02_G07_L2_RUN private_sha=$PRIVATE_SHA" >&2
+  exit 3
+fi
 grep -qiE '(microsoft|wsl2)' /proc/sys/kernel/osrelease || {
   echo 'AXIA_G11_G07_BLOCKED_WSL2_REQUIRED' >&2; exit 2;
 }
@@ -53,7 +66,7 @@ test -f "$WORK/instructor/tools/p4_g11_g07_joined_raw_review.py"
 echo "AXIA_G11_G07_PRIVATE_SOURCE_AND_TREE_VERIFIED sha=$PRIVATE_SHA"
 echo 'SIMULATION ONLY: one final WSL2 G07 Goal after Owner manual controlling TTY consent.'
 echo 'Scope: one real Goal, original 14-topic bag, first CM source/receive to Guard, ordered Nav2/CM clean exit.'
-echo 'CI #43661587471 scoped PASS != Owner WSL2 PASS; previous 175/368ms intermittent cause is unverified.'
+echo 'Shared runtime actual L2 #43665710312 FAIL first CM 161.2ms Guard 155.6ms; Owner blocked, historical success not substituted.'
 echo 'AXIA_MVP_DEMO_ACCEPTED=HOLD until Owner original raw and first timing boundary review.'
 echo 'G11 0/15, G12 HOLD, G13 0/2 remain v1-only and do NOT block reduced demo.'
 echo 'The private Owner runner requires YES-P2-G07-GOAL; this wrapper never supplies consent.'
