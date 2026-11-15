@@ -162,6 +162,23 @@ try:
        "cm_receive_sec":max(receive_gaps) if receive_gaps else None,
        "cm_observer_sec":max(observer_gaps) if observer_gaps else None,
     }
+    # Supervisor source/receive sequence must also be proven; no CM-only
+    # no-gap pass when upstream RMW metadata was absent or silently dropped.
+    upstream_rows=[v for v in rows if v.get("kind")=="supervised"
+        and isinstance(v.get("t"),(int,float))
+        and goal_start<=v["t"]<=at]
+    valid_supervisor=(len(upstream_rows)>=10 and all(
+        type(v.get("rmw_source_ns")) is int and v["rmw_source_ns"]>0
+        and type(v.get("rmw_received_ns")) is int
+        and v["rmw_received_ns"]>=v["rmw_source_ns"]
+        and type(v.get("rmw_publication_seq")) is int
+        for v in upstream_rows))
+    if valid_supervisor:
+        valid_supervisor=all(
+            right["rmw_publication_seq"]==left["rmw_publication_seq"]+1
+            and 0 < (right["rmw_source_ns"]-left["rmw_source_ns"])/1e9 < 0.15
+            and 0 < (right["rmw_received_ns"]-left["rmw_received_ns"])/1e9 < 0.15
+            for left,right in zip(upstream_rows,upstream_rows[1:]))
     requirements={
        "max_source_interval_sec":0.15,
        "max_cm_interval_sec":0.15,
@@ -174,7 +191,7 @@ try:
     # Numeric candidate only. A first Guard latch, any missing proof, or a
     # 150ms CM publisher/receive gap blocks this Owner postrun review.
     safety_timing_candidate=(
-       valid_rmw and all(x is not None and 0<=x<0.15 for x in maxima.values())
+       valid_rmw and valid_supervisor and all(x is not None and 0<=x<0.15 for x in maxima.values())
        and all(type(result.get(k)) in (int,float)
                and 0<=result[k]<=limit for k,limit in requirements.items())
        and result.get("status")=="NUMERICAL_CANDIDATE"
@@ -201,6 +218,7 @@ try:
         "read_only_reviewer_no_new_ros_goal_no_upload":True,
         "owner_safety_timing_numeric_candidate":bool(safety_timing_candidate),
         "max_cm_rmw_observed_intervals":maxima,
+        "supervisor_rmw_coverage_verified":bool(valid_supervisor),
         "raw_original_review_required":True
     }
     output.parent.mkdir(parents=True,exist_ok=True,mode=0o700)
