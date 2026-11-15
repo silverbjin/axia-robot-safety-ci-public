@@ -9,6 +9,7 @@ on:
       - 'd06/tests/fixtures/g07_field_first_guard_158ms_sanitized_v1.json'
       - 'd06/live/g07_owner_field_preflight_v3.py'
       - 'd06/scripts/g07_owner_field_readonly_preflight_v3.sh'
+      - 'scripts/axia_g07_field_readonly_wsl2_once.sh'
   pull_request:
     branches: ['integration/g07-unified-ci-20261115']
     paths:
@@ -17,6 +18,7 @@ on:
       - 'd06/tests/fixtures/g07_field_first_guard_158ms_sanitized_v1.json'
       - 'd06/live/g07_owner_field_preflight_v3.py'
       - 'd06/scripts/g07_owner_field_readonly_preflight_v3.sh'
+      - 'scripts/axia_g07_field_readonly_wsl2_once.sh'
   workflow_dispatch:
 permissions:
   contents: read
