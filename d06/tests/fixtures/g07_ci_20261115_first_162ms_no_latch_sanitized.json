@@ -1,0 +1,40 @@
+{
+  "schema": "axia.g07.unified_first_timing_boundary_sanitized_v1",
+  "origin": {
+    "public_actions_run_id": 43676794777,
+    "public_workflow_commit": "9fd2458e9de32156a4b2ef90f9e3bcea947de967",
+    "private_instructor_source_sha": "6e402e30f5036285f067b5dffed085eff41af599",
+    "source_run_scope": "D06_CONCURRENT_GUI_REAL_GAZEBO_L2_FAIL_ONLY",
+    "sanitized_intervals_only": true,
+    "raw_event_timestamps_or_goal_uuid_included": false
+  },
+  "safety_contract_ms": {
+    "cm_source": 150,
+    "native_guard_cm_input": 150,
+    "scan_odom_clock": 300,
+    "supervisor_command_ttl": 500
+  },
+  "first_cm_consecutive_publication_window": {
+    "source_gap_ms": 162.259185,
+    "received_gap_ms": 162.437463,
+    "observer_callback_gap_ms": 159.804555,
+    "publication_sequence_increment": 1,
+    "upstream_supervisor_publications_within_gap": 3,
+    "upstream_supervisor_max_source_gap_ms": 50.157511
+  },
+  "native_guard_direct_input": {
+    "goal_scoped_callback_gap_ms": 162.494,
+    "native_guard_latch_observed": false,
+    "source_is_native_guard_callback_counter_not_observer": true
+  },
+  "result": {
+    "ci_l2_conclusion": "failure",
+    "cm_source_limit_exceeded": true,
+    "native_guard_input_limit_exceeded": true,
+    "native_guard_latch_observed": false,
+    "cm_processing_or_scheduler_root_cause_proven": false,
+    "safety_pass": false,
+    "owner_l3_accepted": false,
+    "certified_estop": false
+  }
+}

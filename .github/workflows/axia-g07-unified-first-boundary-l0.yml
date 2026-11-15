@@ -1,0 +1,27 @@
+name: AXIA G07 Unified First Source and Guard Boundary L0
+on:
+  push:
+    branches: [integration/g07-unified-ci-20261115]
+    paths:
+      - '.github/workflows/axia-g07-unified-first-boundary-l0.yml'
+      - 'd06/tests/test_g07_unified_first_timing_regression.py'
+      - 'd06/tests/fixtures/g07_ci_20261115_first_162ms_no_latch_sanitized.json'
+      - 'd06/tests/fixtures/g07_owner_20261115_second_cm_publication_gap_sanitized.json'
+      - 'd06/live/d06_sensor_rmw_first_delivery.py'
+      - 'd06/live/d06_native_guard_vs_observer.py'
+      - 'd06/live/d06_guard_cm_first_latch_join.py'
+permissions:
+  contents: read
+jobs:
+  no-ros-no-goal-first-boundary:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - name: Checkout exact Public CI candidate
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: L0 sanitized source-vs-receive and native-Guard first boundary
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest discover -s d06/tests -p 'test_g07_unified_first_timing_regression.py' -v
+          echo AXIA_G07_UNIFIED_FIRST_BOUNDARY_L0_PASS_NO_ROS_NO_GOAL_OWNER_HOLD
