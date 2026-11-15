@@ -44,6 +44,43 @@ def analyze_first_latch(evidence):
     first=evidence.get("first_guard_latch")
     pair=evidence.get("post_latch_joined_pair")
     window=evidence.get("observation_window") or {}
+    # New real P4+GUI L2 #43683837146: the first Guard latch is native
+    # evidence, but the later consecutive CM pair has a confirmed source
+    # interval ONLY. Do not fabricate receive/callback intervals, dismiss
+    # the Guard latch, or infer native STOP RPC caused the CM gap.
+    if (isinstance(first,dict) and isinstance(pair,dict)
+            and isinstance(window,dict)
+            and first.get("reason")=="UPSTREAM_STALE_AFTER_MOTION"
+            and _valid(first.get("measured_age_ms"))
+            and _valid(first.get("limit_ms")) and first["limit_ms"]>0
+            and first["measured_age_ms"]>first["limit_ms"]
+            and _valid(pair.get("rmw_source_gap_ms"))
+            and pair["rmw_source_gap_ms"]>first["limit_ms"]
+            and type(pair.get("publication_sequence_gap")) is int
+            and pair["publication_sequence_gap"]==1
+            and pair.get("rmw_received_gap_ms") is None
+            and pair.get("observer_callback_gap_ms") is None
+            and window.get("pre_latch_rmw_pair_complete") is False
+            and window.get("joined_second_cm_packet_observed_only_after_guard_latch") is True):
+        return {**base,
+            "status":"HOLD_GUARD_TTL_CM_SOURCE_GAP_RECEIVE_UNVERIFIED",
+            "first_safety_transition":"UPSTREAM_STALE_AFTER_MOTION",
+            "first_boundary":"guard_internal_cm",
+            "cm_age_at_latch_ms":_r(first["measured_age_ms"]),
+            "limit_ms":_r(first["limit_ms"]),
+            "earliest_native_threshold_crossing_ms_before_latch":_r(
+                first["measured_age_ms"]-first["limit_ms"]),
+            "cm_source_gap_ms":_r(pair["rmw_source_gap_ms"]),
+            "cm_receive_gap_ms":None,
+            "observer_gap_ms":None,
+            "sequence_increment":1,
+            "supervisor_publications_inside_cm_gap":pair.get(
+                "upstream_supervisor_publications_during_window"),
+            "upstream_max_gap_ms":pair.get(
+                "upstream_supervisor_max_coverage_gap_ms"),
+            "pre_latch_cm_observer_evidence_right_censored":True,
+            "cm_publisher_interval_gap_confirmed_post_latch":True,
+            "guard_latch_caused_by_missing_cm_input":True}
     if not isinstance(pair,dict):
         return {**base,"status":"HOLD_MISSING_POST_LATCH_CM_PAIR_UNVERIFIED"}
     keys=("rmw_source_gap_ms","rmw_received_gap_ms","observer_callback_gap_ms")
