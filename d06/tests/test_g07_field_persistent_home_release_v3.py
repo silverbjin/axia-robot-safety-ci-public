@@ -85,5 +85,35 @@ class TestFieldReleaseV3(unittest.TestCase):
         self.assertNotIn("ros2 action send_goal",src)
         self.assertNotIn("mkdir -m 700",src)
 
+
+    def test_field_cli_from_owner_home_without_repo_pythonpath(self):
+        import os
+        import subprocess
+        from pathlib import Path
+        runner=ROOT/"d06/scripts/g07_owner_field_readonly_preflight_v3.sh"
+        with tempfile.TemporaryDirectory() as tmp:
+            env=os.environ.copy()
+            env.pop("PYTHONPATH",None)
+            env["HOME"]=tmp
+            result=subprocess.run(["bash",str(runner)],cwd=tmp,
+                                  capture_output=True,text=True,
+                                  timeout=10,env=env)
+            self.assertEqual(result.returncode,3)
+            self.assertIn("AXIA_G07_OWNER_FIELD_READONLY",result.stdout)
+            self.assertIn("CI_L2_PASS_LOW_MARGIN",result.stdout)
+            self.assertFalse((Path(tmp)/".axia_g07_final_owner_attempts").exists())
+
+    def test_no_goal_static_self_check_does_not_write_pycache(self):
+        import os
+        import subprocess
+        script=ROOT/"d06/scripts/g07_owner_field_readonly_preflight_v3.sh"
+        with tempfile.TemporaryDirectory() as tmp:
+            before=set(ROOT.glob("d06/live/__pycache__/*"))
+            r=subprocess.run(["bash",str(script),"--self-check"],
+                             cwd=tmp,capture_output=True,text=True,
+                             timeout=10,env={**os.environ,"HOME":tmp})
+            self.assertEqual(r.returncode,0,r.stdout+r.stderr)
+            self.assertEqual(before,set(ROOT.glob("d06/live/__pycache__/*")))
+
 if __name__ == "__main__":
     unittest.main()
