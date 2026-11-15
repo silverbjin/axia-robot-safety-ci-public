@@ -1,0 +1,31 @@
+name: D06 G07 Observer CPU CI Owner exact-source parity L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/d06-g07-observer-cpu-owner-parity-l0.yml']
+permissions:
+  contents: read
+jobs:
+  sealed-static-l0:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    environment: axia-instructor-sealed
+    steps:
+      - name: Exact private instructor candidate used only within sealed public CI
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: b0111a486cfb2b6723e5638f535f78b7db978b17
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          path: instructor
+          persist-credentials: false
+      - name: RED first - actual Owner and CI Observer CPU reservation (NO ROS/GOAL)
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C instructor rev-parse HEAD)" = 'b0111a486cfb2b6723e5638f535f78b7db978b17'
+          python3 instructor/tests/unit/test_p2_g07_observer_cpu_reservation_20261115.py
+          echo 'D06_G07_OBSERVER_CPU_OWNER_CI_PARITY_L0_PASS_NO_ROS_NO_GOAL'
+      - name: Delete all private source; retain only sanitized job verdict
+        if: always()
+        run: rm -rf -- instructor
