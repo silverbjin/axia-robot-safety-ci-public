@@ -16,11 +16,11 @@
 
 1. **RED** 공개 [#43689306583](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43689306583): Owner 최초 불일치 진단기가 없어 비식별 테스트 실패.
 2. **GREEN** 공개 [#43689362501](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43689362501): `d06/live/d06_guard_first_mismatch_triage.py`에서 불일치 조정 만료/TTL 구분과 RMW 시스템 시계·monotonic 분리, 명시적 HOLD 판정. 비식별 fixture만 공개.
-3. **RED** private GUI launch 계약 및 외부 GUI 준비 누락 테스트, 공개 sealed L0 [#43689577854](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43689577854), [#436899...](https://github.com/silverbjin/axia-robot-safety-ci-public/actions)와 동등성 테스트 (Run ID 원본 교차확인 필요).
+3. **RED** private GUI launch 계약 및 외부 GUI 준비 누락 테스트, 공개 sealed L0 [#43689577854](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43689577854), [#43689942344](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43689942344)와 동등성 테스트 (Run ID 원본 교차확인 필요).
 4. **GREEN** private [#43690073396](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43690073396) Instructor SHA `e3706dfeec14f20699c99f8995a2ec68180a24aa`: `scripts/p4_g07_shared_runtime.sh`는 CI/Owner 모두 headless Gazebo server를 선택하되 Owner 새 공개 sidecar 플래그에만 적용. `scripts/p2_no_goal_smoke_ci.sh`, `scripts/p2_owner_l3_wsl2.sh` 양쪽에서 같은 GUI readiness 확인 후 같은 `tools/p2_g07_ci_moving_goal.run()` 실행.
 5. **RED** 공개 GUI 실행기 이원화 테스트 [#43689743262](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43689743262) 예상 실패.
 6. **GREEN** 공개 [#43690121848](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43690121848): `d06/scripts/g07_shared_gui_clients.sh` 하나가 Xvfb/WSLg에서 모두 `gz sim -g`, RViz2, read-only Marker 관측기를 동일 `taskset`·`nice`로 시작. CI는 xwininfo 창 검증, WSLg는 시각 확인 미완료로 기록.
-7. **RED** 공개 원본·GUI·custody 자동 묶음 미구현 [#436902...](https://github.com/silverbjin/axia-robot-safety-ci-public/actions) (정확한 RED Run 교차확인 필요).
+7. **RED** 공개 원본·GUI·custody 자동 묶음 미구현 [#43690222737](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43690222737) (정확한 RED Run 교차확인 필요).
 8. **GREEN** 공개 [#43690335847](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43690335847): `d06/live/g07_owner_evidence_bundle.py` + Owner wrapper EXIT trap. 실패·완료 모두 개인 Home 아래 하나의 지원 폴더에 archive+manifest+SHA256SUMS 보존. 자동 업로드·자동 재시도 없음.
 9. **REVIEW:** 기존 P4 PASS Instructor `db1eec05...`/main/student/공식 Nav2 소스 불변, Guard 120ms/CM TTL 150ms/Scan TTL 300ms 불변. 실제 Owner 화면은 WSLg vs CI Xvfb라 플랫폼 동등성 **미확보**.
 10. **COMMIT:** 공개 fixture RED `708bb874`, green `bac79c59`, GUI red `cb8385d5`, green `30599879`, bundle red `7ea3f320`, green `fe66eb9d`+`70f9d4ec`. Instructor GUI parity 소스 `e3706dfe`.

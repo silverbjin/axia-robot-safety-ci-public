@@ -24,3 +24,7 @@ Owner WSL2는 **최종 1회 현장 검수**이며 디버깅 반복 실행기가 
 
 ## 게이트
 L0 pytest/unittest PASS는 ROS/Gazebo 검증이 아니다. L2 CI PASS는 Xvfb 범위만 입증한다. WSL2 kernel/WSLg 실제 인수는 사용자 원본 증거 확인 전 `AXIA_MVP_DEMO_ACCEPTED=HOLD`. 실제 인증 E-Stop 주장 금지. 시연 범위 외 과도한 신규 개발·다중 PC·15회 반복 강요 금지.
+
+## 신규 Cycle05 필수 검증 (2026-11-15)
+
+CI run [#43690918618](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43690918618)은 동일 실행기/GUI 구성에서 **첫 PRE_STOP odom 355.882ms, CM RMW source 70.892ms vs receive 377.049ms, observer 383.109ms**를 확인했다. 기존 P4 headless CI 성공은 이 실패를 해소하지 않는다. 특정 source pair의 receive gap과 최초 odom gap이 절대적으로 동일 시간구간이라는 증거는 없으므로 각각 독립적으로 분석한다. 새 원인 가설은 반드시 단일 관측 지표/스케줄러 증거를 근거로 삼고, Guard native callback와 외부 Observer 간극을 혼동하지 말라. Safety TTL·reconciliation grace·STOP 판단을 늘리거나 무시하여 통과시키지 말라. CI의 원본 7채널 callback 최대 주기는 계속 실제 L2 인수 조건이다. 공개 비식별 회귀 `d06/tests/test_g07_ci_multitopic_first_receive_gap_20261115.py`와 원본 [#43690918618](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43690918618)을 이후 모든 후보의 RED baseline으로 재사용한다. 시연 전체 통과와 동일 검증 범위 없이는 Owner WSL2 추가 Goal을 승인하지 않는다.

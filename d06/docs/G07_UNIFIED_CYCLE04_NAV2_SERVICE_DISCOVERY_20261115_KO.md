@@ -1,6 +1,6 @@
 # AXIA G07 — Cycle 04 Nav2 초기 lifecycle 서비스 발견 실패 (교육용 중간 보고서)
 
-날짜: 2026-11-15 KST. **상태: L0 GREEN, 수정된 실제 GUI L2 검증 중, Owner HOLD**
+날짜: 2026-11-15 KST. **상태: L0 GREEN, 수정된 실제 GUI L2 FAIL (first PRE_STOP multi-topic receive gap), Owner HOLD**
 
 ## 최초 실패 경계와 근거
 
@@ -17,4 +17,4 @@
 
 ## 남은 검증 및 교육 포인트
 
-새 실제 GUI L2 [#43690918618](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43690918618) 결과를 **완료 후 판정**한다. 서비스 발견 8초 초과 또는 manager 미존재면 실제 Goal 이후 clean shutdown은 FAIL/HOLD 유지. 원인 불확실성을 탐지/관측 가능하게 만드는 것과 실제 성공을 확인하는 것은 별개 단계다. 아직 WSL2로 재시도하지 않는다.
+새 실제 GUI L2 [#43690918618](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43690918618)는 **FAIL**. 같은 소스/Gazebo GUI/Goal/Cancel을 실행했고 이번에는 Nav2 Shutdown 전에 **첫 안전 데이터 전달 기간**을 먼저 위반하였다. 최초 위반: STOP 이전 Odom 355.881974ms (300ms 초과), 다수 토픽 observer callback 동시 지연, CM RMW source 70.891726ms vs receive 377.049077ms, source max 131.984ms. Guard native latch는 관측되지 않았고 CM publisher 중단은 증명되지 않았다. 따라서 8초 lifecycle service 수정의 실제 Shutdown 개선 여부는 이 시험으로 **미검증**이다. 후속 Cycle05에서 수신지연 회귀를 분리하였다. 서비스 발견 8초 초과 또는 manager 미존재면 실제 Goal 이후 clean shutdown은 FAIL/HOLD 유지. 원인 불확실성을 탐지/관측 가능하게 만드는 것과 실제 성공을 확인하는 것은 별개 단계다. 아직 WSL2로 재시도하지 않는다.
