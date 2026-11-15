@@ -47,6 +47,7 @@ jobs:
           grep -Fq -- "--mvp-relocated-obstacle" "$script"
           grep -Fq "YES-P2-G07-GOAL" "$script"
           grep -Fq "AXIA_MVP_DEMO_ACCEPTED=HOLD" "$script"
+          grep -Fq "AXIA_P4_OWNER_FIRST_PREGOAL_BOUNDARY_LOCKED_NO_GOAL_RAW" "$script"
           if bash "$script" >"$RUNNER_TEMP/s02_owner_no_tty.log" 2>&1;then
             echo AXIA_P4_OWNER_FALSE_NO_TTY_GOAL_ALLOWED
             exit 3
