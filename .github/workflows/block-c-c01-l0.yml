@@ -18,22 +18,31 @@ jobs:
           repository: silverbjin/axia-robot-safety-student
           ref: 766ef987fc0357fdf171fa0926dbef65c6aae972
           persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          path: c01_public
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       - run: python -m pip install pytest==8.3.5
-      - shell: bash
+      - name: Owner runner contract and identical pinned source L0
+        shell: bash
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = '766ef987fc0357fdf171fa0926dbef65c6aae972'
-          AXIA_C01_EVIDENCE_DIR=results/c01 bash block_C/scripts/c01_fixture_once.sh --check
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -q c01_public/block_c/tests/test_c01_owner_bootstrap_contract.py
+          bash c01_public/block_c/scripts/axia_c01_owner_wsl2_once.sh --self-check
+          AXIA_C01_SOURCE_DIR="$PWD" AXIA_C01_OWNER_ROOT="$RUNNER_TEMP/axia_c01_owner" \
+            bash c01_public/block_c/scripts/axia_c01_owner_wsl2_once.sh --run
           test ! -d block_C/instructor
           test ! -d block_C/hidden_tests
           echo C01_PUBLIC_PINNED_STUDENT_L0_PASS_NO_ROS
+          echo C01_OWNER_BOOTSTRAP_CI_PARITY_PASS_NO_WSL2
       - name: Persist C01 public L0 evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: c01-public-l0-evidence
-          path: results/c01/
+          path: ${{ runner.temp }}/axia_c01_owner/*/evidence/
           if-no-files-found: warn
