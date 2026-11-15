@@ -1,0 +1,115 @@
+{
+  "schema": "axia.g07.owner_first_mismatch_sanitized.v1",
+  "origin": {
+    "source_sha": "db1eec05e01e1db0d0d2e0c05610806ef4e499f9",
+    "scope": "OWNER_WSL2_ONE_GOAL_FAIL",
+    "raw_available_privately": true,
+    "public_raw_uploaded": false
+  },
+  "guard_first_latch": {
+    "reason": "CM_EXCEEDS_SUPERVISOR",
+    "latched": true,
+    "cm_age_sec": 0.06938474,
+    "supervisor_age_sec": 0.043692944,
+    "reconciliation_since_mono": 3903.631154036,
+    "first_latch_tick_mono": 3903.756578606,
+    "cm": {
+      "linear_x": 0.07442717999219894,
+      "angular_z": 0.18329930305480957
+    },
+    "supervisor": {
+      "linear_x": 0.05766100436449051,
+      "angular_z": 0.09822877496480942
+    },
+    "last_emitted": {
+      "linear_x": 0,
+      "angular_z": 0
+    },
+    "supervisor_fsm": "NORMAL",
+    "goal_authorized": true,
+    "ttl_cm_sec": 0.15,
+    "reconciliation_grace_sec": 0.12
+  },
+  "timeline": [
+    {
+      "t": 3903.60512,
+      "kind": "guard",
+      "reason": "FORWARDING_MONITORED_CM"
+    },
+    {
+      "t": 3903.613328,
+      "kind": "supervised",
+      "linear_x": 0.06363987922668457,
+      "angular_z": 0.183358833193779
+    },
+    {
+      "t": 3903.633438,
+      "kind": "guard",
+      "reason": "AWAITING_CM_RECONCILIATION_ZERO",
+      "final_linear_x": 0,
+      "final_angular_z": 0
+    },
+    {
+      "t": 3903.684205,
+      "kind": "supervised",
+      "linear_x": 0.05295559763908386,
+      "angular_z": 0.15532739460468292
+    },
+    {
+      "t": 3903.684354,
+      "kind": "guard",
+      "reason": "AWAITING_CM_RECONCILIATION_ZERO",
+      "final_linear_x": 0,
+      "final_angular_z": 0
+    },
+    {
+      "t": 3903.695097,
+      "kind": "pre_guard_observer",
+      "linear_x": 0.07442717999219894,
+      "angular_z": 0.18329930305480957
+    },
+    {
+      "t": 3903.728379,
+      "kind": "guard",
+      "reason": "AWAITING_CM_RECONCILIATION_ZERO",
+      "final_linear_x": 0,
+      "final_angular_z": 0
+    },
+    {
+      "t": 3903.75923,
+      "kind": "supervised",
+      "linear_x": 0.05766100436449051,
+      "angular_z": 0.09822877496480942
+    },
+    {
+      "t": 3903.789646,
+      "kind": "pre_guard_observer",
+      "linear_x": 0.05295559763908386,
+      "angular_z": 0.15532739460468292
+    },
+    {
+      "t": 3903.7898,
+      "kind": "guard",
+      "reason": "CM_EXCEEDS_SUPERVISOR",
+      "final_linear_x": 0,
+      "final_angular_z": 0,
+      "latched": true
+    }
+  ],
+  "clock_domain": {
+    "cm_rmw_source_gap_sec": 1.470056234,
+    "supervisor_rmw_source_gap_sec": 1.466053786,
+    "cm_observer_monotonic_gap_sec": 0.053606801,
+    "estimated_system_step_sec": 1.419026315,
+    "synchronized_clock_step_proven": false,
+    "cm_publisher_stopped_proven": false,
+    "source_timestamp_domain": "RMW_SYSTEM_CLOCK",
+    "observer_timestamp_domain": "HOST_MONOTONIC"
+  },
+  "claim": {
+    "guard_safety_pass": false,
+    "owner_l3_accepted": false,
+    "certified_estop": false,
+    "cm_process_scheduler_root_proven": false
+  }
+}
