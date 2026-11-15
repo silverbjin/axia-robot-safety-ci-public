@@ -65,7 +65,7 @@ report={'schema_version':1,'profile':'BLOCK_C_EDUCATION_MVP_D09_D12',
 Path(run,'verdict.json').write_text(json.dumps(report,indent=2,sort_keys=True)+'\n')
 PY
   fi
-  tar -C "$RUN" -czf "$RUN/AXIA_BLOCK_C_OWNER_EVIDENCE.tar.gz" evidence verdict.json 2>/dev/null || true
+  tar -C "$RUN" -czf "$RUN/AXIA_BLOCK_C_OWNER_EVIDENCE.tar.gz" evidence verdict.json lab 2>/dev/null || true
   if [[ -f "$RUN/AXIA_BLOCK_C_OWNER_EVIDENCE.tar.gz" ]]; then
     (cd "$RUN" && sha256sum AXIA_BLOCK_C_OWNER_EVIDENCE.tar.gz > AXIA_BLOCK_C_OWNER_EVIDENCE.tar.gz.sha256) || true
   fi
@@ -303,7 +303,8 @@ build_educational_ros_package() {
 }
 
 ros_l1_scoped() {
-  export ROS_DOMAIN_ID="${ROS_DOMAIN_ID:-$((110+($$ % 90)))}"
+  export ROS_DOMAIN_ID="$((110 + (($$ + RANDOM) % 90)))"
+  echo "BLOCK_C_OWNER_ISOLATED_ROS_DOMAIN_ID=$ROS_DOMAIN_ID"
   AXIA_BLOCK_C_EVIDENCE_DIR="$RUN/evidence/instructor_ros_l1" \
     bash "$TEACHER/scripts/block_c_once.sh" --ros-l1
   AXIA_BLOCK_C_EVIDENCE_DIR="$RUN/evidence/student_ros_l1" \

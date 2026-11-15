@@ -97,3 +97,11 @@ def test_manifest_hashes_and_bundle_not_gazebo_claim():
     assert "'production_guard_ttl_verified':False" in src
     assert "'gazebo_actual':False" in src
     assert 'GZ_PARTITION=' not in src
+
+
+def test_owner_evidence_contains_model_artifacts_and_ros_domain_isolation():
+    src=RUNNER.read_text()
+    assert 'evidence verdict.json lab' in src
+    assert 'AXIA_BLOCK_C_OWNER_EVIDENCE.tar.gz.sha256' in src
+    assert 'BLOCK_C_OWNER_ISOLATED_ROS_DOMAIN_ID=' in src
+    assert 'export ROS_DOMAIN_ID="${ROS_DOMAIN_ID:-' not in src
