@@ -1,0 +1,45 @@
+name: AXIA P4 G07 prearmed STOP native gz transport helper compile L1
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-p4-g07-prearmed-stop-native-l1.yml']
+permissions:
+  contents: read
+jobs:
+  native-transport-compile-no-goal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    environment: axia-instructor-sealed
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+      options: --dns 1.1.1.1 --dns 8.8.8.8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 528d583bc941985710bf4f314ae08c4bd5108a76
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Build exact source using frozen Harmonic runtime, no ROS Goal
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 528d583bc941985710bf4f314ae08c4bd5108a76
+          set +u
+          source /opt/ros/jazzy/setup.bash
+          set -u
+          export AXIA_P0_SIM_ONLY=1 GZ_PARTITION=axia_p2_prearmed_build_88
+          if ! command -v c++ >/dev/null || ! test -e /usr/include/gz/transport13/gz/transport/Node.hh;then
+            apt-get update -qq
+            DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends g++ make libgz-transport13-dev libgz-msgs10-dev
+          fi
+          mkdir -p results/native-stop-l1
+          source scripts/p4_g07_shared_runtime.sh
+          axia_g07_shared_build_stop_helper "$PWD/results/native-stop-l1"
+          test -x "$AXIA_G07_PREARMED_STOP_BIN"
+          python3 -m unittest discover -s tests/unit -p test_p4_g07_prearmed_stop.py -v
+          echo AXIA_P4_G07_PREARMED_NATIVE_GZ_TRANSPORT_COMPILED_L1_PASS_NO_GOAL
+      - name: Delete sealed private source and compiled binary
+        if: always()
+        shell: bash
+        run: rm -rf -- .git tools tests scripts configs ros2_ws results docs
