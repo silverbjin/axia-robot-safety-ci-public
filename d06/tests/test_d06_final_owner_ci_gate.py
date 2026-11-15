@@ -7,15 +7,18 @@ WRAPPER=(ROOT/"d06/scripts/d06_gazebo_rviz_owner_wsl2_once.sh").read_text()
 def test_old_headless_three_passes_and_new_gui_l2_allow_one_manual_l3():
     value=json.loads((ROOT/"d06/acceptance/d06_g07_final_owner_ci_gate.json").read_text())
     assert value["schema"]=="axia.d06.final_owner_ci_gate_v1"
-    assert value["status"]=="ADMITTED_FINAL_OWNER_ONLY"
-    assert value["allow_one_final_wsl2_owner"] is True
-    assert value["allowed_final_owner_attempts"] == 1
+    assert value["status"]=="HOLD_OWNER_L3_FIRST_CM_SOURCE_TTL_GAP"
+    assert value["allow_one_final_wsl2_owner"] is False
+    assert value["allowed_final_owner_attempts"] == 0
     assert value["whole_ci_l2_pass"] is True
     assert value["whole_concurrent_gui_l2_pass"] is True
     assert value["last_actual_concurrent_gui_l2_run_id"] == 43667573251
     assert value["previous_failed_concurrent_gui_l2_run_id"]==43664497257
     assert value["last_real_gazebo_ci_run_id"]==43609296371
     assert value["last_owner_failure_class"]=="GUARD_CM_TTL_AFTER_RMW_SOURCE_AND_OBSERVER_GAPS"
+    assert value["new_owner_l3_cm_rmw_source_gap_ms"]==184.414666
+    assert value["new_owner_l3_first_guard_cm_age_ms"]==169.168036
+    assert value["last_actual_concurrent_gui_l2_run_id"]==43667573251
     assert value["last_real_gazebo_ci_attempt"]==3
     assert value["last_real_gazebo_ci_job_id"]==132492476795
     assert value["current_ci_instructor_candidate_sha"]=="3593125fdfe489aead3e892daf39563df0c0d4a0"
