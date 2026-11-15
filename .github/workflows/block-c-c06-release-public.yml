@@ -1,0 +1,55 @@
+name: AXIA Block C C06 public source + release contract L0
+on:
+  push:
+    branches: ['feat/block-c-c02-c06-*']
+    paths: ['block_c/tests/test_c06_release_public.py','.github/workflows/block-c-c06-release-public.yml','block_c/contracts/**']
+  pull_request:
+    paths: ['block_c/tests/test_c06_release_public.py','.github/workflows/block-c-c06-release-public.yml','block_c/contracts/**']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  public-release-scope:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          path: ci-public
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: dff7b4a2710525a72287f5416b7b613a9d979f1e
+          path: student
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install pytest==8.3.5
+      - name: Exact public student source, release contract and expected student TODO RED
+        shell: bash
+        env:
+          AXIA_BLOCK_C_STUDENT_ROOT: student
+          AXIA_BLOCK_C_STUDENT_SHA: dff7b4a2710525a72287f5416b7b613a9d979f1e
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C student rev-parse HEAD)" = "$AXIA_BLOCK_C_STUDENT_SHA"
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -q ci-public/block_c/tests/test_c06_release_public.py
+          AXIA_BLOCK_C_EVIDENCE_DIR="${RUNNER_TEMP}/c06-public-l0" bash student/block_C/scripts/block_c_once.sh --unit
+          set +e
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -q student/block_C/tests/test_student_task_expected_red.py > "${RUNNER_TEMP}/c06-student-red.log" 2>&1
+          rc=$?
+          set -e
+          test "$rc" -eq 1
+          grep -q '4 failed' "${RUNNER_TEMP}/c06-student-red.log"
+          echo C06_STUDENT_TODO_EXPECTED_RED_4
+          echo C06_PUBLIC_RELEASE_CONTRACT_PYTHON_L0_PASS
+          echo C06_OWNER_WSL2_NOT_RUN_PRIVATE_TEACHER_SOURCE_NOT_CI_TESTED
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: c06-public-release-evidence
+          path: ${{ runner.temp }}/c06-public-l0
+          retention-days: 7
+          if-no-files-found: warn
