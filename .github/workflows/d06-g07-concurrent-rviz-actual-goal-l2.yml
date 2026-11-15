@@ -43,7 +43,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-ci-public
-          ref: d41d0b5c73b6fd91a7ffb16456864d5116178e8a
+          ref: 85e834ccc464a83fae2ba658e859178287da6f0d
           path: d06-visual
           persist-credentials: false
 
@@ -250,6 +250,10 @@ jobs:
             > ../d06_gui_load_evidence/xvfb.log 2>&1 &
           xvfb_pid=$!
           cleanup_gui_test_only() {
+            if [[ "${stress_watcher_pid:-}" =~ ^[0-9]+$ ]];then
+              kill -TERM "$stress_watcher_pid" 2>/dev/null || true
+              wait "$stress_watcher_pid" 2>/dev/null || true
+            fi
             if [[ "${cm_load_pid:-}" =~ ^[0-9]+$ ]];then
               kill -TERM "$cm_load_pid" 2>/dev/null || true
               wait "$cm_load_pid" 2>/dev/null || true
@@ -285,21 +289,51 @@ jobs:
             exit 3
           }
           echo 'D06_GUI_L2_REAL_RVIZ_WINDOW_AND_MARKER_MONITOR_CONCURRENT_WITH_GOAL_START'
-          echo "D06_GUI_ISOLATION_VISUAL_CPU=$D06_GUI_CPU SOURCE_PIN=d41d0b5c73b6fd91a7ffb16456864d5116178e8a"
+          echo "D06_GUI_ISOLATION_VISUAL_CPU=$D06_GUI_CPU SOURCE_PIN=85e834ccc464a83fae2ba658e859178287da6f0d"
           printf 'D06_READONLY_GUI_READY\n' > "${AXIA_D06_GUI_READY_FILE}.tmp"
           mv -f -- "${AXIA_D06_GUI_READY_FILE}.tmp" "$AXIA_D06_GUI_READY_FILE"
           echo 'D06_GUI_L2_ATOMIC_DISPLAY_READY_ACK_BEFORE_ONE_CI_GOAL'
 
+          # Keep the adversarial load throughout the verified moving Goal only.
+          # The native Navigation/Localization shutdown is tested with normal
+          # scheduler load, matching the Owner requirement for clean exit.
+          D06_GOAL_REPORT="$PWD/results/p2-g07-ci-moving/real-l2/g07_ci_moving/ci_moving_goal_result.json"
+          (
+            for attempt in $(seq 1 3000);do
+              if /usr/bin/python3 ../d06-visual/d06/live/d06_ci_goal_phase_stress_gate.py \
+                  --goal-report "$D06_GOAL_REPORT" >/dev/null 2>&1;then
+                kill -TERM "$cm_load_pid" 2>/dev/null || true
+                printf "GOAL_ORACLE_STRESS_STOPPED\n" > ../d06_gui_load_evidence/stress_stop_receipt.txt
+                echo 'D06_ADVERSARIAL_LOAD_STOPPED_AFTER_REAL_GOAL_ORACLE_BEFORE_NAV2_NATIVE_SHUTDOWN'
+                exit 0
+              fi
+              kill -0 "$runner_pid" 2>/dev/null || break
+              sleep .1
+            done
+            echo 'D06_ADVERSARIAL_STRESS_GOAL_ORACLE_MISSING_OR_RUNNER_EXIT'
+            exit 3
+          ) > ../d06_gui_load_evidence/stress_watcher.log 2>&1 &
+          stress_watcher_pid=$!
           # Keep normal Owner-matched execution; /proc schedstat was unavailable
           # in diagnostic CI #43594781886, so do not burden full L2 with probe.
           set +e
           wait "$runner_pid"
           runner_rc=$?
           runner_pid=''
+          wait "$stress_watcher_pid"
+          stress_watcher_rc=$?
+          stress_watcher_pid=''
           kill -TERM "$cm_load_pid" 2>/dev/null || true
           wait "$cm_load_pid" 2>/dev/null || true
           cm_load_pid=''
           set -e
+          if (( stress_watcher_rc != 0 )) ||
+             [[ "$(cat ../d06_gui_load_evidence/stress_stop_receipt.txt 2>/dev/null || true)" != GOAL_ORACLE_STRESS_STOPPED ]];then
+            echo 'D06_ADVERSARIAL_STRESS_NOT_STOPPED_AFTER_REAL_GOAL_ORACLE_BEFORE_NATIVE_SHUTDOWN'
+            tail -n 8 ../d06_gui_load_evidence/stress_watcher.log || true
+            exit 3
+          fi
+          cat ../d06_gui_load_evidence/stress_watcher.log
           echo "$runner_rc" > ../d06_g07_sealed_runner_rc
           if [[ "$runner_rc" != 0 ]];then
             echo "D06_G07_REAL_L2_OWNER_MATCHED_CI_BLOCKED rc=$runner_rc NO_PRIVATE_RAW_IN_PUBLIC_LOG"
