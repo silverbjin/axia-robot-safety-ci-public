@@ -71,7 +71,7 @@
   "historical_failures_are_not_erased": true,
   "historical_previous_sha_failure_summary": "Earlier WSL2 and CI sessions had Scan over 300ms, CM RMW/Guard receipt over 150ms, and headless intermittent cleanup timeouts. The three current-source cold runs passed; WSLg GUI+RViz remains unverified. Owner WSL2 L3 after admission failed with measured 162.774ms Guard Observer gap, 333.398ms Scan Observer gap, 152.879ms CM RMW source gap, 166.509ms Guard internal CM age. Cause not attributed.",
   "final_owner_requirements": "NEW Owner cWIDYQe3 safety latch consumed admission. Preserve historical clean CI L2 but no new Owner Goal until corrected first CM publisher source gap / Guard 150ms under WSL2-like load and first-right-censoring diagnostic, actual real concurrent GUI L2 same source, original 14-topic complete, and bounded native CM exit. Never relax TTL or fabricate Owner PASS.",
-  "next_action": "CI_FIRST_SANITIZED_CM_SOURCE_GAP_STRADDLING_GUARD_LATCH_RED_GREEN_WITH_REAL_GUI_GOAL_LOAD_ORACLE_NO_OWNER_RETRY",
+  "next_action": "CI_FIRST_NATIVE_GUARD_VS_INDEPENDENT_OBSERVER_RECEIVE_OR_EXECUTOR_FIRST_GAP_REPRO_AND_SCOPED_NATIVE_SHUTDOWN_REVALIDATION_NO_OWNER_RETRY",
   "last_owner_failure_class": "GUARD_CM_TTL_AFTER_RMW_SOURCE_AND_OBSERVER_GAPS",
   "last_owner_failure_public_red_run_id": 43663295412,
   "last_owner_first_observer_guard_gap_sec": 0.162774195,
@@ -118,6 +118,32 @@
   "new_owner_l3_cm_clean_shutdown": false,
   "new_owner_l3_rviz_mesh_resources_missing": true,
   "new_owner_l3_source_sha": "3593125fdfe489aead3e892daf39563df0c0d4a0",
-  "new_owner_l3_ci_regression_status": "NOT_YET_GREEN",
-  "historical_ci_l2_43667573251_pass_is_not_new_owner_readmission": true
+  "new_owner_l3_ci_regression_status": "SANITIZED_FIRST_BOUNDARY_L0_GREEN_REAL_GUI_GOAL_L2_STILL_FAIL",
+  "historical_ci_l2_43667573251_pass_is_not_new_owner_readmission": true,
+  "latest_mvp_main_reuse_review": {
+    "review_date_kst": "2026-11-15",
+    "public_main_sha": "6a19f5a96aab55d0c97505963f468b93fb6d3494",
+    "instructor_main_sha": "2fc87f7c134896849ed299c2d68b329c8b8125f5",
+    "student_main_sha": "e707c1b03cd20889eb84250a24322161a6147196",
+    "public_readonly_monitor_and_rviz_blob_identical_to_main": true,
+    "mvp_reduced_profile_candidate_ref": "ed096eac8427fe18496eccde348da315ec366632",
+    "mvp_reduced_profile_status": "HOLD",
+    "g11_15_cold_runs_not_required_for_bounded_instructor_demo": true,
+    "first_cm_guard_ttl_and_s02_contact_and_owner_wsl2_still_required": true,
+    "native_guard_vs_independent_observer_not_interchangeable": true
+  },
+  "latest_mvp_cpu_partition_candidate": {
+    "public_d06_source_sha": "d0b398e5aa1f23bf950bbba93ed815c7d6288138",
+    "actual_gui_l2_workflow_sha": "dcfb82f8853bec63b601cf1eaf366e2e5f9685c2",
+    "actual_gui_l2_run_id": 43676192483,
+    "actual_gui_l2_result": "FAIL",
+    "actual_cm_rmw_source_max_gap_ms": 91.306,
+    "native_guard_latch_observed": false,
+    "independent_observer_scan_first_gap_ms": 388.215,
+    "independent_observer_odom_first_gap_ms": 368.392,
+    "goal_odom_shutdown_join_complete": false,
+    "full_l2_pass": false,
+    "approved_for_owner_release": false,
+    "note": "L0/L1 PASS only. Real Gazebo L2 failed Observer first timing boundary; avoid claiming CPU separation solved scheduler/receive root cause."
+  }
 }
