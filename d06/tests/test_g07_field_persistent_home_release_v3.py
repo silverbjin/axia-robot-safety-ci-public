@@ -115,5 +115,21 @@ class TestFieldReleaseV3(unittest.TestCase):
             self.assertEqual(r.returncode,0,r.stdout+r.stderr)
             self.assertEqual(before,set(ROOT.glob("d06/live/__pycache__/*")))
 
+
+    def test_pinned_wsl2_bootstrap_is_readonly_and_syntax_checked(self):
+        import subprocess
+        script=ROOT/"scripts/axia_g07_field_readonly_wsl2_once.sh"
+        self.assertTrue(script.exists())
+        source=script.read_text()
+        self.assertIn("6d715227564de0ddab6cee8dfd6e156254f12266",source)
+        self.assertIn("g07_owner_field_readonly_preflight_v3.sh",source)
+        self.assertNotIn("ros2 action send_goal",source)
+        self.assertNotIn("YES-P2-G07-GOAL",source)
+        self.assertNotIn("AXIA_G07_CI_SIM_GOAL_ALLOWED",source)
+        r=subprocess.run(["bash",str(script),"--self-check"],
+                         capture_output=True,text=True,timeout=10)
+        self.assertEqual(r.returncode,0,r.stdout+r.stderr)
+        self.assertIn("NO_ROS_NO_GOAL",r.stdout)
+
 if __name__ == "__main__":
     unittest.main()
