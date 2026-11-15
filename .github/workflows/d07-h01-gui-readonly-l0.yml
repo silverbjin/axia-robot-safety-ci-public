@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 002e9cb1fbba7454249b5f7cdff65c2501e54912
+          ref: a530fee71104e274da64591152f32ee8565dae3c
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -23,10 +23,11 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor rev-parse HEAD)" = '002e9cb1fbba7454249b5f7cdff65c2501e54912'
+          test "$(git -C instructor rev-parse HEAD)" = 'a530fee71104e274da64591152f32ee8565dae3c'
           cd instructor
           python3 -m unittest discover -s tests/unit -p test_d07_h01_gui_owner_contract.py -v
           python3 -m unittest discover -s tests/unit -p test_d07_h01_path_visual.py -v
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_gui_evidence.py -v
           python3 -m py_compile tools/d07_h01_geometry_l2.py tools/d07_h01_path_visual.py
           echo D07_H01_GUI_L0_PASS_NO_ROS_NO_GAZEBO_NO_GOAL
       - name: Destroy private checkout
