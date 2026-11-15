@@ -58,7 +58,7 @@ jobs:
           grep -Fq "AXIA_P4_FINAL_OWNER_BLOCKED_CONTROLLING_TTY_REQUIRED_NO_GOAL" "$RUNNER_TEMP/s02_owner_no_tty.log"
           echo AXIA_P4_OWNER_L0_STAGE_NO_TTY_NEGATIVE_OK
           set +e
-          bash -x "$script" --admission-check >"$RUNNER_TEMP/g07_admission.log" 2>&1
+          bash "$script" --admission-check >"$RUNNER_TEMP/g07_admission.log" 2>&1
           admission_rc=$?
           set -e
           cat "$RUNNER_TEMP/g07_admission.log"
