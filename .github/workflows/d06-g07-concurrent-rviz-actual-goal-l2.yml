@@ -43,7 +43,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-ci-public
-          ref: d0b398e5aa1f23bf950bbba93ed815c7d6288138
+          ref: a293d0f3b16358619e2e8812d880e3165157b529
           path: d06-visual
           persist-credentials: false
 
@@ -769,6 +769,17 @@ jobs:
             --root instructor/results/p2-g07-ci-moving/real-l2 \
             --runner-log d06_g07_sealed_runner.log \
             --runner-rc d06_g07_sealed_runner_rc
+
+      - name: D06 sanitized first BLOCKED Goal phase (NO PRIVATE RAW)
+        if: always()
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          # Never echo the original private reason, Goal UUID, path or bag.
+          # Report is deleted in subsequent sealed cleanup, as before.
+          python3 d06-visual/d06/live/d06_ci_first_goal_block.py \
+            --report instructor/results/p2-g07-ci-moving/real-l2/g07_ci_moving/ci_moving_goal_result.json
+          echo 'D06_G07_FIRST_BLOCKED_PHASE_DIAGNOSTIC_ONLY OWNER_L3_HOLD'
 
       - name: Delete all Instructor source and raw ROS / Gazebo evidence
         if: always()
