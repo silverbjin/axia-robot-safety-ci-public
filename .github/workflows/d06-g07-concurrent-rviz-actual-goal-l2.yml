@@ -27,7 +27,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 3593125fdfe489aead3e892daf39563df0c0d4a0
+          ref: b7e40864d475ef52f21def788f196075479e0eb1
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -43,7 +43,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-ci-public
-          ref: 9acfc7f4d5817f12859b520e67a12ffb2d1ff132
+          ref: d41d0b5c73b6fd91a7ffb16456864d5116178e8a
           path: d06-visual
           persist-credentials: false
 
@@ -106,7 +106,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '3593125fdfe489aead3e892daf39563df0c0d4a0'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 'b7e40864d475ef52f21def788f196075479e0eb1'
           test "$ROS_DISTRO" = jazzy
           cd instructor
           mkdir -p results/p2-g07-ci-moving
@@ -188,7 +188,7 @@ jobs:
           source /opt/ros/jazzy/setup.bash
           set -u
           cd instructor
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '3593125fdfe489aead3e892daf39563df0c0d4a0'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 'b7e40864d475ef52f21def788f196075479e0eb1'
           # Actual read-only RViz and MarkerArray observer share ONE CI container
           # with the actual G07 moving Goal; no extra robot command publisher.
           export DISPLAY=:99 LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe
@@ -232,10 +232,28 @@ jobs:
             exit 3
           }
           echo 'D06_GUI_L2_NAV2_LIFECYCLE_READY_BEFORE_VISUAL_LOAD_NO_GOAL'
+          # Bounded test-only scheduler contention on the reserved CM CPU.
+          # Low priority; does not modify ROS runtime, CM, Guard, TTL or Goal.
+          D06_STRESS_CPU="$(python3 -c 'import os; x=sorted(os.sched_getaffinity(0)); assert len(x)>=4; print(x[1])')"
+          taskset -c "$D06_STRESS_CPU" nice -n 10 \
+            timeout --signal=TERM --kill-after=2s 220s python3 -u - \
+              > ../d06_gui_load_evidence/cm_low_priority_cpu_load.log 2>&1 <<'PY' &
+import time
+until=time.monotonic()+210
+x=0.1
+while time.monotonic()<until:
+    x=(x*1.00000001+0.1)%99999.0
+PY
+          cm_load_pid=$!
+          echo 'D06_REAL_G07_CI_WSL2_LIKE_CM_CORE_CONTENTION_NICE10_STARTED_NO_GOAL'
           taskset -c "$D06_GUI_CPU" nice -n 19 Xvfb :99 -screen 0 1280x800x24 -nolisten tcp \
             > ../d06_gui_load_evidence/xvfb.log 2>&1 &
           xvfb_pid=$!
           cleanup_gui_test_only() {
+            if [[ "${cm_load_pid:-}" =~ ^[0-9]+$ ]];then
+              kill -TERM "$cm_load_pid" 2>/dev/null || true
+              wait "$cm_load_pid" 2>/dev/null || true
+            fi
             if [[ "${runner_pid:-}" =~ ^[0-9]+$ ]];then
               kill -TERM "$runner_pid" 2>/dev/null || true
               wait "$runner_pid" 2>/dev/null || true
@@ -267,7 +285,7 @@ jobs:
             exit 3
           }
           echo 'D06_GUI_L2_REAL_RVIZ_WINDOW_AND_MARKER_MONITOR_CONCURRENT_WITH_GOAL_START'
-          echo "D06_GUI_ISOLATION_VISUAL_CPU=$D06_GUI_CPU SOURCE_PIN=9acfc7f4d5817f12859b520e67a12ffb2d1ff132"
+          echo "D06_GUI_ISOLATION_VISUAL_CPU=$D06_GUI_CPU SOURCE_PIN=d41d0b5c73b6fd91a7ffb16456864d5116178e8a"
           printf 'D06_READONLY_GUI_READY\n' > "${AXIA_D06_GUI_READY_FILE}.tmp"
           mv -f -- "${AXIA_D06_GUI_READY_FILE}.tmp" "$AXIA_D06_GUI_READY_FILE"
           echo 'D06_GUI_L2_ATOMIC_DISPLAY_READY_ACK_BEFORE_ONE_CI_GOAL'
@@ -278,6 +296,9 @@ jobs:
           wait "$runner_pid"
           runner_rc=$?
           runner_pid=''
+          kill -TERM "$cm_load_pid" 2>/dev/null || true
+          wait "$cm_load_pid" 2>/dev/null || true
+          cm_load_pid=''
           set -e
           echo "$runner_rc" > ../d06_g07_sealed_runner_rc
           if [[ "$runner_rc" != 0 ]];then
@@ -316,6 +337,12 @@ jobs:
           import json
           root=Path('results/p2-g07-ci-moving/real-l2')
           startup=json.loads((root/'startup_verdict.json').read_text())
+          cm_cpu=json.loads((root/"g07_cm_cpu_affinity.json").read_text())
+          assert cm_cpu["status"]=="G07_OFFICIAL_CM_CORE_AFFINITY_READBACK_NO_GOAL"
+          assert cm_cpu["goal_sent"] is False
+          assert cm_cpu["guard_policy_modified"] is False
+          assert cm_cpu["allowed_cpu_count"]>=4 and cm_cpu["thread_count"]>=1
+          print('D06_REAL_G07_CI_OFFICIAL_CM_OWNED_CPU_ISOLATION_READBACK_L2_PASS')
           preg=json.loads((root/'g07_ci_pregoal/owner_pregoal_l2.json').read_text())
           data=json.loads((root/'g07_ci_moving/ci_moving_goal_result.json').read_text())
           assert startup['status']=='SMOKE_READY' and startup['goal_sent'] is False
