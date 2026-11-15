@@ -11,6 +11,8 @@ def test_three_l2_passes_remain_historical_after_one_owner_l3_failure():
     assert value["allow_one_final_wsl2_owner"] is False
     assert value["allowed_final_owner_attempts"] == 0
     assert value["whole_ci_l2_pass"] is True
+    assert value["whole_concurrent_gui_l2_pass"] is False
+    assert value["last_actual_concurrent_gui_l2_run_id"] == 43664497257
     assert value["last_real_gazebo_ci_run_id"]==43609296371
     assert value["last_owner_failure_class"]=="GUARD_CM_TTL_AFTER_RMW_SOURCE_AND_OBSERVER_GAPS"
     assert value["last_real_gazebo_ci_attempt"]==3
