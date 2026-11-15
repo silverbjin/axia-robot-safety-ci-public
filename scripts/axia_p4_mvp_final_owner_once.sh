@@ -24,9 +24,9 @@ axia_p4_ci_scoped_admission() {
      "$AXIA_G07_REAL_EXACT_NAV2_GOAL_CANCEL_ACK_BEFORE_LIFECYCLE_PASS" == true ]] || {
     echo AXIA_P4_OWNER_CI_PIN_OR_CANCEL_PROOF_MISMATCH_NO_GOAL >&2;return 3;
   }
-  CI_G07_PERIODS_JSON="$CI_G07_PERIODS_JSON" python3 - <<'PY'
+  python3 - "$CI_G07_PERIODS_JSON" <<'PY'
 import json,os,sys
-rows=json.loads(os.environ["CI_G07_PERIODS_JSON"])
+rows=json.loads(sys.argv[1])
 limits={"source":.15,"cm":.15,"guard":.15,"supervisor":.15,
         "scan":.30,"odom":.30,"clock":.30}
 if (set(rows)!=set(limits) or
