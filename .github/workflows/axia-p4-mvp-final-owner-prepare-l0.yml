@@ -2,7 +2,7 @@ name: AXIA P4 reduced demo one final Owner TTY admission source L0
 on:
   push:
     branches: [release/p2-g06-cm-ttl-20261110]
-    paths: ['.github/workflows/axia-p4-mvp-final-owner-prepare-l0.yml']
+    paths: ['.github/workflows/axia-p4-mvp-final-owner-prepare-l0.yml', 'scripts/axia_p4_mvp_final_owner_once.sh']
 permissions:
   contents: read
 jobs:
