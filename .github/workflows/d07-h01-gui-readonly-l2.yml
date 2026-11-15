@@ -108,6 +108,13 @@ jobs:
           set -e
           echo "D07_H01_GUI_RUNTIME_RC=$RC RVIZ_X11=$RVIZ GAZEBO_X11=$GAZEBO"
           if [[ "$RC" != 0 ]]; then
+            # FIRST safety/lifecycle boundary wins; shutdown tail alone hides
+            # the actual initial Nav2 plugin failure. Read only own ROS logs.
+            LAUNCH=results/d07-h01-gui-ci/real-l2/launch.log
+            if [[ -f "$LAUNCH" ]]; then
+              echo 'D07_GUI_FIRST_NATIVE_LIFECYCLE_AND_PLUGIN_LOGS'
+              grep -nEi 'lifecycle_manager_navigation|planner_server|controller_server|bt_navigator|route_server|error|exception|failed|cannot|fatal|timeout|missing' "$LAUNCH" | head -n 180 || true
+            fi
             for f in results/d07-h01-gui-ci/{real-l2,rviz}/*.log results/d07-h01-gui-ci/live_stdout.log; do
               if [[ -f "$f" ]];then echo "--- $f ---";tail -n 75 "$f";fi
             done
