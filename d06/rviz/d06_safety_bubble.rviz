@@ -1,5 +1,8 @@
 # D06 NOT_OFFICIAL_CM safety verdict: RViz2 READ-ONLY displays; yellow/red rings are classroom annotations.
 # The rings are not official Collision Monitor polygon/action ground truth.
+# Nav2 Jazzy official TB3 URDF can reference missing package:// models meshes.
+# Disable heavy RobotModel display only; actual Waffle remains visible in Gazebo.
+# RViz still shows real LaserScan, TF, Odometry and read-only safety rings.
 Panels:
   - Class: rviz_common/Displays
     Name: Displays
@@ -30,7 +33,7 @@ Visualization Manager:
       Value: true
     - Class: rviz_default_plugins/RobotModel
       Name: RobotModel
-      Enabled: true
+      Enabled: false
       Collision Enabled: false
       Visual Enabled: true
       Description Source: Topic
