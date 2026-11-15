@@ -28,6 +28,7 @@ def _number(v):
 
 def _blocked(status, **other):
     return {"status":status,"owner_attempt_eligible":False,
+            "owner_release_allowed":False,
             "owner_l3_accepted":False,"certified_estop":False,
             "no_ros_no_goal":True, **other}
 
