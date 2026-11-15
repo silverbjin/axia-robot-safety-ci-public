@@ -22,14 +22,14 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: fed69ff67bc9dc76909faf9ef1e7456ca995a848
+          ref: 56d5f62a3e2ac03d19bfc6868def9e5180f9ab21
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
       - name: Field CM scheduling RED or GREEN
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor rev-parse HEAD)" = fed69ff67bc9dc76909faf9ef1e7456ca995a848
+          test "$(git -C instructor rev-parse HEAD)" = 56d5f62a3e2ac03d19bfc6868def9e5180f9ab21
           cd instructor
           set +e
           python3 -m unittest discover -s tests/unit -p 'test_g07_field_official_cm_cpu_parity_20261115.py' -v >../sealed-test-1.log 2>&1
@@ -38,17 +38,19 @@ jobs:
           rc2=$?
           python3 -m unittest discover -s tests/unit -p 'test_g07_field_poststop_zero_cancel_uuid_20261115.py' -v >../sealed-test-3.log 2>&1
           rc6=$?
+          python3 -m unittest discover -s tests/unit -p 'test_g07_first_cm_rpc_thread_state_20261115.py' -v >../sealed-test-4.log 2>&1
+          rc7=$?
           bash -n scripts/p2_no_goal_smoke_ci.sh; rc3=$?
           bash -n scripts/p2_owner_l3_wsl2.sh && bash -n scripts/p4_g07_shared_runtime.sh; rc4=$?
           python3 -m py_compile tools/p2_g07_official_cm_cpu_affinity.py tools/p2_g07_goal_observer_cpu_plan.py; rc5=$?
           set -e
           cd ..
-          printf 'CHECKOUT_OK_NO_PRIVATE_CONTENT\nTEST_FIELD_RC=%s\nTEST_PRIOR_CPU_RC=%s\nBASH_CI_RC=%s\nBASH_OWNER_RC=%s\nCOMPILE_RC=%s\nTEST_POSTSTOP_CANCEL_RC=%s\n' "$rc1" "$rc2" "$rc3" "$rc4" "$rc5" "$rc6" > field-l0-result.txt
-          for f in sealed-test-1.log sealed-test-2.log sealed-test-3.log;do
+          printf 'CHECKOUT_OK_NO_PRIVATE_CONTENT\nTEST_FIELD_RC=%s\nTEST_PRIOR_CPU_RC=%s\nBASH_CI_RC=%s\nBASH_OWNER_RC=%s\nCOMPILE_RC=%s\nTEST_POSTSTOP_CANCEL_RC=%s\nTEST_RPC_PROC_RC=%s\n' "$rc1" "$rc2" "$rc3" "$rc4" "$rc5" "$rc6" "$rc7" > field-l0-result.txt
+          for f in sealed-test-1.log sealed-test-2.log sealed-test-3.log sealed-test-4.log;do
             grep -E '^(FAIL|ERROR): test_[a-z0-9_]+|^Ran [0-9]+ tests|^FAILED \(' "$f" >> field-l0-result.txt || true
           done
           cat field-l0-result.txt
-          if (( rc1+rc2+rc3+rc4+rc5+rc6 != 0 ));then exit 3;fi
+          if (( rc1+rc2+rc3+rc4+rc5+rc6+rc7 != 0 ));then exit 3;fi
           echo AXIA_G07_FIELD_CM_SCHEDULER_L0_PASS_NO_ROS_NO_GOAL
       - name: Publish only sanitized test verdict
         if: always()
@@ -60,4 +62,4 @@ jobs:
           retention-days: 3
       - name: Delete all sealed instructor source
         if: always()
-        run: rm -rf -- instructor sealed-test-1.log sealed-test-2.log sealed-test-3.log
+        run: rm -rf -- instructor sealed-test-1.log sealed-test-2.log sealed-test-3.log sealed-test-4.log
