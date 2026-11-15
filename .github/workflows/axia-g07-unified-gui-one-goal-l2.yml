@@ -307,12 +307,17 @@ jobs:
           path=root/'ci_moving_goal_result.json'
           assert path.is_file(), 'FIELD_NO_REAL_GOAL_CANNOT_RELEASE'
           g=json.loads(path.read_text())
-          periods=g.get('seven_channel_max_intervals_sec',{})
+          periods={name:g.get(key) for name,key in (
+              ('source','max_source_interval_sec'),('cm','max_cm_interval_sec'),
+              ('guard','max_guard_interval_sec'),
+              ('supervisor','max_supervisor_fsm_interval_sec'),
+              ('scan','max_scan_interval_sec'),('odom','max_odom_interval_sec'),
+              ('clock','max_clock_interval_sec'))}
           print('AXIA_G07_FIELD_REAL_L2_SEVEN_CHANNELS '+json.dumps(periods,sort_keys=True))
-          assert isinstance(periods,dict) and periods, 'FIELD_NO_SEVEN_CHANNEL_PROOF'
+          assert all(type(x) in (float,int) for x in periods.values()), 'FIELD_NO_SEVEN_CHANNEL_PROOF'
           # Legacy oracle already enforces hard TTL and original first latch.
           # The advisory 120ms *release* margin is separate, fail-closed.
-          cm=periods.get('cm')
+          cm=periods['cm']
           assert type(cm) in (float,int), 'FIELD_NO_CM_GUARD_PERIOD'
           assert cm < .15, 'FIELD_HARD_CM_TTL_EXCEEDED_NO_RELEASE'
           assert cm <= .12, 'FIELD_CI_L2_PASS_LOW_MARGIN_OWNER_NOT_READY'
