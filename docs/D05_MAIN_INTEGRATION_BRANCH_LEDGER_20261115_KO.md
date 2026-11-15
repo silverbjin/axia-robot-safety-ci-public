@@ -38,3 +38,10 @@ git switch -c feature/d05-next-task
 ```
 
 이 문서는 D05 관련 브랜치 역할을 기록하기 위한 **문서 추가만** 수행한다. D05 런타임·공식 Nav2·Safety TTL·Instructor 정답·모델 파일의 변경이 없으므로 기존 L2를 중복 실행하지 않는다. 필요 시 재현 가능한 실패 경계에서만 공개 CI RED→GREEN 회귀 추가 후 인수한다. **main 병합은 사용자가 명시적으로 승인한 D05 이력 정리 범위에 한정**한다.
+
+## 통합 전 공개 CI 회귀 게이트 복구 (2026-11-15)
+
+- D05 문서 PR #122의 최초 전체 Python CI [#43671451021](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43671451021)에서 **D05 무관 D04 테스트** `test_orphan_ignoring_sigint_escalates_and_fails_clean_claim`가 `KeyError: shutdown_escalated`로 RED(`1 failed, 159 passed, 1 skipped`). D05 소스 결함으로 분류하지 않음.
+- 독립 D04 공개 CI [PR #123](https://github.com/silverbjin/axia-robot-safety-ci-public/pull/123)에서 자식 프로세스의 SIGINT 무시 핸들러 설치 **이후** readiness 파일을 출력하도록 테스트 helper만 수정. **런타임 D04 종료 함수/안전 제어는 변경 없음**.
+- [수정 후 공개 CI #43671713187](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43671713187) `157 passed, 1 skipped` GREEN, [D04 관련 다섯 잡 #43671713162](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43671713162) 모두 success. 수정 커밋 `948df3c2a249996fe4ba867f449ad0bb7532da08`은 **D05 문서 병합 전에** `main`에 별도 병합했음.
+- 본 D05 인계 문서가 새 `main` 위에서 CI를 다시 통과해야 최종 D05 병합 판정을 내린다. **새 실제 ROS/Gazebo/WSL2 시연을 했다는 의미가 아니다**.
