@@ -127,7 +127,7 @@ def from_original_events(rows, verdict):
     a,b=pair
     sup=[e for e in rows if isinstance(e,dict)
          and e.get("kind")=="supervised" and _valid(e.get("t"))
-         and a["t"]<e["t"]<b["t"]]
+         and a["t"]<e["t"]<b["t"]
          and type(e.get("rmw_source_ns")) is int]
     sup.sort(key=lambda e:e["t"])
     gaps=[(y["rmw_source_ns"]-x["rmw_source_ns"])/1e6
