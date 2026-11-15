@@ -17,6 +17,28 @@ jobs:
           set -Eeuo pipefail
           script=scripts/axia_p4_mvp_final_owner_once.sh
           bash -n "$script"
+          # The Owner TTY path contains Python heredocs unreachable in a
+          # headless CI run. Parse their AST before the one-shot can be used.
+          python3 - <<'PY'
+          import ast,re
+          from pathlib import Path
+          lines=Path("scripts/axia_p4_mvp_final_owner_once.sh").read_text().splitlines()
+          blocks=[]
+          for i,line in enumerate(lines):
+              if re.search(r"<<'PY'(?:\s|$)",line):
+                  block=[]
+                  for candidate in lines[i+1:]:
+                      if candidate=="PY":
+                          break
+                      block.append(candidate)
+                  else:
+                      raise AssertionError("OWNER_PYTHON_HEREDOC_UNTERMINATED")
+                  blocks.append("\n".join(block))
+          assert len(blocks)>=2,("OWNER_PYTHON_HEREDOC_COUNT",len(blocks))
+          for body in blocks:
+              ast.parse(body)
+          print(f"AXIA_P4_FINAL_OWNER_EMBEDDED_PYTHON_AST_PASS blocks={len(blocks)}")
+          PY
           bash "$script" --self-check
           grep -Fq "4f455963aec7d7dc1f0493380a2b4ca6d683484e" "$script"
           grep -Fq "bc88743d72404ab0b7cd4786f5843a9cb0098089" "$script"
