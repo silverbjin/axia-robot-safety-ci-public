@@ -100,7 +100,7 @@ class TestFieldReleaseV3(unittest.TestCase):
                                   timeout=10,env=env)
             self.assertEqual(result.returncode,3)
             self.assertIn("AXIA_G07_OWNER_FIELD_READONLY",result.stdout)
-            self.assertIn("CI_L2_PASS_LOW_MARGIN",result.stdout)
+            self.assertIn("FIELD_GUARD_TTL_BREACH_OWNER_RELEASE_HOLD",result.stdout)
             self.assertFalse((Path(tmp)/".axia_g07_final_owner_attempts").exists())
 
     def test_no_goal_static_self_check_does_not_write_pycache(self):
