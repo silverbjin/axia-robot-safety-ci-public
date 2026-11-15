@@ -29,6 +29,7 @@ def analyze_first_latch(evidence):
         "cm_source_gap_ms":None, "cm_receive_gap_ms":None,
         "observer_gap_ms":None, "sequence_increment":None,
         "supervisor_publications_inside_cm_gap":None,
+        "cm_upstream_cmd_vel_smoothed_messages_in_source_gap":None,
         "upstream_max_gap_ms":None,
         "cm_publisher_interval_gap_confirmed_post_latch":False,
         "pre_latch_cm_observer_evidence_right_censored":False,
@@ -61,6 +62,8 @@ def analyze_first_latch(evidence):
                 window.get("pre_latch_rmw_pair_complete") is False),
             "supervisor_publications_inside_cm_gap":pair.get(
                 "upstream_supervisor_publications_during_window"),
+            "cm_upstream_cmd_vel_smoothed_messages_in_source_gap":pair.get(
+                "confirmed_cm_upstream_cmd_vel_smoothed_bag_messages_in_source_gap"),
             "upstream_max_gap_ms":pair.get(
                 "upstream_supervisor_max_coverage_gap_ms"),
     }
