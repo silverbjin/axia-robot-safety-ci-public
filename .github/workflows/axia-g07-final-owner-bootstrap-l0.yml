@@ -1,0 +1,40 @@
+name: AXIA G07 final Owner bootstrap NO-ROS admission L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths:
+      - 'scripts/axia_g07_final_owner_wsl2_bootstrap.sh'
+      - '.github/workflows/axia-g07-final-owner-bootstrap-l0.yml'
+permissions:
+  contents: read
+jobs:
+  no-ros-no-goal-pinned-owner:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - name: Source-locked public final bootstrap
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Tested public Owner gate immutable checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-ci-public
+          ref: 3259ad996010de5cead595a2eeb42ff644ca9ad6
+          path: unified-public
+          persist-credentials: false
+      - name: No ROS Goal gate, no TTY must block, exact successful CI source only
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C unified-public rev-parse HEAD)" = '3259ad996010de5cead595a2eeb42ff644ca9ad6'
+          test "$(git hash-object scripts/axia_g07_final_owner_wsl2_bootstrap.sh)" = '6643cd472a97c20ccbdb3cb824822fbf5cda695d'
+          bash -n scripts/axia_g07_final_owner_wsl2_bootstrap.sh
+          bash scripts/axia_g07_final_owner_wsl2_bootstrap.sh --self-check
+          boot_rc=0
+          bash scripts/axia_g07_final_owner_wsl2_bootstrap.sh > /tmp/g07-bootstrap-noninteractive.log 2>&1 || boot_rc=$?
+          test "$boot_rc" -eq 3
+          grep -Fq 'AXIA_G07_BOOTSTRAP_TTY_REQUIRED_NO_ROS_NO_GOAL' /tmp/g07-bootstrap-noninteractive.log
+          bash unified-public/d06/scripts/g07_unified_final_owner_wsl2_once.sh --self-check
+          bash unified-public/d06/scripts/g07_unified_final_owner_wsl2_once.sh --admission-check
+          bash scripts/axia_p4_mvp_final_owner_once.sh --self-check
+          bash scripts/axia_p4_mvp_final_owner_once.sh --admission-check
+          echo 'AXIA_G07_FINAL_OWNER_BOOTSTRAP_CI_NO_ROS_NO_GOAL_PASS_OWNER_L3_NOT_RUN'
