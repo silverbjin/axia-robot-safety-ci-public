@@ -1,3 +1,4 @@
+# P4 G07 same-source independent cold-run #2: prior real L2 #43669645007 PASS.
 # PIYO actual public bag-loaded Goal L2 #43338381501: CLEAR/SLOW/STOP/odom
 # and real 14-topic SQLite bag PASS, official Nav2 shutdown ACK PASS,
 # but 10s Gazebo launch cleanup expired (rc3). Actual CM children exit0.
