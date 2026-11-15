@@ -13,14 +13,15 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd -P)"
 SIDECAR="$ROOT/d06/scripts/d06_rviz_sidecar.sh"
 MONITOR="$ROOT/d06/live/d06_readonly_monitor.py"
 TRIAGE="$ROOT/d06/live/d06_g07_field_triage.py"
+GUI_CPU_SELECTOR="$ROOT/d06/live/d06_gui_cpu_plan.py"
 RVIZ_CONFIG="$ROOT/d06/rviz/d06_safety_bubble.rviz"
 
 self_check() {
-  for p in "$SIDECAR" "$MONITOR" "$TRIAGE" "$RVIZ_CONFIG"; do
+  for p in "$SIDECAR" "$MONITOR" "$TRIAGE" "$RVIZ_CONFIG" "$GUI_CPU_SELECTOR"; do
     [[ -s "$p" ]] || { echo "D06_STATIC_BLOCKED_FILE_MISSING=$p";return 2; }
   done
   bash -n "$SIDECAR"
-  /usr/bin/python3 -m py_compile "$MONITOR" "$TRIAGE"
+  /usr/bin/python3 -m py_compile "$MONITOR" "$TRIAGE" "$GUI_CPU_SELECTOR"
   [[ "$P4_PUBLIC_RELEASE_SHA" =~ ^[0-9a-f]{40}$ &&
      "$P4_OWNER_PRIVATE_SHA" =~ ^[0-9a-f]{40}$ &&
      "$P4_OWNER_PRIVATE_TREE" =~ ^[0-9a-f]{40}$ ]] || return 2
