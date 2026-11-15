@@ -1,0 +1,31 @@
+name: AXIA P4 G07 Owner CI Observer evidence flush scheduling stall RED GREEN L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-p4-g07-owner-observer-disk-stall-l0.yml']
+permissions:
+  contents: read
+jobs:
+  actual-first-observer-stall-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    environment: axia-instructor-sealed
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 92d56d587b100f18126f0e7d5785eb415613e48a
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: REPLAY owner first Guard and CI 400ms RMW receipt from blocking evidence writer
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = 92d56d587b100f18126f0e7d5785eb415613e48a
+          python3 -m unittest discover -s tests/unit -p test_p4_g07_owner_observer_async_evidence.py -v
+          python3 -m unittest discover -s tests/unit -p test_p4_g07_owner_brxs_guard_clock_regression.py -v
+          echo AXIA_P4_G07_OBSERVER_SLOW_FLUSH_OFF_EXECUTOR_GREEN_NO_ROS_NO_GOAL
+      - name: Purge sealed private source
+        if: always()
+        shell: bash
+        run: rm -rf -- .git tools tests scripts docs configs ros2_ws
