@@ -24,3 +24,9 @@ def test_bootstrap_pins_exact_verified_student_commit():
     assert 'block_C/scripts/c01_fixture_once.sh' in src
     for unsafe in ('pkill', 'sudo ', '/cmd_vel', 'ros2 action send_goal', 'git reset --hard'):
         assert unsafe not in src
+
+
+def test_ci_runs_same_clone_path_as_owner_wsl2():
+    workflow = (ROOT.parent / '.github' / 'workflows' / 'block-c-c01-l0.yml').read_text()
+    assert 'AXIA_C01_SOURCE_DIR=' not in workflow, 'CI must not bypass Owner clone/sha verification path'
+    assert 'bash block_c/scripts/axia_c01_owner_wsl2_once.sh --run' in workflow
