@@ -29,19 +29,18 @@ jobs:
           bash -n d06/scripts/d06_rviz_sidecar.sh
           python -m py_compile d06/live/d06_readonly_monitor.py d06/live/d06_g07_field_triage.py
           bash d06/scripts/d06_gazebo_rviz_owner_wsl2_once.sh --self-check
-          # A new Owner L3 Guard TTL failure consumes the one allowed attempt:
-          # revoke prior admission BEFORE TTY, ROS, private clone or Goal.
+          # One exact-source final human Owner L3 admitted only after new
+          # actual concurrent RViz+Gazebo G07 PASS #43667573251.
+          # Noninteractive CI MUST block before ROS/Gazebo/Goal (no TTY).
           rc=0
           bash d06/scripts/d06_gazebo_rviz_owner_wsl2_once.sh \
             > /tmp/d06-owner-final-admission.log 2>&1 || rc=$?
-          test "$rc" = 3
-          grep -Fq 'D06_FINAL_OWNER_BLOCKED_CI_L2_HOLD_OR_OWNER_L3_FIRST_SAFETY_BOUNDARY' \
-            /tmp/d06-owner-final-admission.log
-          grep -Fq 'D06_OWNER_NO_ROS_NO_GAZEBO_NO_GOAL' \
-            /tmp/d06-owner-final-admission.log
-          ! grep -Fq 'D06_FINAL_OWNER_ADMISSION_ACCEPTED' /tmp/d06-owner-final-admission.log
+          test "$rc" = 2
+          grep -Fq 'D06_FINAL_OWNER_ADMISSION_ACCEPTED' /tmp/d06-owner-final-admission.log
+          grep -Fq 'D06_BLOCKED_REAL_OWNER_INTERACTIVE_TTY_REQUIRED' /tmp/d06-owner-final-admission.log
           ! grep -Fq 'P2_L3_G07_COLD_START' /tmp/d06-owner-final-admission.log
-          echo 'D06_OWNER_POST_FAILURE_HOLD_BLOCKS_BEFORE_ROS_AND_GOAL_PASS'
+          ! grep -Fq 'YES-P2-G07-GOAL:' /tmp/d06-owner-final-admission.log
+          echo 'D06_OWNER_NEW_GUI_L2_ADMISSION_TTY_BLOCKS_BEFORE_ROS_AND_GOAL_PASS'
           echo "D06_GAZEBO_RVIZ_L0_PASS ROS_GAZEBO_RVIZ_NOT_RUN"
 
   l1-readonly-ros:
