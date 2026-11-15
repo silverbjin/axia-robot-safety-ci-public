@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 12b66b344f75275a7cc495543ba84e902bcc9ce4
+          ref: 9108f48265cb853eb10e9b967d70dd7e0b15d8a7
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -23,13 +23,13 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor rev-parse HEAD)" = '12b66b344f75275a7cc495543ba84e902bcc9ce4'
+          test "$(git -C instructor rev-parse HEAD)" = '9108f48265cb853eb10e9b967d70dd7e0b15d8a7'
           cd instructor
           python3 -m unittest discover -s tests/unit -p test_d07_h01_gui_owner_contract.py -v
           python3 -m unittest discover -s tests/unit -p test_d07_h01_path_visual.py -v
           python3 -m unittest discover -s tests/unit -p test_d07_h01_gui_evidence.py -v
           python3 -m unittest discover -s tests/unit -p test_d07_h01_gui_cm_scope.py -v
-          python3 -m py_compile tools/d07_h01_geometry_l2.py tools/d07_h01_path_visual.py tools/p2_staged_no_goal.py
+          python3 -m py_compile tools/d07_h01_geometry_l2.py tools/d07_h01_path_visual.py tools/p2_staged_no_goal.py tools/d07_h01_cm_lifecycle_ready.py
           echo D07_H01_GUI_L0_PASS_NO_ROS_NO_GAZEBO_NO_GOAL
       - name: Destroy private checkout
         if: always()
