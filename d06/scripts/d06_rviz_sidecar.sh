@@ -9,6 +9,7 @@ BASE="$HOME/axia_p2_private_evidence"
 PUBLIC_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 RVIZ_CONFIG="$PUBLIC_ROOT/d06/rviz/d06_safety_bubble.rviz"
 MONITOR="$PUBLIC_ROOT/d06/live/d06_readonly_monitor.py"
+GUI_CPU_SELECTOR="$PUBLIC_ROOT/d06/live/d06_gui_cpu_plan.py"
 rviz_pid=''; monitor_pid=''
 cleanup() {
   trap - EXIT INT TERM
@@ -67,9 +68,16 @@ source /opt/ros/jazzy/setup.bash
 set -u
 printf 'D06_OWNER_SESSION=%s\nROS_DOMAIN_ID=%s\nGZ_PARTITION=%s\n' \
   "$owner_dir" "$ros_domain" "$partition" > "$OUT/session_attachment.txt"
-setsid nice -n 15 rviz2 -d "$RVIZ_CONFIG" --ros-args -p use_sim_time:=true \
+GUI_CPU="$("/usr/bin/python3" "$GUI_CPU_SELECTOR")" || {
+  echo 'D06_GUI_AFFINITY_BLOCKED_BEFORE_RVIZ_AND_MONITOR';exit 3;
+}
+[[ "$GUI_CPU" =~ ^[0-9]+$ ]] || {
+  echo 'D06_GUI_AFFINITY_INVALID_CPU';exit 3;
+}
+echo "D06_GUI_AFFINITY cpu=$GUI_CPU recorder_uses_max_allowed_cpu=true rendering_budget_fps=3"
+setsid taskset -c "$GUI_CPU" nice -n 19 rviz2 -d "$RVIZ_CONFIG" --ros-args -p use_sim_time:=true \
   > "$OUT/rviz.log" 2>&1 & rviz_pid=$!
-setsid nice -n 15 /usr/bin/python3 -u "$MONITOR" --out "$OUT" \
+setsid taskset -c "$GUI_CPU" nice -n 7 /usr/bin/python3 -u "$MONITOR" --out "$OUT" \
   > "$OUT/readonly_monitor.log" 2>&1 & monitor_pid=$!
 sleep 3
 if ! kill -0 "$rviz_pid" 2>/dev/null || ! kill -0 "$monitor_pid" 2>/dev/null;then
@@ -80,7 +88,7 @@ if ! kill -0 "$rviz_pid" 2>/dev/null || ! kill -0 "$monitor_pid" 2>/dev/null;the
   exit 2
 fi
 echo "D06_RVIZ_STARTED domain=$ros_domain rviz_pid=$rviz_pid monitor_pid=$monitor_pid"
-echo 'D06_RVIZ_DIAGNOSTICS observer=nice15 rviz=nice15 owner_safety_priorities_unchanged'
+echo 'D06_RVIZ_DIAGNOSTICS observer=nice7 rviz=nice19 display_cpu_isolated owner_safety_priorities_unchanged'
 echo 'D06_GUI_NOT_ACCEPTANCE: visual WSL2 check still required'
 while kill -0 "$rviz_pid" 2>/dev/null && kill -0 "$monitor_pid" 2>/dev/null;do
   sleep 1
