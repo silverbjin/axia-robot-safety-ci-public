@@ -40,6 +40,7 @@ jobs:
           print(f"AXIA_P4_FINAL_OWNER_EMBEDDED_PYTHON_AST_PASS blocks={len(blocks)}")
           PY
           bash "$script" --self-check
+          echo AXIA_P4_OWNER_L0_STAGE_SELF_CHECK_OK
           grep -Fq "116144d1f549d24a2f1ed83fdf85723e7f148595" "$script"
           grep -Fq "b194bace4e8eb3a7307e39bd70f1588df48209f2" "$script"
           grep -Fq "43670809154" "$script"
@@ -48,12 +49,21 @@ jobs:
           grep -Fq "YES-P2-G07-GOAL" "$script"
           grep -Fq "AXIA_MVP_DEMO_ACCEPTED=HOLD" "$script"
           grep -Fq "AXIA_P4_OWNER_FIRST_PREGOAL_BOUNDARY_LOCKED_NO_GOAL_RAW" "$script"
+          echo AXIA_P4_OWNER_L0_STAGE_PIN_CONSENT_VERIFY_OK
           if bash "$script" >"$RUNNER_TEMP/s02_owner_no_tty.log" 2>&1;then
             echo AXIA_P4_OWNER_FALSE_NO_TTY_GOAL_ALLOWED
             exit 3
           fi
+          cat "$RUNNER_TEMP/s02_owner_no_tty.log"
           grep -Fq "AXIA_P4_FINAL_OWNER_BLOCKED_CONTROLLING_TTY_REQUIRED_NO_GOAL" "$RUNNER_TEMP/s02_owner_no_tty.log"
+          echo AXIA_P4_OWNER_L0_STAGE_NO_TTY_NEGATIVE_OK
+          set +e
           bash "$script" --admission-check >"$RUNNER_TEMP/g07_admission.log" 2>&1
+          admission_rc=$?
+          set -e
+          cat "$RUNNER_TEMP/g07_admission.log"
+          echo "AXIA_P4_OWNER_L0_ADMISSION_EXIT_CODE=$admission_rc"
+          test "$admission_rc" -eq 0
           grep -Fq "AXIA_P4_OWNER_CI_SCOPED_READY_FOR_ONE_MANUAL_TTY" "$RUNNER_TEMP/g07_admission.log"
           grep -Fq "AXIA_MVP_DEMO_ACCEPTED=HOLD" "$RUNNER_TEMP/g07_admission.log"
           grep -Fq "AXIA_G07_REAL_EXACT_NAV2_GOAL_CANCEL_ACK_BEFORE_LIFECYCLE_PASS" "$script"
