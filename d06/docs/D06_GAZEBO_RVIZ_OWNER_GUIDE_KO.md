@@ -1,13 +1,14 @@
 # AXIA D06 — Gazebo GUI + RViz2 강사 Live Demo
 
-> **2026-11-15 FINAL OWNER ADMISSION: CI L2 3/3 PASS — WSL2 검수 1회 허용.** 새 Instructor SHA `c44414f8e3bad37a349565f211d554540cccb062` 및 동일 Docker digest로 실행한 [공개 실제 Gazebo L2 #43609296371](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43609296371)의 독립 cold-start 1·2·3회 모두 **CLEAR→SLOWDOWN→STOP, Scan 300ms·CM/Guard 150ms 경계, odom STOP 1초, Nav2 Lifecycle ACK, CM 정상 종료 및 원본 rosbag 검사까지 전체 SUCCESS**. 본 결과는 **CI에서 최종 Owner 시연 실행을 허용한다는 뜻**이지 사용자 WSL2 WSLg+RViz 화면 인수 성공이라는 뜻이 아니다.
+> **2026-11-15 OWNER G85 L3 FAILURE — D06 Gazebo GUI + RViz2 재실행 금지.** 과거 [실제 Gazebo L2 3/3 #43609296371](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43609296371) 성공과 별개로 실제 Owner 최초 허가 1회에서 Guard 상태 Observer 162.774ms·Scan Observer 333.398ms·CM RMW 발행 152.879ms 및 Guard 내부 CM age 166.509ms >150ms가 확인돼 `UPSTREAM_STALE_AFTER_MOTION` 안전 래치가 발생했다. 정식 STOP/odom dwell/clean shutdown/원본 custody 인수 실패.
 >
-> 최신 `d06/acceptance/d06_g07_final_owner_ci_gate.json`는 `ADMITTED_FINAL_OWNER_ONLY`이고 **강사 수동 `YES-P2-G07-GOAL`을 요구하는 최종 WSL2 1회**만 허용한다. 이전 WSL2/CI 간헐적 Scan·CM 지연은 사실이며 이력이 삭제되지 않았다. 새 현장 오류가 나오면 동일 현장 재시도 대신 최초 안전 상태 전이·최초 타이밍 경계를 공개 CI 회귀 RED→GREEN으로 재편입한다. 소프트웨어 정지는 인증된 E-Stop이 아니다.
+> **현 공개 게이트: `HOLD_OWNER_L3_FIRST_SAFETY_BOUNDARY`, `allow_one_final_wsl2_owner=false`.** 이전 owner executable SHA `6b717092eafa091f75551cc215a3f96786491000`는 이미 허용 1회를 사용했으므로 **다시 실행하면 안 된다**. 새 GitHub 고정 SHA·새 인수 게이트·실제 GUI-부하 Gazebo L2 검증 전에 Owner Goal을 재시도하지 않는다. L0 RED→GREEN은 사후 원인 보고 누락과 안전 게이트 보호를 해결했을 뿐, 실제 CM 지연 원인은 확정하지 않았다.
+>
+> D06 수업은 기존 검증된 **공식 CM 격리 ROS L1**로 진행한다. 자세한 회귀 순서는 [CI 우선 지침](D06_OWNER_FIRST_SAFETY_BOUNDARY_CI_FIRST_TDD_PROMPT_20261115_KO.md)을 참조한다. RViz 원은 교육용이며 Software Stop과 인증된 HW E-Stop은 다르다.
 
+## 최종 WSL2 검수의 판정 경계 — 2026-11-15 L3 실패 기록
 
-## 최종 WSL2 검수의 판정 경계 (2026-11-15)
-
-이번 최종 원샷은 **기존 실행의 재시도 반복이 아니라, 공개 CI 3회 PASS 이후 최초 강사 WSLg GUI+RViz 통합 인수 1회**이다. 실제 Gazebo 창·RViz 창이 동시에 표시·갱신되는지 강사가 직접 확인한다. 원본에서 CLEAR→SLOWDOWN→STOP 구간의 최초 Scan 300ms/CM·Supervisor·Guard 150ms 위반, Goal UUID 1개, `/cmd_vel` 소프트웨어 정지, `/odom` 정지 1초, 공식 Lifecycle ACK, CM 정상 종료, 14-topic bag 무결성 및 동일 세션 보관 증거를 확인한다.
+이번 최종 원샷은 공개 CI 3회 PASS 이후 최초 강사 WSLg GUI+RViz 통합 인수 1회였으나 **Guard CM TTL 초과로 실패한 실행**이다. 실제 Gazebo 창·RViz 창이 동시에 표시·갱신되는지 강사가 직접 확인한다. 원본에서 CLEAR→SLOWDOWN→STOP 구간의 최초 Scan 300ms/CM·Supervisor·Guard 150ms 위반, Goal UUID 1개, `/cmd_vel` 소프트웨어 정지, `/odom` 정지 1초, 공식 Lifecycle ACK, CM 정상 종료, 14-topic bag 무결성 및 동일 세션 보관 증거를 확인한다.
 
 **GUI 미표시, 최초 데이터 위반, Guard 래치 또는 프로세스 비정상 종료 중 하나라도 발생하면 인수는 HOLD**이다. `D06_RVIZ_STARTED` 로그만으로 실제 WSLg 렌더링 성공을 주장하지 않는다. 강사는 추가 Goal을 보내지 않으며 실패 증거를 공개 CI의 비식별 회귀로 먼저 편입한다. 인수 후에도 기존 Draft PR의 `main` 병합은 별도 사용자 승인 전까지 금지한다.
 
@@ -29,35 +30,15 @@
 
 기존 G07 PASS를 이 신규 GUI의 PASS로 승격하지 않는다. 실제 Nav2 cmd 입력은 계속 달라질 수 있으므로 D06 합성 시험의 0.20→0.06m/s를 실제 모든 순간에 강요하지 않는다.
 
-## 강사 WSL2 원샷: 터미널 A
+## 강사 WSL2 원샷: 터미널 A — 현재 **재실행 금지**
 
-사전 조건은 WSL2 Ubuntu 24.04, WSLg DISPLAY, ROS 2 Jazzy/Gazebo Harmonic, gh auth login(private Instructor). 복사 명령의 PUBLIC_SHA에는 **공개 CI GREEN이 검증한 정확한 40자리 HEAD**를 넣는다. 구동 전 WSL2의 다른 Gazebo 수업은 종료한다. 기존 학생·강사 작업 폴더는 보존한다.
+최초 실행 시 사용한 과거 SHA `6b717092eafa091f75551cc215a3f96786491000`와 해당 `--self-check` 경로는 과거 실행 사실을 기록하기 위한 정보일 뿐 **새 Goal 실행 권한을 제공하지 않는다**. 새 공개 HEAD의 실행기는 TTY·ROS·Gazebo·Goal 실행 전에 안전 HOLD로 차단해야 한다.
 
-    (
-      set -Eeuo pipefail
-      PUBLIC_SHA="6b717092eafa091f75551cc215a3f96786491000"
-      LAB="$(mktemp -d "$HOME/axia_d06_gazebo_rviz_public_XXXXXXXX")"
-      git -C "$LAB" init -q
-      git -C "$LAB" remote add origin https://github.com/silverbjin/axia-robot-safety-ci-public.git
-      git -C "$LAB" fetch -q --depth 1 origin "$PUBLIC_SHA"
-      git -C "$LAB" checkout -q --detach FETCH_HEAD
-      test "$(git -C "$LAB" rev-parse HEAD)" = "$PUBLIC_SHA"
-      bash "$LAB/d06/scripts/d06_gazebo_rviz_owner_wsl2_once.sh" --self-check
-      bash "$LAB/d06/scripts/d06_gazebo_rviz_owner_wsl2_once.sh"
-    )
-
-**안전:** 원본 G07 Owner가 실제 /dev/tty에 YES-P2-G07-GOAL을 요청한다. 강사가 직접 입력해야 한다. 자동 동의 스크립트, 파이프 tee, CI용 Goal 권한 우회는 금지한다.
-
-예상 출력(실제 신규 ROS·WSL2 실행 출력 아님). **D06_RVIZ_STARTED 및 D06_EDU_OBSERVATION_ZONE은 sidecar.log / readonly_monitor.log에 저장되며, 강사 A의 포그라운드 G07 stdout에 직접 나타나지 않을 수 있다.**
-
-    D06_OWNER_RVIZ_STATIC_PASS ... GAZEBO_NOT_RUN RVIZ_NOT_RUN
-    Case G07 ... Type YES-P2-G07-GOAL:
-    AXIA_G07_OWNER_GUI_LAUNCH_SELECTED WSLG_RENDER_REQUIRES_LIVE_CONFIRMATION
-    D06_RVIZ_STARTED domain=<domain> rviz_pid=<pid> monitor_pid=<pid>
-    D06_EDU_OBSERVATION_ZONE {"zone":"CLEAR","evidence_only":true,...}
-    D06_EDU_OBSERVATION_ZONE {"zone":"SLOWDOWN","evidence_only":true,...}
-    D06_EDU_OBSERVATION_ZONE {"zone":"STOP","evidence_only":true,...}
-    D06_GAZEBO_GUI_NOT_YET_VERIFIED ...
+- 원본 증거: `EVIDENCE=/home/.../axia_p2_private_evidence/p2-l3-owner-.../` (공개 업로드 금지)
+- 공개 비식별 fixture: `d06/tests/fixtures/g07_owner_20261115_first_boundary_sanitized.json`
+- 현재 허용된 강사 시연: 공식 격리 CM L1 (no moving Goal). 완료 증거는 로봇 주행 L3가 아님.
+- 새 OWNER L3 인수 허가는 실제 UI-부하 Gazebo L2와 모든 안전 데이터 주기·STOP·종료·14-topic raw 검증 뒤 별도 승인한다. `YES-P2-G07-GOAL` 수동 입력도 현재는 허용되지 않는다.
+- 구 스크립트의 예상 출력은 실제 성공 증거가 아니며 SW Stop은 인증 E-Stop이 아니다.
 
 ## 화면과 터미널 분리
 
