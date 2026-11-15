@@ -52,6 +52,7 @@ if not (
     and value.get('status')=='ADMITTED_FINAL_OWNER_ONLY'
     and value.get('allow_one_final_wsl2_owner') is True
     and value.get('whole_ci_l2_pass') is True
+    and value.get("whole_concurrent_gui_l2_pass") is True
     and value.get('private_instructor_sha')==sys.argv[2]
     and value.get('p4_release_sha')==sys.argv[3]
     and type(value.get('last_real_gazebo_ci_run_id')) is int
