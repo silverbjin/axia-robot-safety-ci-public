@@ -14,14 +14,15 @@ SIDECAR="$ROOT/d06/scripts/d06_rviz_sidecar.sh"
 MONITOR="$ROOT/d06/live/d06_readonly_monitor.py"
 TRIAGE="$ROOT/d06/live/d06_g07_field_triage.py"
 GUI_CPU_SELECTOR="$ROOT/d06/live/d06_gui_cpu_plan.py"
+FIRST_CM_JOIN="$ROOT/d06/live/d06_guard_cm_first_latch_join.py"
 RVIZ_CONFIG="$ROOT/d06/rviz/d06_safety_bubble.rviz"
 
 self_check() {
-  for p in "$SIDECAR" "$MONITOR" "$TRIAGE" "$RVIZ_CONFIG" "$GUI_CPU_SELECTOR"; do
+  for p in "$SIDECAR" "$MONITOR" "$TRIAGE" "$RVIZ_CONFIG" "$GUI_CPU_SELECTOR" "$FIRST_CM_JOIN"; do
     [[ -s "$p" ]] || { echo "D06_STATIC_BLOCKED_FILE_MISSING=$p";return 2; }
   done
   bash -n "$SIDECAR"
-  /usr/bin/python3 -m py_compile "$MONITOR" "$TRIAGE" "$GUI_CPU_SELECTOR"
+  /usr/bin/python3 -m py_compile "$MONITOR" "$TRIAGE" "$GUI_CPU_SELECTOR" "$FIRST_CM_JOIN"
   [[ "$P4_PUBLIC_RELEASE_SHA" =~ ^[0-9a-f]{40}$ &&
      "$P4_OWNER_PRIVATE_SHA" =~ ^[0-9a-f]{40}$ &&
      "$P4_OWNER_PRIVATE_TREE" =~ ^[0-9a-f]{40}$ ]] || return 2
@@ -146,6 +147,15 @@ cleanup() {
         --output "$OUT/first_failure_triage.json" \
         > "$OUT/first_failure_triage.log" 2>&1 || true
       cat "$OUT/first_failure_triage.log" 2>/dev/null || true
+      # The first CM source gap may complete only AFTER the Guard latch.
+      # Preserve native Guard semantics and post-latch RMW source/receive.
+      # Never publish original events; emit only sanitized joined interval.
+      /usr/bin/python3 -u "$FIRST_CM_JOIN" \
+        --events "$owner_root/G07/live/actual_ros_events.jsonl" \
+        --live-result "$owner_root/G07/live/ci_moving_goal_result.json" \
+        --output "$OUT/joined_first_cm_guard.json" \
+        > "$OUT/joined_first_cm_guard.log" 2>&1 || true
+      cat "$OUT/joined_first_cm_guard.log" 2>/dev/null || true
     else
       echo 'D06_G07_POSTRUN_TRIAGE_SOURCE_MISMATCH_OR_MISSING'
       if [[ "$rc" == 0 ]];then rc=3;fi
