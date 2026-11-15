@@ -52,14 +52,21 @@ class UnifiedGuiSidecarContract(unittest.TestCase):
         self.assertNotEqual(select_cpu({2,3,4,5}),select_monitor_cpu({2,3,4,5}))
         with self.assertRaises(ValueError):
             select_monitor_cpu({2,3,4})
-        s=SCRIPT.read_text()
+        # The same physical GUI process launcher is invoked in Xvfb and WSLg.
+        shared=ROOT/"d06/scripts/g07_shared_gui_clients.sh"
+        self.assertTrue(shared.is_file(),"GUI_CI_OWNER_COMMON_RUNTIME_MISSING")
+        s=shared.read_text()
         self.assertIn('d06_gui_cpu_plan.py',s)
         self.assertIn('--role monitor',s)
         self.assertIn('taskset -c "$GUI_CPU" nice -n 19 rviz2',s)
         self.assertIn('taskset -c "$GUI_CPU" nice -n 19 gz sim -g',s)
         self.assertIn('taskset -c "$MONITOR_CPU" nice -n 15 python3',s)
         self.assertIn('G07_UNIFIED_GUI_CPU_PARTITION',s)
-        self.assertNotIn('taskset -cp',s)  # No re-affinity of existing safety nodes.
+        self.assertNotIn('taskset -cp',s)  # Never re-affinity safety nodes.
+        self.assertIn('g07_shared_gui_clients.sh',SCRIPT.read_text())
+        owner=(ROOT/"d06/scripts/d06_rviz_sidecar.sh").read_text()
+        self.assertIn('g07_shared_gui_clients.sh',owner)
+        self.assertIn('AXIA_G07_UNIFIED_GUI_SIDECAR', (ROOT/"d06/scripts/g07_unified_final_owner_wsl2_once.sh").read_text())
 
     def test_gui_l2_cpu_admission_is_checked_before_p4_one_goal(self):
         workflow=(ROOT/".github/workflows/axia-g07-unified-gui-one-goal-l2.yml").read_text()

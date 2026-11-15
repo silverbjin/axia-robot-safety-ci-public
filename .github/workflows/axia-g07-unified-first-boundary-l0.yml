@@ -16,6 +16,8 @@ on:
       - 'd06/tests/fixtures/g07_owner_20261115_cm_supervisor_mismatch_clockstep_sanitized.json'
       - 'd06/tests/test_g07_unified_gui_sidecar_contract.py'
       - 'd06/scripts/g07_unified_ci_readonly_display.sh'
+      - 'd06/scripts/g07_shared_gui_clients.sh'
+      - 'd06/scripts/d06_rviz_sidecar.sh'
       - 'd06/live/d06_gui_cpu_plan.py'
       - 'd06/tests/test_g07_unified_final_owner_admission.py'
       - 'd06/live/g07_unified_final_owner_gate.py'
