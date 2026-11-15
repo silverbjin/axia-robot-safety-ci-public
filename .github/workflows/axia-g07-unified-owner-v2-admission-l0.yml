@@ -1,0 +1,39 @@
+name: AXIA G07 Unified final Owner v2 source-locked NO-GOAL admission L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths:
+      - '.github/workflows/axia-g07-unified-owner-v2-admission-l0.yml'
+      - 'scripts/axia_g07_unified_p4_owner_once.sh'
+permissions:
+  contents: read
+jobs:
+  source-locked-private-owner-v2-no-goal:
+    runs-on: ubuntu-24.04
+    environment: axia-instructor-sealed
+    timeout-minutes: 8
+    steps:
+      - name: Public frozen P4 + new G07-only Owner wrapper
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Exact latest Instructor candidate source - sealed read only
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: bc270e28620c1909fcb34669e6036504b5cae951
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          path: instructor
+          persist-credentials: false
+      - name: NO ROS NO Goal verify actual candidate SHA/tree and reused P4 Owner admission
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C instructor rev-parse HEAD)" = bc270e28620c1909fcb34669e6036504b5cae951
+          test "$(git -C instructor rev-parse HEAD^{tree})" = 59c35abb651cdce18d3131b28497a500ca692cc2
+          test -s scripts/axia_g07_unified_p4_owner_once.sh
+          bash -n scripts/axia_g07_unified_p4_owner_once.sh
+          grep -Fq 'bc270e28620c1909fcb34669e6036504b5cae951' scripts/axia_g07_unified_p4_owner_once.sh
+          grep -Fq '59c35abb651cdce18d3131b28497a500ca692cc2' scripts/axia_g07_unified_p4_owner_once.sh
+          grep -Fq 'AXIA_G07_UNIFIED_GUI_SIDECAR' scripts/axia_g07_unified_p4_owner_once.sh
+          bash scripts/axia_g07_unified_p4_owner_once.sh --self-check
+          bash scripts/axia_g07_unified_p4_owner_once.sh --admission-check
+          echo 'AXIA_G07_UNIFIED_OWNER_V2_SOURCE_LOCKED_ADMISSION_L0_PASS_NO_ROS_NO_GOAL_OWNER_HOLD'
