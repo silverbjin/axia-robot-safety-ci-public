@@ -1,0 +1,19 @@
+{
+  "schema": "axia.g07.field_first_transition_sanitized.v2",
+  "source_sha": "01d45d46b6eb6a05b1bd313d73f1fc3549575545",
+  "ci_l2_run_id": 43727149856,
+  "previous_goal_observed": true,
+  "goal_cancel_observed": true,
+  "owner_l3_accepted": false,
+  "first_guard_transition": "UPSTREAM_STALE_AFTER_MOTION",
+  "first_guard_cm_age_ms": 174.184617,
+  "guard_cm_hard_ttl_ms": 150,
+  "first_cm_rmw_source_gap_ms": 186.714207,
+  "supervisor_publications_inside_cm_gap": 4,
+  "ci_l2_max_cm_observer_ms": 110.964002,
+  "cm_release_target_ms": 120,
+  "previous_attempt_not_safe_to_repeat": true,
+  "provenance": "Sanitized numeric-only summary from Owner-supplied G11 session custody and first joined Guard/RMW review, not raw ROS bag",
+  "source_scope": "ONE_PREVIOUS_ACTUAL_OWNER_GOAL",
+  "certified_estop": false
+}
