@@ -1,0 +1,34 @@
+# D07-H01 isolated no-moving-goal Localization service-response contract.
+# No Gazebo, ROS or secret material leaves the sealed CI job.
+name: AXIA D07-H01 Localization no-ACK read-only regression L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-d07-h01-localization-noack-regression-l0.yml']
+permissions:
+  contents: read
+jobs:
+  noack-source-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    environment: axia-instructor-sealed
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: b2dd112c6fc819e24ad5b509070dd709186a47ca
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          path: instructor
+          persist-credentials: false
+      - name: RED new first-response-lost regression, no ROS or Gazebo
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C instructor rev-parse HEAD)" = 'b2dd112c6fc819e24ad5b509070dd709186a47ca'
+          cd instructor
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_lifecycle_reconcile.py -v
+          echo D07_H01_LOCALIZATION_NOACK_L0_PASS_NO_ROS_NO_GOAL
+      - name: Delete sealed private checkout
+        if: always()
+        run: rm -rf -- instructor
