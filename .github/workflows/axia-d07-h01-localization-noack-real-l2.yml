@@ -1,0 +1,278 @@
+# Scope: one actual ROS2 Jazzy/Gazebo Harmonic H01 stationary Waffle,
+# native physical obstacle and official ComputePathToPose Path -> RViz2.
+# Absolutely NO NavigateToPose, NO cmd_vel, NO G07 motion admission.
+name: D07 H01 Localization no-ACK real Gazebo read-only 3-phase L2
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-d07-h01-localization-noack-real-l2.yml']
+permissions:
+  contents: read
+concurrency:
+  group: d07-h01-localization-noack-readonly-l2
+  cancel-in-progress: false
+jobs:
+  real-physical-gui:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    environment: axia-instructor-sealed
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+      options: --dns 1.1.1.1 --dns 8.8.8.8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Clone exact sealed Instructor candidate
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 43f83daee851d7c5f55cede053143a9af54afe09
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          path: instructor
+          persist-credentials: false
+      - name: Exact private commit and targeted L0 prior to any ROS process
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '43f83daee851d7c5f55cede053143a9af54afe09'
+          cd instructor
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_gui_owner_contract.py -v
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_path_visual.py -v
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_gui_evidence.py -v
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_restore_native_neighbor.py -v
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_preintrusion_timing_join.py -v
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_gui_lidar_noise_overlay.py -v
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_native_master_full_restore.py -v
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_planner_source_barrier.py -v
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_post_free_plan_epoch.py -v
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_gpu_gui_trial.py -v
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_gz_world_topic_gate.py -v
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_gui_watcher_process_contract.py -v
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_ci_render_backend_parity.py -v
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_scene_broadcaster_world.py -v
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_lifecycle_reconcile.py -v
+          python3 -m py_compile tools/d07_h01_lifecycle_reconcile.py tools/p2_staged_no_goal.py
+          python3 -m py_compile tools/d07_h01_scene_broadcaster_overlay.py
+          bash -n tools/d07_h01_gpu_gui_watcher.sh
+          python3 -m py_compile tools/d07_h01_post_free_plan_epoch.py
+          python3 -m py_compile tools/d07_h01_native_master_full_evidence.py
+          python3 -m py_compile tools/d07_h01_gui_lidar_noise_overlay.py
+          python3 -m py_compile tools/d07_h01_geometry_l2.py tools/d07_h01_free_grid_timing_probe.py tools/d07_h01_path_visual.py
+          bash -n scripts/d07_h01_gui_no_goal_once.sh
+          bash -n scripts/p2_no_goal_smoke_ci.sh
+          bash scripts/d07_h01_gui_no_goal_once.sh --self-check
+          echo D07_H01_GUI_SEALED_L0_PASS_NO_GAZEBO_NO_GOAL
+      - name: Minimal Xvfb and RViz2 prerequisites in pinned H01 runtime
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          set +u; source /opt/ros/jazzy/setup.bash; set -u
+          missing=()
+          command -v Xvfb >/dev/null || missing+=(xvfb)
+          command -v xwininfo >/dev/null || missing+=(x11-utils)
+          command -v rviz2 >/dev/null || missing+=(ros-jazzy-rviz2)
+          if (( ${#missing[@]} )); then
+            echo "D07_H01_GUI_MISSING_RUNTIME_PACKAGES=${missing[*]}"
+            apt-get update -qq
+            DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends "${missing[@]}"
+          fi
+          for x in Xvfb xwininfo rviz2 gz ros2 colcon; do command -v "$x" >/dev/null; done
+          echo D07_H01_GUI_REQUIRED_X11_ROS_COMPONENTS_PRESENT
+      - name: One REAL H01 Gazebo physical obstacle + official Nav2 Path + RViz2 L2
+        shell: bash
+        env:
+          ROS_DOMAIN_ID: '95'
+          ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+          GZ_PARTITION: axia_p2_d07_h01_gui_95
+          AXIA_P0_SIM_ONLY: '1'
+          AXIA_D07_H01_GUI_NO_GOAL: '1'
+          # Identical watcher/marker/transport/DDS code; Xvfb cannot test WSLg GPU.
+          AXIA_D07_H01_GPU_GUI_TRIAL: '1'
+          AXIA_D07_H01_CI_SOFTWARE_GUI: '1'
+          AXIA_D07_GUI_HOLD_S: '8'
+          AXIA_G07_CI_SIM_GOAL_ALLOWED: '0'
+          AXIA_P2_G07_PHYSICAL_PREFLIGHT: '1'
+          AXIA_G07_OWNER_STARTUP_PARITY: '1'
+          AXIA_G07_CI_OWNER_BAG_PARITY: '0'
+          AXIA_G07_CI_OWNER_OBSERVER_PARITY: '1'
+          AXIA_P2_SMOKE_RESULTS: results/d07-h01-gui-ci/real-l2
+          AXIA_D07_GUI_EVIDENCE_DIR: results/d07-h01-gui-ci/rviz
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          QT_QPA_PLATFORM: xcb
+          QT_X11_NO_MITSHM: '1'
+        run: |
+          set -Eeuo pipefail
+          export DISPLAY=:99
+          mkdir -p instructor/results/d07-h01-gui-ci
+          Xvfb :99 -screen 0 1600x900x24 -nolisten tcp \
+            > instructor/results/d07-h01-gui-ci/xvfb.log 2>&1 &
+          XVPID=$!
+          trap 'kill "$XVPID" 2>/dev/null || true' EXIT
+          sleep 2
+          cd instructor
+          set +e
+          timeout --signal=TERM --kill-after=12s 910s \
+            bash scripts/d07_h01_gui_no_goal_once.sh --run \
+            > results/d07-h01-gui-ci/live_stdout.log 2>&1 &
+          OWNER=$!
+          # Actual ROS read-only probe exercises the exact D07 no-ACK
+          # reconciliation module while the official Nav2 manager is ACTIVE.
+          # This synthesizes ONLY the client-side missing-ACK JSON, not an
+          # additional Lifecycle STARTUP, Goal, fault or Gazebo command.
+          (
+            set -Eeuo pipefail
+            set +u; source /opt/ros/jazzy/setup.bash; set -u
+            ROOT="results/d07-h01-gui-ci/real-l2"
+            for i in $(seq 1 180); do
+              if [[ -s "$ROOT/startup_verdict.navigation_start.native.json" ]]; then break; fi
+              if ! kill -0 "$OWNER" 2>/dev/null; then
+                echo D07_LOCALIZATION_PROBE_OWNER_EXITED_BEFORE_NAV_READY; exit 3
+              fi
+              sleep 1
+            done
+            test -s "$ROOT/startup_verdict.navigation_start.native.json"
+            python3 - "$ROOT" <<'PY_NOACK_FIXTURE'
+import json,sys
+from pathlib import Path
+root=Path(sys.argv[1])
+local=json.loads((root/'startup_verdict.localization_start.native.json').read_text())
+nav=json.loads((root/'startup_verdict.navigation_start.native.json').read_text())
+assert local['status']=='ACK' and local['success'] is True
+assert nav['status']=='ACK' and nav['success'] is True
+assert local['goal_sent'] is False and nav['goal_sent'] is False
+# Native session is verified successful. Synthesize only one lost client ACK
+# to call the production read-only state reconciliation in the same real ROS graph.
+fixture=dict(local,status='SERVICE_TIMEOUT',success=False,request_sent=True)
+(root/'d07_noack_synthetic_native.json').write_text(json.dumps(fixture))
+print('D07_H01_REAL_L2_ACK_LOSS_SIMULATED_CLIENT_ONLY_NO_SECOND_STARTUP')
+PY_NOACK_FIXTURE
+            python3 tools/d07_h01_lifecycle_reconcile.py \
+              --native "$ROOT/d07_noack_synthetic_native.json" \
+              --output "$ROOT/d07_noack_real_state_attestation.json" \
+              --timeout-sec 14
+            python3 - "$ROOT" <<'PY_CHECK'
+import json,sys
+from pathlib import Path
+data=json.loads((Path(sys.argv[1])/'d07_noack_real_state_attestation.json').read_text())
+assert data['status']=='READONLY_ACTIVE_RECONCILED_NO_ACK',data
+assert data['admitted_for_d07_no_goal'] is True
+assert data['lifecycle_ack_received'] is False
+assert data['observed_samples']==2
+assert data['startup_resent'] is False and data['goal_sent'] is False
+print('D07_H01_REAL_ROS_DUAL_ACTIVE_READONLY_RECONCILE_L2_PASS_NO_GOAL')
+PY_CHECK
+          ) > results/d07-h01-gui-ci/noack_real_probe.log 2>&1 &
+          PROBE_PID=$!
+          RVIZ=0
+          GAZEBO=0
+          for i in $(seq 1 450); do
+            if ! kill -0 "$OWNER" 2>/dev/null; then break; fi
+            windows="$(xwininfo -root -tree 2>/dev/null || true)"
+            if grep -Eiq 'RViz' <<<"$windows"; then RVIZ=1;fi
+            if grep -Eiq 'Gazebo' <<<"$windows"; then GAZEBO=1;fi
+            if [[ "$RVIZ" == 1 && "$GAZEBO" == 1 ]]; then break;fi
+            sleep 2
+          done
+          wait "$OWNER"
+          RC=$?
+          wait "$PROBE_PID"
+          PROBE_RC=$?
+          set -e
+          echo "D07_H01_GUI_RUNTIME_RC=$RC RVIZ_X11=$RVIZ GAZEBO_X11=$GAZEBO NOACK_PROBE_RC=$PROBE_RC"
+          if [[ "$PROBE_RC" != 0 ]]; then
+            echo D07_H01_REAL_NOACK_PROBE_FIRST_FAILURE
+            cat results/d07-h01-gui-ci/noack_real_probe.log || true
+            exit 3
+          fi
+          cat results/d07-h01-gui-ci/noack_real_probe.log
+          if [[ "$RC" != 0 ]]; then
+            # FIRST safety/lifecycle boundary wins; shutdown tail alone hides
+            # the actual initial Nav2 plugin failure. Read only own ROS logs.
+            LAUNCH=results/d07-h01-gui-ci/real-l2/launch.log
+            if [[ -f "$LAUNCH" ]]; then
+              echo 'D07_GUI_FIRST_NATIVE_LIFECYCLE_AND_PLUGIN_LOGS'
+              grep -nEi 'lifecycle_manager_navigation|planner_server|controller_server|bt_navigator|route_server|error|exception|failed|cannot|fatal|timeout|missing' "$LAUNCH" | head -n 180 || true
+            fi
+            for f in results/d07-h01-gui-ci/{real-l2,rviz}/*.log results/d07-h01-gui-ci/live_stdout.log; do
+              if [[ -f "$f" ]];then echo "--- $f ---";tail -n 75 "$f";fi
+            done
+            exit 2
+          fi
+          [[ "$RVIZ" == 1 && "$GAZEBO" == 1 ]] || {
+            echo D07_H01_GUI_X11_WINDOW_ABSENT; exit 2;
+          }
+          # Previous L2: simulator succeeded, but separate post-run shell
+          # lacked the ROS Python site-packages for /opt/ros/jazzy/bin/xacro.
+          set +u
+          source /opt/ros/jazzy/setup.bash
+          set -u
+          python3 - <<'PY'
+          import json,sys
+          from pathlib import Path
+          sys.path.insert(0,'tools')
+          from d07_h01_path_visual import assess_gui_stages
+          import subprocess, xml.etree.ElementTree as ET
+          root=Path('results/d07-h01-gui-ci/real-l2')
+          # Verify the exact world that the REAL Nav2 launch consumed, not
+          # a copied or hand-crafted expected SDF. Headless remains TRUE.
+          scene_world=root/'d07_gui_scene_world.sdf.xacro'
+          assert scene_world.exists(), 'D07_GUI_SCENE_WORLD_NOT_USED'
+          expanded=subprocess.run(
+              ['/opt/ros/jazzy/bin/xacro', str(scene_world), 'headless:=True'],
+              text=True,capture_output=True,timeout=25)
+          assert expanded.returncode==0,(
+              'D07_SCENE_XACRO_EXPANSION_FAILED',expanded.stderr[:700])
+          x=ET.fromstring(expanded.stdout)
+          scene_plugins=[p for p in x.findall('./world/plugin')
+              if p.get('name')=='gz::sim::systems::SceneBroadcaster']
+          assert len(scene_plugins)==1,'D07_SCENE_BROADCASTER_NOT_EXPANDED'
+          assert scene_plugins[0].get('filename')=='gz-sim-scene-broadcaster-system'
+          print('D07_H01_REAL_XACRO_HEADLESS_SCENE_BROADCASTER_CONFIRMED')
+          topics=(root/'d07_gui_transport_topics.txt').read_text().splitlines()
+          expected=['/world/default/scene/info','/world/default/pose/info']
+          assert all(t in topics for t in expected),(
+              'D07_GUI_RUNTIME_SCENE_BROADCASTER_TOPIC_MISSING',
+              [t for t in expected if t not in topics])
+          print('D07_H01_REAL_GAZEBO_RUNTIME_SCENE_TOPICS_CONFIRMED')
+
+          geo=json.loads((root/'d07_h01_geometry/d07_h01_geometry.json').read_text())
+          lines=(root/'d07_h01_geometry/phase_evidence.jsonl').read_text().splitlines()
+          phases=[json.loads(x) for x in lines]
+          assert geo['source_sha']=='43f83daee851d7c5f55cede053143a9af54afe09'
+          assert geo['goal_sent'] is False
+          assert geo['real_nav2'] is True
+          assert geo['real_laser_scan'] is True
+          assert geo['actual_costmap_obstacle_observed'] is True
+          assert geo['route_oracle']['geometry_ready'] is True
+          assert geo['obstacle_restored_away'] is True
+          assert geo['certified_estop'] is False
+          assert geo['formal_accepted'] is False
+          watcher=(root/'d07_gui_watcher.log').read_text()
+          for required in (
+              'D07_H01_GUI_WATCHER_PROCESS_ENTERED',
+              'D07_H01_GUI_SERVER_WORLD_DISCOVERED_NOT_GUI_RENDER_PROOF',
+              'D07_H01_GUI_CI_SOFTWARE_BACKEND_XVFB_NO_WSLG_GPU_PROOF',
+              'D07_H01_GUI_CHILDREN_SPAWNED',
+          ):
+              assert required in watcher,('FIRST_GUI_LIFECYCLE_BOUNDARY',required)
+          ack=(root/'d07_gui_watcher_started.txt').read_text()
+          assert 'pid=' in ack, 'GUI_WATCHER_SPAWN_ACK_ABSENT'
+          print('D07_H01_REAL_GAZEBO_XVFB_WATCHER_LIFECYCLE_OBSERVED_NO_GPU_CLAIM')
+          report=assess_gui_stages(
+              phases,source_sha='43f83daee851d7c5f55cede053143a9af54afe09',actual_ros=True,
+              actual_gazebo=geo['obstacle_pose_native_ack'] is True,
+              rviz_window=True)
+          (root/'d07_h01_gui_verdict.json').write_text(
+              json.dumps(report,sort_keys=True,indent=2)+'\n')
+          print('D07_H01_GUI_REAL_PHASES',json.dumps(phases,sort_keys=True))
+          print('D07_H01_GUI_EVIDENCE',json.dumps(report,sort_keys=True))
+          assert report['ready'] is True,report
+          print('D07_H01_GUI_SCENE_TRANSPORT_AND_REAL_PATH_L2_ACCEPTED_XVFB_ONLY')
+          print('D07_H01_GUI_NO_MOVING_GOAL_L2_PASS')
+          print('D07_H01_CI_GUI_BACKEND_SOFTWARE_XVFB_L2_ONLY_WSLG_D3D12_NOT_VERIFIED')
+          print('D07_H01_OWNER_WSL2_GUI_L3_NOT_RUN')
+          print('D07_H01_MOVING_CONTROLLER_CONTACT_AND_TTL_NOT_VERIFIED')
+          PY
+      - name: Always delete sealed Instructor and original private data
+        if: always()
+        shell: bash
+        run: rm -rf -- instructor
