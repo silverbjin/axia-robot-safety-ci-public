@@ -6,12 +6,12 @@ import tempfile
 import unittest
 ROOT=Path(__file__).resolve().parents[1]
 SCRIPT=ROOT/"scripts/axia_d07_h01_gpu_gui_owner_wsl2_once.sh"
-PRIVATE_SHA="a9f0d2b6ae1f0dcf2e8f92b263d9b66480924c4e"
+PRIVATE_SHA="c069052cc491117006f63b499577ef766a30f7ea"
 
 class OwnerGpuTrialContract(unittest.TestCase):
     def test_owner_pins_real_shared_l2_and_does_not_enable_ci_xvfb(self):
         source=SCRIPT.read_text()
-        self.assertIn("a9f0d2b6ae1f0dcf2e8f92b263d9b66480924c4e",source)
+        self.assertIn("c069052cc491117006f63b499577ef766a30f7ea",source)
         self.assertIn("43817527534",source)
         self.assertIn("CI_SAME_SHA_GAZEBO_XVFB_L2",source)
         self.assertIn("WSLG_D3D12_GUI_NOT_VERIFIED",source)
