@@ -1,3 +1,5 @@
+# RELEASE HOLD 2026-11-17: CM120 still exceeds margin in actual one-Goal Run 43981875149.
+# Historical workflow retained for immutable audit; automatic GOAL trigger retired until a separate reviewed release.
 # P4 prior L2 PASS #43674784552; new GUI overlay is unverified until actual L2 pass.
 # PIYO actual public bag-loaded Goal L2 #43338381501: CLEAR/SLOW/STOP/odom
 # and real 14-topic SQLite bag PASS, official Nav2 shutdown ACK PASS,
@@ -5,7 +7,7 @@
 # Regressed first post-goal cleanup boundary RED #43339194903
 # -> GREEN #43339388986 (53 PASS); both WSL2 Owner and CI use
 # a bounded 26s post-ACK launch grace, no CM/Scan TTL changes.
-name: AXIA G07 CM120 bounded observer-only candidate REAL one-Goal L2
+name: AXIA G07 Unified GUI stress - original P4 one simulation Goal L2
 on:
   push:
     branches: [release/p2-g06-cm-ttl-20261110]
@@ -13,7 +15,7 @@ on:
     # HOLD: only an explicit source-reviewed CI trigger after the CM
     # STOP-period cause has a GREEN regression may authorize the costly
     # simulation Goal. Editing this workflow alone never auto-moves a robot.
-    paths: ['.github/workflows/axia-g07-unified-gui-one-goal-l2.yml']
+    paths: ['.github/workflows/_g07_cm120_release_hold_no_auto_goal_.disabled']
 permissions:
   contents: read
 concurrency:
@@ -35,7 +37,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 795130709e7af695351bbc11b512d40d2242c4e1
+          ref: 420fd276ec1018f7fcc3f14873693cad02f080b4
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -43,7 +45,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-ci-public
-          ref: 352ea7c2197b937e8566ba90cd4d8fff46dd9f88
+          ref: 2e18ed484250b452d29caaefd9449023399bf53c
           path: unified-public
           persist-credentials: false
       - name: Published D06 read-only viewer sources pinned at public main
@@ -53,39 +55,11 @@ jobs:
           ref: 0f66059d9110f8e667200bbca22396bd0c78c02e
           path: visual
           persist-credentials: false
-      - name: Exact private RED baseline without exposing Instructor code
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          repository: silverbjin/axia-robot-safety-instructor
-          ref: 966886c4627deb2bb3b37111fe336eeee6b9ebb4
-          token: ${{ secrets.AXIA_CLOUD_CI }}
-          path: instructor-baseline-red
-          persist-credentials: false
-      - name: CM120 L0 actual RED baseline and GREEN candidate (never ROS/Goal here)
-        shell: bash
-        run: |
-          set -Eeuo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '795130709e7af695351bbc11b512d40d2242c4e1'
-          test "$(git -C instructor-baseline-red -c safe.directory="$PWD/instructor-baseline-red" rev-parse HEAD)" = '966886c4627deb2bb3b37111fe336eeee6b9ebb4'
-          cp instructor/tests/unit/test_g07_cm120_acceptance_observer_minimal.py instructor-baseline-red/tests/unit/
-          if (cd instructor-baseline-red && PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests/unit -p 'test_g07_cm120_acceptance_observer_minimal.py' -v) > /tmp/axia_g07_cm120_baseline_red.log 2>&1; then
-            echo AXIA_G07_CM120_RED_UNEXPECTED_BASELINE_PASS >&2
-            exit 3
-          fi
-          grep -Fq 'FAILED (failures=2)' /tmp/axia_g07_cm120_baseline_red.log || {
-            cat /tmp/axia_g07_cm120_baseline_red.log
-            echo AXIA_G07_CM120_BASELINE_RED_SET_UNVERIFIED >&2
-            exit 3
-          }
-          echo AXIA_G07_CM120_ORIGINAL_PROC_THREADS_RED_2_OF_2_REPRODUCED
-          (cd instructor && PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests/unit -p 'test_g07_cm120_acceptance_observer_minimal.py' -v)
-          python3 -m py_compile instructor/tools/p2_g07_ci_moving_goal.py
-          echo AXIA_G07_CM120_NONSAFETY_PROC_LOAD_MINIMAL_GREEN_NO_ROS_NO_GOAL
       - name: Public L0 GREEN, SHA fidelity, and no additional command publisher
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C unified-public rev-parse HEAD)" = "352ea7c2197b937e8566ba90cd4d8fff46dd9f88"
+          test "$(git -C unified-public rev-parse HEAD)" = "2e18ed484250b452d29caaefd9449023399bf53c"
           test "$(git -C visual rev-parse HEAD)" = '0f66059d9110f8e667200bbca22396bd0c78c02e'
           export PYTHONPATH="$PWD/unified-public"
           python3 -m unittest discover -s unified-public/d06/tests -p 'test_g07_unified_first_timing_regression.py' -v
@@ -104,7 +78,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '795130709e7af695351bbc11b512d40d2242c4e1'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '420fd276ec1018f7fcc3f14873693cad02f080b4'
           cd instructor
           python3 -m unittest discover -s tests/unit -p 'test_g07_field_official_cm_cpu_parity_20261115.py' -v
           python3 -m unittest discover -s tests/unit -p 'test_g07_cycle22_wsl2_cm_exclusive_cpu_first_gap_20261116.py' -v
@@ -128,7 +102,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '795130709e7af695351bbc11b512d40d2242c4e1'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '420fd276ec1018f7fcc3f14873693cad02f080b4'
           test "$ROS_DISTRO" = jazzy
           cd instructor
           mkdir -p results/p2-g07-ci-moving
@@ -193,7 +167,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           cd instructor
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '795130709e7af695351bbc11b512d40d2242c4e1'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '420fd276ec1018f7fcc3f14873693cad02f080b4'
           test "$(git hash-object tools/native_s02/s02_physics_witness.cc)" = 2035cf411972e35fa7d9b6d16766bbc784051ff8
           if ! command -v c++ >/dev/null || ! test -e /usr/include/gz/sim8/gz/sim/System.hh;then
             apt-get update -qq
@@ -224,10 +198,10 @@ jobs:
         run: |
           set -euo pipefail
           cd instructor
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '795130709e7af695351bbc11b512d40d2242c4e1'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '420fd276ec1018f7fcc3f14873693cad02f080b4'
           export GZ_SIM_SYSTEM_PLUGIN_PATH="$RUNNER_TEMP/s02-native-one-goal-build:${GZ_SIM_SYSTEM_PLUGIN_PATH:-}"
           export AXIA_S02_ECM_WITNESS_CI=1 AXIA_S02_ECM_WITNESS_MOVING_ALLOWED=1
-          export AXIA_S02_WITNESS_SOURCE_SHA=795130709e7af695351bbc11b512d40d2242c4e1
+          export AXIA_S02_WITNESS_SOURCE_SHA=420fd276ec1018f7fcc3f14873693cad02f080b4
           export AXIA_S02_WITNESS_SESSION=s02_live_one_goal_83
           export AXIA_S02_ECM_WITNESS_REPORT="$PWD/results/p2-g07-ci-moving/real-l2/s02_ecm_witness.json"
           echo AXIA_S02_PUBLIC_SIM_ONLY_ONE_GOAL_NATIVE_CONTACT_WITNESS_ARMED
@@ -357,26 +331,6 @@ jobs:
             echo AXIA_G07_CYCLE27_ACTUAL_FIRST_120MS_RPC_ORIGINAL_MISSING_HOLD_NO_INFERENCE
           fi
           echo AXIA_G07_CYCLE27_FIRST_GAP_DIAG_NOT_RELEASE_AUTHORITY
-      - name: CM120 exact real RMW source release margin (not hard TTL)
-        shell: bash
-        run: |
-          set -Eeuo pipefail
-          python3 - <<'PY'
-          import json
-          from pathlib import Path
-          folder=Path("instructor/results/p2-g07-ci-moving/real-l2/g07_ci_moving")
-          report=json.loads((folder/"ci_moving_goal_result.json").read_text())
-          diag=report.get("cm_first_120ms_rmw_release_margin")
-          assert isinstance(diag,dict), "CM_RMW_FIRST120_EVIDENCE_MISSING"
-          assert diag.get("status")=="NO_CM_SOURCE_GAP_OBSERVED", (
-              "CM_RMW_120MS_RELEASE_HOLD "+str(diag.get("status"))+" "+str(diag.get("cm_source_gap_sec")))
-          rows=[json.loads(line) for line in (folder/"actual_ros_events.jsonl").read_text().splitlines()]
-          p=[e for e in rows if e.get("kind")=="pre_guard"
-             and type(e.get("rmw_source_ns")) is int
-             and type(e.get("rmw_publication_seq")) is int]
-          assert len(p)>=100,"CM_RMW_SOURCE_SAMPLE_COUNT_INSUFFICIENT"
-          print("AXIA_G07_CM120_SOURCE_MARGIN_L2_PASS_ONLY_ORIGINAL_150MS_TTL_UNCHANGED")
-          PY
       - name: Field 150ms hard safety and 120ms release headroom from actual shared GUI Goal
         if: always()
         shell: bash
@@ -457,7 +411,7 @@ jobs:
             'graceful_teardown':'P2_L2_GRACEFUL_TEARDOWN' in
               (root/'teardown.txt').read_text() if (root/'teardown.txt').is_file() else False}
           result=review(w,g,calibration,counts,clean,
-              source_sha='795130709e7af695351bbc11b512d40d2242c4e1',native_blob_sha=blob)
+              source_sha='420fd276ec1018f7fcc3f14873693cad02f080b4',native_blob_sha=blob)
           result['original_native_witness_sha256']=hashlib.sha256(witness.read_bytes()).hexdigest()
           result['original_bag_sqlite_sha256']=hashlib.sha256(dbs[0].read_bytes()).hexdigest()
           (root/'s02_same_goal_native_review.json').write_text(
@@ -647,7 +601,7 @@ jobs:
           overlap=any(x.get('actual_scan_messages',0)>0 and
                       goal[0]<=x.get('t_monotonic',-1)<=goal[0]+60 for x in obs)
           print('AXIA_G07_GUI_STRESS_CI_PROVENANCE '+json.dumps({
-              'same_p4_source':'795130709e7af695351bbc11b512d40d2242c4e1',
+              'same_p4_source':'420fd276ec1018f7fcc3f14873693cad02f080b4',
               'rviz_and_gazebo_gui_xvfb':actual_both,
               'display_before_original_goal':started_before_goal,
               'real_scan_during_goal_window':overlap,
