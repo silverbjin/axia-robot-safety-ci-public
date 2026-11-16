@@ -1,0 +1,50 @@
+name: AXIA Block C Owner WSL2 field failure parity (PUBLIC, same runner)
+on:
+  push:
+    branches: ['feat/block-c-owner-final-wsl2-*']
+    paths:
+      - 'block_c/scripts/axia_block_c_owner_final_once.sh'
+      - 'block_c/tests/test_owner_field_parity_public.py'
+      - '.github/workflows/block-c-owner-field-parity.yml'
+  pull_request:
+    paths:
+      - 'block_c/scripts/axia_block_c_owner_final_once.sh'
+      - 'block_c/tests/test_owner_field_parity_public.py'
+      - '.github/workflows/block-c-owner-field-parity.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  owner-field-regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          path: ci-public
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: dff7b4a2710525a72287f5416b7b613a9d979f1e
+          path: student
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Pinned student checkout and public pytest
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C student rev-parse HEAD)" = dff7b4a2710525a72287f5416b7b613a9d979f1e
+          python3 -m pip install -q pytest==8.3.5
+      - name: SAME Owner runner exercised with real manifest parser on synthetic public mirror
+        shell: bash
+        env:
+          AXIA_BLOCK_C_PUBLIC_STUDENT_ROOT: ${{ github.workspace }}/student
+        run: |
+          set -Eeuo pipefail
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest -q \
+            ci-public/block_c/tests/test_owner_field_parity_public.py
+          echo BLOCK_C_OWNER_FIELD_PARITY_PUBLIC_CI_PASS
+          echo BLOCK_C_OWNER_WSL2_NOT_RUN_PRIVATE_SOURCE_NOT_CHECKED
