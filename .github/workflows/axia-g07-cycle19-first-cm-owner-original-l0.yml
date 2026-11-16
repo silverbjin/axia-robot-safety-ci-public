@@ -1,0 +1,36 @@
+# Owner WSL2 first CM RMW gap causal narrowing, only read existing original.
+name: AXIA G07 Cycle19 Owner first CM source gap raw attribution L0
+on:
+  push:
+    branches: ['fix/g07-field-first-cm-gap-attribution-20261116']
+    paths:
+      - '.github/workflows/axia-g07-cycle19-first-cm-owner-original-l0.yml'
+      - 'd06/live/g07_cycle19_first_cm_archive_readonly.py'
+      - 'd06/tests/test_g07_cycle19_first_cm_archive_readonly.py'
+      - 'd06/tests/test_g07_cycle18_field_first_owner_parity_v5.py'
+      - 'scripts/axia_g07_cycle19_owner_existing_raw_readonly_once.sh'
+      - 'd06/docs/G07_CYCLE19_FIRST_CM_SOURCE_VS_RPC_REPORT_20261116_KO.md'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  public-readonly-l0:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: First source/receive and STOP RPC overlap: synthetic tests
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest discover -s d06/tests -p 'test_g07_cycle19_first_cm_archive_readonly.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_g07_cycle18_field_first_owner_parity_v5.py' -v
+          python3 -m py_compile d06/live/g07_cycle19_first_cm_archive_readonly.py
+          echo AXIA_G07_CYCLE19_PUBLIC_RAW_FIRST_GAP_L0_PASS_NO_ROS_NO_GOAL
+      - name: Owner downloader only if present; syntax and no Goal contracts
+        run: |
+          set -Eeuo pipefail
+          if [[ -f scripts/axia_g07_cycle19_owner_existing_raw_readonly_once.sh ]];then
+            bash -n scripts/axia_g07_cycle19_owner_existing_raw_readonly_once.sh
+            bash scripts/axia_g07_cycle19_owner_existing_raw_readonly_once.sh --self-check
+          fi
+          echo AXIA_G07_CYCLE19_OWNER_ORIGINAL_REQUIRED_FOR_ACTUAL_CAUSE_HOLD
