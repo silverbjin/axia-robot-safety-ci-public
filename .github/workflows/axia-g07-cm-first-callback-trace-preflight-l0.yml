@@ -96,7 +96,7 @@ jobs:
           lttng enable-event --userspace -s "$SESSION" 'ros2:rclcpp_callback_register' >/dev/null
           lttng add-context --userspace -s "$SESSION" -t vpid >/dev/null
           lttng start "$SESSION" >/dev/null
-          START_NS="$(python3 -c 'import time; print(time.monotonic_ns())')"
+          START_ANCHOR="$(python3 -c 'import json,time; print(json.dumps({"mono_ns":time.monotonic_ns(),"wall_ns":time.time_ns()}))')"
           export ROS_DOMAIN_ID=97
           # The exact official CM executable, but NO lifecycle activation,
           # /cmd_vel publisher, Nav2 Goal, Gazebo or moving robot.
@@ -108,7 +108,7 @@ jobs:
           kill "$CM_PID" >/dev/null 2>&1 || true
           wait "$CM_PID" >/dev/null 2>&1 || true
           echo AXIA_G07_CYCLE27_OFFICIAL_CM_LIFECYCLE_ONLY_NO_GOAL
-          END_NS="$(python3 -c 'import time; print(time.monotonic_ns())')"
+          END_ANCHOR="$(python3 -c 'import json,time; print(json.dumps({"mono_ns":time.monotonic_ns(),"wall_ns":time.time_ns()}))')"
           lttng stop "$SESSION" >/dev/null
           lttng destroy "$SESSION" >/dev/null
           babeltrace2 "$WORK/trace" > "$WORK/events.txt"
@@ -122,7 +122,7 @@ jobs:
           print("AXIA_G07_CYCLE27_RCLCPP_CALLBACK_START_END_TRACE_DECODE_L1_PASS_NO_GOAL"+
                 " callback_start="+str(start)+" callback_end="+str(end))
           PY
-          /usr/bin/python3 - "$WORK/trace" "$START_NS" "$END_NS" <<'PY'
+          /usr/bin/python3 - "$WORK/trace" "$START_ANCHOR" "$END_ANCHOR" <<'PY'
           import bt2,json,sys
           rows=[]; registered=[]; ticks=[]
           for msg in bt2.TraceCollectionMessageIterator(sys.argv[1]):
@@ -149,15 +149,27 @@ jobs:
                 json.dumps(rows[:2],sort_keys=True))
           assert registered, "NO_RCLCPP_CALLBACK_REGISTER_TRACEPOINT"
           assert ticks, "TRACE_EVENT_CLOCK_MISSING"
-          beginning=int(sys.argv[2]); ending=int(sys.argv[3])
-          # LTTng UST and Python host-monotonic share a timebase in this
-          # actual container only if the snapshot is in the active session.
-          aligned=(beginning-2_000_000_000 <= min(ticks)<= ending+2_000_000_000 and
-                   beginning-2_000_000_000 <= max(ticks)<= ending+2_000_000_000)
+          begin=json.loads(sys.argv[2]); end=json.loads(sys.argv[3])
+          # Babeltrace ns_from_origin may be epoch (wall) even for a kernel
+          # monotonic-backed trace clock; NEVER assume its domain.
+          def aligned(key):
+              return (begin[key]-2_000_000_000 <= min(ticks)<=end[key]+2_000_000_000
+                      and begin[key]-2_000_000_000 <=max(ticks)<=end[key]+2_000_000_000)
+          is_mono=aligned("mono_ns");is_wall=aligned("wall_ns")
+          offset_start=begin["wall_ns"]-begin["mono_ns"]
+          offset_end=end["wall_ns"]-end["mono_ns"]
+          offset_drift_ms=abs(offset_end-offset_start)/1e6
+          source=("HOST_MONOTONIC" if is_mono else "HOST_WALL_EPOCH" if is_wall
+                  else "UNVERIFIED_CLOCK_DOMAIN")
           print("AXIA_G07_CYCLE29_CALLBACK_REGISTRATION_SCHEMA_L1 "+
-                json.dumps({"register_count":len(registered),
-                            "first":registered[0],"last":registered[-1],
-                            "clock_aligned_host_monotonic":aligned},sort_keys=True))
-          assert aligned, "LTTNG_CLOCK_NOT_ALIGNED_WITH_HOST_MONOTONIC"
+                json.dumps({
+                    "register_count":len(registered),"first":registered[0],
+                    "last":registered[-1],"clock_domain":source,
+                    "trace_vs_mono_start_sec":round((min(ticks)-begin["mono_ns"])/1e9,3),
+                    "trace_vs_wall_start_sec":round((min(ticks)-begin["wall_ns"])/1e9,3),
+                    "host_wall_mono_offset_drift_ms":round(offset_drift_ms,3),
+                },sort_keys=True))
+          assert is_mono or is_wall, "LTTNG_CLOCK_DOMAIN_UNVERIFIED"
+          assert offset_drift_ms<50, "HOST_WALL_TO_MONOTONIC_STEP_DETECTED_NOT_PROVEN"
           PY
           echo AXIA_G07_CYCLE27_TRACE_TOOLS_CI_DIAGNOSTIC_ONLY_FORMAL_OWNER_HOLD
