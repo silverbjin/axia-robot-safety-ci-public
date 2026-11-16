@@ -21,14 +21,14 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: cf325e1372684d24a5579fcae0ae9d6618d62df3
+          ref: c1d778c0f8ad68837487b65fc4f8557aef842887
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
       - name: Native STOP priority role and original Goal parity RED or GREEN
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor rev-parse HEAD)" = cf325e1372684d24a5579fcae0ae9d6618d62df3
+          test "$(git -C instructor rev-parse HEAD)" = c1d778c0f8ad68837487b65fc4f8557aef842887
           cd instructor
           python3 -m unittest discover -s tests/unit -p 'test_g07_cycle28_prearmed_native_stop_priority_parity_20261116.py' -v
           python3 -m unittest discover -s tests/unit -p 'test_p4_g07_goal_observer_cpu_parity_20261115.py' -v
