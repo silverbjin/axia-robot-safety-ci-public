@@ -12,6 +12,43 @@ readonly PUBLIC_REAL_GAZEBO_L2_RUN='43793585641'
 readonly PUBLIC_NO_ROS_L0_RUN='43793526290'
 readonly CI_CONTAINER_DIGEST='sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e'
 
+# Shared production and public CI L0 pre-ROS watcher lifecycle.
+axia_d07_watch_start() {
+  local run_dir="${1:-}"
+  [[ -n "$run_dir" && -d "$run_dir" && ! -L "$run_dir" ]] || {
+    echo 'AXIA_D07_H01_WATCH_DIR_INVALID_NO_ROS' >&2; return 3;
+  }
+  WATCH="$run_dir/.x11_watch_alive"
+  WINDOWS="$run_dir/x11_real_windows.txt"
+  [[ -n "$WATCH" && "$WATCH" == "$run_dir/.x11_watch_alive" ]] || {
+    echo 'AXIA_D07_H01_WATCH_PATH_EMPTY_NO_ROS' >&2; return 3;
+  }
+  (umask 077; : > "$WATCH") || {
+    echo 'AXIA_D07_H01_WATCH_CREATE_FAILED_NO_ROS' >&2; return 3;
+  }
+  [[ -f "$WATCH" ]] || return 3
+  (
+    while [[ -e "$WATCH" ]]; do
+      tree="$(xwininfo -root -tree 2>/dev/null || true)"
+      if grep -Eiq 'RViz' <<<"$tree"; then echo 'RVIZ' >> "$WINDOWS"; fi
+      if grep -Eiq 'Gazebo' <<<"$tree"; then echo 'GAZEBO' >> "$WINDOWS"; fi
+      sleep 2
+    done
+  ) &
+  WATCH_PID=$!
+  [[ "$WATCH_PID" =~ ^[0-9]+$ ]] || {
+    echo 'AXIA_D07_H01_WATCH_PROCESS_NOT_STARTED' >&2; return 3;
+  }
+}
+axia_d07_watch_stop() {
+  [[ -z "${WATCH:-}" ]] || rm -f -- "$WATCH"
+  if [[ -n "${WATCH_PID:-}" ]]; then
+    kill "$WATCH_PID" 2>/dev/null || true
+    wait "$WATCH_PID" 2>/dev/null || true
+  fi
+  WATCH_PID=''
+  WATCH=''
+}
 if [[ "${1:-}" == '--self-check' ]]; then
   [[ $# == 1 && "$PRIVATE_SHA" =~ ^[0-9a-f]{40}$ &&
      "$PUBLIC_REAL_GAZEBO_L2_RUN" =~ ^[0-9]{11}$ ]] || exit 3
@@ -30,6 +67,13 @@ end=source.index("\nPY\nVERDICT_RC=",start)
 compile(source[start:end],"<d07_h01_owner_embedded_verifier>","exec")
 print("AXIA_D07_H01_OWNER_PY_VERDICT_STATIC_COMPILE_PASS")
 PYCHECK
+  CHECK_DIR="$(mktemp -d "${TMPDIR:-/tmp}/d07-h01-owner-check-XXXXXXXX")"
+  trap 'axia_d07_watch_stop; rm -rf -- "$CHECK_DIR" "$CHECK_DIR.tar.gz" "$CHECK_DIR.tar.gz.sha256"' EXIT
+  axia_d07_watch_start "$CHECK_DIR"
+  [[ -n "$WATCH" && -f "$WATCH" && "$WATCH_PID" =~ ^[0-9]+$ ]] || exit 3
+  axia_d07_watch_stop
+  [[ ! -e "$CHECK_DIR/.x11_watch_alive" ]] || exit 3
+  echo 'AXIA_D07_H01_WATCH_SENTINEL_LIFECYCLE_L0_PASS'
   echo "AXIA_D07_H01_OWNER_BOOTSTRAP_STATIC_L0_PASS pinned_private=$PRIVATE_SHA public_l2=$PUBLIC_REAL_GAZEBO_L2_RUN"
   echo 'NO_ROS_NO_GAZEBO_NO_GOAL OWNER_WSL2_L3_NOT_RUN'
   exit 0
@@ -93,17 +137,11 @@ mkdir -p -- "$ROOT"
 chmod 700 "$ROOT"
 RUN="$(mktemp -d "$ROOT/d07-h01-owner-XXXXXXXX")"
 WORK="$(mktemp -d "$HOME/.axia_d07_h01_checkout_XXXXXXXX")"
-WINDOWS="$RUN/x11_real_windows.txt"
-WATCH=''
-WATCH_PID=''
 cleanup() {
   local rc=$?
   trap - EXIT INT TERM
-  if [[ -n "$WATCH" ]]; then rm -f -- "$WATCH"; fi
-  if [[ -n "$WATCH_PID" ]]; then
-    kill "$WATCH_PID" 2>/dev/null || true
-    wait "$WATCH_PID" 2>/dev/null || true
-  fi
+  set +e
+  axia_d07_watch_stop
   cd "$HOME" 2>/dev/null || cd /
   if [[ "$WORK" == "$HOME"/.axia_d07_h01_checkout_* && -d "$WORK" ]]; then
     rm -rf -- "$WORK"
@@ -154,25 +192,14 @@ echo 'NO NavigateToPose / NO cmd_vel / NO certified hardware E-Stop'
 echo 'AXIA_MVP_DEMO_ACCEPTED=HOLD; this validates only D07-H01 GUI L3'
 echo "AXIA_D07_H01_OWNER_EVIDENCE_ROOT=$RUN"
 
-# X11 real window observation is independent of the ROS/DDS callbacks.
-touch "$WATCH"
-(
-  while [[ -e "$WATCH" ]]; do
-    tree="$(xwininfo -root -tree 2>/dev/null || true)"
-    if grep -Eiq 'RViz' <<<"$tree"; then echo 'RVIZ' >> "$WINDOWS"; fi
-    if grep -Eiq 'Gazebo' <<<"$tree"; then echo 'GAZEBO' >> "$WINDOWS"; fi
-    sleep 2
-  done
-) &
-WATCH_PID=$!
+# Same X11 watcher lifecycle as --self-check, no separate shell recipe.
+axia_d07_watch_start "$RUN"
 
 set +e
 bash "$PRIVATE_RUNNER" --run 2>&1 | tee "$RUN/owner_stdout.log"
 RUNNER_RC=${PIPESTATUS[0]}
 set -e
-rm -f -- "$WATCH"
-wait "$WATCH_PID" 2>/dev/null || true
-WATCH_PID=''
+axia_d07_watch_stop
 
 # Read-only scoped L3 verifier: same pure three-phase oracle as the L2 workflow,
 # plus original exit status and physically observed X11 window titles.
