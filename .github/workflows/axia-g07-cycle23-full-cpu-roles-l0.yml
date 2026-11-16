@@ -21,5 +21,6 @@ jobs:
         run: |
           set -Eeuo pipefail
           python3 -m unittest discover -s d06/tests -p 'test_g07_cycle23_cm_marker_role_conflict.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_g07_unified_gui_sidecar_contract.py' -v
           python3 -m py_compile d06/live/d06_gui_cpu_plan.py
           echo AXIA_G07_CYCLE23_FULL_CPU_ROLES_L0_PASS_NO_ROS_NO_GOAL
