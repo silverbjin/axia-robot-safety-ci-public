@@ -69,6 +69,20 @@ jobs:
           python3 -m unittest discover -s owner-source/tests -p test_axia_d07_h01_owner_bootstrap_contract.py -v
           python3 -m unittest discover -s owner-source/tests -p test_axia_wsl2_gpu_resource_monitor.py -v
           echo D07_H01_OWNER_BOOTSTRAP_L0_SYNTHETIC_ONLY_NO_ROS_NO_WSL2
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-ci-public
+          ref: 40a1712fed562dd93e98e8bf4952bde5938120dd
+          path: gpu-owner-source
+          persist-credentials: false
+      - name: Pinned Owner WSLg D3D12 GUI trial preflight L0, NO ROS
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C gpu-owner-source rev-parse HEAD)" = '40a1712fed562dd93e98e8bf4952bde5938120dd'
+          bash -n gpu-owner-source/scripts/axia_d07_h01_gpu_gui_owner_wsl2_once.sh
+          python3 -m unittest discover -s gpu-owner-source/tests -p test_axia_d07_gpu_gui_owner_contract.py -v
+          echo D07_GPU_GUI_OWNER_PREFLIGHT_ONLY_NO_ACTUAL_WSLG_NO_GAZEBO
       - name: Destroy private checkout
         if: always()
         run: rm -rf -- instructor
