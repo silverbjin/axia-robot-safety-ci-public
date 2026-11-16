@@ -196,6 +196,14 @@ jobs:
           if [[ "$PROBE_RC" != 0 ]]; then
             echo D07_H01_REAL_NOACK_PROBE_FIRST_FAILURE
             cat results/d07-h01-gui-ci/noack_real_probe.log || true
+            for f in \
+              results/d07-h01-gui-ci/live_stdout.log \
+              results/d07-h01-gui-ci/real-l2/staged_startup.log \
+              results/d07-h01-gui-ci/real-l2/startup_verdict.json \
+              results/d07-h01-gui-ci/real-l2/startup_verdict.localization_start.native.json \
+              results/d07-h01-gui-ci/real-l2/startup_verdict.localization_start.readonly_reconcile.json; do
+              if [[ -f "$f" ]]; then echo "=== FIRST_NATIVE $f ===";tail -n 110 "$f";fi
+            done
             exit 3
           fi
           cat results/d07-h01-gui-ci/noack_real_probe.log
