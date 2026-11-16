@@ -6,7 +6,7 @@ import tempfile
 import unittest
 ROOT=Path(__file__).resolve().parents[1]
 SCRIPT=ROOT/"scripts/axia_d07_h01_gpu_gui_owner_wsl2_once.sh"
-PRIVATE_SHA="9213fe2806a7db9151f761b9a9285117983fc135"
+PRIVATE_SHA="a9f0d2b6ae1f0dcf2e8f92b263d9b66480924c4e"
 
 class OwnerGpuTrialContract(unittest.TestCase):
     def test_owner_pins_real_shared_l2_and_does_not_enable_ci_xvfb(self):
@@ -16,7 +16,7 @@ class OwnerGpuTrialContract(unittest.TestCase):
         self.assertIn("CI_SAME_SHA_GAZEBO_XVFB_L2",source)
         self.assertIn("WSLG_D3D12_GUI_NOT_VERIFIED",source)
         self.assertIn("unset AXIA_D07_H01_CI_SOFTWARE_GUI",source)
-        self.assertNotIn("AXIA_D07_H01_PRIOR_PUBLIC_L2_IS_SOFTWARE_BASELINE_NOT_GPU_GUI_TRIAL",source)
+        self.assertNotIn("AXIA_D07_H01_CI_SAME_SHA_GAZEBO_XVFB_L2_PASS_WSLG_D3D12_GUI_NOT_VERIFIED",source)
 
     def test_bootstrap_l0_executes_without_gazebo(self):
         x=subprocess.run(["bash",str(SCRIPT),"--self-check"],text=True,
@@ -50,7 +50,7 @@ class OwnerGpuTrialContract(unittest.TestCase):
             first="D07_H01_GUI_WATCHER_SPAWN_ACK_ABSENT"
             (p/"owner_first_gui_boundary.txt").write_text(first+"\n")
             result=subprocess.run(["python3","-",str(private_tools),str(p),
-                 PRIVATE_SHA,"2","43793585641"],input=code[start:end],
+                 PRIVATE_SHA,"2","43817527534"],input=code[start:end],
                  text=True,capture_output=True,timeout=12)
             verdict=json.loads((p/"owner_l3_verdict.json").read_text())
             self.assertEqual(result.returncode,3,result.stderr)
@@ -65,7 +65,7 @@ class OwnerGpuTrialContract(unittest.TestCase):
         self.assertIn('MESA_D3D12_DEFAULT_ADAPTER_NAME=',s)
         self.assertIn("AXIA_D07_GPU_PREFLIGHT_HOLD_NOT_D3D12_ACCELERATED",s)
         self.assertIn("AXIA_D07_H01_GPU_GUI_TRIAL=1",s)
-        self.assertIn("AXIA_D07_H01_PRIOR_PUBLIC_L2_IS_SOFTWARE_BASELINE_NOT_GPU_GUI_TRIAL",s)
+        self.assertIn("AXIA_D07_H01_CI_SAME_SHA_GAZEBO_XVFB_L2_PASS_WSLG_D3D12_GUI_NOT_VERIFIED",s)
         self.assertIn("D07_H01_OWNER_GUI_VISUAL_HOLD",s)
         self.assertNotIn("NavigateToPose.Goal()",s)
         self.assertNotIn("AXIA_MVP_DEMO_ACCEPTED=PASS",s)
