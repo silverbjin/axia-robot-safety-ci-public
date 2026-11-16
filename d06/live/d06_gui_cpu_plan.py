@@ -30,6 +30,17 @@ def select_monitor_cpu(cpus: set[int] | list[int] | tuple[int, ...]) -> int:
     distinct = sorted(set(cpus))
     if len(distinct) < 4 or not all(type(x) is int and x >= 0 for x in distinct):
         raise ValueError("D06_MONITOR_CPU_INSUFFICIENT_OR_INVALID_AFFINITY")
+    # Cycle37 D07-restored headless GUI: real full Gazebo Goal L2
+    # #43892204272 first native CM source gap=130.477ms, Marker on core2
+    # while official CM was pinned {1,2} (4 cores) / {1,6} (8 cores).
+    # Keep original D06 layout for all legacy profiles. The opt-in moves
+    # ONLY the nice15 read-only Marker subscriber to highest CPU, which
+    # may share Gazebo/evidence bag but NEVER the exact official CM mask.
+    # This is a scheduling hypothesis, not safety or ROS source changes.
+    if os.environ.get("AXIA_G07_GUI_SCENE_OVERLAY") == "1":
+        if os.environ.get("AXIA_G07_CYCLE36_INTEGRATED_GUI") == "1":
+            raise ValueError("D06_C37_SCENE_AND_INTEGRATED_DISPLAY_CONFLICT")
+        return distinct[-1]
     return distinct[-2]
 
 
