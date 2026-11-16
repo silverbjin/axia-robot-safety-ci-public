@@ -31,15 +31,15 @@ class OwnerGpuTrialContract(unittest.TestCase):
         # Owner mVW: empty watcher log + absent GUI stage files. A later
         # FileNotFoundError is NEVER the first failure if GUI failed first.
         code=SCRIPT.read_text()
-        start=code.rfind("<<'PY'\\n")+len("<<'PY'\\n")
-        end=code.index("\\nPY\\nVERDICT_RC=",start)
+        start=code.rfind("<<'PY'\n")+len("<<'PY'\n")
+        end=code.index("\nPY\nVERDICT_RC=",start)
         self.assertIn("owner_first_gui_boundary.txt",code)
         private_tools=ROOT.parent/"instructor"/"tools"
         self.assertTrue(private_tools.is_dir(),"sealed private test utilities missing")
         with tempfile.TemporaryDirectory() as folder:
             p=Path(folder)
             first="D07_H01_GUI_WATCHER_SPAWN_ACK_ABSENT"
-            (p/"owner_first_gui_boundary.txt").write_text(first+"\\n")
+            (p/"owner_first_gui_boundary.txt").write_text(first+"\n")
             result=subprocess.run(["python3","-",str(private_tools),str(p),
                  PRIVATE_SHA,"2","43793585641"],input=code[start:end],
                  text=True,capture_output=True,timeout=12)
