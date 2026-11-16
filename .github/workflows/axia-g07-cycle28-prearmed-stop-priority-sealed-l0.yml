@@ -1,0 +1,40 @@
+# Cycle28 native Gazebo STOP helper CPU priority RED→GREEN, sealed source,
+# NO ROS and NO Goal. Only sanitized verdict leaves the GitHub runner.
+name: AXIA G07 Cycle28 sealed prearmed native STOP priority L0
+on:
+  push:
+    branches: ['release/p2-g06-cm-ttl-20261110']
+    paths: ['.github/workflows/axia-g07-cycle28-prearmed-stop-priority-sealed-l0.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: axia-g07-cycle28-sealed-l0
+  cancel-in-progress: false
+jobs:
+  sealed-native-stop-helper-no-ros-goal:
+    runs-on: ubuntu-24.04
+    environment: axia-instructor-sealed
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact private Instructor candidate; never disclose code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: cf325e1372684d24a5579fcae0ae9d6618d62df3
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          path: instructor
+          persist-credentials: false
+      - name: Native STOP priority role and original Goal parity RED or GREEN
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C instructor rev-parse HEAD)" = cf325e1372684d24a5579fcae0ae9d6618d62df3
+          cd instructor
+          python3 -m unittest discover -s tests/unit -p 'test_g07_cycle28_prearmed_native_stop_priority_parity_20261116.py' -v
+          python3 -m unittest discover -s tests/unit -p 'test_p4_g07_goal_observer_cpu_parity_20261115.py' -v
+          python3 -m unittest discover -s tests/unit -p 'test_g07_cycle26_first_cm_gap_scheduler_probe_20261116.py' -v
+          python3 -m py_compile tools/p4_g07_prearmed_stop.py
+          echo AXIA_G07_CYCLE28_PREARMED_STOP_LOW_PRIORITY_L0_PASS_NO_ROS_NO_GOAL_OWNER_HOLD
+      - name: Delete private instructor source
+        if: always()
+        run: rm -rf -- instructor
