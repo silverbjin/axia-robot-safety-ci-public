@@ -27,7 +27,7 @@ Owner 제공 지원 번들의 SHA256 `3951bfb6e2dc05e5932f5b08bd3f5be5daba9d5cd0
 | 12.295초 | **최초 확증된 Navigation 중단** | `bt_navigator`: `Timed out while waiting for action server to acknowledge goal request for follow_path`; 이후 `NavigateToPose` ABORTED(6) |
 | 12.972초 | **CM Observer** 150ms 초과 | 187.532ms, RMW source 59.048ms, receive 51.876ms, seq +1. **이미 Goal ABORTED 후**이므로 이를 최초 Goal 중단 원인으로 단정 금지 |
 
-Goal 중에는 CM/Guard Observer 최대 각각 약 135ms여서 동일 경계의 150ms 초과를 원본 Observer만으로 확인하지 못했다. `first_guard_latch=null`, `first_safety_transition=null`. 실제 Safety Supervisor 및 Guard의 native source→receive→callback 경계에 대해서는 공식 인수 불가. Goal 중 Scan Observer 간격 위반의 원인이 Gazebo 센서, ROS bridge, DDS, 기록 콜백 중 어디인지 확정되지 않음.
+**별도 시계 교차 점검:** Nav2 원본 wall-clock 로그의 Goal 시작→ABORT 경과는 14.450초, 원본 Observer monotonic Goal 발행→ABORT 경과는 12.295초로 약 **2.155초** 차이가 있다. RMW의 공동 source time-step 추정 약 2.185초와 같은 방향·크기다. 각 시작·종료 이벤트의 캡처 시차가 있으므로 동기화된 하드웨어 시계 점프의 **확증**은 아니지만, 2.235초 실제 CM 중단이라는 해석보다 host clock step 가설을 지지한다. BT가 실제 사용하는 ROS clock을 직접 측정하지 않았으므로 이 시계 차이가 `FollowPath` timeout의 직접 원인인지 역시 미검증이다.\n\nGoal 중에는 CM/Guard Observer 최대 각각 약 135ms여서 동일 경계의 150ms 초과를 원본 Observer만으로 확인하지 못했다. `first_guard_latch=null`, `first_safety_transition=null`. 실제 Safety Supervisor 및 Guard의 native source→receive→callback 경계에 대해서는 공식 인수 불가. Goal 중 Scan Observer 간격 위반의 원인이 Gazebo 센서, ROS bridge, DDS, 기록 콜백 중 어디인지 확정되지 않음.
 
 ## 3. 주행 실패 직접 원인과 미증명 하위 원인
 
@@ -54,7 +54,7 @@ MESA-EGL: warning: Not allowed to force software rendering when API explicitly s
 
 Owner WSLg에서 강제 llvmpipe와 EGL hardware-device 선택 사이의 충돌을 직접 보여 주는 정황 증거이며, **렌더링 실패 또는 심각한 부하에 관여했을 가능성이 높다**. 다만 경고 자체만으로 3D world 미수신의 유일한 원인이라고 확정할 수 없다. 동일 세션의 `GZ_PARTITION`은 측정·기록돼 있으나 서버/GUI 양쪽의 실제 `gz service -l` 및 world state 수신 검증은 없다.
 
-Sidecar의 `display_attestation.json`: `real_gazebo_gui_window=null`, `real_rviz_window=null`, `wslg_verified=false`. **프로세스 존재는 3D scene attachment 성공이 아니다.** Gazebo Harmonic 문서도 GUI-only `gz sim -g`에서 서버가 없으면 빈 화면이라고 명시한다. 사진의 `Entity 0`은 연결되지 않은 GUI, 서버 종료 후 GUI, 렌더 path 문제와 부합하지만 어느 하나를 확정하지 않는다.
+**Owner CPU 역할 실제 배치:** CM 16개 thread affinity는 CPU `1,6`, Goal Observer는 `2,3,4,5`, read-only Marker Observer는 `2`, Gazebo GUI+RViz2는 `0`, Bag recorder는 `7`. CM과 Goal Observer는 직접 겹치지 않으나 **Marker observer CPU 2는 Goal Observer와 겹친다**. Nav2 Controller 및 Gazebo server의 모든 thread가 이 배치와 분리됐다는 증거는 없다. CPU affinity는 부하의 실측치 또는 병목 인과관계가 아니다.\n\nSidecar의 `display_attestation.json`: `real_gazebo_gui_window=null`, `real_rviz_window=null`, `wslg_verified=false`. **프로세스 존재는 3D scene attachment 성공이 아니다.** Gazebo Harmonic 문서도 GUI-only `gz sim -g`에서 서버가 없으면 빈 화면이라고 명시한다. 사진의 `Entity 0`은 연결되지 않은 GUI, 서버 종료 후 GUI, 렌더 path 문제와 부합하지만 어느 하나를 확정하지 않는다.
 
 중요한 시각상의 함정: 제출된 사진명 시각 `08:21:19`는 지원 번들 `08:20:35 UTC` 이후 약 44초이므로, **이미 Owner 시뮬레이션/Sidecar 종료 후 남아 있는 빈 Gazebo window** 가능성이 있다. Nav2 주행 중에도 빈 화면이었는지는 동일 시각 스크린샷/서버 alive 증거가 없다.
 
