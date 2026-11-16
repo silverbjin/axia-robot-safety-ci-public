@@ -8,8 +8,8 @@ umask 077
 
 readonly PRIVATE_REPO='silverbjin/axia-robot-safety-instructor'
 readonly PRIVATE_SHA='c069052cc491117006f63b499577ef766a30f7ea'
-readonly PUBLIC_REAL_GAZEBO_XVFB_L2_RUN='43817527534'
-readonly PUBLIC_NO_ROS_L0_RUN='43793526290'
+readonly PUBLIC_REAL_GAZEBO_XVFB_L2_RUN='43866354976'
+readonly PUBLIC_NO_ROS_L0_RUN='43866608923'
 readonly CI_CONTAINER_DIGEST='sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e'
 
 # Bounded read-only WSLg GUI screenshot and resource capture. Never auto PASS.
