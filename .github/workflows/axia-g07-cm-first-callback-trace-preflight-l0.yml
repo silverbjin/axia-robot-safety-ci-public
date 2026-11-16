@@ -93,8 +93,10 @@ jobs:
           lttng create "$SESSION" --output="$WORK/trace" >/dev/null
           lttng enable-event --userspace -s "$SESSION" 'ros2:callback_start' >/dev/null
           lttng enable-event --userspace -s "$SESSION" 'ros2:callback_end' >/dev/null
+          lttng enable-event --userspace -s "$SESSION" 'ros2:rclcpp_callback_register' >/dev/null
           lttng add-context --userspace -s "$SESSION" -t vpid >/dev/null
           lttng start "$SESSION" >/dev/null
+          START_NS="$(python3 -c 'import time; print(time.monotonic_ns())')"
           export ROS_DOMAIN_ID=97
           # The exact official CM executable, but NO lifecycle activation,
           # /cmd_vel publisher, Nav2 Goal, Gazebo or moving robot.
@@ -106,6 +108,7 @@ jobs:
           kill "$CM_PID" >/dev/null 2>&1 || true
           wait "$CM_PID" >/dev/null 2>&1 || true
           echo AXIA_G07_CYCLE27_OFFICIAL_CM_LIFECYCLE_ONLY_NO_GOAL
+          END_NS="$(python3 -c 'import time; print(time.monotonic_ns())')"
           lttng stop "$SESSION" >/dev/null
           lttng destroy "$SESSION" >/dev/null
           babeltrace2 "$WORK/trace" > "$WORK/events.txt"
@@ -119,21 +122,42 @@ jobs:
           print("AXIA_G07_CYCLE27_RCLCPP_CALLBACK_START_END_TRACE_DECODE_L1_PASS_NO_GOAL"+
                 " callback_start="+str(start)+" callback_end="+str(end))
           PY
-          /usr/bin/python3 - "$WORK/trace" <<'PY'
+          /usr/bin/python3 - "$WORK/trace" "$START_NS" "$END_NS" <<'PY'
           import bt2,json,sys
-          rows=[]
+          rows=[]; registered=[]; ticks=[]
           for msg in bt2.TraceCollectionMessageIterator(sys.argv[1]):
-              if (isinstance(msg,bt2._EventMessageConst) and
-                  msg.event.name in ("ros2:callback_start","ros2:callback_end")):
+              if not isinstance(msg,bt2._EventMessageConst):
+                  continue
+              if msg.event.name in ("ros2:callback_start","ros2:callback_end"):
                   rows.append({
                       "name":msg.event.name,
                       "payload_keys":sorted(list(msg.event.payload_field)),
                       "common_context_keys":sorted(list(msg.event.common_context_field)),
-                      "clock_snapshot_ns_available":
-                          msg.default_clock_snapshot is not None,
+                      "clock_snapshot_ns_available": msg.default_clock_snapshot is not None,
+                  })
+                  if msg.default_clock_snapshot:
+                      ticks.append(msg.default_clock_snapshot.ns_from_origin)
+              elif msg.event.name=="ros2:rclcpp_callback_register":
+                  p=msg.event.payload_field
+                  registered.append({
+                      "payload_keys":sorted(list(p)),
+                      "has_callback": "callback" in p,
+                      "has_symbol": "symbol" in p,
                   })
           assert len(rows)>=4,len(rows)
           print("AXIA_G07_CYCLE27_BABELTRACE_BT2_SCHEMA_L1 "+
                 json.dumps(rows[:2],sort_keys=True))
+          assert registered, "NO_RCLCPP_CALLBACK_REGISTER_TRACEPOINT"
+          assert ticks, "TRACE_EVENT_CLOCK_MISSING"
+          beginning=int(sys.argv[2]); ending=int(sys.argv[3])
+          # LTTng UST and Python host-monotonic share a timebase in this
+          # actual container only if the snapshot is in the active session.
+          aligned=(beginning-2_000_000_000 <= min(ticks)<= ending+2_000_000_000 and
+                   beginning-2_000_000_000 <= max(ticks)<= ending+2_000_000_000)
+          print("AXIA_G07_CYCLE29_CALLBACK_REGISTRATION_SCHEMA_L1 "+
+                json.dumps({"register_count":len(registered),
+                            "first":registered[0],"last":registered[-1],
+                            "clock_aligned_host_monotonic":aligned},sort_keys=True))
+          assert aligned, "LTTNG_CLOCK_NOT_ALIGNED_WITH_HOST_MONOTONIC"
           PY
           echo AXIA_G07_CYCLE27_TRACE_TOOLS_CI_DIAGNOSTIC_ONLY_FORMAL_OWNER_HOLD
