@@ -62,8 +62,8 @@ git -C "$WORK" checkout -q --detach FETCH_HEAD
    "$(git -C "$WORK" rev-parse 'HEAD^{tree}')" == "$RELEASE_TREE" ]] || {
   echo AXIA_G07_CYCLE33_PUBLIC_SHA_TREE_INVALID_NO_GOAL >&2;exit 3;
 }
-GATE="$WORK/d06/acceptance/g07_cycle33_owner_ci_gate_v3.json"
-CHECK="$WORK/d06/live/g07_cycle33_owner_ci_gate_v4.py"
+GATE="$WORK/d06/acceptance/g07_cycle33_owner_ci_gate_v1.json"
+CHECK="$WORK/d06/live/g07_cycle33_owner_ci_gate_v1.py"
 OWNER="$WORK/d06/scripts/g07_cycle33_owner_wsl2_once.sh"
 for f in "$GATE" "$CHECK" "$OWNER" \
  "$WORK/scripts/axia_g07_cycle33_p4_owner_once.sh";do
