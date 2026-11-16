@@ -6,11 +6,13 @@ on:
     paths:
       - 'axia_public_contracts/**'
       - 'tests/**'
+      - 'scripts/axia_instructor_admin_closeout_once.sh'
       - '.github/workflows/public-contracts.yml'
   pull_request:
     paths:
       - 'axia_public_contracts/**'
       - 'tests/**'
+      - 'scripts/axia_instructor_admin_closeout_once.sh'
       - '.github/workflows/public-contracts.yml'
 permissions:
   contents: read
