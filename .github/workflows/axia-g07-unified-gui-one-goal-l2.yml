@@ -43,7 +43,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-ci-public
-          ref: 5f0ca47ed9f60378be2bac323f4a9f1710174e08
+          ref: 2e18ed484250b452d29caaefd9449023399bf53c
           path: unified-public
           persist-credentials: false
       - name: Published D06 read-only viewer sources pinned at public main
@@ -57,7 +57,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C unified-public rev-parse HEAD)" = "5f0ca47ed9f60378be2bac323f4a9f1710174e08"
+          test "$(git -C unified-public rev-parse HEAD)" = "2e18ed484250b452d29caaefd9449023399bf53c"
           test "$(git -C visual rev-parse HEAD)" = '0f66059d9110f8e667200bbca22396bd0c78c02e'
           export PYTHONPATH="$PWD/unified-public"
           python3 -m unittest discover -s unified-public/d06/tests -p 'test_g07_unified_first_timing_regression.py' -v
@@ -188,6 +188,9 @@ jobs:
           lttng enable-event --userspace -s "$SESSION" 'ros2:callback_start' >/dev/null
           lttng enable-event --userspace -s "$SESSION" 'ros2:callback_end' >/dev/null
           lttng enable-event --userspace -s "$SESSION" 'ros2:rclcpp_callback_register' >/dev/null
+          lttng enable-event --userspace -s "$SESSION" 'ros2:rcl_subscription_init' >/dev/null
+          lttng enable-event --userspace -s "$SESSION" 'ros2:rclcpp_subscription_init' >/dev/null
+          lttng enable-event --userspace -s "$SESSION" 'ros2:rclcpp_subscription_callback_added' >/dev/null
           lttng add-context --userspace -s "$SESSION" -t vpid >/dev/null
           lttng add-context --userspace -s "$SESSION" -t vtid >/dev/null
           lttng start "$SESSION" >/dev/null
@@ -372,6 +375,7 @@ jobs:
           from d06.live.g07_cycle29_first_cm_callback_trace import (
               classify_callback_gap,_first_source_pair)
           from d06.live.g07_cycle30_bounded_cm_trace import select_cm_first_window
+          from d06.live.g07_cycle31_cm_topic_callback_identity import resolve_cm_cmdvel_handles
           root=Path("results/p2-g07-ci-moving/real-l2")
           event_path=root/"g07_ci_moving/actual_ros_events.jsonl"
           report_path=root/"g07_ci_moving/ci_moving_goal_result.json"
@@ -407,7 +411,10 @@ jobs:
                   counts["global"]+=1
                   event=msg.event
                   if event.name not in ("ros2:callback_start","ros2:callback_end",
-                                        "ros2:rclcpp_callback_register"):
+                                        "ros2:rclcpp_callback_register",
+                                        "ros2:rcl_subscription_init",
+                                        "ros2:rclcpp_subscription_init",
+                                        "ros2:rclcpp_subscription_callback_added"):
                       continue
                   if msg.default_clock_snapshot is None:
                       continue
@@ -418,10 +425,21 @@ jobs:
                   p=event.payload_field
                   item={"name":event.name,
                         "timestamp_ns":int(msg.default_clock_snapshot.ns_from_origin),
-                        "vpid":vpid,"vtid":int(event.common_context_field["vtid"]),
-                        "callback":str(p["callback"])}
-                  if event.name=="ros2:rclcpp_callback_register":
-                      item["symbol"]=str(p["symbol"])
+                        "vpid":vpid,"vtid":int(event.common_context_field["vtid"])}
+                  if event.name in ("ros2:callback_start","ros2:callback_end",
+                                    "ros2:rclcpp_callback_register"):
+                      item["callback"]=str(p["callback"])
+                      if event.name=="ros2:rclcpp_callback_register":
+                          item["symbol"]=str(p["symbol"])
+                  elif event.name=="ros2:rcl_subscription_init":
+                      item["subscription_handle"]=str(p["subscription_handle"])
+                      item["topic_name"]=str(p["topic_name"])
+                  elif event.name=="ros2:rclcpp_subscription_init":
+                      item["subscription_handle"]=str(p["subscription_handle"])
+                      item["subscription"]=str(p["subscription"])
+                  elif event.name=="ros2:rclcpp_subscription_callback_added":
+                      item["subscription"]=str(p["subscription"])
+                      item["callback"]=str(p["callback"])
                   yield item
           try:
               trace,selected=select_cm_first_window(
@@ -437,14 +455,24 @@ jobs:
                   "owned_cm_registration_events":selected["cm_register_events_kept"],
                   "raw_trace_exported":False,"owner_goal_authorized":False},
                   sort_keys=True))
-          result=classify_callback_gap(rows,report,trace,cm_pid=pid,clock_anchors=anchors)
+          try:
+              verified_handles,linked=resolve_cm_cmdvel_handles(trace,cm_pid=pid)
+          except ValueError as exc:
+              print("AXIA_G07_CYCLE31_TOPIC_CALLBACK_CHAIN_UNVERIFIED_HOLD "+str(exc))
+              raise SystemExit(3)
+          print("AXIA_G07_CYCLE31_CM_SUBSCRIPTION_IDENTITY "+
+                json.dumps(linked,sort_keys=True))
+          result=classify_callback_gap(rows,report,trace,cm_pid=pid,
+                      clock_anchors=anchors,cmd_callback_handles=verified_handles)
           print("AXIA_G07_CYCLE29_OFFICIAL_CM_CALLBACK_FIRST_GAP "+
                 json.dumps(result,sort_keys=True))
           print("AXIA_G07_CYCLE29_INSTRUMENTED_SIMULATION_DIAGNOSTIC_ONLY_NOT_OWNER_RELEASE")
           print("AXIA_MVP_DEMO_ACCEPTED=HOLD")
           if result["status"] in ("TRACE_CLOCK_CALIBRATION_UNVERIFIED_HOLD",
                                   "CM_TRACE_INPUT_UNVERIFIED_HOLD",
-                                  "FIRST_CM_RMW_ORACLE_UNVERIFIED_HOLD"):
+                                  "FIRST_CM_RMW_ORACLE_UNVERIFIED_HOLD",
+                                  "CM_CALLBACK_IDENTITY_UNVERIFIED_HOLD",
+                                  "CM_CALLBACK_TOPIC_IDENTITY_UNVERIFIED_HOLD"):
               raise SystemExit(3)
           PY
 
