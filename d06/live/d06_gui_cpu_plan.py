@@ -21,16 +21,20 @@ def select_cpu(cpus: set[int] | list[int] | tuple[int, ...]) -> int:
 
 
 def select_monitor_cpu(cpus: set[int] | list[int] | tuple[int, ...]) -> int:
-    """Read-only ROS subscriber gets last middle CPU, never GUI/CM/bag.
+    """Read-only Marker must NOT share official CM CPU.
 
-    Mirrors private G07 partition: first=renderer, second=official CM,
-    last=14-topic recorder. The verifier middle pool may share this CPU.
-    Fail closed when fewer than four CPUs permit those role boundaries.
+    Original 4-CPU CI: CM {1,2}, Goal {2,3}, Marker 2 (3 roles on core 2).
+    Original 8-CPU WSL2: Marker 6, which collides with the new exclusive
+    CM {1,6}. This is a role-conflict hypothesis, not a proven TTL cause.
+    On 4/5 CPUs put Marker with Goal/low-priority recorder role, while
+    >=6 CPUs place Marker on the Goal observer pool's first middle core.
+    Renderer=first, CM=second+(6+:second last), recorder=last.
+    Both CI and Owner launch the SAME public sidecar with this function.
     """
     distinct = sorted(set(cpus))
     if len(distinct) < 4 or not all(type(x) is int and x >= 0 for x in distinct):
         raise ValueError("D06_MONITOR_CPU_INSUFFICIENT_OR_INVALID_AFFINITY")
-    return distinct[-2]
+    return distinct[2] if len(distinct)>=6 else distinct[3]
 
 
 def main() -> int:
