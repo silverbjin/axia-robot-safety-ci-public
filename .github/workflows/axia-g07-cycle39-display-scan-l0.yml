@@ -10,6 +10,14 @@ on:
       - 'd06/live/g07_cycle39_scan_timing.py'
       - 'd06/tests/test_g07_cycle39_display_scan_timing.py'
   workflow_dispatch:
+  pull_request:
+    branches: ['fix/g07-cycle38-d07-wslg-gpu-xcb-capture-20261117']
+    paths:
+      - '.github/workflows/axia-g07-cycle39-**'
+      - 'd06/live/g07_cycle39_*'
+      - 'd06/live/d06_readonly_monitor.py'
+      - 'd06/rviz/d06_safety_bubble.rviz'
+      - 'd06/tests/test_g07_cycle39_*'
 permissions:
   contents: read
 jobs:
