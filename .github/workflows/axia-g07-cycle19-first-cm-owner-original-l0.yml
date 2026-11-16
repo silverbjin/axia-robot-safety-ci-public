@@ -19,7 +19,7 @@ jobs:
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - name: First source/receive and STOP RPC overlap: synthetic tests
+      - name: 'First source/receive and STOP RPC overlap: synthetic tests'
         run: |
           set -Eeuo pipefail
           python3 -m unittest discover -s d06/tests -p 'test_g07_cycle19_first_cm_archive_readonly.py' -v
