@@ -44,6 +44,27 @@
 - **새 실제 Gazebo L2 #43849019677**: public workflow `c6ea0dc1970b06028c5c5dbd3f9ae382f8867914`에서 새 Instructor SHA를 사용한 실제 Gazebo Goal 후보를 검증 중. **이 문서 기록 시 결과 미판정**; 완료 여부를 Actions 원본에서 조회해 보완할 것.
 - 변경 후 검증 미완료: 정확한 ROS GUI PID/threads runtime readback, 7채널 TTL, CM source/RMW, native Contact, original 14-topic bag, Cancel/Shutdown/Clean exit, WSLg renderer. 이 항목들은 **HOLD**.
 
+## 3B. 실제 CI의 두 독립적인 후속 위반 (2026-11-16)
+
+**실제 Gazebo L2 #43851121310**, Private `e94f84802d56080a5a11364ebad20fa25d785d2f`:
+- `AXIA_G07_CYCLE36_OFFICIAL_GUI_LOW_PRIORITY_VERIFIED_NO_GOAL pid=2328 cpu=0 nice=19 threads=26` — 실제 GUI PID 검증 PASS. `CLEAR→SLOW→STOP` 실제 주행, `odom_dwell=1.029s`, Goal Cancel ACK, Nav2 shutdown ACK, `CM_CLEAN_EXIT`, bag, S02 native Contact 0/32899 iterations PASS.
+- **릴리스 120ms 목표 FAIL**: CM Observer 최대 `0.135076s`, CM RMW Source 최대 `0.131583s`, Supervisor upstream publication 사이 최대 `0.0498s`; 150ms Guard 하드 TTL 미초과, Guard latch 관찰 없음. 시연 전체 승인 불가. 게시자 스케줄링 원인 입증 아직 안 됨.
+- **읽기 전용 Marker 생존 실패 후보**: 실 World·RViz 창 확인, 그러나 Goal 구간의 `readonly_samples.jsonl`에서 실제 Scan 수신 증거 없음. World/GUI 프로세스 존재만으로 Marker 통과 아님.
+
+**진단 추가 L2 #43852572728**, 동일 private source, 별도 공개 workflow `cd986f273bf0751f8942b4adae03b54f2cc4cc03`:
+- Marker 샘플 3개만 `t_monotonic 356.033–358.035s`, 실제 Goal 시작 `382.631s`. **Goal 24초 전에 Sidecar가 종료**; `sidecar.log`에 `line 101: 1: command not found`, `line 171: 1: command not found`, `G07_UNIFIED_GUI_CHILD_EXITED_EARLY_UNVERIFIED`.
+- 원인은 `d06/scripts/g07_shared_gui_clients.sh`에서 `( "$INTEGRATED_GUI" != 1 && ... )`와 `( "$INTEGRATED_GUI" == 1 || ... )`를 Bash **명령**으로 실행한 오류다. `1`이라는 실행파일을 찾다가 실패했음. Linux·GPU 또는 ROS2 Scan 장애로 오진 금지.
+- **공개 L0 RED #43853421097 → GREEN #43853544471**: 두 조건식을 `{ [[ "$INTEGRATED_GUI" != 1 ]] && ...; }` / `{ [[ "$INTEGRATED_GUI" == 1 ]] || ...; }`로 교정. Public GUI source `132d8c64def534061d3467f3e1a339fbb44e3e68`, 오직 2줄 변경.
+- 동일 실행에서 Nav2 Lifecycle navigation service `SERVICE_TIMEOUT` (40초)도 관찰; Goal 주행은 CLEAR/SLOW/STOP을 달성했으나 **종료 인수는 별개 FAIL**이다. Sidecar를 수정해도 Nav2 shutdown 재검증이 필요하다.
+- 원본 Goal 중 7-channel Observer는 clock~0.10s / CM~0.135s / Scan~0.194s, RMW CM publication >120ms 재현. 기존 150ms TTL과 120ms 릴리스 목표 유지.
+- 변경된 Public GUI 소스를 사용한 실제 Goal 후보 Run **#43853632352**는 이 문서 작성 당시 **진행 중**. L2 실제 종료 판정 전 `AXIA_MVP_DEMO_ACCEPTED=HOLD` 유지.
+
+### 개발 원칙 재확인
+- 확정된 Sidecar Bash 오류와 아직 원인 미증명 CM 발행 120ms 초과를 서로 섞지 않는다.
+- `0.135s < 0.150s`는 120ms *릴리스 여유*를 PASS로 판정할 근거가 아니다.
+- 비공개 Owner 원본을 공개 CI에 복제하지 않는다. 공개 CI에는 비식별 수치와 테스트만 포함한다.
+- #43852572728 Nav2 shutdown service timeout은 후행 실패, CM source 전이와 독립적으로 조사한다. timeout 확대만으로 성공 처리 금지.
+
 ## 4. 현재 가드레일과 완결 정의
 
 `AXIA_MVP_DEMO_ACCEPTED=HOLD`는 릴리스 전까지 유지한다. L0 PASS≠Gazebo 성공. 실제 Gazebo L2는 같은 private SHA/tree와 public GUI source를 사용해야 하며, 원본 14-topic bag, World/Waffle 실제 GUI, Goal EXECUTING, CLEAR→SLOW→STOP, 모든 안전층 7채널 주기와 native RMW source/receive, Odom 정지 ≥1s, 네이티브 Contact 0, 정확한 Goal Cancel ACK, Nav2 shutdown ACK, CM exit0, launch cleanup, CRC/SHA 보관이 모두 필요하다. Owner WSL2는 공개 CI GREEN 후 **최종 1회만** 수행하며 수동 TTY 승인만으로 실제 Goal 허가. 학생 정답/Private 원본 공개하지 않는다.
