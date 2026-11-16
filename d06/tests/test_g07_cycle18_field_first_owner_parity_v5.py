@@ -126,6 +126,19 @@ class TestRealFirstOwnerFieldFailure(unittest.TestCase):
             self.assertNotIn("ADMITTED_ONE_FINAL_WSLG_OWNER_ONLY",r.stdout)
             self.assertEqual(before,(attempt/"source.txt").read_bytes())
 
+    def test_real_owner_wrapper_and_bootstrap_gate_field_history_before_ci_admission(self):
+        wrapper=(ROOT/"d06/scripts/g07_cycle16_owner_wsl2_once.sh").read_text()
+        bootstrap=(ROOT/"scripts/axia_g07_cycle16_owner_wsl2_bootstrap.sh").read_text()
+        field="g07_cycle18_field_owner_admission_v5.py"
+        self.assertIn(field,wrapper)
+        self.assertIn(field,bootstrap)
+        self.assertLess(bootstrap.index(field),
+                        bootstrap.index('echo "AXIA_G07_CYCLE16_CI_REAL_GUI_L2_PASS_RUN='))
+        self.assertLess(wrapper.index(field),
+                        wrapper.index("ADMITTED_ONE_FINAL_WSLG_OWNER_ONLY previous_"))
+        self.assertLess(wrapper.index(field),wrapper.index('ATTEMPT_ROOT="$HOME/'))
+        self.assertIn("FIELD_PREVIOUS_GOAL_CM_TTL_BREACH_HOLD",bootstrap)
+
     def test_actual_owner_readonly_entrypoint_matches_ci_and_has_no_goal(self):
         src=SCRIPT.read_text(encoding="utf-8")
         self.assertIn("g07_cycle18_field_owner_admission_v5.py",src)
