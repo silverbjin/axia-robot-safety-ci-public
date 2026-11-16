@@ -131,35 +131,35 @@ jobs:
             done
             test -s "$ROOT/startup_verdict.navigation_start.native.json"
             python3 - "$ROOT" <<'PY_NOACK_FIXTURE'
-import json,sys
-from pathlib import Path
-root=Path(sys.argv[1])
-local=json.loads((root/'startup_verdict.localization_start.native.json').read_text())
-nav=json.loads((root/'startup_verdict.navigation_start.native.json').read_text())
-assert local['status']=='ACK' and local['success'] is True
-assert nav['status']=='ACK' and nav['success'] is True
-assert local['goal_sent'] is False and nav['goal_sent'] is False
-# Native session is verified successful. Synthesize only one lost client ACK
-# to call the production read-only state reconciliation in the same real ROS graph.
-fixture=dict(local,status='SERVICE_TIMEOUT',success=False,request_sent=True)
-(root/'d07_noack_synthetic_native.json').write_text(json.dumps(fixture))
-print('D07_H01_REAL_L2_ACK_LOSS_SIMULATED_CLIENT_ONLY_NO_SECOND_STARTUP')
-PY_NOACK_FIXTURE
+          import json,sys
+          from pathlib import Path
+          root=Path(sys.argv[1])
+          local=json.loads((root/'startup_verdict.localization_start.native.json').read_text())
+          nav=json.loads((root/'startup_verdict.navigation_start.native.json').read_text())
+          assert local['status']=='ACK' and local['success'] is True
+          assert nav['status']=='ACK' and nav['success'] is True
+          assert local['goal_sent'] is False and nav['goal_sent'] is False
+          # Native session is verified successful. Synthesize only one lost client ACK
+          # to call the production read-only state reconciliation in the same real ROS graph.
+          fixture=dict(local,status='SERVICE_TIMEOUT',success=False,request_sent=True)
+          (root/'d07_noack_synthetic_native.json').write_text(json.dumps(fixture))
+          print('D07_H01_REAL_L2_ACK_LOSS_SIMULATED_CLIENT_ONLY_NO_SECOND_STARTUP')
+          PY_NOACK_FIXTURE
             python3 tools/d07_h01_lifecycle_reconcile.py \
               --native "$ROOT/d07_noack_synthetic_native.json" \
               --output "$ROOT/d07_noack_real_state_attestation.json" \
               --timeout-sec 14
             python3 - "$ROOT" <<'PY_CHECK'
-import json,sys
-from pathlib import Path
-data=json.loads((Path(sys.argv[1])/'d07_noack_real_state_attestation.json').read_text())
-assert data['status']=='READONLY_ACTIVE_RECONCILED_NO_ACK',data
-assert data['admitted_for_d07_no_goal'] is True
-assert data['lifecycle_ack_received'] is False
-assert data['observed_samples']==2
-assert data['startup_resent'] is False and data['goal_sent'] is False
-print('D07_H01_REAL_ROS_DUAL_ACTIVE_READONLY_RECONCILE_L2_PASS_NO_GOAL')
-PY_CHECK
+          import json,sys
+          from pathlib import Path
+          data=json.loads((Path(sys.argv[1])/'d07_noack_real_state_attestation.json').read_text())
+          assert data['status']=='READONLY_ACTIVE_RECONCILED_NO_ACK',data
+          assert data['admitted_for_d07_no_goal'] is True
+          assert data['lifecycle_ack_received'] is False
+          assert data['observed_samples']==2
+          assert data['startup_resent'] is False and data['goal_sent'] is False
+          print('D07_H01_REAL_ROS_DUAL_ACTIVE_READONLY_RECONCILE_L2_PASS_NO_GOAL')
+          PY_CHECK
           ) > results/d07-h01-gui-ci/noack_real_probe.log 2>&1 &
           PROBE_PID=$!
           RVIZ=0
