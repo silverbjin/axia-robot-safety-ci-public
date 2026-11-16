@@ -91,6 +91,28 @@ class OwnerBootstrapContract(unittest.TestCase):
             self.assertFalse(o["formal_axia_mvp_accepted"])
             self.assertFalse(o["certified_estop"])
 
+    def test_real_window_titles_without_scene_pixels_must_be_visual_hold(self):
+        # Actual Owner Xoszr6rv: 3 real ROS paths and both X11 windows were
+        # proven, yet Gazebo world remained blank to the human observer.
+        # Prior verifier FALSELY declared GUI L3 accepted on window titles.
+        with tempfile.TemporaryDirectory() as folder:
+            r,o=verify(Path(folder),"RVIZ\nGAZEBO\n")
+            self.assertEqual(r.returncode,3,r.stderr)
+            self.assertTrue(o["owner_wsl2_source_l3_verified"])
+            self.assertFalse(o["owner_wsl2_gui_l3_accepted"])
+            self.assertEqual(o["first_missing_visual_boundary"],
+                             "OWNER_GUI_SCENE_PIXELS_UNVERIFIED")
+            self.assertEqual(o["status"],"D07_H01_OWNER_GUI_VISUAL_HOLD")
+
+    def test_render_and_resource_capture_are_part_of_same_owner_run(self):
+        src=SCRIPT.read_text()
+        self.assertIn("axia_d07_capture_render_evidence()",src)
+        self.assertIn("resource_samples.jsonl",src)
+        self.assertIn("gazebo_scene.xwd",src)
+        self.assertIn("glxinfo_B.txt",src)
+        self.assertIn('axia_d07_pack_failure "$RUN"',src)
+        self.assertIn("D07_H01_OWNER_GUI_VISUAL_HOLD",src)
+
     def test_missing_x11_or_nonzero_runner_holds(self):
         self.assertTrue(PRIVATE_TOOLS.is_dir())
         for windows,rc in (("RVIZ\n",0),("RVIZ\nGAZEBO\n",2)):
