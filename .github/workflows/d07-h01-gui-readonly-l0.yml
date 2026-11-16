@@ -51,6 +51,22 @@ jobs:
           grep -Fq 'D07_H01_OWNER_WSL2_AUTOMATED_CANDIDATE_PASS_USER_GUI_VISUAL_REVIEW_PENDING' scripts/d07_h01_owner_wsl2_gui_once.sh
           ! grep -Eq 'GITHUB_ACTIONS=true|NavigateToPose.Goal\(|wsl --shutdown|pkill -9' scripts/d07_h01_owner_wsl2_gui_once.sh
           echo D07_H01_OWNER_WSL2_PUBLIC_SCRIPT_L0_PASS_NO_ROS_NO_GAZEBO
+      # D07 GUI Owner WSL2 bootstrap is tested against an immutable public
+      # feature commit before ANY user-facing bootstrap link is offered.
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-ci-public
+          ref: aec98ba628eb8e1f46d2f550dd5f40d3451db054
+          path: owner-source
+          persist-credentials: false
+      - name: Owner WSL2 bootstrap source-pinned L0 (synthetic, no ROS)
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C owner-source rev-parse HEAD)" = 'aec98ba628eb8e1f46d2f550dd5f40d3451db054'
+          bash -n owner-source/scripts/axia_d07_h01_gui_owner_wsl2_once.sh
+          python3 -m unittest discover -s owner-source/tests -p test_axia_d07_h01_owner_bootstrap_contract.py -v
+          echo D07_H01_OWNER_BOOTSTRAP_L0_SYNTHETIC_ONLY_NO_ROS_NO_WSL2
       - name: Destroy private checkout
         if: always()
         run: rm -rf -- instructor
