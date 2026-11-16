@@ -45,7 +45,7 @@ def _member(tar,name,limit=LIMIT_BYTES):
 
 def _load(archive,expected_sha):
     if (archive.is_symlink() or not archive.is_file() or
-        archive.name!=NAME+".tar.gz" or
+        archive.name not in (NAME+".tar.gz",ORIGINAL_SHA) or
         expected_sha!=ORIGINAL_SHA or _hash(archive)!=expected_sha):
         raise ValueError("ORIGINAL_ARCHIVE_HASH_OR_NAME_MISMATCH")
     try:
