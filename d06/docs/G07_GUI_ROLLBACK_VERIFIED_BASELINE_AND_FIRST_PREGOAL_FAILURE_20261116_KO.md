@@ -60,7 +60,7 @@ P2_L3_OWNER_STATUS=BLOCKED_G07_COMMON_PREG0AL_NO_GOAL
 ```bash
 (
   set -Eeuo pipefail
-  SHA='c8404eaf752dd5ac8aedcb455d6f40c0a48e18c3'
+  SHA='3b8bc1ed4554c2d7d3a5c8d0caee9baa73a662a7'
   SCRIPT="$(mktemp)"
   trap 'rm -f "$SCRIPT"' EXIT
   curl -fL --retry 3 -sS \
@@ -75,4 +75,4 @@ P2_L3_OWNER_STATUS=BLOCKED_G07_COMMON_PREG0AL_NO_GOAL
 
 증거: `~/axia_g07_rollback_gui_evidence_*/visual/rviz.log`, `gz_gui.log`, `windows.txt`, `display_attestation.json`, `initial_scan_before_fixture.json`, `G07/launch.log`, `SHA256SUMS`.
 
-아직 확인되지 않은 결과를 성공이라고 표기하지 않는다. **GUI 원복 검증이 완료되기 전에는 G07 Goal 주행 재시도·CPU 추가 튜닝·acceptance gate 완화·main 병합 금지**.
+아직 확인되지 않은 결과를 성공이라고 표기하지 않는다. **새 원샷은 실제 /world/control 서비스 및 Waffle 모델 목록을 GUI와 별개로 확인하며, `gz_services.txt`·`gz_models.txt`도 원본에 남긴다. WSLg 픽셀 확인이 빠졌다면 transport 성공만으로 GUI PASS라고 하지 않는다.\n\nGUI 원복 검증이 완료되기 전에는 G07 Goal 주행 재시도·CPU 추가 튜닝·acceptance gate 완화·main 병합 금지**.
