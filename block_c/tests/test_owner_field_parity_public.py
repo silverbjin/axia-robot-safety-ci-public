@@ -138,3 +138,15 @@ def test_owner_stage_python_failures_checked_without_errexit_side_effects():
     assert "<<'PY' || return $?" in source  # manifest Python integrity check
     assert 'BLOCK_C_STAGE_HOLD=MANIFEST_SHA_AND_PARITY' not in source  # generic run_step records it
     assert 'run_step MANIFEST_SHA_AND_PARITY check_manifests_and_source_parity' in source
+
+
+def test_source_pins_are_checkout_by_sha_not_moving_branch_heads():
+    """A report commit advances instructor branch; Owner must still fetch reviewed SHA."""
+    runner = RUNNER.read_text()
+    for variable, pinned in (
+        ('INSTRUCTOR', 'INSTRUCTOR_SHA'),
+        ('STUDENT', 'STUDENT_SHA'),
+    ):
+        assert f'git -C "${variable}" fetch --quiet --depth 1 origin "${pinned}"' in runner
+        assert f'git -C "${variable}" checkout --quiet --detach "${pinned}"' in runner
+    assert 'BLOCK_C_REPO_PINS_PASS' in runner
