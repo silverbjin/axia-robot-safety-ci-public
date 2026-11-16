@@ -31,7 +31,7 @@ def hold(status,**extra):
         **extra,
     }
 
-def classify(events,report):
+def classify(events,report,*,require_oracle=False):
     if type(events) is not list or type(report) is not dict:
         return hold("ORIGINAL_EVENTS_OR_RESULT_MISSING_HOLD")
     starts=[e.get("t") for e in events if type(e) is dict
@@ -40,6 +40,8 @@ def classify(events,report):
         return hold("GOAL_MARKER_MISSING_HOLD")
     start=starts[0]
     channel={"pre_guard":[],"supervised":[]}
+    skipped_incomplete=0
+    skipped_pregoal=0
     for event in events:
         if type(event) is not dict:
             return hold("ORIGINAL_EVENT_MALFORMED_HOLD")
@@ -47,24 +49,37 @@ def classify(events,report):
         if kind not in channel:
             continue
         t=event.get("t")
+        if not number(t):
+            skipped_incomplete+=1
+            continue
+        if t<start:
+            skipped_pregoal+=1
+            continue
         src=event.get("rmw_source_ns")
         recv=event.get("rmw_received_ns")
         seq=event.get("rmw_publication_seq")
-        if not (number(t) and t>=start and type(src) is int and src>0
-            and type(recv) is int and recv>=src and type(seq) is int and seq>=0):
-            return hold("RMW_METADATA_MISSING_OR_INVALID_HOLD")
+        if not (type(src) is int and src>0 and type(recv) is int
+                and recv>=src and type(seq) is int and seq>=0):
+            skipped_incomplete+=1
+            continue
         channel[kind].append({"t":t,"source":src,"recv":recv,"seq":seq})
     cm=channel["pre_guard"]
     sup=channel["supervised"]
     if len(cm)<2:
         return hold("CM_SOURCE_METADATA_MISSING_HOLD")
-    for rows in channel.values():
-        if any(b["t"]<=a["t"] or b["source"]<=a["source"] or
-               b["seq"]<=a["seq"] for a,b in zip(rows,rows[1:])):
+    first=None
+    for a,b in zip(cm,cm[1:]):
+        if (b["t"]<=a["t"] or b["source"]<=a["source"] or
+                b["seq"]<=a["seq"]):
             return hold("RMW_SEQUENCE_OR_CLOCK_DOMAIN_UNVERIFIED_HOLD")
-    first=next(((a,b) for a,b in zip(cm,cm[1:])
-                if b["source"]-a["source"] >= CM_RELEASE_MS*1000000),None)
+        if b["source"]-a["source"] >= CM_RELEASE_MS*1000000:
+            first=(a,b)
+            break
     if first is None:
+        if require_oracle and isinstance(report.get("cm_first_120ms_rmw_release_margin"),dict):
+            oracle=report["cm_first_120ms_rmw_release_margin"]
+            if oracle.get("status")=="CM_SOURCE_GAP_EXCEEDS_120MS":
+                return hold("ORIGINAL_GOAL_SCOPED_ORACLE_MISMATCH_HOLD")
         return hold("NO_CM_120MS_SOURCE_GAP_SCOPED_CI_ONLY")
     a,b=first
     if not sup:
@@ -73,6 +88,20 @@ def classify(events,report):
     if len(inside)<2 or b["seq"]-a["seq"]!=1:
         return hold("CM_SOURCE_GAP_OR_UPSTREAM_SEQUENCE_UNVERIFIED_HOLD",
             first_cm_source_gap_ms=round((b["source"]-a["source"])/1e6,6))
+    if any(y["source"]<=x["source"] or y["seq"]<=x["seq"]
+           for x,y in zip(inside,inside[1:])):
+        return hold("RMW_SEQUENCE_OR_CLOCK_DOMAIN_UNVERIFIED_HOLD")
+    oracle_matched=False
+    if require_oracle:
+        oracle=report.get("cm_first_120ms_rmw_release_margin")
+        if not isinstance(oracle,dict) or oracle.get("status")!="CM_SOURCE_GAP_EXCEEDS_120MS":
+            return hold("ORIGINAL_GOAL_SCOPED_ORACLE_UNVERIFIED_HOLD")
+        true_gap=(b["source"]-a["source"])/1e9
+        if (not number(oracle.get("cm_source_gap_sec"))
+            or abs(oracle["cm_source_gap_sec"]-true_gap)>.0001
+            or oracle.get("upstream_publications_inside_gap")!=len(inside)):
+            return hold("ORIGINAL_GOAL_SCOPED_ORACLE_MISMATCH_HOLD")
+        oracle_matched=True
     rpc=report.get("stop_native_rpc_monotonic_window")
     if not isinstance(rpc,dict) or not number(rpc.get("started_at")) or not number(rpc.get("ended_at")):
         return hold("CM_SOURCE_120MS_GAP_RPC_WINDOW_MISSING_HOLD")
@@ -108,6 +137,10 @@ def classify(events,report):
         native_rpc_nearest_distance_ms=round(distance,6),
         first_cm_gap_callback_offset_from_goal_ms=round((left-start)*1000,6),
         native_rpc_duration_ms=round((rpc_end-rpc_start)*1000,6),
+        skipped_incomplete_rmw_rows=skipped_incomplete,
+        skipped_pregoal_rows=skipped_pregoal,
+        scoped_original_oracle_gap_matched=oracle_matched,
+        internal_cm_cause_proven=False,
     )
 
 def main():
@@ -122,7 +155,7 @@ def main():
             raise ValueError("SOURCE_UNTRUSTED_OR_UNBOUNDED")
         rows=[json.loads(ln) for ln in args.events.read_text().splitlines()]
         report=json.loads(args.result.read_text())
-        output=classify(rows,report)
+        output=classify(rows,report,require_oracle=True)
     except (OSError,ValueError,UnicodeError) as exc:
         output=hold("ORIGINAL_DIAGNOSTIC_UNVERIFIED_"+type(exc).__name__)
     print("AXIA_G07_CYCLE27_FIRST_CM_120MS_SOURCE_RPC "+
