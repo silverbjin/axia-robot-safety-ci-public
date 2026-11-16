@@ -123,8 +123,8 @@ jobs:
           import bt2,json,sys
           rows=[]
           for msg in bt2.TraceCollectionMessageIterator(sys.argv[1]):
-              if isinstance(msg,bt2._EventMessageConst) and
-                  msg.event.name in ("ros2:callback_start","ros2:callback_end"):
+              if (isinstance(msg,bt2._EventMessageConst) and
+                  msg.event.name in ("ros2:callback_start","ros2:callback_end")):
                   rows.append({
                       "name":msg.event.name,
                       "payload_keys":sorted(list(msg.event.payload_field)),
