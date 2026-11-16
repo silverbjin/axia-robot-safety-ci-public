@@ -1,0 +1,28 @@
+# D07 stationary GUI ONLY. Exercise controlled ACK-loss authorization in public CI.
+name: AXIA D07 H01 CI-only lost ACK controlled L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-d07-h01-ci-controlled-lost-ack-l0.yml']
+permissions:
+  contents: read
+jobs:
+  ci-injection-scope:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    environment: axia-instructor-sealed
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 1e758e54015c749d85a7c2bf7fbb21922793b43a
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: RED CI-only simulated loss guarded by real source contract
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_lifecycle_reconcile.py -v
+          echo D07_H01_CI_ONLY_LOST_ACK_SCOPE_L0_GREEN_NO_ROS
+      - name: Clean private source
+        if: always()
+        run: rm -rf -- tools tests ros2_ws
