@@ -71,6 +71,17 @@ for f in "$GATE" "$CHECK" "$OWNER" \
 done
 bash -n "$OWNER"
 bash -n "$WORK/scripts/axia_g07_cycle16_p4_owner_once.sh"
+# Never print the OLD CI-only manual_attempt_allowed=true message before
+# checking the exact historical Owner field failure. The fixed bootstrap
+# is a new checkout version; the immutable old bootstrap cannot be edited.
+FIELD_CHECK="$WORK/d06/live/g07_cycle18_field_owner_admission_v5.py"
+FIELD_RECORD="$WORK/d06/tests/fixtures/g07_cycle17_wsl2_guard_174ms_rmw_186ms_sanitized.json"
+if [[ ! -s "$FIELD_CHECK" || ! -s "$FIELD_RECORD" ]] ||
+   ! python3 "$FIELD_CHECK" --home "$HOME" --ci-gate "$GATE" \
+     --field-evidence "$FIELD_RECORD";then
+  echo AXIA_G07_CYCLE18_FIELD_PREVIOUS_GOAL_CM_TTL_BREACH_HOLD_NO_ROS_NO_GOAL
+  exit 3
+fi
 python3 "$CHECK" --gate "$GATE" --private-sha "$PRIVATE_SHA" --ci-run "$CI_L2_RUN" || {
   echo AXIA_G07_CYCLE16_RELEASE_GATE_HOLD_NO_GOAL >&2;exit 3;
 }
