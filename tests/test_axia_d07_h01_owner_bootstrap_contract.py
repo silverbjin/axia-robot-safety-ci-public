@@ -55,6 +55,32 @@ class OwnerBootstrapContract(unittest.TestCase):
         self.assertIn("AXIA_D07_H01_OWNER_PY_VERDICT_STATIC_COMPILE_PASS",p.stdout)
         self.assertIn("NO_ROS_NO_GAZEBO_NO_GOAL",p.stdout)
 
+    def test_real_watch_sentinel_lifecycle_exercised_in_public_ci(self):
+        # WSL2 field failure: touch: cannot touch '': No such file or directory.
+        # --self-check must execute the SAME helper used by --run. No GUI or
+        # ROS is started; a return marker alone is not runtime L3 acceptance.
+        proc=subprocess.run(["bash",str(SCRIPT),"--self-check"],
+            capture_output=True,text=True,check=False)
+        self.assertEqual(proc.returncode,0,proc.stderr)
+        self.assertIn("AXIA_D07_H01_WATCH_SENTINEL_LIFECYCLE_L0_PASS",
+                      proc.stdout)
+        src=SCRIPT.read_text()
+        self.assertIn('axia_d07_watch_start "$CHECK_DIR"',src)
+        self.assertIn('axia_d07_watch_start "$RUN"',src)
+        self.assertNotIn("WATCH=''\\n",src[src.index('RUN="$(mktemp'):])
+        self.assertNotIn('touch "$WATCH"',src)
+
+    def test_failure_archive_uses_same_helper_in_runtime_and_ci(self):
+        # Even first pre-ROS shell error after evidence root creation must
+        # be bundled before owner checkout cleanup, without a new WSL2 retry.
+        proc=subprocess.run(["bash",str(SCRIPT),"--self-check"],
+            capture_output=True,text=True,check=False)
+        self.assertEqual(proc.returncode,0,proc.stderr)
+        self.assertIn("AXIA_D07_H01_FAILURE_BUNDLE_L0_PASS",proc.stdout)
+        src=SCRIPT.read_text()
+        self.assertIn('axia_d07_pack_failure "$CHECK_DIR"',src)
+        self.assertIn('axia_d07_pack_failure "$RUN"',src)
+
     def test_synthetic_complete_evidence_can_only_pass_scoped_gui(self):
         self.assertTrue(PRIVATE_TOOLS.is_dir(),"private tools L0 checkout missing")
         with tempfile.TemporaryDirectory() as folder:
