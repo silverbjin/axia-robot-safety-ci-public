@@ -33,6 +33,12 @@ self_check() {
 if [[ "$#" -eq 1 && "$1" == --self-check ]];then
   self_check;exit $?
 fi
+# Exact same read-only field first-failure preflight used in CI and the
+# real Owner path, without requiring ROS/WSLg or touching any attempt lock.
+if [[ "$#" -eq 1 && "$1" == --field-preflight ]];then
+  bash "$ROOT/scripts/axia_g07_cycle18_owner_readonly_preflight.sh"
+  exit $?
+fi
 if [[ "$#" -eq 1 && "$1" == --admission-check ]];then
   /usr/bin/python3 "$ROOT/d06/live/g07_cycle16_owner_ci_gate_v4.py" \
     --gate "$ROOT/d06/acceptance/g07_cycle16_owner_ci_gate_v3.json" \
