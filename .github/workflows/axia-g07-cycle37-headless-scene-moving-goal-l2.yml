@@ -48,7 +48,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-ci-public
-          ref: 8a43b8ea5c437cb526f940b5b2f08fc6f57eca9c
+          ref: 352ea7c2197b937e8566ba90cd4d8fff46dd9f88
           path: unified-public
           persist-credentials: false
       - name: Published D06 read-only viewer sources pinned at public main
@@ -62,7 +62,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C unified-public rev-parse HEAD)" = "8a43b8ea5c437cb526f940b5b2f08fc6f57eca9c"
+          test "$(git -C unified-public rev-parse HEAD)" = "352ea7c2197b937e8566ba90cd4d8fff46dd9f88"
           test "$(git -C visual rev-parse HEAD)" = '0f66059d9110f8e667200bbca22396bd0c78c02e'
           python3 - <<'PY'
           from pathlib import Path
@@ -76,6 +76,7 @@ jobs:
           python3 -m unittest discover -s unified-public/d06/tests -p 'test_g07_unified_first_timing_regression.py' -v
           python3 -m unittest discover -s unified-public/d06/tests -p 'test_g07_unified_gui_sidecar_contract.py' -v
           python3 -m unittest discover -s unified-public/d06/tests -p 'test_g07_rollback_wslg_actual_evidence_20261116.py' -v
+          python3 -m unittest discover -s unified-public/d06/tests -p 'test_g07_cycle37_readonly_monitor_noncm_cpu.py' -v
           bash -n unified-public/d06/scripts/g07_unified_ci_readonly_display.sh
           python3 - <<'PY'
           from pathlib import Path
@@ -180,6 +181,18 @@ jobs:
           GUI_CPU="$(python3 unified-public/d06/live/d06_gui_cpu_plan.py)"
           MONITOR_CPU="$(python3 unified-public/d06/live/d06_gui_cpu_plan.py --role monitor)"
           [[ "$GUI_CPU" =~ ^[0-9]+$ && "$MONITOR_CPU" =~ ^[0-9]+$ && "$GUI_CPU" != "$MONITOR_CPU" ]]
+          # Candidate-only GUI scheduling change, validated against the exact
+          # unchanged private CM mask on this runner, BEFORE any moving Goal.
+          export MONITOR_CPU
+          python3 - <<'PY'
+          import os,sys
+          sys.path.insert(0,'instructor/tools')
+          from p2_g07_official_cm_cpu_affinity import select_cm_cpu_mask
+          official=set(select_cm_cpu_mask(set(os.sched_getaffinity(0))))
+          monitor=int(os.environ['MONITOR_CPU'])
+          assert monitor not in official,(monitor,sorted(official))
+          print('AXIA_G07_C37_READONLY_MARKER_EXCLUDES_OWNED_CM_CORE_NO_GOAL')
+          PY
           echo "G07_UNIFIED_GUI_CPU_PREFLIGHT_NO_GOAL_PASS renderer=$GUI_CPU observer=$MONITOR_CPU"
       - name: Isolated S02 native physics observer build and identical positive calibration blob
         shell: bash
