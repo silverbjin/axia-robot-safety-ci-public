@@ -30,3 +30,11 @@ def test_ci_runs_same_clone_path_as_owner_wsl2():
     workflow = (ROOT.parent / '.github' / 'workflows' / 'block-c-c01-l0.yml').read_text()
     assert 'AXIA_C01_SOURCE_DIR=' not in workflow, 'CI must not bypass Owner clone/sha verification path'
     assert 'bash block_c/scripts/axia_c01_owner_wsl2_once.sh --run' in workflow
+
+
+def test_advancing_student_branch_still_checks_out_immutable_c01_source():
+    src = SCRIPT.read_text()
+    # Existing public CI RED: C01_SOURCE_SHA_MISMATCH after Student moved to C06.
+    assert 'fetch --quiet --depth 1 origin "$PINNED_STUDENT_SHA"' in src
+    assert 'checkout --quiet --detach "$PINNED_STUDENT_SHA"' in src
+    assert 'C01_PINNED_COMMIT_FETCH_BLOCKED' in src

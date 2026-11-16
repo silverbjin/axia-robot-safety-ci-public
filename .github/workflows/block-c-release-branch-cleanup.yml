@@ -1,0 +1,62 @@
+name: AXIA Block C — prune only verified merged release branches
+on:
+  push:
+    branches: [main]
+    paths: ['docs/BLOCK_C_EDUCATIONAL_RELEASE_APPROVAL_20261116_KO.md']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  postmerge-prune:
+    if: github.repository == 'silverbjin/axia-robot-safety-ci-public'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check ALL release PRs and main ancestry before deleting branches
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const scope = [
+              { pr: 129, branch: 'feat/block-c-c01-contract-20261115' },
+              { pr: 130, branch: 'feat/block-c-c02-c06-20261115' },
+              { pr: 131, branch: 'feat/block-c-owner-final-wsl2-20261116' },
+            ];
+            // Never prune before every intended release PR is actually merged.
+            for (const item of scope) {
+              const { data: pr } = await github.rest.pulls.get({
+                owner, repo, pull_number: item.pr,
+              });
+              if (!pr.merged || pr.state !== 'closed') {
+                throw new Error('BLOCK_C_CLEANUP_HOLD_PR_NOT_MERGED=' + item.pr);
+              }
+            }
+            // Only these exact Block C release branches; no unrelated AXIA work.
+            for (const item of scope) {
+              let branch;
+              try {
+                ({ data: branch } = await github.rest.repos.getBranch({
+                  owner, repo, branch: item.branch,
+                }));
+              } catch (error) {
+                if (error.status === 404) {
+                  core.info('BLOCK_C_CLEANUP_ALREADY_ABSENT=' + item.branch);
+                  continue;
+                }
+                throw error;
+              }
+              if (branch.protected || item.branch === 'main') {
+                throw new Error('BLOCK_C_CLEANUP_HOLD_PROTECTED=' + item.branch);
+              }
+              const { data: comparison } = await github.rest.repos.compareCommits({
+                owner, repo, base: 'main', head: item.branch,
+              });
+              if (comparison.ahead_by !== 0) {
+                throw new Error('BLOCK_C_CLEANUP_HOLD_UNMERGED_COMMITS=' + item.branch);
+              }
+              await github.rest.git.deleteRef({
+                owner, repo, ref: 'heads/' + item.branch,
+              });
+              core.info('BLOCK_C_CLEANUP_DELETED=' + item.branch);
+            }
+            core.info('BLOCK_C_RELEASE_ONLY_POSTMERGE_PRUNE_PASS');
