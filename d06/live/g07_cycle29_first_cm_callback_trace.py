@@ -95,7 +95,8 @@ def _first_source_pair(events):
             return a,b
     return None
 
-def classify_callback_gap(events,report,traced,*,cm_pid,clock_anchors):
+def classify_callback_gap(events,report,traced,*,cm_pid,clock_anchors,
+                          cmd_callback_handles=None):
     """Fail closed on unknown vpid, source provenance, or tracing clock domain."""
     if not (isinstance(events,list) and isinstance(report,dict)
             and isinstance(traced,list) and type(cm_pid) is int and cm_pid>1):
@@ -153,9 +154,18 @@ def classify_callback_gap(events,report,traced,*,cm_pid,clock_anchors):
                 return _hold("CM_CALLBACK_MONOTONIC_ORDER_UNVERIFIED_HOLD")
             finished.append((started,t,key))
     pending=sum(len(stack) for stack in pairs.values())
-    cmdhandles={key for key,sym in seen_regs.items()
-                if any(k in sym.lower() for k in
-                       ("cmdvel","cmd_vel","cmdvelincallback","collisionmonitor::cmd"))}
+    if cmd_callback_handles is not None:
+        if (not isinstance(cmd_callback_handles,set)
+                or any(type(v) not in (int,str) or str(v)==""
+                       for v in cmd_callback_handles)):
+            return _hold("CM_CALLBACK_TOPIC_IDENTITY_UNVERIFIED_HOLD")
+        cmdhandles={str(v) for v in cmd_callback_handles}
+        identity_source="RCLCPP_SUBSCRIPTION_TOPIC_CALLBACK_CHAIN"
+    else:
+        cmdhandles={key for key,sym in seen_regs.items()
+                    if any(k in sym.lower() for k in
+                           ("cmdvel","cmd_vel","cmdvelincallback","collisionmonitor::cmd"))}
+        identity_source="REGISTERED_CALLBACK_SYMBOL_UNVERIFIED_TOPIC"
     cm_cmd=[(s,e) for s,e,k in finished if k in cmdhandles
             and e>=a["t"]-.05 and s<=b["t"]+.05]
     cmd_max=max(((e-s)*1000 for s,e in cm_cmd),default=None)
@@ -176,6 +186,7 @@ def classify_callback_gap(events,report,traced,*,cm_pid,clock_anchors):
         trace_clock_domain=domain_label,
         registered_callback_count=len(seen_regs),
         registered_cmdvel_callback_count=len(cmdhandles),
+        cmdvel_identity_source=identity_source,
         cm_finished_callback_count_near_first_gap=len(all_intersect),
         cm_cmdvel_callback_count_near_first_gap=len(cm_cmd),
         cm_cmdvel_max_duration_ms=round(cmd_max,6) if cmd_max is not None else None,
