@@ -49,6 +49,23 @@ axia_d07_watch_stop() {
   WATCH_PID=''
   WATCH=''
 }
+# Runs exactly once on any Owner failure after RUN creation. All evidence
+# comes from this run's isolated directory, never gh auth or private HOME.
+axia_d07_pack_failure() {
+  local folder="${1:-}"
+  [[ -n "$folder" && -d "$folder" && ! -L "$folder" &&
+     "$(basename "$folder")" == d07-h01-owner-* ]] || {
+    echo 'AXIA_D07_H01_FAILURE_BUNDLE_DIR_INVALID' >&2; return 3;
+  }
+  (cd "$folder" &&
+    find . -type f ! -name SHA256SUMS -print0 |
+    sort -z | xargs -0 -r sha256sum > SHA256SUMS) || return 3
+  if [[ ! -f "$folder.tar.gz" ]]; then
+    tar -czf "$folder.tar.gz" -C "$(dirname "$folder")" "$(basename "$folder")" || return 3
+  fi
+  sha256sum "$folder.tar.gz" > "$folder.tar.gz.sha256" || return 3
+  echo "AXIA_D07_H01_OWNER_FIRST_FAILURE_ARCHIVE=$folder.tar.gz"
+}
 if [[ "${1:-}" == '--self-check' ]]; then
   [[ $# == 1 && "$PRIVATE_SHA" =~ ^[0-9a-f]{40}$ &&
      "$PUBLIC_REAL_GAZEBO_L2_RUN" =~ ^[0-9]{11}$ ]] || exit 3
@@ -74,6 +91,13 @@ PYCHECK
   axia_d07_watch_stop
   [[ ! -e "$CHECK_DIR/.x11_watch_alive" ]] || exit 3
   echo 'AXIA_D07_H01_WATCH_SENTINEL_LIFECYCLE_L0_PASS'
+  echo 'simulated PRE-ROS failure fixture, NOT an Owner run' > "$CHECK_DIR/fixture.txt"
+  axia_d07_pack_failure "$CHECK_DIR" >/dev/null
+  [[ -f "$CHECK_DIR.tar.gz" && -s "$CHECK_DIR.tar.gz.sha256" ]] || exit 3
+  (cd "$(dirname "$CHECK_DIR")" && sha256sum -c "$(basename "$CHECK_DIR").tar.gz.sha256" >/dev/null) || exit 3
+  tar -tzf "$CHECK_DIR.tar.gz" > "$CHECK_DIR/tar_listing.txt" || exit 3
+  grep -Fq 'fixture.txt' "$CHECK_DIR/tar_listing.txt" || exit 3
+  echo 'AXIA_D07_H01_FAILURE_BUNDLE_L0_PASS'
   echo "AXIA_D07_H01_OWNER_BOOTSTRAP_STATIC_L0_PASS pinned_private=$PRIVATE_SHA public_l2=$PUBLIC_REAL_GAZEBO_L2_RUN"
   echo 'NO_ROS_NO_GAZEBO_NO_GOAL OWNER_WSL2_L3_NOT_RUN'
   exit 0
@@ -143,6 +167,12 @@ cleanup() {
   set +e
   axia_d07_watch_stop
   cd "$HOME" 2>/dev/null || cd /
+  if [[ "$rc" != 0 && -d "${RUN:-}" ]]; then
+    printf 'owner_bootstrap_exit_code=%s\n' "$rc" > "$RUN/bootstrap_first_exit.txt"
+    timeout 5s xwininfo -root -tree > "$RUN/x11_last_snapshot.txt" 2>&1 || true
+    axia_d07_pack_failure "$RUN" || \
+      echo "AXIA_D07_H01_FAILURE_BUNDLE_CREATION_FAILED_ROOT=$RUN" >&2
+  fi
   if [[ "$WORK" == "$HOME"/.axia_d07_h01_checkout_* && -d "$WORK" ]]; then
     rm -rf -- "$WORK"
   fi
@@ -151,6 +181,15 @@ cleanup() {
 trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
+
+# Credential-free WSLg/ROS package provenance preserved on every failure.
+{
+  printf 'private_source_sha=%s\npublic_real_l2_run=%s\n' "$PRIVATE_SHA" "$PUBLIC_REAL_GAZEBO_L2_RUN"
+  printf 'display_present=%s\n' "$([[ -n "${DISPLAY:-}" ]] && echo yes || echo no)"
+  uname -sr
+  grep -E '^(NAME|VERSION_ID)=' /etc/os-release || true
+  dpkg-query -W ros-jazzy-nav2-bringup ros-jazzy-rviz2 2>/dev/null || true
+} > "$RUN/bootstrap_versions.txt"
 
 gh repo clone "$PRIVATE_REPO" "$WORK/instructor" -- \
   --filter=blob:none --no-checkout --quiet
@@ -288,10 +327,8 @@ set -e
   sort -z | xargs -0 -r sha256sum > SHA256SUMS)
 echo "AXIA_D07_H01_OWNER_RAW_EVIDENCE_PRESERVED=$RUN"
 if [[ "$RUNNER_RC" != 0 || "$VERDICT_RC" != 0 ]]; then
-  tar -czf "$RUN.tar.gz" -C "$(dirname "$RUN")" "$(basename "$RUN")"
-  sha256sum "$RUN.tar.gz" > "$RUN.tar.gz.sha256"
-  echo "AXIA_D07_H01_OWNER_FIRST_FAILURE_ARCHIVE=$RUN.tar.gz"
   echo 'NO REPEATED WSL2 RETRY: import first reproducible boundary into public CI.'
+  # Exit trap now packs ALL evidence including the earliest shell error.
   exit 3
 fi
 echo "AXIA_D07_H01_OWNER_GAZEBO_RVIZ_WSL2_L3_SCOPE_ACCEPTED=$RUN"
