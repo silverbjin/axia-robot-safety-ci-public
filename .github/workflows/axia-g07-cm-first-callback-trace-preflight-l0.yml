@@ -88,7 +88,7 @@ jobs:
             exit 3
           fi
           WORK="$(mktemp -d)"
-          SESSION="axia_g07_callback_l1_\${RANDOM}_\${RANDOM}"
+          SESSION="axia_g07_callback_l1_${RANDOM}_${RANDOM}"
           trap 'lttng destroy "$SESSION" >/dev/null 2>&1 || true; rm -rf -- "$WORK"' EXIT
           lttng create "$SESSION" --output="$WORK/trace" >/dev/null
           lttng enable-event --userspace -s "$SESSION" 'ros2:callback_start' >/dev/null
@@ -97,7 +97,7 @@ jobs:
           lttng start "$SESSION" >/dev/null
           export ROS_DOMAIN_ID=97
           timeout 4 ros2 run demo_nodes_cpp talker >"$WORK/demo.log" 2>&1 || rc=$?
-          if [[ "\${rc:-124}" != 124 && "\${rc:-124}" != 0 ]];then
+          if [[ "${rc:-124}" != 124 && "${rc:-124}" != 0 ]];then
             echo AXIA_G07_TRACE_DEMO_NODE_L1_FAILED_NO_GOAL
             exit 3
           fi
