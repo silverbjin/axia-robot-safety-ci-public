@@ -14,14 +14,20 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-ci-public
-          ref: dd43c6e1238c033da2102b79815ed9346c25af16
+          ref: c4dca31b210d28037116e49fe39d8d0b5aebdc34
           persist-credentials: false
       - name: Replay Owner Intel D3D12 and Qt-selection-only first visual failure
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git rev-parse HEAD)" = dd43c6e1238c033da2102b79815ed9346c25af16
+          test "$(git rev-parse HEAD)" = c4dca31b210d28037116e49fe39d8d0b5aebdc34
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s d06/tests \
             -p 'test_g07_cycle38_d07_wslg_visual_first_boundary.py' -v
           bash -n d06/scripts/g07_shared_gui_clients.sh
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s d06/tests \
+            -p 'test_g07_rollback_wslg_actual_evidence_20261116.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s d06/tests \
+            -p 'test_g07_cycle37_readonly_monitor_noncm_cpu.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s d06/tests \
+            -p 'test_g07_precycle36_dual_gui_rollback_contract.py' -v
           echo AXIA_G07_C38_D07_OWNER_XCB_NVIDIA_XWD_FIRST_BOUNDARY_L0_PASS_NO_ROS_NO_GOAL
