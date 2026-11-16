@@ -24,3 +24,14 @@
 **아직 미검증:** Run 43812555906의 실제 trace extraction, first callback duration/TF 원인, CM<120ms release를 만족하는 G07 실제 Gazebo L2, WSLg Owner L3. 실제 L2 trace가 CM callback long인지 executor/scheduler delivery인지 확인한 후에만 단일 최소 안전 런타임 수정 후보를 RED→GREEN으로 검증. 이후 최초 Guard latch, 7채널 TTL(Guard CM hard150ms, CM release120ms, Scan/Odom/Clock), S02 contact0, Goal cancel exact ACK, ordered Nav2 shutdown, CM exit0. 통과 전 WSL2 moving Goal 원샷 배포 금지.
 
 **판정: AXIA_MVP_DEMO_ACCEPTED=HOLD / OWNER_MOVING_GOAL_RELEASE=BLOCKED.**
+
+## 실제 L2 실행 결과 (Cycle30 closure)
+
+- 실제 Harmonic/Nav2/Xvfb 동일 private source SHA `c1d778c0f8ad68837487b65fc4f8557aef842887` [Run 43812555906](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43812555906) **전체 FAIL**, **trace 메모리 처리 자체는 PASS**.
+- 실제 로그 `AXIA_G07_CYCLE30_TRACE_STREAM_BOUNDED {"global_ros_events_scanned":2611716,"other_pid_ros_events_ignored":2487077,"owned_cm_callback_events":849,"owned_cm_registration_events":817,...}`. **전체 2,611,716건을 500k 배열 제한에 걸리지 않고 한 번 처리**.
+- CM 최초 RMW source gap `134.064157ms > 120ms`, observer callback `129.247994ms`, Supervisor source 발행 3건 (max coverage 50.290314ms). Native STOP RPC duration `114.246702ms`와 최초 공백의 **시간상 중첩 후보**. 인과 입증 아님.
+- `AXIA_G07_CYCLE29_OFFICIAL_CM_CALLBACK_FIRST_GAP`: `registered_callback_count=30`, `registered_cmdvel_callback_count=0`, `cm_finished_callback_count_near_first_gap=115`, `cm_any_callback_max_duration_ms=113.649394`, `cm_cmdvel_callback_count_near_first_gap=0`, status `CM_CALLBACK_IDENTITY_UNVERIFIED_HOLD`. **콜백 이름으로 /cmd_vel_supervised 구독을 식별할 수 없었음**.
+- 안전 결과: 실제 CLEAR/SLOW/STOP 및 Nav2 Shutdown ACK 확인; `AXIA_G07_FIELD_REAL_L2_SEVEN_CHANNELS cm=0.129247994`; **CM120ms 출고 margin FAIL**, Guard latch 없음. Owner WSL2 Goal 새로운 배포 금지.
+- NEXT Cycle31: ROS2 Jazzy 공식 `rcl_subscription_init / rclcpp_subscription_init / rclcpp_subscription_callback_added` 토픽→핸들 연결 계측으로 직접 CM 입력 콜백을 식별. 안전 TTL/공식 Nav2 소스 수정·원본 재주행 없음.
+
+**Cycle30 종료 판정:** `CI_TRACE_STREAMING=PASS`, `CI_REAL_L2_RELEASE_MARGIN=FAIL`, `OWNER_WSL2_ONE_SHOT=NOT_READY`, `AXIA_MVP_DEMO_ACCEPTED=HOLD`.
