@@ -1,0 +1,75 @@
+name: AXIA Block C C05 public education-only ROS Jazzy L1
+on:
+  push:
+    branches: ['feat/block-c-c01-*', 'feat/block-c-*']
+    paths: ['block_c/transport/**','block_c/tests/test_c05_transport.py','.github/workflows/block-c-c05-ros-jazzy-l1.yml']
+  pull_request:
+    paths: ['block_c/transport/**','block_c/tests/test_c05_transport.py','.github/workflows/block-c-c05-ros-jazzy-l1.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  public-transport-l0:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install pytest==8.3.5
+      - shell: bash
+        run: |
+          set -euo pipefail
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -q block_c/tests/test_c05_transport.py
+          python -m py_compile block_c/transport/*.py
+          echo C05_PUBLIC_TRANSPORT_PYTHON_L0_PASS
+  public-real-ros-l1:
+    needs: public-transport-l0
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    container:
+      image: ros:jazzy-ros-base-noble
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Install official Jazzy diagnostics messages
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt-get update -qq -o APT::Update::Error-Mode=any || { echo C05_ROS_APT_INFRA_BLOCKED; exit 2; }
+          apt-get install -y -qq --no-install-recommends ros-jazzy-rclpy ros-jazzy-diagnostic-msgs ros-jazzy-std-msgs
+      - name: Actual isolated ROS 2 DiagnosticArray DDS pub/sub and timing
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          set +u  # ROS setup may legitimately inspect unset AMENT_TRACE_SETUP_FILES
+          source /opt/ros/jazzy/setup.bash
+          set -u
+          export ROS_DOMAIN_ID=81
+          export PYTHONPATH="$PWD/block_c/transport${PYTHONPATH:+:$PYTHONPATH}"
+          timeout --signal=TERM --kill-after=8s 70s python3 -u block_c/transport/ros_l1_probe.py \
+            --events block_c/transport/sample_events.jsonl --out results/block-c-c05-ros-l1 --messages 8
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          data=json.loads(Path('results/block-c-c05-ros-l1/verdict.json').read_text())
+          assert data['status']=='PASS_REAL_ROS_L1_EDUCATION_ONLY',data
+          assert data['ros_actual'] and not data['gazebo_actual']
+          assert data['goal_sent'] is False and data['cmd_vel_published'] is False
+          assert not data['production_guard_ttl_verified']
+          assert data['sample_count']==8
+          assert all(v==0 for v in data['cmd_vel_publisher_count'].values())
+          print('C05_PUBLIC_REAL_ROS_L1_PASS_NO_GOAL_NO_CMD_VEL')
+          print('C05_PRODUCTION_GUARD_TTL_NOT_VERIFIED_OWNER_WSL2_NOT_RUN')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: c05-public-real-ros-l1
+          path: results/block-c-c05-ros-l1/
+          retention-days: 7
+          if-no-files-found: warn
