@@ -43,7 +43,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-ci-public
-          ref: 2d9e44433007690ede3ba17f9a28a9432cea3aa1
+          ref: 4f7abd7f46cf4ce2eb47f1b344640f1805c686ff
           path: unified-public
           persist-credentials: false
       - name: Published D06 read-only viewer sources pinned at public main
@@ -57,7 +57,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C unified-public rev-parse HEAD)" = "2d9e44433007690ede3ba17f9a28a9432cea3aa1"
+          test "$(git -C unified-public rev-parse HEAD)" = "4f7abd7f46cf4ce2eb47f1b344640f1805c686ff"
           test "$(git -C visual rev-parse HEAD)" = '0f66059d9110f8e667200bbca22396bd0c78c02e'
           export PYTHONPATH="$PWD/unified-public"
           python3 -m unittest discover -s unified-public/d06/tests -p 'test_g07_unified_first_timing_regression.py' -v
