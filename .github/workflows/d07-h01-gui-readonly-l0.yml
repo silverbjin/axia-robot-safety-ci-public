@@ -93,14 +93,14 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-ci-public
-          ref: eb7eb1ee341c85c6cde0423c270e395d1b041bac
+          ref: cf25bf4d0a57c8484a8af676b2e5ec5b8d7e3c0a
           path: d07-scene-diagnostic-source
           persist-credentials: false
       - name: Exact D07 scene archive diagnostic L0, no Gazebo no GUI
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C d07-scene-diagnostic-source rev-parse HEAD)" = 'eb7eb1ee341c85c6cde0423c270e395d1b041bac'
+          test "$(git -C d07-scene-diagnostic-source rev-parse HEAD)" = 'cf25bf4d0a57c8484a8af676b2e5ec5b8d7e3c0a'
           python3 -m py_compile d07-scene-diagnostic-source/scripts/axia_d07_h01_scene_archive_diagnose.py
           python3 -m unittest discover -s d07-scene-diagnostic-source/tests -p test_axia_d07_h01_scene_archive_diagnose.py -v
           python3 -m unittest discover -s d07-scene-diagnostic-source/tests -p test_axia_d07_gpu_gui_owner_contract.py -v
