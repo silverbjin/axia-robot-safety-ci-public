@@ -38,6 +38,19 @@ jobs:
           python3 -m py_compile tools/d07_h01_geometry_l2.py tools/d07_h01_path_visual.py tools/p2_staged_no_goal.py tools/d07_h01_cm_lifecycle_ready.py
           bash -n scripts/p2_no_goal_smoke_ci.sh scripts/d07_h01_gui_no_goal_once.sh
           echo D07_H01_GUI_L0_PASS_NO_ROS_NO_GAZEBO_NO_GOAL
+      - name: Public pinned Owner WSL2 bootstrap static L0; no WSL2 or Gazebo on CI
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          bash -n scripts/d07_h01_owner_wsl2_gui_once.sh
+          bash scripts/d07_h01_owner_wsl2_gui_once.sh --self-check > owner_bootstrap_static.log
+          grep -F 'D07_H01_OWNER_PUBLIC_BOOTSTRAP_L0_PASS' owner_bootstrap_static.log
+          grep -F 'PRIVATE_SHA=0e16c3781cdee603518a653f120a3be352e5f7b2' owner_bootstrap_static.log
+          grep -Fq 'owner_l3_automated_candidate' scripts/d07_h01_owner_wsl2_gui_once.sh
+          grep -Fq 'user_visual_content_verified' scripts/d07_h01_owner_wsl2_gui_once.sh
+          grep -Fq 'D07_H01_OWNER_WSL2_AUTOMATED_CANDIDATE_PASS_USER_GUI_VISUAL_REVIEW_PENDING' scripts/d07_h01_owner_wsl2_gui_once.sh
+          ! grep -Eq 'GITHUB_ACTIONS=true|NavigateToPose.Goal\(|wsl --shutdown|pkill -9' scripts/d07_h01_owner_wsl2_gui_once.sh
+          echo D07_H01_OWNER_WSL2_PUBLIC_SCRIPT_L0_PASS_NO_ROS_NO_GAZEBO
       - name: Destroy private checkout
         if: always()
         run: rm -rf -- instructor
