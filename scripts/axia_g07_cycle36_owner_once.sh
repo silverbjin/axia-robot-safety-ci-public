@@ -10,6 +10,8 @@ readonly PRIVATE_SHA='2b59c1a74513ac5a5b80c5bd424001a625c07617'
 readonly PRIVATE_TREE='5e0a464e97a9d3104303052e2bfaa68f8f0bb1ec'
 readonly PUBLIC_VISUAL_SHA='132d8c64def534061d3467f3e1a339fbb44e3e68'
 readonly PUBLIC_VISUAL_TREE='e285470ef153202fcc7b3e178a0720249bd12870'
+readonly PUBLIC_REVIEW_SHA='3e9343066625605a09fb9edf2e14132c410ae5cb'
+readonly PUBLIC_REVIEW_TREE='3b39b48a501079cb85368637526ce9ac9af5a3b0'
 readonly CI_WORKFLOW_SHA='8bacc46801d7150bb35e3d0f6656afbe91c2ff9d'
 readonly CI_L2_RUN='43863443121'
 readonly PUBLIC_REPO='silverbjin/axia-robot-safety-ci-public'
@@ -22,7 +24,7 @@ hold() {
 }
 
 self_check() {
-  for sha in "$PRIVATE_SHA" "$PRIVATE_TREE" "$PUBLIC_VISUAL_SHA" "$PUBLIC_VISUAL_TREE" "$CI_WORKFLOW_SHA";do
+  for sha in "$PRIVATE_SHA" "$PRIVATE_TREE" "$PUBLIC_VISUAL_SHA" "$PUBLIC_VISUAL_TREE" "$PUBLIC_REVIEW_SHA" "$PUBLIC_REVIEW_TREE" "$CI_WORKFLOW_SHA";do
     [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || return 3
   done
   [[ "$CI_L2_RUN" =~ ^[0-9]+$ ]] || return 3
@@ -68,6 +70,7 @@ readonly WORK="$(mktemp -d "$HOME/.axia_g07_cycle36_checkout_XXXXXXXX")"
 readonly OUT="$(mktemp -d "$HOME/axia_g07_cycle36_owner_XXXXXXXX")"
 readonly PRIVATE="$WORK/instructor"
 readonly PUBLIC="$WORK/public"
+readonly REVIEW="$WORK/review"
 SIDECAR_PID=''
 OWNER_RC=125
 RESULT_RC=3
@@ -108,6 +111,16 @@ git -C "$PUBLIC" checkout -q --detach FETCH_HEAD || hold 'PUBLIC_VISUAL_CHECKOUT
    "$(git -C "$PUBLIC" rev-parse 'HEAD^{tree}')" == "$PUBLIC_VISUAL_TREE" ]] ||
     hold 'PUBLIC_VISUAL_TREE_MISMATCH'
 
+# The original raw validator is independently source-pinned in PUBLIC.
+# The visual source predates the validator; never mix an unpinned helper.
+git init -q "$REVIEW" || hold 'PUBLIC_REVIEW_GIT_INIT'
+git -C "$REVIEW" remote add origin "https://github.com/$PUBLIC_REPO.git"
+git -C "$REVIEW" fetch --quiet --depth 1 origin "$PUBLIC_REVIEW_SHA" || hold 'PUBLIC_REVIEW_DOWNLOAD'
+git -C "$REVIEW" checkout -q --detach FETCH_HEAD || hold 'PUBLIC_REVIEW_CHECKOUT'
+[[ "$(git -C "$REVIEW" rev-parse HEAD)" == "$PUBLIC_REVIEW_SHA" &&
+   "$(git -C "$REVIEW" rev-parse 'HEAD^{tree}')" == "$PUBLIC_REVIEW_TREE" ]] ||
+     hold 'PUBLIC_REVIEW_TREE_MISMATCH'
+
 gh repo clone "$PRIVATE_REPO" "$PRIVATE" -- --quiet --no-checkout --filter=blob:none >/dev/null ||
   hold 'PRIVATE_SOURCE_CLONE_FAILED'
 git -C "$PRIVATE" fetch --quiet --depth 1 origin "$PRIVATE_SHA" ||
@@ -120,7 +133,7 @@ git -C "$PRIVATE" -c advice.detachedHead=false checkout -q --detach FETCH_HEAD |
 
 for file in "$PUBLIC/d06/scripts/d06_rviz_sidecar.sh" \
             "$PUBLIC/d06/scripts/g07_shared_gui_clients.sh" \
-            "$PUBLIC/d06/live/g07_cycle36_owner_raw_gate.py" \
+            "$REVIEW/d06/live/g07_cycle36_owner_raw_gate.py" \
             "$PRIVATE/scripts/p2_owner_l3_wsl2.sh" \
             "$PRIVATE/tools/p4_g07_sim_server_cm_core_separation.py";do
   [[ -s "$file" ]] || hold 'SOURCE_FILE_MISSING'
@@ -174,7 +187,7 @@ readonly ORIGINAL_ROOT="$(dirname "${originals[0]}")"
 [[ -r "$ORIGINAL_ROOT/source.sha" &&
    "$(cat "$ORIGINAL_ROOT/source.sha")" == "$PRIVATE_SHA" ]] ||
     hold 'OWNER_ORIGINAL_SOURCE_MISMATCH'
-python3 "$PUBLIC/d06/live/g07_cycle36_owner_raw_gate.py" \
+python3 "$REVIEW/d06/live/g07_cycle36_owner_raw_gate.py" \
    --run-root "$ORIGINAL_ROOT" --source-sha "$PRIVATE_SHA" \
    --output "$OUT/g07_owner_raw_gate.json" ||
      hold 'OWNER_RAW_7_CHANNEL_RMW_OR_CANCEL_UNVERIFIED'
