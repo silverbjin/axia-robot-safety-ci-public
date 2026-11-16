@@ -14,7 +14,7 @@ on:
       - 'scripts/axia_g07_cycle16_owner_wsl2_bootstrap.sh'
       - 'scripts/axia_g07_cycle18_field_readonly_wsl2_bootstrap.sh'
       - 'd06/docs/G07_OWNER_WSL2_FIRST_FAILURE_CI_PARITY_AGENT_INSTRUCTIONS_20261116_KO.md'
-      - 'd06/docs/G07_CYCLE18_FIELD_OWNER_FIRST_FAILURE_REPORT_20261116_KO.md'
+      - 'd06/docs/G07_CYCLE18_OWNER_FIELD_FIRST_174MS_CI_PARITY_REPORT_20261116_KO.md'
   workflow_dispatch:
 permissions:
   contents: read
