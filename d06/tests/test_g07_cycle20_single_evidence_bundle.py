@@ -97,7 +97,7 @@ class Cycle20BundleContract(unittest.TestCase):
                                     for i in tar.getmembers()))
                 checks=dict(line.split(maxsplit=1) for line in
                             payload["SHA256SUMS"].decode().splitlines())
-                self.assertEqual(set(checks),FILES-{"SHA256SUMS"})
+                self.assertEqual(set(checks.values()),FILES-{"SHA256SUMS"})
                 for n,d in payload.items():
                     if n!="SHA256SUMS":
                         self.assertEqual(checks[n],hashlib.sha256(d).hexdigest())
@@ -191,7 +191,7 @@ class Cycle20BundleContract(unittest.TestCase):
         p=root/"scripts/axia_g07_cycle20_owner_single_bundle_once.sh"
         src=p.read_text(encoding="utf-8")
         for term in ("g07_cycle20_single_bundle.py","--self-check",
-                     "NO_ROS_NO_GOAL","original_archive_sha256"):
+                     "NO_ROS_NO_GOAL",'--expected-sha256 "$ORIGINAL_SHA"'):
             self.assertIn(term,src)
         for term in ("ros2 action send_goal","YES-P2-G07-GOAL",
                      "wsl --shutdown","sudo apt","rm -rf -- \"$HOME"):
