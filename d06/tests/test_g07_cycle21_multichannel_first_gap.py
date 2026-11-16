@@ -81,6 +81,62 @@ class FirstGapCrossLayer(unittest.TestCase):
             self.assertFalse(r["owner_goal_authorized"])
             self.assertNotEqual(r["status"],"FIELD_CM_SOURCE_GAP_AND_OBSERVER_JITTER_CANDIDATE_HOLD")
 
+    def test_cycle20_uploaded_bundle_format_read_through_checksum_verifier(self):
+        from d06.live.g07_cycle21_first_gap_parity import classify_cycle20_bundle
+        import hashlib, io, tarfile, tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            path=Path(tmp)/"sanitized.tar.gz"
+            boundary={
+                "schema":"axia.g07.owner_first_cm_breach_summary_v1",
+                "first_guard_cm_age_ms":self.fixture["first_guard_cm_age_ms"],
+                "first_guard_cm_hard_ttl_ms":150,
+                "guard_first_transition":"UPSTREAM_STALE_AFTER_MOTION",
+                "host_clock_step_excluded":False,
+                "native_stop_rpc_overlaps_first_cm_gap":False,
+                "native_stop_rpc_temporal_relation":"FIRST_GAP_AFTER_RPC",
+                "native_stop_rpc_nearest_gap_distance_ms":435.347732,
+            }
+            docs={
+                "00_manifest.json":{
+                    "schema":"axia.g07.single_owner_sanitized_evidence_v1",
+                    "no_ros_no_goal":True,"owner_l3_accepted":False,
+                    "owner_release_allowed":False,"original_archive_verified":True,
+                    "private_original_included":False},
+                "01_first_boundary.json":boundary,
+                "02_event_window.json":{
+                    "schema":"axia.g07.owner_first_cm_bounded_window_v1",
+                    "events_by_kind":self.fixture["events_by_kind"]},
+                "03_cm_scheduler.json":{},
+                "04_environment.json":{},
+            }
+            payload={k:(json.dumps(v,sort_keys=True)+"\n").encode()
+                     for k,v in docs.items()}
+            payload["SHA256SUMS"]="".join(
+                __import__("hashlib").sha256(payload[k]).hexdigest()+"  "+k+"\n"
+                for k in sorted(payload)).encode()
+            with tarfile.open(path,"w:gz") as t:
+                for name,blob in payload.items():
+                    member=tarfile.TarInfo(name); member.size=len(blob)
+                    t.addfile(member,io.BytesIO(blob))
+            before=path.read_bytes()
+            report=classify_cycle20_bundle(path)
+            self.assertEqual(report["status"],
+                "FIELD_CM_SOURCE_GAP_AND_OBSERVER_JITTER_CANDIDATE_HOLD")
+            self.assertAlmostEqual(report["cm_source_gap_ms"],186.714207)
+            self.assertFalse(report["owner_goal_authorized"])
+            self.assertEqual(before,path.read_bytes())
+
+    def test_invalid_bundle_member_set_fails_closed(self):
+        from d06.live.g07_cycle21_first_gap_parity import classify_cycle20_bundle
+        import io,tarfile,tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            path=Path(tmp)/"bad.tar.gz"
+            with tarfile.open(path,"w:gz") as t:
+                member=tarfile.TarInfo("00_manifest.json");member.size=2
+                t.addfile(member,io.BytesIO(b"{}"))
+            with self.assertRaises(ValueError):
+                classify_cycle20_bundle(path)
+
     def test_fixture_only_contains_sanitized_relative_numeric_data(self):
         txt=FIXTURE.read_text()
         self.assertNotIn("private_source_sha",txt)
