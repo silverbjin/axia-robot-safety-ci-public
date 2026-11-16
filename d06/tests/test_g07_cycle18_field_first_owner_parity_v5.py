@@ -33,7 +33,7 @@ class TestRealFirstOwnerFieldFailure(unittest.TestCase):
     def make_lock(self,home):
         attempt=home/".axia_g07_final_owner_attempts"/f"{PRIVATE}-{RUN}"
         attempt.mkdir(parents=True)
-        (attempt/"source.txt").write_text(f"private_sha={PRIVATE}\\nci_run={RUN}\\n")
+        (attempt/"source.txt").write_text(f"private_sha={PRIVATE}\nci_run={RUN}\n")
         return attempt
 
     def test_sanitized_actual_174ms_guard_and_186ms_cm_are_not_ci_success(self):
