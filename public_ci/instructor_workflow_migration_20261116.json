@@ -1,0 +1,182 @@
+{
+  "schema": "AXIA_PUBLIC_CI_ONLY_MIGRATION_V1",
+  "policy": "PUBLIC_CI_ONLY",
+  "recorded_date": "2026-11-16",
+  "instructor_repo": "silverbjin/axia-robot-safety-instructor",
+  "public_repo": "silverbjin/axia-robot-safety-ci-public",
+  "instructor_github_actions_allowed": false,
+  "private_source_checkout_in_public_ci": false,
+  "instructor_hidden_tests_in_public_ci": false,
+  "legacy_instructor_workflows_reexecuted": false,
+  "gazebo_owner_acceptance_from_ci": false,
+  "certified_estop_from_ci": false,
+  "production_guard_ttl_from_ci": false,
+  "note": "A public workflow is a bounded functional analog, not a replacement for private test execution or a claim of identical coverage.",
+  "mappings": [
+    {
+      "instructor_workflow": "block-c-release-branch-cleanup.yml",
+      "public_workflows": [
+        "block-c-release-branch-cleanup.yml"
+      ],
+      "equivalence": "not_equivalent",
+      "private_checks_executed": false,
+      "verification_gap": "Public CI cleanup is for the public repository only; Instructor private ref removal remains Owner GH administration"
+    },
+    {
+      "instructor_workflow": "p0-preflight.yml",
+      "public_workflows": [
+        "public-contracts.yml",
+        "public-jazzy-dds.yml"
+      ],
+      "equivalence": "partial",
+      "private_checks_executed": false,
+      "verification_gap": "No private P0 unit/launch source; public Python fixture and Jazzy loopback only"
+    },
+    {
+      "instructor_workflow": "p0-staged-startup.yml",
+      "public_workflows": [
+        "public-gazebo-readonly.yml"
+      ],
+      "equivalence": "partial",
+      "private_checks_executed": false,
+      "verification_gap": "Official no-goal cold start reused; Instructor staged startup / real G00-G01 Goals not exercised"
+    },
+    {
+      "instructor_workflow": "p1-ci-runner-canary.yml",
+      "public_workflows": [
+        "public-canary.yml"
+      ],
+      "equivalence": "canary",
+      "private_checks_executed": false,
+      "verification_gap": "Shell runner availability only; not ROS or safety"
+    },
+    {
+      "instructor_workflow": "p1-fix01-03-gates.yml",
+      "public_workflows": [
+        "public-contracts.yml",
+        "public-jazzy-dds.yml"
+      ],
+      "equivalence": "not_equivalent",
+      "private_checks_executed": false,
+      "verification_gap": "No private Safety Supervisor/Fault Injector/Scenario Verifier code or signed P1 preflight"
+    },
+    {
+      "instructor_workflow": "p1-fix04-08-gazebo.yml",
+      "public_workflows": [
+        "public-gazebo-readonly.yml"
+      ],
+      "equivalence": "partial",
+      "private_checks_executed": false,
+      "verification_gap": "Official no-goal Gazebo baseline only; no private Nav2 overlay, actual stop or Goal"
+    },
+    {
+      "instructor_workflow": "p1-postp0-a-c.yml",
+      "public_workflows": [
+        "public-gazebo-readonly.yml"
+      ],
+      "equivalence": "not_equivalent",
+      "private_checks_executed": false,
+      "verification_gap": "P1 private post-P0 staged safety adapter contracts not executed"
+    },
+    {
+      "instructor_workflow": "p1-preacceptance-s01-s05.yml",
+      "public_workflows": [
+        "public-contracts.yml"
+      ],
+      "equivalence": "not_equivalent",
+      "private_checks_executed": false,
+      "verification_gap": "No private S01–S05 behavioral acceptance or official E-Stop"
+    },
+    {
+      "instructor_workflow": "p1-python-unit.yml",
+      "public_workflows": [
+        "public-contracts.yml"
+      ],
+      "equivalence": "partial",
+      "private_checks_executed": false,
+      "verification_gap": "Only public synthetic contract tests; private P1 unit suite not executed"
+    },
+    {
+      "instructor_workflow": "p1-t04-ros-jazzy.yml",
+      "public_workflows": [
+        "public-jazzy-dds.yml"
+      ],
+      "equivalence": "partial",
+      "private_checks_executed": false,
+      "verification_gap": "Jazzy DDS loopback only, not private P1 action test"
+    },
+    {
+      "instructor_workflow": "p1-t05-ros-launch.yml",
+      "public_workflows": [
+        "public-jazzy-dds.yml",
+        "public-gazebo-readonly.yml"
+      ],
+      "equivalence": "not_equivalent",
+      "private_checks_executed": false,
+      "verification_gap": "Private P1 launch source and QoS graph not executed"
+    },
+    {
+      "instructor_workflow": "p1-t06-ros-faults.yml",
+      "public_workflows": [
+        "public-contracts.yml"
+      ],
+      "equivalence": "not_equivalent",
+      "private_checks_executed": false,
+      "verification_gap": "No private fault-injection node or staged safety-stop proof"
+    },
+    {
+      "instructor_workflow": "p1-t07-evidence-runner.yml",
+      "public_workflows": [
+        "public-contracts.yml"
+      ],
+      "equivalence": "not_equivalent",
+      "private_checks_executed": false,
+      "verification_gap": "No private evidence runner, G02/G03/G04 proof or real odometry"
+    },
+    {
+      "instructor_workflow": "p1-t08-nav2-handoff.yml",
+      "public_workflows": [
+        "public-gazebo-readonly.yml"
+      ],
+      "equivalence": "not_equivalent",
+      "private_checks_executed": false,
+      "verification_gap": "Official readonly Nav2 smoke cannot verify private T08 handoff policy"
+    },
+    {
+      "instructor_workflow": "p1-t08-pre-goal-real-gazebo.yml",
+      "public_workflows": [
+        "public-gazebo-readonly.yml"
+      ],
+      "equivalence": "partial",
+      "private_checks_executed": false,
+      "verification_gap": "Official no-goal Gazebo only; no private Supervisor prestart or repeated custom pre-goal gate"
+    },
+    {
+      "instructor_workflow": "p1-t08-ros-live.yml",
+      "public_workflows": [
+        "public-jazzy-dds.yml"
+      ],
+      "equivalence": "not_equivalent",
+      "private_checks_executed": false,
+      "verification_gap": "Synthetic public DDS only; private T08 live trace excluded"
+    },
+    {
+      "instructor_workflow": "p1-t08-ros-shutdown.yml",
+      "public_workflows": [
+        "public-jazzy-dds.yml"
+      ],
+      "equivalence": "not_equivalent",
+      "private_checks_executed": false,
+      "verification_gap": "Public DDS loopback does not verify private subprocess shutdown"
+    },
+    {
+      "instructor_workflow": "p1-t08-scan-arming-regression.yml",
+      "public_workflows": [
+        "public-contracts.yml"
+      ],
+      "equivalence": "not_equivalent",
+      "private_checks_executed": false,
+      "verification_gap": "Private scan-arming race, fake Nav2 graph and timed TTL not reproduced publicly"
+    }
+  ]
+}
