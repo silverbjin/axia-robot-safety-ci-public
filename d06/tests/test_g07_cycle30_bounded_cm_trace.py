@@ -25,8 +25,9 @@ def ev(name,t,*,pid=PID,cb="cmd",epoch=True):
 
 class Cycle30SelectedTrace(unittest.TestCase):
     def select(self,rows,**kwargs):
-        return select_cm_first_window(rows,cm_pid=PID,first_pair=FIRST,
-                                      clock_anchors=ANCHORS,**kwargs)
+        options={"cm_pid":PID,"first_pair":FIRST,"clock_anchors":ANCHORS}
+        options.update(kwargs)
+        return select_cm_first_window(rows,**options)
     def test_more_than_500k_unrelated_trace_events_dont_exceed_cm_limit(self):
         # exact prior failure shape: global ROS trace is huge, owned
         # official CollisionMonitor has only a few relevant callbacks.
