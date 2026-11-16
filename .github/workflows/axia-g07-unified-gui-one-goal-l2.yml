@@ -43,7 +43,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-ci-public
-          ref: 4f7abd7f46cf4ce2eb47f1b344640f1805c686ff
+          ref: 83b10811b316e7e83765420c96fbf2cb677b0926
           path: unified-public
           persist-credentials: false
       - name: Published D06 read-only viewer sources pinned at public main
@@ -57,7 +57,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C unified-public rev-parse HEAD)" = "4f7abd7f46cf4ce2eb47f1b344640f1805c686ff"
+          test "$(git -C unified-public rev-parse HEAD)" = "83b10811b316e7e83765420c96fbf2cb677b0926"
           test "$(git -C visual rev-parse HEAD)" = '0f66059d9110f8e667200bbca22396bd0c78c02e'
           export PYTHONPATH="$PWD/unified-public"
           python3 -m unittest discover -s unified-public/d06/tests -p 'test_g07_unified_first_timing_regression.py' -v
@@ -175,6 +175,27 @@ jobs:
           test -s "$RUNNER_TEMP/s02-native-one-goal-build/libaxia_s02_physics_witness.so"
           python3 -m unittest discover -s tests/unit -p test_p4_s02_same_goal_review.py -q
           echo AXIA_S02_NATIVE_PLUGIN_SAME_VERIFIED_POSITIVE_BLOB_COMPILED_NO_GOAL
+      - name: 'Cycle29: start official CM callback LTTng trace BEFORE single Goal (diagnostic only)'
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          command -v lttng
+          TRACE="$RUNNER_TEMP/axia-g07-cycle29-ust"
+          [[ ! -e "$TRACE" && ! -L "$TRACE" ]]
+          mkdir -m 700 "$TRACE"
+          SESSION="axia_g07_cycle29_$GITHUB_RUN_ID"
+          lttng create "$SESSION" --output="$TRACE/raw" >/dev/null
+          lttng enable-event --userspace -s "$SESSION" 'ros2:callback_start' >/dev/null
+          lttng enable-event --userspace -s "$SESSION" 'ros2:callback_end' >/dev/null
+          lttng enable-event --userspace -s "$SESSION" 'ros2:rclcpp_callback_register' >/dev/null
+          lttng add-context --userspace -s "$SESSION" -t vpid >/dev/null
+          lttng add-context --userspace -s "$SESSION" -t vtid >/dev/null
+          lttng start "$SESSION" >/dev/null
+          python3 -c 'import json,time;print(json.dumps({"mono_ns":time.monotonic_ns(),"wall_ns":time.time_ns()}))' \
+            > "$TRACE/start_anchor.json"
+          printf '%s\n' "$SESSION" > "$TRACE/session.txt"
+          echo AXIA_G07_CYCLE29_LTTNG_OFFICIAL_CALLBACK_TRACE_STARTED_BEFORE_GOAL_DIAGNOSTIC_ONLY
+
       - name: Real Harmonic official TB3 Waffle and Nav2 ONE bounded simulation Goal
         shell: bash
         env:
@@ -324,6 +345,78 @@ jobs:
             echo AXIA_G07_CYCLE27_ACTUAL_FIRST_120MS_RPC_ORIGINAL_MISSING_HOLD_NO_INFERENCE
           fi
           echo AXIA_G07_CYCLE27_FIRST_GAP_DIAG_NOT_RELEASE_AUTHORITY
+      - name: 'Cycle29: first CM RMW gap versus real official callback spans (NOT acceptance)'
+        if: always()
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          TRACE="$RUNNER_TEMP/axia-g07-cycle29-ust"
+          if [[ ! -r "$TRACE/session.txt" ]];then
+            echo AXIA_G07_CYCLE29_TRACE_SESSION_MISSING_NOT_AN_ACCEPTANCE_PASS
+            exit 3
+          fi
+          trap 'rm -rf -- "$TRACE"' EXIT
+          SESSION="$(cat "$TRACE/session.txt")"
+          python3 -c 'import json,time;print(json.dumps({"mono_ns":time.monotonic_ns(),"wall_ns":time.time_ns()}))' \
+            > "$TRACE/end_anchor.json"
+          timeout 30 lttng stop "$SESSION" >/dev/null
+          timeout 20 lttng destroy "$SESSION" >/dev/null
+          export DEBIAN_FRONTEND=noninteractive
+          timeout 120 apt-get update -qq
+          timeout 120 apt-get install -y -qq --no-install-recommends python3-bt2
+          cd instructor
+          /usr/bin/python3 - "$TRACE/raw" "$TRACE/start_anchor.json" "$TRACE/end_anchor.json" <<'PY'
+          import bt2,json,sys
+          from pathlib import Path
+          sys.path.insert(0,str(Path("../unified-public").resolve()))
+          from d06.live.g07_cycle29_first_cm_callback_trace import classify_callback_gap
+          root=Path("results/p2-g07-ci-moving/real-l2")
+          event_path=root/"g07_ci_moving/actual_ros_events.jsonl"
+          report_path=root/"g07_ci_moving/ci_moving_goal_result.json"
+          cm_receipt=root/"g07_cm_owned_cpu_before.json"
+          if not (event_path.is_file() and report_path.is_file() and cm_receipt.is_file()):
+              print("AXIA_G07_CYCLE29_ORIGINAL_GOAL_CM_PID_OR_RMW_MISSING_HOLD")
+              raise SystemExit(3)
+          receipt=json.loads(cm_receipt.read_text())
+          pid=receipt.get("cm_pid")
+          assert type(pid) is int and pid>1, "CM_PID_NOT_OWNED_PROVEN"
+          rows=[json.loads(x) for x in event_path.read_text().splitlines() if x.strip()]
+          report=json.loads(report_path.read_text())
+          anchors={"start":json.loads(Path(sys.argv[2]).read_text()),
+                   "end":json.loads(Path(sys.argv[3]).read_text())}
+          trace=[]
+          for msg in bt2.TraceCollectionMessageIterator(sys.argv[1]):
+              if not isinstance(msg,bt2._EventMessageConst):
+                  continue
+              event=msg.event
+              if event.name not in ("ros2:callback_start","ros2:callback_end",
+                                    "ros2:rclcpp_callback_register"):
+                  continue
+              if msg.default_clock_snapshot is None:
+                  continue
+              p=event.payload_field
+              x={"name":event.name,
+                 "timestamp_ns":int(msg.default_clock_snapshot.ns_from_origin),
+                 "vpid":int(event.common_context_field["vpid"]),
+                 "vtid":int(event.common_context_field["vtid"]),
+                 "callback":str(p["callback"])}
+              if event.name=="ros2:rclcpp_callback_register":
+                  x["symbol"]=str(p["symbol"])
+              trace.append(x)
+              if len(trace)>500000:
+                  print("AXIA_G07_CYCLE29_TRACE_EVENT_COUNT_UNBOUNDED_HOLD")
+                  raise SystemExit(3)
+          result=classify_callback_gap(rows,report,trace,cm_pid=pid,clock_anchors=anchors)
+          print("AXIA_G07_CYCLE29_OFFICIAL_CM_CALLBACK_FIRST_GAP "+
+                json.dumps(result,sort_keys=True))
+          print("AXIA_G07_CYCLE29_INSTRUMENTED_SIMULATION_DIAGNOSTIC_ONLY_NOT_OWNER_RELEASE")
+          print("AXIA_MVP_DEMO_ACCEPTED=HOLD")
+          if result["status"] in ("TRACE_CLOCK_CALIBRATION_UNVERIFIED_HOLD",
+                                  "CM_TRACE_INPUT_UNVERIFIED_HOLD",
+                                  "FIRST_CM_RMW_ORACLE_UNVERIFIED_HOLD"):
+              raise SystemExit(3)
+          PY
+
       - name: Field 150ms hard safety and 120ms release headroom from actual shared GUI Goal
         if: always()
         shell: bash
