@@ -80,3 +80,20 @@ AXIA_WSL2_RESOURCE_MONITOR_HOST_ONLY_L3_GUI_NOT_PROVEN
 ## 참고
 - Microsoft WSL 설정: https://learn.microsoft.com/en-us/windows/wsl/wsl-config
 - Gazebo Harmonic Getting Started: https://gazebosim.org/docs/harmonic/
+
+## Owner 실제 계측 결과에 따른 주의 사항 — 2026-11-16
+
+실제 Owner 세션 cNAPf8A0과 동시간대 모니터 20261116T043122Z 결과를 대조했다. 두 tar.gz 모두 SHA256 검증 PASS.
+
+- Windows 호스트 31.71GiB RAM 중 WSL VM 15.4769GiB, 최저 가용 13.0215GiB, Swap 4GiB 전체 가용. **RAM 부족 아님**.
+- WSL 전체 CPU 최대 81.77%; 실제 GUI 시점 CPU PSI `some avg10=47.65~60.69`. CPU 경합 후보. RViz2 PID5768 99~130% CPU; Gazebo server PID4581 `ruby` 76~78%; GUI PID5767 `ruby` 71~83%. 공식 /proc CPU 스냅샷이 아닌 `ps` 시점 별 프로세스 평균치.
+- WSLg /dev/dxg 존재, RTX2060 Max-Q 6GB 및 Iris Xe 식별. *실제 Gazebo 실행 중* Ogre2 log의 `Device Name: llvmpipe (LLVM 20.1.2)`, GPU 가속 렌더러 아님. GUI 실행기 `LIBGL_ALWAYS_SOFTWARE=1` 강제.
+- `nvidia_gpu.txt`의 0%/VRAM 0은 13:31:22 (시뮬레이터 13:31:37 시작 전) 단발 조회: **시연 중의 NVIDIA GPU 사용률이 0%라고 단정하지 말 것**.
+- 원본 Gazebo GUI XWD의 late 시점에 3D viewport가 비어 있고 Entity Tree도 비어 있음. 실제 Gazebo 서버에서는 robot entity 생성과 Scan/Costmap 진행 검증. 3D GUI 연결/렌더링 실패 원인은 아직 미확정.
+- 초기 공개 Monitor가 샘플 76회 중 Gazebo pid4580을 `gazebo_unknown` 한 번만 기록하고 server/gui 0으로 오판. Owner 원본 `resources_processes.txt`에서 server/GUI가 각각 **`ruby`**로 실제 생존 중임을 확인함.
+- Ruby로 감싼 `gz sim -s/-g` 프로세스를 분류하는 신규 synthetic CI regression: RED [#43805669637](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43805669637) 4 subcases fail → GREEN [#43805784327](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43805784327) 전체 60 L0 PASS. 수정 코드 고정 SHA **`b18499b2a271992e22924fa150437932d049f0f7`**.
+- **중요:** 원본은 실제 Ruby PID 4581/5767의 전체 `/proc/PID/cmdline`을 보존하지 않았음. 새 분류 테스트의 argv는 Gazebo Ruby CLI를 모델링한 합성 fixture이며, 실제 Owner Gazebo transport 연결이 검증됐다는 뜻이 아님.
+
+다음 계측이 필요할 때 이전 SHA 대신 **수정된 monitor SHA `b18499b2a271992e22924fa150437932d049f0f7`**를 사용하라. 같은 오류에 대한 WSL2 재시도만 반복하지 말고, 다른 원본 데이터 수집 시 함께 실행하여 `gz_partition_alignment`의 최초 상태를 분석할 것. `MATCH_NOT_CONNECTION_PROOF`는 화면 렌더 성공을 뜻하지 않음. 실물 소프트웨어 E-Stop 및 안전 TTL은 원 검수 범위 외.
+
+현재 D07 GUI 시각 인수=HOLD. `AXIA_MVP_DEMO_ACCEPTED=HOLD`.
