@@ -148,6 +148,7 @@ jobs:
           sys.path.insert(0,'tools')
           from d07_h01_path_visual import assess_gui_stages
           import subprocess, xml.etree.ElementTree as ET
+          root=Path('results/d07-h01-gui-ci/real-l2')
           # Verify the exact world that the REAL Nav2 launch consumed, not
           # a copied or hand-crafted expected SDF. Headless remains TRUE.
           scene_world=root/'d07_gui_scene_world.sdf.xacro'
@@ -170,7 +171,6 @@ jobs:
               [t for t in expected if t not in topics])
           print('D07_H01_REAL_GAZEBO_RUNTIME_SCENE_TOPICS_CONFIRMED')
 
-          root=Path('results/d07-h01-gui-ci/real-l2')
           geo=json.loads((root/'d07_h01_geometry/d07_h01_geometry.json').read_text())
           lines=(root/'d07_h01_geometry/phase_evidence.jsonl').read_text().splitlines()
           phases=[json.loads(x) for x in lines]
