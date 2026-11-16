@@ -124,17 +124,18 @@ class Cycle33OwnerRelease(unittest.TestCase):
 
 
     def test_bootstrap_pinned_checkout_has_actual_gate_and_checker(self):
-        """Regression: never advertise Owner release if pinned checkout lacks dependencies."""
-        import re
+        """Bootstrap must refer to existing files in its exact pinned checkout."""
         bootstrap=(ROOT/"scripts/axia_g07_cycle33_owner_wsl2_bootstrap.sh").read_text()
         for variable in ("GATE","CHECK","OWNER"):
-            match=re.search(r'(?m)^'+variable+r'="\\$WORK/([^"]+)"    unittest.main()
-,bootstrap)
-            self.assertIsNotNone(match,f"missing pinned {variable} binding")
-            required=ROOT/match.group(1)
-            self.assertTrue(required.is_file(),f"pinned checkout missing {variable}: {required}")
-        self.assertIn('readonly RELEASE_SHA=',bootstrap)
-        self.assertIn('readonly RELEASE_TREE=',bootstrap)
+            lines=[line for line in bootstrap.splitlines()
+                   if line.startswith(variable+'="'+chr(36)+'WORK/')]
+            self.assertEqual(len(lines),1,variable)
+            relative=lines[0].split(chr(36)+'WORK/',1)[1].split('"',1)[0]
+            self.assertTrue((ROOT/relative).is_file(),
+                            f"pinned checkout missing {variable}: {relative}")
+        self.assertIn("readonly RELEASE_SHA=",bootstrap)
+        self.assertIn("readonly RELEASE_TREE=",bootstrap)
+
 
 if __name__=="__main__":
     unittest.main()
