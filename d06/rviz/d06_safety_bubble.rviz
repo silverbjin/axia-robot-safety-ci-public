@@ -57,8 +57,8 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: true
-      Marker Scale: 0.45
-      Show Arrows: true
+      Marker Scale: 0.22
+      Show Arrows: false
       Show Axes: false
       Show Names: false
       Update Interval: 0
@@ -127,16 +127,16 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 4.6
+      Distance: 4.2
       Focal Point:
         X: 0
         Y: 0
         Z: 0
       Name: Current View
       Near Clip Distance: 0.01
-      Pitch: 0.9
+      Pitch: 1.05
       Target Frame: base_footprint
-      Yaw: 0.8
+      Yaw: 0.0
     Saved: ~
 Window Geometry:
   Height: 920
