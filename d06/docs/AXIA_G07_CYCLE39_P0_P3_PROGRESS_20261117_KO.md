@@ -1,3 +1,68 @@
+# Cycle39 범위 동결 최종 종료 판정 — 2026-11-17
+
+**이 절은 아래의 기존 P0~P3 개발 기록보다 우선하는 최종 범위 결정이다.** 아래 과거 기록의 '신규 L2/검사기'는 종료된 실험 개발 이력이며 현재 출고 필수 조건이 아니다.
+
+## 변경 전 승인 계획
+- 선행 계획: [AXIA_G07_C39_SCOPE_FREEZE_PLAN_20261117_KO.md](AXIA_G07_C39_SCOPE_FREEZE_PLAN_20261117_KO.md); 계획 commit `7e3690f8ae50f8152d83f3093c62f93a23f7b06f`.
+- 대상: 공개 Draft PR [#136](https://github.com/silverbjin/axia-robot-safety-ci-public/pull/136), `fix/g07-cycle39-rviz-scan-timing-20261117` → `fix/g07-cycle38-d07-wslg-gpu-xcb-capture-20261117`. C38 성공 증거, G07 주행/CM/TTL 기준 원본 보존.
+- 실제 최종 목표: P0 RViz 보조화면 설정 + P1 교육용 front_distance 0..2π wrap 수정만 보존. P1 물리 원통 기하 검증·P2 clock 분류기·실험용 L2는 범위 밖.
+
+## RED → GREEN → REFACTOR → REVIEW → COMMIT 결과
+| 단계 | 공개 증거 및 결과 |
+|---|---|
+| RED | 기존 불변 C38 소스 `c4dca31b210d28037116e49fe39d8d0b5aebdc34`에 범위 축소 4개 회귀 적용. **2건 실패 예상/검증**: TF arrows 표시, 전방 2π 경계 거리 |
+| GREEN | [Public L0 Run #43975995004](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43975995004) `completed/success`, Git SHA `5e99bd4afcc7f055b90623401143e844d5d1c8bc` |
+| REFACTOR | `d06/live/d06_readonly_monitor.py`에는 wrapped front angle diff만 보존. 추가한 네 가지 stamp/logging 필드 삭제. 기하 판정기·clock 진단기·Cycle39 전용 Gazebo L2 workflow를 Draft PR에서 삭제 |
+| REVIEW | 실제 PR diff: 안전 제어 관련 소스 변경 0건. 변경 소스는 `d06/live/d06_readonly_monitor.py`의 전방 angle wrap과 `d06/rviz/d06_safety_bubble.rviz`의 표시 설정뿐. 새로운 Goal/cmd_vel publisher 0 |
+| COMMIT | 범위 축소를 각 파일별로 커밋했고 다음에 최종 결과 문서만 커밋. Draft 상태 유지; main 미병합 |
+
+## 실제 공개 CI 로그 발췌
+```text
+AXIA_G07_C39_SCOPED_RED_TWO_ORIGINAL_FAILURES_CONFIRMED
+test_front_wrap_includes_both_sides_of_2pi ... ok
+test_invalid_scan_stays_unknown ... ok
+test_monitor_publishes_only_educational_markers ... ok
+test_rviz_clarity_preserves_readonly_frame_and_scan ... ok
+Ran 4 tests in 0.007s
+OK
+AXIA_G07_C39_MVP_SCOPED_PUBLIC_L0_PASS_4_OF_4_NO_ROS_NO_GOAL
+AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false
+```
+최초 RED 단계의 작업 완료 결과는 기존 코드 두 개 실패 판정 확인이다. GREEN은 ROS/Gazebo 없는 단위·정적 L0 결과이며 실제 Gazebo 신동작 검증을 뜻하지 않는다.
+
+## 남긴 경로
+- `d06/rviz/d06_safety_bubble.rviz`: `TF Show Arrows=false`, Marker Scale 축소, 카메라 시점 조정. LaserScan=`/scan`, Fixed Frame=`odom`, RobotModel off.
+- `d06/live/d06_readonly_monitor.py`: front angle wrap 수정만 유지, 공식 CM 정책·안전 기능 변경 0.
+- `d06/tests/test_g07_cycle39_display_scan_timing.py`: 교육용 표시+전방 검출+UNKNOWN+읽기 전용 publisher 검증 4개.
+- `.github/workflows/axia-g07-cycle39-display-scan-l0.yml`: 공개 RED 2/GREEN 4 최소 계약.
+- 계획/보고 문서는 추적·교육용으로 보존.
+
+## 제거한 경로
+- Draft PR #136: `d06/live/g07_cycle39_scan_geometry.py`, `d06/live/g07_cycle39_scan_timing.py`, `.github/workflows/axia-g07-cycle39-gazebo-scan-snapshot-l2.yml` 모두 제거.
+- 임시 공개 release 브랜치 `release/p2-g06-cm-ttl-20261110`에 추가했던 위 Cycle39 L2 workflow도 **그 파일만** 삭제, cleanup commit `68742938e68e6f9e1151bd07563d44f004c6a89c`. 원래 Cycle38 real Gazebo L2 workflow는 그대로 존재함을 재조회 확인.
+
+## 보존 및 미인수 판정
+- 이전 C38 Owner WSLg GUI-only 화면 실측 성공은 그대로 인정하며 현장 재실행하지 않았다.
+- 변경된 C39 RViz 개선본의 WSLg 시각 확인은 **NOT_RUN**. 실제 source/bridge/supervisor scan 전달주기·물리 Geometry 완전 일치도 **UNVERIFIED**; 이번 GUI-only 배포 필수 요구로 확대하지 않는다.
+- G07 Moving Goal 통합 인수는 원본 CM native RMW source gap `128.644215ms >120ms` 릴리스 마진 때문에 **HOLD**. 원래 `150ms` TTL 위반 자체의 확증은 아님. 해당 원인·실제 안전 계층의 통합 L2/Owner 인수는 **별도 G07 작업**.
+- 이 작업에서 새 ROS 실행/Gazebo L2/Owner WSL2/Goal 실행은 하지 않았으며 실제 성공 보고 금지.
+- 강사 비공개 정답·학생 저장소 및 main 병합 없음. 소프트웨어 정지를 인증 E-Stop으로 설명하지 않음.
+
+```text
+AXIA_G07_C39_SCOPE_FREEZE=COMPLETE
+AXIA_G07_C39_PUBLIC_L0_RED=2_EXPECTED_FAILURES_PROVEN
+AXIA_G07_C39_PUBLIC_L0_GREEN=PASS_4_OF_4
+AXIA_G07_C39_NEW_GAZEBO_L2=NOT_RUN_AFTER_SCOPE_FREEZE
+AXIA_G07_C39_NEW_OWNER_WSLG=NOT_RUN
+AXIA_G07_MOVING_GOAL_L3=HOLD
+CM_120MS_RELEASE=HOLD
+AXIA_MVP_DEMO_ACCEPTED=HOLD
+CERTIFIED_ESTOP=false
+MAIN_MERGED=false
+```
+
+---
+
 # AXIA G07 Cycle39 — P0→P3 증거·개발·최초 경계 보고 (2026-11-17)
 
 ## 기준선 및 범위
