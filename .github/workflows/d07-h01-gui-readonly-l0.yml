@@ -77,14 +77,14 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-ci-public
-          ref: b56d88d1c6602208ef9b2ca596a72985d03f95f3
+          ref: 2fc012ad126bbe3a328d35aa6f657d4dc375f061
           path: gpu-owner-source
           persist-credentials: false
       - name: Pinned Owner WSLg D3D12 GUI trial preflight L0, NO ROS
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C gpu-owner-source rev-parse HEAD)" = 'b56d88d1c6602208ef9b2ca596a72985d03f95f3'
+          test "$(git -C gpu-owner-source rev-parse HEAD)" = '2fc012ad126bbe3a328d35aa6f657d4dc375f061'
           bash -n gpu-owner-source/scripts/axia_d07_h01_gpu_gui_owner_wsl2_once.sh
           python3 -m unittest discover -s gpu-owner-source/tests -p test_axia_d07_gpu_gui_owner_contract.py -v
           echo D07_GPU_GUI_OWNER_PREFLIGHT_ONLY_NO_ACTUAL_WSLG_NO_GAZEBO
