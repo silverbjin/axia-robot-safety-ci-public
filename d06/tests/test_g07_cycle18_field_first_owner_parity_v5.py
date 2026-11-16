@@ -139,6 +139,23 @@ class TestRealFirstOwnerFieldFailure(unittest.TestCase):
         self.assertLess(wrapper.index(field),wrapper.index('ATTEMPT_ROOT="$HOME/'))
         self.assertIn("FIELD_PREVIOUS_GOAL_CM_TTL_BREACH_HOLD",bootstrap)
 
+    def test_real_owner_wrapper_subcommand_on_prior_lock_is_no_ros(self):
+        real_owner=ROOT/"d06/scripts/g07_cycle16_owner_wsl2_once.sh"
+        with tempfile.TemporaryDirectory() as tmp:
+            home=Path(tmp)
+            lock=self.make_lock(home)
+            before=(lock/"source.txt").read_bytes()
+            r=subprocess.run(["bash",str(real_owner),"--field-preflight"],
+                cwd=tmp,capture_output=True,text=True,timeout=12,
+                env={**os.environ,"HOME":tmp,"PYTHONDONTWRITEBYTECODE":"1"})
+            self.assertEqual(r.returncode,3,r.stdout+r.stderr)
+            self.assertIn("FIELD_PREVIOUS_GOAL_CM_TTL_BREACH_HOLD",r.stdout)
+            self.assertIn("AXIA_MVP_DEMO_ACCEPTED=HOLD",r.stdout)
+            self.assertNotIn("D06_RVIZ_NOT_CONFIRMED",r.stdout)
+            self.assertNotIn("D06_GUI_EVIDENCE=",r.stdout)
+            self.assertFalse((home/"axia_p2_private_evidence").exists())
+            self.assertEqual(before,(lock/"source.txt").read_bytes())
+
     def test_actual_owner_readonly_entrypoint_matches_ci_and_has_no_goal(self):
         src=SCRIPT.read_text(encoding="utf-8")
         self.assertIn("g07_cycle18_field_owner_admission_v5.py",src)
