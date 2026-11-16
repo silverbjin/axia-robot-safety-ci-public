@@ -485,10 +485,17 @@ except (OSError,ValueError,TypeError,KeyError,ET.ParseError):
 if require and not (scene_world_source_verified and scene_transport_observed):
     require=False
     reason='D07_H01_SCENE_BROADCASTER_SOURCE_OR_RUNTIME_NOT_PROVEN'
+first_staged_file=root/'owner_first_staged_boundary.txt'
+first_staged_boundary=(first_staged_file.read_text().strip()
+                       if runner_rc!=0 and first_staged_file.is_file() else '')
 first_gui_file=root/'owner_first_gui_boundary.txt'
 first_gui_boundary=(first_gui_file.read_text().strip()
                     if runner_rc!=0 and first_gui_file.is_file() else '')
-if first_gui_boundary:
+# A native Lifecycle gate fails BEFORE a GUI watcher can be started.
+# Never overwrite the actual first error with a later missing X11 watcher.
+if first_staged_boundary:
+    reason=first_staged_boundary
+elif first_gui_boundary:
     reason=first_gui_boundary
 # Actual WSL2 X11 window titles and ROS/DDS do NOT prove rendered 3D
 # pixels. Current Owner Xoszr6rv demonstrates why. Snapshot files must
@@ -504,9 +511,10 @@ out={
     'schema':'axia_d07_h01_owner_gui_l3_scoped_v2_visual_review',
     'status':'D07_H01_OWNER_GUI_VISUAL_HOLD',
     'reason':reason,
-    'first_missing_visual_boundary':(first_gui_boundary or
+    'first_missing_visual_boundary':(first_staged_boundary or first_gui_boundary or
         (reason if source_scope_ready or reason.startswith('D07_H01_SCENE_')
          else 'ROS_SOURCE_OR_X11_NOT_READY')),
+    'first_staged_boundary':first_staged_boundary or None,
     'first_gui_boundary':first_gui_boundary or None,
     'private_source_sha':source,
     'public_same_source_gazebo_xvfb_l2_run_not_wslg_gpu':ci_run,
