@@ -15,6 +15,21 @@ readonly CI_CONTAINER_DIGEST='sha256:861ae1df0560f991698d8967193380b1619589ba777
 if [[ "${1:-}" == '--self-check' ]]; then
   [[ $# == 1 && "$PRIVATE_SHA" =~ ^[0-9a-f]{40}$ &&
      "$PUBLIC_REAL_GAZEBO_L2_RUN" =~ ^[0-9]{11}$ ]] || exit 3
+  # Compile exactly the embedded L3 verdict code before any WSL2/Gazebo work.
+  # This check is purely static; no ROS imports or fabricated acceptance.
+  python3 - "$0" <<'PYCHECK'
+from pathlib import Path
+import sys
+source=Path(sys.argv[1]).read_text()
+tag="<<'PY'\n"
+start=source.rfind(tag)
+if start<0:
+    raise SystemExit("D07_H01_OWNER_VERDICT_HEREDOC_NOT_FOUND")
+start+=len(tag)
+end=source.index("\nPY\nVERDICT_RC=",start)
+compile(source[start:end],"<d07_h01_owner_embedded_verifier>","exec")
+print("AXIA_D07_H01_OWNER_PY_VERDICT_STATIC_COMPILE_PASS")
+PYCHECK
   echo "AXIA_D07_H01_OWNER_BOOTSTRAP_STATIC_L0_PASS pinned_private=$PRIVATE_SHA public_l2=$PUBLIC_REAL_GAZEBO_L2_RUN"
   echo 'NO_ROS_NO_GAZEBO_NO_GOAL OWNER_WSL2_L3_NOT_RUN'
   exit 0
