@@ -95,9 +95,10 @@ class Cycle20BundleContract(unittest.TestCase):
                          for i in tar.getmembers()}
                 self.assertTrue(all(i.isfile() and i.size<200000
                                     for i in tar.getmembers()))
-                checks=dict(line.split(maxsplit=1) for line in
-                            payload["SHA256SUMS"].decode().splitlines())
-                self.assertEqual(set(checks.values()),FILES-{"SHA256SUMS"})
+                checks={name:digest for digest,name in
+                            (line.split(maxsplit=1) for line in
+                             payload["SHA256SUMS"].decode().splitlines())}
+                self.assertEqual(set(checks),FILES-{"SHA256SUMS"})
                 for n,d in payload.items():
                     if n!="SHA256SUMS":
                         self.assertEqual(checks[n],hashlib.sha256(d).hexdigest())
