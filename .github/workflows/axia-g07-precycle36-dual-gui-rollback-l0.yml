@@ -20,7 +20,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-ci-public
-          ref: 49de69bf4ca0f926280ee399b6c0b2ef0d19099c
+          ref: 8a43b8ea5c437cb526f940b5b2f08fc6f57eca9c
           path: rollback-public
           persist-credentials: false
       - name: Exact original old Instructor source (without Cycle36)
@@ -34,7 +34,7 @@ jobs:
       - name: Reproduce original baseline contracts and fail closed without ROS or Goal
         run: |
           set -Eeuo pipefail
-          test "$(git -C rollback-public rev-parse HEAD)" = 49de69bf4ca0f926280ee399b6c0b2ef0d19099c
+          test "$(git -C rollback-public rev-parse HEAD)" = 8a43b8ea5c437cb526f940b5b2f08fc6f57eca9c
           test "$(git -C precycle36-instructor rev-parse HEAD)" = 01d45d46b6eb6a05b1bd313d73f1fc3549575545
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
             -s rollback-public/d06/tests \
