@@ -149,6 +149,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
+          export PYTHONPATH="$PWD/unified-public"
           python3 -m unittest discover -s unified-public/d06/tests -p 'test_g07_cycle23_cm_marker_role_conflict.py' -v
           GUI_CPU="$(python3 unified-public/d06/live/d06_gui_cpu_plan.py)"
           MONITOR_CPU="$(python3 unified-public/d06/live/d06_gui_cpu_plan.py --role monitor)"
