@@ -1,0 +1,43 @@
+name: AXIA G07 Cycle36 GUI integrated restore contract L0
+on:
+  push:
+    branches: ['fix/g07-cycle36-gui-restore-ci-first-20261116']
+    paths:
+      - '.github/workflows/axia-g07-cycle36-gui-contract-l0.yml'
+      - 'd06/tests/test_g07_cycle36_gui_restore.py'
+      - 'd06/scripts/g07_shared_gui_clients.sh'
+      - 'd06/docs/G07_CYCLE36_RESTORE_POINT_AND_DEVELOPMENT_INVENTORY_20261116_KO.md'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  public-gui-contract-no-ros:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Cycle36 public contract (RED then GREEN)
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest discover -s d06/tests -p 'test_g07_cycle36_gui_restore.py' -v
+          bash -n d06/scripts/g07_shared_gui_clients.sh
+          echo AXIA_G07_CYCLE36_PUBLIC_GUI_CONTRACT_L0_PASS_NO_ROS_NO_GOAL
+  private-matching-runtime-no-ros:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    environment: axia-instructor-sealed
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: a6281884cbe4b671c2f6a4fb3c57cf3cbb0b7257
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Cycle36 sealed private runtime source contract only
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = "a6281884cbe4b671c2f6a4fb3c57cf3cbb0b7257"
+          python3 -m unittest discover -s tests/unit -p 'test_g07_cycle36_integrated_gui_mode_20261116.py' -v
+          bash -n scripts/p4_g07_shared_runtime.sh
+          bash -n scripts/p2_no_goal_smoke_ci.sh
+          echo AXIA_G07_CYCLE36_PRIVATE_GUI_CONTRACT_L0_PASS_NO_ROS_NO_GOAL
