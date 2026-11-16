@@ -1,0 +1,45 @@
+# D07-H01 WSL2 one-shot static L0; no ROS/Gazebo, no moving Goal.
+name: AXIA D07-H01 no-ACK Owner WSL2 bootstrap L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-d07-h01-localization-noack-owner-l0.yml']
+permissions:
+  contents: read
+jobs:
+  exact-owner-bootstrap:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    environment: axia-instructor-sealed
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Clone exact public Owner candidate
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-ci-public
+          ref: 48701966173561932ff4cd8d9078f86a5106ea1d
+          path: owner-source
+          persist-credentials: false
+      - name: Clone exact private D07 source sealed
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 43f83daee851d7c5f55cede053143a9af54afe09
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          path: instructor
+          persist-credentials: false
+      - name: Exact Owner bootstrap and FIRST native failure priority L0
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C owner-source rev-parse HEAD)" = '48701966173561932ff4cd8d9078f86a5106ea1d'
+          test "$(git -C instructor rev-parse HEAD)" = '43f83daee851d7c5f55cede053143a9af54afe09'
+          bash -n owner-source/scripts/axia_d07_h01_gpu_gui_owner_wsl2_once.sh
+          python3 -m unittest discover -s owner-source/tests -p test_axia_d07_gpu_gui_owner_contract.py -v
+          bash owner-source/scripts/axia_d07_h01_gpu_gui_owner_wsl2_once.sh --self-check
+          grep -Fq "owner_first_staged_boundary.txt" owner-source/scripts/axia_d07_h01_gpu_gui_owner_wsl2_once.sh
+          ! grep -q 'AXIA_MVP_DEMO_ACCEPTED=PASS' owner-source/scripts/axia_d07_h01_gpu_gui_owner_wsl2_once.sh
+          echo D07_H01_NEW_OWNER_ONE_SHOT_L0_PASS_NO_ROS_NO_GAZEBO_NO_GOAL
+      - name: Destroy sealed Instructor checkout
+        if: always()
+        run: rm -rf -- instructor
