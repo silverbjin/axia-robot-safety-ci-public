@@ -600,6 +600,24 @@ jobs:
           goal=[x['t'] for x in events if x.get('kind')=='owner_goal_published']
           assert len(goal)==1,'G07_SINGLE_P4_GOAL_UUID_WINDOW_UNVERIFIED'
           obs=[json.loads(x) for x in samples.read_text().splitlines() if x.strip()]
+          # Cycle36 read-only forensic: diagnose missing in-Goal Marker
+          # without a fake scan or accepting old pre-Goal samples.
+          observed_times=[x.get('t_monotonic') for x in obs
+                          if type(x.get('t_monotonic')) in (float,int)]
+          scan_counts=[x.get('actual_scan_messages',0) for x in obs
+                       if type(x.get('actual_scan_messages',0)) is int]
+          goal_samples=[x for x in obs if type(x.get('t_monotonic')) in (float,int)
+                        and goal[0]<=x['t_monotonic']<=goal[0]+60]
+          print('AXIA_G07_CYCLE36_MARKER_READONLY_MONOTONIC_WINDOW '+json.dumps({
+              'goal_start':round(goal[0],3),
+              'samples_total':len(obs),
+              'samples_in_goal_window':len(goal_samples),
+              'sample_first':min(observed_times) if observed_times else None,
+              'sample_last':max(observed_times) if observed_times else None,
+              'scan_max':max(scan_counts) if scan_counts else None,
+              'scan_first':scan_counts[0] if scan_counts else None,
+              'scan_last':scan_counts[-1] if scan_counts else None
+          },sort_keys=True))
           actual_both=w.get('real_rviz_window') is True and w.get('real_gazebo_gui_window') is True
           started_before_goal=w.get('display_started_monotonic',float('inf'))<=goal[0]
           integrated_world=(w.get('world_entity_verified') is True and
@@ -619,6 +637,14 @@ jobs:
               'owner_wslg_verified':False,'source_safety_modified':False,
           },sort_keys=True))
           if not (actual_both and started_before_goal and overlap and integrated_world):
+              # Show only bounded PUBLIC viewer diagnostic, no original
+              # private bag, environment or P4 source data.
+              for name in ('monitor.log','sidecar.log'):
+                  viewer_log=p/'visual-readonly'/name
+                  if viewer_log.is_file():
+                      entries=viewer_log.read_text(encoding='utf-8',errors='replace').splitlines()
+                      print('AXIA_G07_CYCLE36_VIEWER_LOG_TAIL '+name+' '+json.dumps(
+                          entries[-6:],ensure_ascii=True)[:1800])
               sys.exit(3)
           print('AXIA_G07_UNIFIED_GUI_STRESS_XVFB_REAL_L2_CANDIDATE_NOT_WSLG')
           PY
