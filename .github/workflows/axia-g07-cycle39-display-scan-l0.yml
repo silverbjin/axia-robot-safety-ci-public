@@ -26,6 +26,26 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Baseline immutable source for actual RED replay
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-ci-public
+          ref: c4dca31b210d28037116e49fe39d8d0b5aebdc34
+          path: baseline
+          persist-credentials: false
+      - name: RED replay old RViz and LaserScan source fail as expected
+        run: |
+          set -Eeuo pipefail
+          cp d06/tests/test_g07_cycle39_display_scan_timing.py baseline/d06/tests/
+          if PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s baseline/d06/tests \
+                -p 'test_g07_cycle39_display_scan_timing.py' -v > /tmp/axia_g07_c39_red.log 2>&1; then
+            echo AXIA_G07_C39_RED_BASELINE_UNEXPECTED_PASS >&2; exit 3
+          fi
+          grep -Eq 'AssertionError|FileNotFoundError' /tmp/axia_g07_c39_red.log || {
+            echo AXIA_G07_C39_RED_FAILURE_NOT_REPRODUCIBLE >&2; cat /tmp/axia_g07_c39_red.log; exit 3;
+          }
+          grep -E '^FAILED|^Ran [0-9]+ tests|^AssertionError|^FileNotFoundError' /tmp/axia_g07_c39_red.log || true
+          echo AXIA_G07_C39_ACTUAL_RED_BASELINE_REPLAY_CONFIRMED_NO_ROS_NO_GOAL
       - name: No ROS, no Goal, fail-closed P0-P2 regressions
         run: |
           set -Eeuo pipefail
