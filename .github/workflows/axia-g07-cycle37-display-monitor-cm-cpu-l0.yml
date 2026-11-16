@@ -1,0 +1,30 @@
+# Cycle37 public read-only renderer scheduling test, no ROS/Goal, exact SHA.
+name: AXIA G07 Cycle37 display monitor avoids owned CM cores L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-g07-cycle37-display-monitor-cm-cpu-l0.yml']
+permissions:
+  contents: read
+jobs:
+  display-cpu-no-goal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Exact public display candidate, never mutable main
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-ci-public
+          ref: 62024de04949d9bc9b885efc0e240178c3b67d24
+          path: visual
+          persist-credentials: false
+      - name: Reproduce real CM overlap and verify no safety changes
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C visual rev-parse HEAD)" = 62024de04949d9bc9b885efc0e240178c3b67d24
+          cd visual
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
+            -s d06/tests -p 'test_g07_cycle37_readonly_monitor_noncm_cpu.py' -v
+          python3 -m py_compile d06/live/d06_gui_cpu_plan.py
+          bash -n d06/scripts/g07_shared_gui_clients.sh
+          echo AXIA_G07_C37_DISPLAY_MONITOR_NONCM_CPU_L0_PASS_NO_ROS_NO_GOAL
