@@ -1,10 +1,12 @@
 """Owner D07 WSLg GPU experiment: no Gazebo on L0, no motion admission."""
 from pathlib import Path
+import json
 import subprocess
+import tempfile
 import unittest
 ROOT=Path(__file__).resolve().parents[1]
 SCRIPT=ROOT/"scripts/axia_d07_h01_gpu_gui_owner_wsl2_once.sh"
-PRIVATE_SHA="bea66767961416e3b0154447eb2ab38405122cd3"
+PRIVATE_SHA="9213fe2806a7db9151f761b9a9285117983fc135"
 
 class OwnerGpuTrialContract(unittest.TestCase):
     def test_bootstrap_l0_executes_without_gazebo(self):
@@ -24,6 +26,28 @@ class OwnerGpuTrialContract(unittest.TestCase):
                         s.index('bash "$PRIVATE_RUNNER" --run'))
         self.assertNotIn("source ~/.bashrc",s)
         self.assertNotIn("wsl --shutdown",s)
+
+    def test_real_first_gui_failure_survives_missing_phase_evidence(self):
+        # Owner mVW: empty watcher log + absent GUI stage files. A later
+        # FileNotFoundError is NEVER the first failure if GUI failed first.
+        code=SCRIPT.read_text()
+        start=code.rfind("<<'PY'\\n")+len("<<'PY'\\n")
+        end=code.index("\\nPY\\nVERDICT_RC=",start)
+        self.assertIn("owner_first_gui_boundary.txt",code)
+        private_tools=ROOT.parent/"instructor"/"tools"
+        self.assertTrue(private_tools.is_dir(),"sealed private test utilities missing")
+        with tempfile.TemporaryDirectory() as folder:
+            p=Path(folder)
+            first="D07_H01_GUI_WATCHER_SPAWN_ACK_ABSENT"
+            (p/"owner_first_gui_boundary.txt").write_text(first+"\\n")
+            result=subprocess.run(["python3","-",str(private_tools),str(p),
+                 PRIVATE_SHA,"2","43793585641"],input=code[start:end],
+                 text=True,capture_output=True,timeout=12)
+            verdict=json.loads((p/"owner_l3_verdict.json").read_text())
+            self.assertEqual(result.returncode,3,result.stderr)
+            self.assertEqual(verdict["first_missing_visual_boundary"],first)
+            self.assertEqual(verdict["reason"],first)
+            self.assertFalse(verdict["owner_wsl2_gui_l3_accepted"])
 
     def test_gpu_trial_failclosed_pre_ros_and_baseline_not_promoted(self):
         s=SCRIPT.read_text()
