@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 9f6b6233689c66c8cc894d8c91a2928103f42125
+          ref: 26cbc1788b4717220c96a92ccb26c6ef726f4811
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -23,7 +23,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor rev-parse HEAD)" = '9f6b6233689c66c8cc894d8c91a2928103f42125'
+          test "$(git -C instructor rev-parse HEAD)" = '26cbc1788b4717220c96a92ccb26c6ef726f4811'
           cd instructor
           python3 -m unittest discover -s tests/unit -p test_d07_h01_gui_owner_contract.py -v
           python3 -m unittest discover -s tests/unit -p test_d07_h01_path_visual.py -v
@@ -32,6 +32,7 @@ jobs:
           python3 -m unittest discover -s tests/unit -p test_d07_h01_restore_native_neighbor.py -v
           python3 -m unittest discover -s tests/unit -p test_d07_h01_preintrusion_timing_join.py -v
           python3 -m unittest discover -s tests/unit -p test_d07_h01_gui_lidar_noise_overlay.py -v
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_native_master_full_restore.py -v
           python3 -m py_compile tools/d07_h01_geometry_l2.py tools/d07_h01_path_visual.py tools/p2_staged_no_goal.py tools/d07_h01_cm_lifecycle_ready.py
           bash -n scripts/p2_no_goal_smoke_ci.sh scripts/d07_h01_gui_no_goal_once.sh
           echo D07_H01_GUI_L0_PASS_NO_ROS_NO_GAZEBO_NO_GOAL
