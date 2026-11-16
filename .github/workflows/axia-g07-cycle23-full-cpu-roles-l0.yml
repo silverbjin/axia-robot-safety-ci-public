@@ -1,0 +1,25 @@
+# Public no-secret CPU topology regression; 4-core GUI/CM/Marker+8-core WSL2.
+name: AXIA G07 Cycle23 full role CPU topology L0
+on:
+  push:
+    branches: ['fix/g07-cycle23-full-role-cpu-partition-20261116']
+    paths:
+      - '.github/workflows/axia-g07-cycle23-full-cpu-roles-l0.yml'
+      - 'd06/live/d06_gui_cpu_plan.py'
+      - 'd06/tests/test_g07_cycle23_cm_marker_role_conflict.py'
+      - 'd06/docs/G07_CYCLE23_COMPLETE_CPU_ROLE_PARTITION_REPORT_20261116_KO.md'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  cpu-role-l0-no-ros-no-goal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: 'RED/GREEN four and eight core GUI+CM+Marker roles'
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest discover -s d06/tests -p 'test_g07_cycle23_cm_marker_role_conflict.py' -v
+          python3 -m py_compile d06/live/d06_gui_cpu_plan.py
+          echo AXIA_G07_CYCLE23_FULL_CPU_ROLES_L0_PASS_NO_ROS_NO_GOAL
