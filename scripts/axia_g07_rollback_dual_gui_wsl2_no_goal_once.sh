@@ -8,6 +8,7 @@ umask 077
 readonly PRIVATE_SHA="01d45d46b6eb6a05b1bd313d73f1fc3549575545"
 readonly OLD_PUBLIC_SHA="70f9d4ece5c405cff0fb2d17843391856f3d8c08"
 readonly VISUAL_SHA="0f66059d9110f8e667200bbca22396bd0c78c02e"
+readonly PROBE_SHA="cdce9164e642539018c62a777bc792c98c003bfb"
 readonly CI_WORKFLOW_SHA="fa05a437db3b55d3e5e242322a4b66b7f71ae601"
 readonly CI_RUN="43727149856"
 readonly SRC_REPO="silverbjin/axia-robot-safety-ci-public"
@@ -16,7 +17,7 @@ readonly PRIVATE_REPO="silverbjin/axia-robot-safety-instructor"
 stop() { echo "AXIA_G07_ROLLBACK_NO_GOAL_HOLD $*" >&2;exit 3; }
 static_check() {
   [[ "$PRIVATE_SHA" =~ ^[a-f0-9]{40}$ && "$OLD_PUBLIC_SHA" =~ ^[a-f0-9]{40}$ &&
-     "$VISUAL_SHA" =~ ^[a-f0-9]{40}$ && "$CI_WORKFLOW_SHA" =~ ^[a-f0-9]{40}$ ]] || return 3
+     "$VISUAL_SHA" =~ ^[a-f0-9]{40}$ && "$PROBE_SHA" =~ ^[a-f0-9]{40}$ && "$CI_WORKFLOW_SHA" =~ ^[a-f0-9]{40}$ ]] || return 3
   bash -n "$0" || return 3
   echo "AXIA_G07_ROLLBACK_STATIC_PASS_NO_ROS_NO_GOAL old_private=$PRIVATE_SHA"
   echo "AXIA_G07_ROLLBACK_STATIC_GUI_MODE=EXTERNAL_GZ_SIM_G_AND_RVIZ2"
@@ -44,7 +45,7 @@ readonly OUT="$(mktemp -d "$HOME/axia_g07_rollback_gui_evidence_XXXXXXXX")"
 readonly PRIVATE="$WORK/private"
 readonly OLD_PUBLIC="$WORK/legacy_public"
 readonly VISUAL="$WORK/visual"
-readonly ROLLBACK="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+readonly PROBE="$WORK/probe"
 mkdir -m 700 "$OUT/G07" "$OUT/visual"
 LAUNCH_PID=''
 GUI_PID=''
@@ -94,6 +95,12 @@ git -C "$VISUAL" remote add origin "https://github.com/$SRC_REPO.git"
 git -C "$VISUAL" fetch -q --depth 1 origin "$VISUAL_SHA" || stop OLD_RVIZ_SOURCE_FETCH
 git -C "$VISUAL" checkout -q --detach FETCH_HEAD
 [[ "$(git -C "$VISUAL" rev-parse HEAD)" == "$VISUAL_SHA" ]] || stop OLD_RVIZ_SOURCE_PIN
+
+git init -q "$PROBE"
+git -C "$PROBE" remote add origin "https://github.com/$SRC_REPO.git"
+git -C "$PROBE" fetch -q --depth 1 origin "$PROBE_SHA" || stop NO_GOAL_PROBE_FETCH
+git -C "$PROBE" checkout -q --detach FETCH_HEAD
+[[ "$(git -C "$PROBE" rev-parse HEAD)" == "$PROBE_SHA" ]] || stop NO_GOAL_PROBE_PIN
 
 gh repo clone "$PRIVATE_REPO" "$PRIVATE" -- --quiet --no-checkout --filter=blob:none >/dev/null ||
   stop INSTRUCTOR_READ_FAILED
@@ -192,7 +199,7 @@ echo AXIA_G07_ROLLBACK_OLD_TWO_GUI_PROCESSES_LAUNCHED_WSLG_RENDER_NOT_PROVEN
 
 # Exact first Owner pregoal failure root boundary, without moving fixture.
 PYTHONDONTWRITEBYTECODE=1 timeout 30s python3 \
- "$ROLLBACK/d06/live/g07_precycle36_readonly_preclear_probe.py" \
+ "$PROBE/d06/live/g07_precycle36_readonly_preclear_probe.py" \
  --seconds 12 --output "$OUT/initial_scan_before_fixture.json" \
  > "$OUT/initial_scan_before_fixture.log" 2>&1 || true
 cat "$OUT/initial_scan_before_fixture.log" || true
