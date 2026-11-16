@@ -9,6 +9,15 @@ SCRIPT=ROOT/"scripts/axia_d07_h01_gpu_gui_owner_wsl2_once.sh"
 PRIVATE_SHA="9213fe2806a7db9151f761b9a9285117983fc135"
 
 class OwnerGpuTrialContract(unittest.TestCase):
+    def test_owner_pins_real_shared_l2_and_does_not_enable_ci_xvfb(self):
+        source=SCRIPT.read_text()
+        self.assertIn("a9f0d2b6ae1f0dcf2e8f92b263d9b66480924c4e",source)
+        self.assertIn("43817527534",source)
+        self.assertIn("CI_SAME_SHA_GAZEBO_XVFB_L2",source)
+        self.assertIn("WSLG_D3D12_GUI_NOT_VERIFIED",source)
+        self.assertIn("unset AXIA_D07_H01_CI_SOFTWARE_GUI",source)
+        self.assertNotIn("AXIA_D07_H01_PRIOR_PUBLIC_L2_IS_SOFTWARE_BASELINE_NOT_GPU_GUI_TRIAL",source)
+
     def test_bootstrap_l0_executes_without_gazebo(self):
         x=subprocess.run(["bash",str(SCRIPT),"--self-check"],text=True,
                          capture_output=True,timeout=25)
