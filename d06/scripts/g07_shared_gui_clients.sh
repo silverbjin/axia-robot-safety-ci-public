@@ -43,7 +43,17 @@ MONITOR_CPU="$(python3 "$GUI_PLAN" --role monitor)" || {
    "$GUI_CPU" != "$MONITOR_CPU" ]] || {
   echo 'G07_SHARED_GUI_CPU_ROLE_OVERLAP_NO_GOAL';exit 3;
 }
-export LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe
+# The 2026-11-16 Owner WSLg evidence recorded:
+# MESA-EGL: Not allowed to force software rendering when API explicitly
+# selects a hardware device. D04 previously fixed the same WSLg-vs-CI
+# environment mismatch: keep software EGL only for CI Xvfb, never WSLg.
+if [[ "$MODE" == ci ]];then
+  export LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe
+  echo G07_GUI_CI_XVFB_LLVMPIPE_SELECTED_NO_OWNER_CLAIM
+else
+  unset LIBGL_ALWAYS_SOFTWARE GALLIUM_DRIVER MESA_LOADER_DRIVER_OVERRIDE
+  echo AXIA_G07_ROLLBACK_OWNER_NATIVE_WSLG_RENDERER_ENV_NO_SOFTWARE_FORCE
+fi
 unset QT_QPA_PLATFORM || true
 echo "G07_UNIFIED_GUI_CPU_PARTITION renderer=$GUI_CPU observer=$MONITOR_CPU same_process_launcher=true safety_processes_unmodified=true cm_core_isolation_proven=false"
 monitor_pid='';rviz_pid='';gz_pid=''
