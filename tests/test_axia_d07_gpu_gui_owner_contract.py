@@ -16,7 +16,7 @@ class OwnerGpuTrialContract(unittest.TestCase):
         self.assertIn("CI_SAME_SHA_GAZEBO_XVFB_L2",source)
         self.assertIn("WSLG_D3D12_GUI_NOT_VERIFIED",source)
         self.assertIn("unset AXIA_D07_H01_CI_SOFTWARE_GUI",source)
-        self.assertNotIn("AXIA_D07_H01_CI_SAME_SHA_GAZEBO_XVFB_L2_PASS_WSLG_D3D12_GUI_NOT_VERIFIED",source)
+        self.assertNotIn("AXIA_D07_H01_PRIOR_PUBLIC_L2_IS_SOFTWARE_BASELINE_NOT_GPU_GUI_TRIAL",source)
 
     def test_bootstrap_l0_executes_without_gazebo(self):
         x=subprocess.run(["bash",str(SCRIPT),"--self-check"],text=True,
