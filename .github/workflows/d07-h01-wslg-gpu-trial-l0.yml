@@ -1,0 +1,30 @@
+name: D07 H01 WSLg GPU GUI-only public L0 regression
+on:
+  push:
+    branches: [feat/d07-h01-wslg-gpu-gui-trial-20261116]
+    paths: ['.github/workflows/d07-h01-wslg-gpu-trial-l0.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    environment: axia-instructor-sealed
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: e24994efd563bf85320f425dede9ab477a89371b
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          path: instructor
+          persist-credentials: false
+      - name: D07 GUI-only GPU trial RED regression without Gazebo
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C instructor rev-parse HEAD)" = 'e24994efd563bf85320f425dede9ab477a89371b'
+          python3 -m unittest discover -s instructor/tests/unit -p test_d07_h01_gpu_gui_trial.py -v
+          bash -n instructor/scripts/p2_no_goal_smoke_ci.sh
+          echo D07_GPU_GUI_TRIAL_L0_PASS_NOT_REAL_WSLG_OR_GAZEBO
