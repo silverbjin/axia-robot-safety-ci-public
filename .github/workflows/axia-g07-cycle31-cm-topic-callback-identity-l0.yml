@@ -1,0 +1,28 @@
+# Pure ROS2 Jazzy tracing linkage, no CM/ROS node is created by these tests.
+name: AXIA G07 Cycle31 CM topic callback identity L0
+on:
+  push:
+    branches: ['fix/g07-cycle31-cm-topic-callback-identity-20261116']
+    paths:
+      - '.github/workflows/axia-g07-cycle31-cm-topic-callback-identity-l0.yml'
+      - 'd06/tests/test_g07_cycle31_cm_topic_callback_identity.py'
+      - 'd06/live/g07_cycle31_cm_topic_callback_identity.py'
+      - 'd06/live/g07_cycle30_bounded_cm_trace.py'
+      - 'd06/live/g07_cycle29_first_cm_callback_trace.py'
+      - 'd06/docs/G07_CYCLE31_CM_TOPIC_CALLBACK_IDENTITY_REPORT_20261116_KO.md'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  ubuntu24-no-ros-no-goal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: 'RED/GREEN actual opaque CM callback identity via ROS topic chain'
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest discover -s d06/tests -p 'test_g07_cycle31_cm_topic_callback_identity.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_g07_cycle30_bounded_cm_trace.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_g07_cycle29_first_cm_callback_trace.py' -v
+          echo AXIA_G07_CYCLE31_TOPIC_TO_CALLBACK_CHAIN_L0_PASS_NO_ROS_NO_GOAL
