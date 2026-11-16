@@ -28,9 +28,9 @@ class TestCycle32UntracedL2(unittest.TestCase):
           "AXIA_G07_FIELD_REAL_CM_BELOW_120MS_RELEASE_MARGIN_PASS",
           "AXIA_G07_FIELD_REAL_L2_SEVEN_CHANNELS",
           "AXIA_G07_REAL_POST_GOAL_OWNER_IDENTICAL_NAV2_SHUTDOWN_CM_EXIT0_PASS",
-          "native_s02_positive_contacts",
-          "exact_goal_canceled",
-          "AXIA_G07_OWNER_NOT_RUN",
+          "AXIA_S02_SAME_GOAL_NATIVE_CI_REVIEW",
+          "AXIA_G07_REAL_EXACT_NAV2_GOAL_CANCEL_ACK_BEFORE_LIFECYCLE_PASS",
+          "OWNER_L3_NOT_RUN",
         ):
             self.assertIn(token,s,token)
     def test_scope_is_same_real_sim_goal_not_synthetic_no_owner(self):
