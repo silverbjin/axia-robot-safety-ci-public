@@ -106,7 +106,7 @@ class Cycle20BundleContract(unittest.TestCase):
                 self.assertTrue(manifest["no_ros_no_goal"])
                 self.assertFalse(manifest["owner_l3_accepted"])
                 self.assertFalse(manifest["certified_estop"])
-                self.assertEqual(manifest["original_archive_sha256"],sha)
+                self.assertEqual(manifest["original_archive_sha256"],hashlib.sha256(arc.read_bytes()).hexdigest())
                 self.assertFalse(manifest["private_original_included"])
             self.assertTrue(arc.is_file())
 
