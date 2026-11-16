@@ -35,6 +35,15 @@
 
 **종료:** Nav2 lifecycle ACK 후 남은 `ros2 launch`와 Gazebo server 두 프로세스 종료를 기존 timeout 완화로 해결하지 않는다. 정확히 잔여 프로세스 두 개만 있다는 증거일 때만 bounded TERM. Guard, CM, Nav2, unknown PID 남아 있으면 FAIL·기존 원본 보존.
 
+## 3A. 추가 Cycle36 재개 진단 (2026-11-16, 원본 CI Run 대조)
+
+- **실제 L2 #43847651500 — Goal 전 차단:** Gazebo World·Waffle·RViz 준비, NO_GOAL stage, `G07_GUI_READY_ATTESTED_PRE_GOAL`까지 실측. 그러나 `AXIA_G07_CYCLE36_OWNED_GAZEBO_GUI_NOT_UNIQUE_NO_GOAL`로 GUI PID 식별 실패; ROS Goal 전송 안 함. 이는 안전 계층의 실행 실패나 인증된 stop 증거가 아님.
+- **원인 공식 소스 교차 확인:** Nav2 Jazzy `tb3_simulation_launch.py`는 `ros_gz_sim/gz_sim.launch.py`를 통해 GUI를 열고, Gazebo 공식 ROS 2 launch는 `ruby <gz 실행 경로> sim ... -g --force-version 8` 형태로 프로세스를 호출한다. 자체 GUI PID 검사기는 `gz sim -g`만 허용해 **정상 공식 Ruby 실행 형식**을 누락했다. (공식 공개 출처: https://api.nav2.org/nav2-jazzy/html/tb3__simulation__launch_8py_source.html ; https://github.com/gazebosim/ros_gz/blob/ros2/ros_gz_sim/launch/gz_sim.launch.py.in )
+- **공개 CI TDD RED #43848704106**: private `tests/unit/test_g07_cycle36_gui_priority_isolation_20261116.py`에 공식 `ruby /opt/ros/jazzy/opt/gz_tools_vendor/bin/gz sim -v4 -g --force-version 8` fixture를 추가; `AssertionError: None != 2320`.
+- **공개 CI GREEN #43848916833**: private `tools/p4_g07_integrated_gui_priority.py`가 UID/PGID 일치 및 지정된 ROS Jazzy gz 경로, `-g`·8버전을 갖춘 Ruby 실행 형식과 기존 직접 `gz sim -g`를 구분. 일반 Ruby `/tmp/gz` 및 `-s` 서버 거부. 소스 `ce9da373dd98269a38d77aade173425f0faf1a21`, unit/shell L0 PASS.
+- **새 실제 Gazebo L2 #43849019677**: public workflow `c6ea0dc1970b06028c5c5dbd3f9ae382f8867914`에서 새 Instructor SHA를 사용한 실제 Gazebo Goal 후보를 검증 중. **이 문서 기록 시 결과 미판정**; 완료 여부를 Actions 원본에서 조회해 보완할 것.
+- 변경 후 검증 미완료: 정확한 ROS GUI PID/threads runtime readback, 7채널 TTL, CM source/RMW, native Contact, original 14-topic bag, Cancel/Shutdown/Clean exit, WSLg renderer. 이 항목들은 **HOLD**.
+
 ## 4. 현재 가드레일과 완결 정의
 
 `AXIA_MVP_DEMO_ACCEPTED=HOLD`는 릴리스 전까지 유지한다. L0 PASS≠Gazebo 성공. 실제 Gazebo L2는 같은 private SHA/tree와 public GUI source를 사용해야 하며, 원본 14-topic bag, World/Waffle 실제 GUI, Goal EXECUTING, CLEAR→SLOW→STOP, 모든 안전층 7채널 주기와 native RMW source/receive, Odom 정지 ≥1s, 네이티브 Contact 0, 정확한 Goal Cancel ACK, Nav2 shutdown ACK, CM exit0, launch cleanup, CRC/SHA 보관이 모두 필요하다. Owner WSL2는 공개 CI GREEN 후 **최종 1회만** 수행하며 수동 TTY 승인만으로 실제 Goal 허가. 학생 정답/Private 원본 공개하지 않는다.
