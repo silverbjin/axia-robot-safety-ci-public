@@ -16,13 +16,13 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 9a3c4dc68f27a0b059d9efdc9cf3b3ba9ac30bf7
+          ref: e94f84802d56080a5a11364ebad20fa25d785d2f
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Exact Instructor source + GUI mode tests (NO_ROS_NO_GOAL)
         run: |
           set -Eeuo pipefail
-          test "$(git rev-parse HEAD)" = 9a3c4dc68f27a0b059d9efdc9cf3b3ba9ac30bf7
+          test "$(git rev-parse HEAD)" = e94f84802d56080a5a11364ebad20fa25d785d2f
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests/unit -p 'test_g07_cycle36_integrated_gui_mode_20261116.py' -v
           python3 -m unittest discover -s tests/unit -p 'test_g07_cycle36_postack_gui_cleanup_20261116.py' -v
           python3 -m unittest discover -s tests/unit -p 'test_g07_cycle36_initial_obstacle_lane_offset_20261116.py' -v
