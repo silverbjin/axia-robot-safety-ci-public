@@ -7,7 +7,7 @@ set -Eeuo pipefail
 umask 077
 
 readonly PRIVATE_REPO='silverbjin/axia-robot-safety-instructor'
-readonly PRIVATE_SHA='a9f0d2b6ae1f0dcf2e8f92b263d9b66480924c4e'
+readonly PRIVATE_SHA='c069052cc491117006f63b499577ef766a30f7ea'
 readonly PUBLIC_REAL_GAZEBO_XVFB_L2_RUN='43817527534'
 readonly PUBLIC_NO_ROS_L0_RUN='43793526290'
 readonly CI_CONTAINER_DIGEST='sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e'
@@ -392,7 +392,7 @@ axia_d07_watch_stop
 set +e
 python3 - "$WORK/instructor/tools" "$RUN" "$PRIVATE_SHA" "$RUNNER_RC" \
   "$PUBLIC_REAL_GAZEBO_XVFB_L2_RUN" <<'PY'
-import json,sys
+import json,sys,hashlib,xml.etree.ElementTree as ET
 from pathlib import Path
 sys.path.insert(0,sys.argv[1])
 from d07_h01_path_visual import assess_gui_stages
@@ -439,6 +439,31 @@ try:
 except (OSError,ValueError,TypeError,KeyError,ImportError) as exc:
     require=False
     reason='PROVENANCE_OR_REPORT_INVALID_'+type(exc).__name__
+# A real Gazebo server and RViz DDS can succeed with an EMPTY 3D GUI when
+# headless:=True removed SceneBroadcaster. Check both session-local source
+# and actual Gazebo publisher topics before crediting the ROS+GUI scope.
+scene_world_source_verified=False
+scene_transport_observed=False
+try:
+    w=(root/'real-l2/d07_gui_scene_world.sdf.xacro').read_bytes()
+    m=json.loads((root/'real-l2/d07_gui_scene_world_manifest.json').read_text())
+    x=ET.fromstring(w)
+    scene_plugins=[p for p in x.findall('./world/plugin')
+                   if p.get('name')=='gz::sim::systems::SceneBroadcaster'
+                   and p.get('filename')=='gz-sim-scene-broadcaster-system']
+    scene_world_source_verified=(
+        len(scene_plugins)==1
+        and m.get('scope')=='D07_H01_GUI_READONLY_SIM_ONLY'
+        and m.get('scene_broadcaster_count')==1
+        and m.get('overlay_sha256')==hashlib.sha256(w).hexdigest())
+    topics=set((root/'real-l2/d07_gui_transport_topics.txt').read_text().splitlines())
+    scene_transport_observed={
+        '/world/default/scene/info','/world/default/pose/info'}<=topics
+except (OSError,ValueError,TypeError,KeyError,ET.ParseError):
+    pass
+if require and not (scene_world_source_verified and scene_transport_observed):
+    require=False
+    reason='D07_H01_SCENE_BROADCASTER_SOURCE_OR_RUNTIME_NOT_PROVEN'
 first_gui_file=root/'owner_first_gui_boundary.txt'
 first_gui_boundary=(first_gui_file.read_text().strip()
                     if runner_rc!=0 and first_gui_file.is_file() else '')
@@ -459,7 +484,8 @@ out={
     'status':'D07_H01_OWNER_GUI_VISUAL_HOLD',
     'reason':reason,
     'first_missing_visual_boundary':(first_gui_boundary or
-        (reason if source_scope_ready else 'ROS_SOURCE_OR_X11_NOT_READY')),
+        (reason if source_scope_ready or reason.startswith('D07_H01_SCENE_')
+         else 'ROS_SOURCE_OR_X11_NOT_READY')),
     'first_gui_boundary':first_gui_boundary or None,
     'private_source_sha':source,
     'public_same_source_gazebo_xvfb_l2_run_not_wslg_gpu':ci_run,
@@ -469,6 +495,8 @@ out={
     'stage_names':[x.get('stage') for x in phases if isinstance(x,dict)],
     'official_path_pose_counts':[x.get('pose_count') for x in phases if isinstance(x,dict)],
     'gui_stage_oracle':scope,
+    'scene_world_source_verified':scene_world_source_verified,
+    'scene_transport_observed':scene_transport_observed,
     'owner_wsl2_source_l3_verified':source_scope_ready,
     'owner_wsl2_gui_l3_accepted':False,
     'gazebo_3d_scene_render_proven':False,
