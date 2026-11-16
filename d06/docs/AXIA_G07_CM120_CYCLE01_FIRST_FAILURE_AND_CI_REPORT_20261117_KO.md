@@ -30,3 +30,19 @@
 - 실제 실패 로그: `AssertionError: CM120_RMW_SOURCE_GAP_HOLD_CM_SOURCE_GAP_EXCEEDS_120MS_0.133658796` 및 `AssertionError: FIELD_CI_L2_PASS_LOW_MARGIN_OWNER_NOT_READY`.
 - **Cycle01 stop rule 적용**: CI_PUBLIC_L2=FAIL, OWNER_WSL2_GOAL=BLOCKED, ROOT_CAUSE=UNPROVEN. 이번 후보 배포 불허. Original C38 GUI-only 성공은 보존, C39 L0 동작 관련 변경은 별도 PR #136. SW STOP은 인증 E-Stop 아님.
 - 신규 모듈·장시간 스케줄러 추적·임계값 완화·두 번째 실제 Goal 실험 없이 종료. G07 후속 원인 분석은 기존 자료에서 최초 CM callback input→output과 executor 타이밍을 직접 구분할 수 있는 경우에만 별도 계획으로 재개할 것.
+
+## RELEASE 회수/최종 리뷰 (후속 동일 Goal 재실행 방지)
+- Run #43981875149는 실제 한 Goal 전체에서 native S02 Contact0, original 14-topic, MsgInfo source/receive, GUI marker same Goal, Nav2/CM shutdown 검사를 각각 PASS로 완료했고, 단 두 개의 CM120 release margin 검사가 FAIL. 최초 fail을 다른 안전 영역 PASS로 은폐하지 않는다.
+- 공개 release 브랜치 release/p2-g06-cm-ttl-20261110의 실험 소스는 과거 검증된 두 워크플로 원본으로 되돌리고 자동 Goal push trigger를 비활성화했다: Cycle37 rollback commit dc81c3ac3d0e91986b49867ceb83b685b574076c, 이전 Unified workflow rollback commit ef039b7866ab1a83b02dcf0496398a4629f47b02. 과거 successful Run/불변 SHA는 보존. 자동 Goal을 또 실행하지 않은 것을 Github Actions Run 최신 조회로 확인.
+- Public draft PR #138/Private draft PR #193은 원인 미확정 실험 후보로 보존, release 승인/병합 제외. 실제 Controller/CM/Guard/Supervisor에 수정은 없고 이번 파이썬 진단 샘플링 최적화는 릴리스 후보 채택 실패.
+- Owner WSL2에 새 Goal 실행 명령은 배포하지 않는다. 이는 구현 누락이 아니라 공개 L2 fail-closed 계약에 따른 필수 차단. 기존 C38 GUI-only 성공은 그대로 인정하되 새 CM 성능 인수와 혼합하지 않는다.
+- 허용되는 다음 연구 경계는 기존 원본 first RMW source gap과 official CM input callback entry/exit의 직접 매칭으로 실제 120ms 초과 발생 계층을 증명하는 것. **새로운 CPU 튜닝·추가 실제 Goal·15회 인수·새 검사기**를 이번 MVP 사이클에서 실행하지 않았다.
+
+AXIA_G07_CYCLE01_L0=RED_2_GREEN_2_PASS
+AXIA_G07_CYCLE01_PUBLIC_C37_L2=FAIL_CM_SOURCE_133_659MS_OBSERVER_131_488MS
+AXIA_G07_CYCLE01_RELEASE_ROLLED_BACK=AUTO_GOAL_DISABLED
+AXIA_G07_CM120_ROOT_CAUSE=UNPROVEN
+OWNER_WSL2_MOVING_L3=BLOCKED_NOT_RUN
+AXIA_MVP_DEMO_ACCEPTED=HOLD
+CERTIFIED_ESTOP=false
+MAIN_MERGED=false
