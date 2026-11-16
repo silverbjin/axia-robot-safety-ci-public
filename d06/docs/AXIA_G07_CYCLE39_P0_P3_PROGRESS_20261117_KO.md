@@ -27,11 +27,11 @@
 - **미검증:** Gazebo 발행 wall period, ROS bridge wall receive, Supervisor 실제 subscription period, 첫 safety transition. 현장 410.7ms는 observation-only 경고이며 safety acceptance로 승격 금지.
 
 ## P0/P1/P2 공개 CI 및 RED→GREEN 근거
-- 회귀 RED 요구사항 커밋: `600cfe21a6b03ee53957b17059f2c689671b3e58`. 당시 소스에서는 TF Arrow OFF 기대 불충족, 0..2π wrap sample 불충족, 새 검증 모듈 부재(예상 RED); **별도 RED Actions verdict는 확보하지 않음**.
+- 회귀 RED 요구사항 커밋: `600cfe21a6b03ee53957b17059f2c689671b3e58`. 실제 공개 [RED→GREEN Run #43916055772](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43916055772): 기존 불변 기준선 `c4dca31...` 테스트 **RED = 2 failures + 5 errors / 총 9건**(TF Show Arrows=true, 0..2π sample 1.8≠0.45, 새 기하/타이밍 모듈 없음). 같은 Job의 변경 소스 **GREEN = 9/9 PASS**. 실제 출력 `AXIA_G07_C39_ACTUAL_RED_BASELINE_REPLAY_CONFIRMED_NO_ROS_NO_GOAL` 및 `AXIA_G07_C39_P0_P1_P2_PUBLIC_L0_PASS_NO_ROS_NO_GOAL_NO_L3`. RED는 안전 제어 실행이 아닌 L0 소스 회귀.
 - 공개 L0 [Run #43914494204](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43914494204) `completed/success`: 실제 출력 `Ran 9 tests in 0.010s\nOK\nAXIA_G07_C39_P0_P1_P2_PUBLIC_L0_PASS_NO_ROS_NO_GOAL_NO_L3`. P0 표시, 0/2π wrap, negative-π regression, geometry synthetic, no-TF UNVERIFIED, observer-only timing, clock mismatch tests.
 - 공개 PR 기반 L2 [Run #43914494162](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43914494162) `completed/failure`. Job step list empty; 로그 조회 오류 BlobNotFound. **실제 Gazebo 소스 실패인지 environment/runner admission인지 현 단계에서 원인 확정 금지**.
 - 공개 release CI에서 기존 성공한 `axia-instructor-sealed` 경로 재사용: `release/p2-g06-cm-ttl-20261110` workflow-only commit `fdae0206b34807d358f41213046791eebe0a78b1`. 정확한 변경 소스 `4851f69c92b4fb928d60608b57078eafe8a6ada7` pin; 새 L2 실측 판정은 **재조회 필요**. 성공 전 Owner rollout 금지.
-- 교차 검증 수준: Public L0 9/9 PASS; actual new Gazebo P1/P2 L2 NOT VERIFIED; Owner new RViz NOT RUN.
+- 교차 검증 수준: Public L0 RED→GREEN replay 및 9/9 PASS; actual new Gazebo P1/P2 L2 NOT VERIFIED; Owner new RViz NOT RUN.
 
 ## P3 — 기존 CM 120ms 릴리스 마진 별도 HOLD
 - 실제 Moving Goal CI [Run #43898345608](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43898345608): 최초 native RMW source gap `128.644215ms`, observer callback gap `128.318661ms`; `120ms` release criterion FAIL (단, 이 관측만으로 원본 `150ms` TTL violation이라고 단정 금지).
