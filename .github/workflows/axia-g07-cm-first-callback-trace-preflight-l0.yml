@@ -51,4 +51,24 @@ jobs:
           for pkg in ('tracetools_trace','tracetools_read','lttngpy','ros2trace'):
               print('AXIA_G07_TRACE_MODULE_'+pkg.upper()+'='+str(importlib.util.find_spec(pkg) is not None).lower())
           PY
+          if command -v babeltrace >/dev/null;then
+            echo AXIA_G07_BABELTRACE_V1_PRESENT=true
+          else
+            echo AXIA_G07_BABELTRACE_V1_PRESENT=false
+          fi
+          SESSION=axia_g07_capability_preflight
+          TRACE_DIR="$(mktemp -d)"
+          if timeout 8 lttng create "$SESSION" --output="$TRACE_DIR" >/tmp/axia-lttng-create.log 2>&1;then
+            echo AXIA_G07_LTTNG_USER_SESSION_CREATE=true
+            if timeout 8 lttng enable-event -s "$SESSION" --userspace 'ros2:callback_start' >/tmp/axia-lttng-enable.log 2>&1 &&
+               timeout 8 lttng enable-event -s "$SESSION" --userspace 'ros2:callback_end' >>/tmp/axia-lttng-enable.log 2>&1;then
+              echo AXIA_G07_LTTNG_CALLBACK_EVENTS_ENABLE=true
+            else
+              echo AXIA_G07_LTTNG_CALLBACK_EVENTS_ENABLE=false
+            fi
+            timeout 8 lttng destroy "$SESSION" >/dev/null 2>&1 || true
+          else
+            echo AXIA_G07_LTTNG_USER_SESSION_CREATE=false
+          fi
+          rm -rf -- "$TRACE_DIR"
           echo AXIA_G07_TRACE_CAPABILITY_SCOPED_ONLY_NOT_CM_CAUSE_NOT_OWNER_RELEASE
