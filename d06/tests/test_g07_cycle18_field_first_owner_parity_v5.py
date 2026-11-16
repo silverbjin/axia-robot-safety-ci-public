@@ -139,6 +139,24 @@ class TestRealFirstOwnerFieldFailure(unittest.TestCase):
         self.assertLess(wrapper.index(field),wrapper.index('ATTEMPT_ROOT="$HOME/'))
         self.assertIn("FIELD_PREVIOUS_GOAL_CM_TTL_BREACH_HOLD",bootstrap)
 
+    def test_pinned_readonly_wsl2_bootstrap_self_check_and_no_goal(self):
+        p=ROOT/"scripts/axia_g07_cycle18_field_readonly_wsl2_bootstrap.sh"
+        src=p.read_text(encoding="utf-8")
+        self.assertIn("1527a5080e2e7d417696aae79aab615c02e49b5d",src)
+        self.assertIn("003801443d192ba6e1f6298d55eea08989307d2c",src)
+        self.assertIn("axia_g07_cycle18_owner_readonly_preflight.sh",src)
+        self.assertNotIn('YES-P2-G07-GOAL',src)
+        self.assertNotIn('ros2 action send_goal',src)
+        self.assertNotIn('rm -rf -- "$ATTEMPT_ROOT"',src)
+        with tempfile.TemporaryDirectory() as tmp:
+            before=set(Path(tmp).iterdir())
+            r=subprocess.run(["bash",str(p),"--self-check"],cwd=tmp,
+                             capture_output=True,text=True,timeout=10,
+                             env={**os.environ,"HOME":tmp})
+            self.assertEqual(r.returncode,0,r.stdout+r.stderr)
+            self.assertIn("NO_ROS_NO_GOAL",r.stdout)
+            self.assertEqual(before,set(Path(tmp).iterdir()))
+
     def test_real_owner_wrapper_subcommand_on_prior_lock_is_no_ros(self):
         real_owner=ROOT/"d06/scripts/g07_cycle16_owner_wsl2_once.sh"
         with tempfile.TemporaryDirectory() as tmp:
