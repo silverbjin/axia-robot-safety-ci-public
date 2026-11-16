@@ -7,6 +7,8 @@ on:
       - 'd06/live/d06_ros_l1_visual_probe.py'
       - 'd06/rviz/d06_safety_bubble.rviz'
       - 'd06/tests/test_d06_readonly_public_contract.py'
+      - 'd06/scripts/d06_cm_l1_terminal_b_readonly.py'
+      - 'd06/tests/test_d06_cm_l1_terminal_b_readonly.py'
       - '.github/workflows/d06-readonly-observer-main-ci.yml'
   pull_request:
     paths:
@@ -14,6 +16,8 @@ on:
       - 'd06/live/d06_ros_l1_visual_probe.py'
       - 'd06/rviz/d06_safety_bubble.rviz'
       - 'd06/tests/test_d06_readonly_public_contract.py'
+      - 'd06/scripts/d06_cm_l1_terminal_b_readonly.py'
+      - 'd06/tests/test_d06_cm_l1_terminal_b_readonly.py'
       - '.github/workflows/d06-readonly-observer-main-ci.yml'
 permissions:
   contents: read
@@ -35,6 +39,9 @@ jobs:
           python -m pip install -q pytest==8.3.5
           python -m pytest -q d06/tests/test_d06_readonly_public_contract.py
           python -m py_compile d06/live/d06_readonly_monitor.py d06/live/d06_ros_l1_visual_probe.py
+          python -m pytest -q d06/tests/test_d06_cm_l1_terminal_b_readonly.py
+          python d06/scripts/d06_cm_l1_terminal_b_readonly.py --self-check
+          python -m py_compile d06/scripts/d06_cm_l1_terminal_b_readonly.py
           echo D06_PUBLIC_READONLY_SOURCE_L0_PASS
   d06-real-isolated-ros:
     needs: d06-public-source
