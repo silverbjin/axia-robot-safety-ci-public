@@ -7,9 +7,9 @@ set -Eeuo pipefail
 umask 077
 
 readonly PRIVATE_REPO='silverbjin/axia-robot-safety-instructor'
-readonly PRIVATE_SHA='c069052cc491117006f63b499577ef766a30f7ea'
-readonly PUBLIC_REAL_GAZEBO_XVFB_L2_RUN='43866354976'
-readonly PUBLIC_NO_ROS_L0_RUN='43866608923'
+readonly PRIVATE_SHA='43f83daee851d7c5f55cede053143a9af54afe09'
+readonly PUBLIC_REAL_GAZEBO_XVFB_L2_RUN='43900733862'
+readonly PUBLIC_NO_ROS_L0_RUN='43900143780'
 readonly CI_CONTAINER_DIGEST='sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e'
 
 # Bounded read-only WSLg GUI screenshot and resource capture. Never auto PASS.
@@ -369,15 +369,36 @@ set -e
 # watcher log and no GUI/transport file despite the free baseline marker).
 if [[ "$RUNNER_RC" != 0 ]]; then
   GUI_L2="$RUN/real-l2"
+  # FIRST native startup failure outranks a GUI watcher that could not
+  # have launched yet. No lifecycle/Goal retry and no status promotion.
+  FIRST_STAGED_FAILURE=''
+  if [[ -s "$GUI_L2/startup_verdict.json" ]]; then
+    FIRST_STAGED_FAILURE="$(python3 - "$GUI_L2/startup_verdict.json" <<'PYFIRST'
+import json,sys
+try:
+    data=json.load(open(sys.argv[1],encoding='utf-8'))
+    if data.get('status')=='BLOCKED':
+        gate=data.get('failed_gate')
+        if isinstance(gate,str) and gate:
+            print(gate)
+except (OSError,ValueError):
+    pass
+PYFIRST
+)"
+  fi
+  if [[ -n "$FIRST_STAGED_FAILURE" ]]; then
+    printf '%s\n' "$FIRST_STAGED_FAILURE" > "$RUN/owner_first_staged_boundary.txt"
+    echo "AXIA_D07_H01_FIRST_STAGED_FAILURE=$FIRST_STAGED_FAILURE"
+  fi
   FIRST_GUI_ERROR=''
-  if [[ -s "$GUI_L2/d07_gui_watcher.log" ]]; then
+  if [[ -z "$FIRST_STAGED_FAILURE" && -s "$GUI_L2/d07_gui_watcher.log" ]]; then
     FIRST_GUI_ERROR="$(grep -m1 -E 'D07_H01_GUI_(CHILD_TERMINATED|WATCHER_|TRANSPORT_|GPU_TRIAL_SCOPE_DENIED|AFTER_FREE_BASELINE_MARKER_MISSING)' "$GUI_L2/d07_gui_watcher.log" || true)"
   fi
-  if [[ -z "$FIRST_GUI_ERROR" && -s "$GUI_L2/d07_gui_watcher_exit.txt" ]]; then
+  if [[ -z "$FIRST_STAGED_FAILURE" && -z "$FIRST_GUI_ERROR" && -s "$GUI_L2/d07_gui_watcher_exit.txt" ]]; then
     FIRST_GUI_ERROR="D07_H01_GUI_WATCHER_EXITED_BEFORE_DDS"
-  elif [[ -z "$FIRST_GUI_ERROR" && ! -s "$GUI_L2/d07_gui_watcher_started.txt" ]]; then
+  elif [[ -z "$FIRST_STAGED_FAILURE" && -z "$FIRST_GUI_ERROR" && ! -s "$GUI_L2/d07_gui_watcher_started.txt" ]]; then
     FIRST_GUI_ERROR="D07_H01_GUI_WATCHER_SPAWN_ACK_ABSENT"
-  elif [[ -z "$FIRST_GUI_ERROR" && ! -s "$GUI_L2/d07_gui_watcher.log" ]]; then
+  elif [[ -z "$FIRST_STAGED_FAILURE" && -z "$FIRST_GUI_ERROR" && ! -s "$GUI_L2/d07_gui_watcher.log" ]]; then
     FIRST_GUI_ERROR="D07_H01_GUI_WATCHER_LOG_EMPTY_BEFORE_DDS"
   fi
   if [[ -n "$FIRST_GUI_ERROR" ]]; then
