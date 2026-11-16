@@ -1,0 +1,27 @@
+# Exact Owner first Guard TTL original read-only evidence; NO ROS/Gazebo/Goal.
+name: AXIA G07 Cycle20 single sanitized Owner evidence bundle
+on:
+  push:
+    branches: ['fix/g07-cycle20-single-evidence-bundle-20261116']
+    paths:
+      - '.github/workflows/axia-g07-cycle20-single-owner-evidence-bundle-l0.yml'
+      - 'd06/live/g07_cycle20_single_bundle.py'
+      - 'd06/tests/test_g07_cycle20_single_evidence_bundle.py'
+      - 'scripts/axia_g07_cycle20_owner_single_bundle_once.sh'
+      - 'd06/docs/G07_CYCLE20_SINGLE_EVIDENCE_BUNDLE_REPORT_20261116_KO.md'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  ubuntu24-readonly-single-bundle:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: 'First source gap and sanitized bundle contract; no ROS'
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest discover -s d06/tests -p 'test_g07_cycle20_single_evidence_bundle.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_g07_cycle19_first_cm_archive_readonly.py' -v
+          bash -n scripts/axia_g07_cycle20_owner_single_bundle_once.sh
+          echo AXIA_G07_CYCLE20_SINGLE_BUNDLE_CI_L0_PASS_NO_ROS_NO_GOAL
