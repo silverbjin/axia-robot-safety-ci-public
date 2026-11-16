@@ -25,3 +25,30 @@ jobs:
           python3 -m unittest discover -s d06/tests -p 'test_g07_cycle19_first_cm_archive_readonly.py' -v
           bash -n scripts/axia_g07_cycle20_owner_single_bundle_once.sh
           echo AXIA_G07_CYCLE20_SINGLE_BUNDLE_CI_L0_PASS_NO_ROS_NO_GOAL
+      - name: 'Identical pinned WSL2 script, original missing is fail-closed'
+        run: |
+          set -Eeuo pipefail
+          PIN=6fe251c833f95f5484b79aa0f4c98bf9d6b76d7b
+          TREE=f6adcd1141b29f8c94f980a18f5d1e04cbe67c2a
+          TMP="$(mktemp -d)"
+          trap 'rm -rf -- "$TMP"' EXIT
+          mkdir "$TMP/source" "$TMP/home"
+          git -C "$TMP/source" init -q
+          git -C "$TMP/source" remote add origin https://github.com/silverbjin/axia-robot-safety-ci-public.git
+          git -C "$TMP/source" fetch -q --depth 1 origin "$PIN"
+          git -C "$TMP/source" checkout -q --detach FETCH_HEAD
+          test "$(git -C "$TMP/source" rev-parse HEAD)" = "$PIN"
+          test "$(git -C "$TMP/source" rev-parse 'HEAD^{tree}')" = "$TREE"
+          cmp "$TMP/source/d06/live/g07_cycle20_single_bundle.py" d06/live/g07_cycle20_single_bundle.py
+          HOME="$TMP/home" bash scripts/axia_g07_cycle20_owner_single_bundle_once.sh --self-check
+          set +e
+          HOME="$TMP/home" bash scripts/axia_g07_cycle20_owner_single_bundle_once.sh > "$TMP/negative.log" 2>&1
+          RC=$?
+          set -e
+          cat "$TMP/negative.log"
+          test "$RC" -eq 3
+          grep -Fq AXIA_G07_CYCLE20_ORIGINAL_ARCHIVE_MISSING_NO_ROS_NO_GOAL "$TMP/negative.log"
+          grep -Fq AXIA_MVP_DEMO_ACCEPTED=HOLD "$TMP/negative.log"
+          test ! -e "$TMP/home/.axia_g07_final_owner_attempts"
+          test ! -e "$TMP/home/.axia_g07_owner_single_evidence_bundles"
+          echo AXIA_G07_CYCLE20_EXACT_PINNED_OWNER_SCRIPT_CI_PASS_NO_ROS_NO_GOAL
