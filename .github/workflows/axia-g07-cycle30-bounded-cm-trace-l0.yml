@@ -1,0 +1,25 @@
+# Public numeric-only L0 for Cycle29 L2 huge (>500k) ROS callback trace.
+name: AXIA G07 Cycle30 bounded official CM callback trace L0
+on:
+  push:
+    branches: ['fix/g07-cycle30-bounded-cm-trace-20261116']
+    paths:
+      - '.github/workflows/axia-g07-cycle30-bounded-cm-trace-l0.yml'
+      - 'd06/tests/test_g07_cycle30_bounded_cm_trace.py'
+      - 'd06/live/g07_cycle30_bounded_cm_trace.py'
+      - 'd06/docs/G07_CYCLE30_CM_TRACE_OVERFLOW_REPORT_20261116_KO.md'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  ubuntu24-no-ros-no-goal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: 'Exact real L2 500k trace overflow regression'
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest discover -s d06/tests -p 'test_g07_cycle30_bounded_cm_trace.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_g07_cycle29_first_cm_callback_trace.py' -v
+          echo AXIA_G07_CYCLE30_TRACE_CM_PID_BOUNDED_L0_PASS_NO_ROS_NO_GOAL
