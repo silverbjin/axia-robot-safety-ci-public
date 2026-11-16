@@ -25,7 +25,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: a9f0d2b6ae1f0dcf2e8f92b263d9b66480924c4e
+          ref: c069052cc491117006f63b499577ef766a30f7ea
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -33,7 +33,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 'a9f0d2b6ae1f0dcf2e8f92b263d9b66480924c4e'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 'c069052cc491117006f63b499577ef766a30f7ea'
           cd instructor
           python3 -m unittest discover -s tests/unit -p test_d07_h01_gui_owner_contract.py -v
           python3 -m unittest discover -s tests/unit -p test_d07_h01_path_visual.py -v
@@ -48,6 +48,8 @@ jobs:
           python3 -m unittest discover -s tests/unit -p test_d07_h01_gz_world_topic_gate.py -v
           python3 -m unittest discover -s tests/unit -p test_d07_h01_gui_watcher_process_contract.py -v
           python3 -m unittest discover -s tests/unit -p test_d07_h01_ci_render_backend_parity.py -v
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_scene_broadcaster_world.py -v
+          python3 -m py_compile tools/d07_h01_scene_broadcaster_overlay.py
           bash -n tools/d07_h01_gpu_gui_watcher.sh
           python3 -m py_compile tools/d07_h01_post_free_plan_epoch.py
           python3 -m py_compile tools/d07_h01_native_master_full_evidence.py
@@ -145,11 +147,34 @@ jobs:
           from pathlib import Path
           sys.path.insert(0,'tools')
           from d07_h01_path_visual import assess_gui_stages
+          import subprocess, xml.etree.ElementTree as ET
+          # Verify the exact world that the REAL Nav2 launch consumed, not
+          # a copied or hand-crafted expected SDF. Headless remains TRUE.
+          scene_world=root/'d07_gui_scene_world.sdf.xacro'
+          assert scene_world.exists(), 'D07_GUI_SCENE_WORLD_NOT_USED'
+          expanded=subprocess.run(
+              ['/opt/ros/jazzy/bin/xacro', str(scene_world), 'headless:=True'],
+              text=True,capture_output=True,timeout=25)
+          assert expanded.returncode==0,(
+              'D07_SCENE_XACRO_EXPANSION_FAILED',expanded.stderr[:700])
+          x=ET.fromstring(expanded.stdout)
+          scene_plugins=[p for p in x.findall('./world/plugin')
+              if p.get('name')=='gz::sim::systems::SceneBroadcaster']
+          assert len(scene_plugins)==1,'D07_SCENE_BROADCASTER_NOT_EXPANDED'
+          assert scene_plugins[0].get('filename')=='gz-sim-scene-broadcaster-system'
+          print('D07_H01_REAL_XACRO_HEADLESS_SCENE_BROADCASTER_CONFIRMED')
+          topics=(root/'d07_gui_transport_topics.txt').read_text().splitlines()
+          expected=['/world/default/scene/info','/world/default/pose/info']
+          assert all(t in topics for t in expected),(
+              'D07_GUI_RUNTIME_SCENE_BROADCASTER_TOPIC_MISSING',
+              [t for t in expected if t not in topics])
+          print('D07_H01_REAL_GAZEBO_RUNTIME_SCENE_TOPICS_CONFIRMED')
+
           root=Path('results/d07-h01-gui-ci/real-l2')
           geo=json.loads((root/'d07_h01_geometry/d07_h01_geometry.json').read_text())
           lines=(root/'d07_h01_geometry/phase_evidence.jsonl').read_text().splitlines()
           phases=[json.loads(x) for x in lines]
-          assert geo['source_sha']=='a9f0d2b6ae1f0dcf2e8f92b263d9b66480924c4e'
+          assert geo['source_sha']=='c069052cc491117006f63b499577ef766a30f7ea'
           assert geo['goal_sent'] is False
           assert geo['real_nav2'] is True
           assert geo['real_laser_scan'] is True
@@ -170,7 +195,7 @@ jobs:
           assert 'pid=' in ack, 'GUI_WATCHER_SPAWN_ACK_ABSENT'
           print('D07_H01_REAL_GAZEBO_XVFB_WATCHER_LIFECYCLE_OBSERVED_NO_GPU_CLAIM')
           report=assess_gui_stages(
-              phases,source_sha='a9f0d2b6ae1f0dcf2e8f92b263d9b66480924c4e',actual_ros=True,
+              phases,source_sha='c069052cc491117006f63b499577ef766a30f7ea',actual_ros=True,
               actual_gazebo=geo['obstacle_pose_native_ack'] is True,
               rviz_window=True)
           (root/'d07_h01_gui_verdict.json').write_text(
@@ -178,6 +203,7 @@ jobs:
           print('D07_H01_GUI_REAL_PHASES',json.dumps(phases,sort_keys=True))
           print('D07_H01_GUI_EVIDENCE',json.dumps(report,sort_keys=True))
           assert report['ready'] is True,report
+          print('D07_H01_GUI_SCENE_TRANSPORT_AND_REAL_PATH_L2_ACCEPTED_XVFB_ONLY')
           print('D07_H01_GUI_NO_MOVING_GOAL_L2_PASS')
           print('D07_H01_CI_GUI_BACKEND_SOFTWARE_XVFB_L2_ONLY_WSLG_D3D12_NOT_VERIFIED')
           print('D07_H01_OWNER_WSL2_GUI_L3_NOT_RUN')
