@@ -1,0 +1,42 @@
+# Exact public CI-successful Cycle36 1x Owner WSL2 candidate contract.
+# NEVER runs ROS, Gazebo, Owner Goal, private source, or TTY consent.
+name: AXIA G07 Cycle36 Owner WSL2 release L0 (NO_ROS_NO_GOAL)
+on:
+  push:
+    branches: ['release/p2-g06-cm-ttl-20261110']
+    paths: ['.github/workflows/axia-g07-cycle36-owner-release-l0.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  owner-no-goal-gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Source-pinned bootstrap syntax, TTY-denial and original RAW regression
+        run: |
+          set -Eeuo pipefail
+          bash -n scripts/axia_g07_cycle36_owner_once.sh
+          bash scripts/axia_g07_cycle36_owner_once.sh --self-check |
+            tee /tmp/axia_cycle36_static.log
+          grep -Fq 'AXIA_G07_CYCLE36_OWNER_BOOTSTRAP_STATIC_PASS' /tmp/axia_cycle36_static.log
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
+            -s d06/tests -p 'test_g07_cycle36_owner_raw_gate.py' -v
+          set +e
+          bash scripts/axia_g07_cycle36_owner_once.sh > /tmp/axia_cycle36_no_tty.log 2>&1
+          blocked=$?
+          set -e
+          test "$blocked" -eq 3
+          grep -Fq 'CONTROLLING_TTY_REQUIRED' /tmp/axia_cycle36_no_tty.log
+          echo AXIA_G07_CYCLE36_OWNER_TTY_FAIL_CLOSED_NO_GOAL_PASS
+      - name: Verify exact completed real Gazebo L2 GitHub Actions provenance, NO ROS
+        run: |
+          set -Eeuo pipefail
+          bash scripts/axia_g07_cycle36_owner_once.sh --admission-check |
+            tee /tmp/axia_cycle36_l2_gate.log
+          grep -Fq 'AXIA_G07_CYCLE36_ADMISSION_L0_PASS_NO_ROS_NO_GOAL' /tmp/axia_cycle36_l2_gate.log
+          grep -Fq 'AXIA_MVP_DEMO_ACCEPTED=HOLD' /tmp/axia_cycle36_l2_gate.log
+          echo AXIA_G07_CYCLE36_RELEASE_L0_PASS_OWNER_NOT_RUN
