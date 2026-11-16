@@ -43,3 +43,30 @@ jobs:
           grep -Fxq 'f96add0db55ffba28943c5d3739703c3fc503a0b success completed' \
             /tmp/axia_g07_cycle33_l2_receipt.txt
           echo AXIA_G07_CYCLE33_LIVE_GITHUB_L2_RUN_SUCCESS_SOURCE_PIN_VERIFIED_NO_GOAL
+      - name: Exact pinned Owner public checkout and historical failed HOME without ROS
+        run: |
+          set -Eeuo pipefail
+          TMP="$(mktemp -d)"
+          trap 'rm -rf -- "$TMP"' EXIT
+          mkdir -p "$TMP/home" "$TMP/source"
+          git -C "$TMP/source" init -q
+          git -C "$TMP/source" remote add origin https://github.com/silverbjin/axia-robot-safety-ci-public.git
+          git -C "$TMP/source" fetch -q --depth 1 origin f4b05a1d593385445308acd43af57a9faad1c788
+          git -C "$TMP/source" checkout -q --detach FETCH_HEAD
+          [[ "$(git -C "$TMP/source" rev-parse HEAD)" == f4b05a1d593385445308acd43af57a9faad1c788 ]]
+          [[ "$(git -C "$TMP/source" rev-parse 'HEAD^{tree}')" == f4dbe38e071b168baaa7ed1f4cd967ed968978fc ]]
+          HOME="$TMP/home" bash scripts/axia_g07_cycle33_owner_wsl2_bootstrap.sh --self-check
+          HOME="$TMP/home" bash "$TMP/source/d06/scripts/g07_cycle33_owner_wsl2_once.sh" --field-preflight > "$TMP/preflight.log"
+          grep -Fq 'ADMITTED_ONE_FINAL_WSLG_OWNER_ONLY' "$TMP/preflight.log"
+          grep -Fq 'AXIA_MVP_DEMO_ACCEPTED=HOLD' "$TMP/preflight.log"
+          ATTEMPT="$TMP/home/.axia_g07_final_owner_attempts/420fd276ec1018f7fcc3f14873693cad02f080b4-43824411236"
+          mkdir -p "$ATTEMPT"
+          printf 'NEVER_DELETE_THIS_EXISTING_ATTEMPT\n' > "$ATTEMPT/source.txt"
+          set +e
+          HOME="$TMP/home" bash "$TMP/source/d06/scripts/g07_cycle33_owner_wsl2_once.sh" --field-preflight > "$TMP/blocked.log" 2>&1
+          RC=$?
+          set -e
+          [[ "$RC" == 3 ]]
+          grep -Fq 'CYCLE33_ALREADY_ATTEMPTED_SAME_SOURCE_RUN_HOLD' "$TMP/blocked.log"
+          grep -Fq NEVER_DELETE_THIS_EXISTING_ATTEMPT "$ATTEMPT/source.txt"
+          echo AXIA_G07_CYCLE33_EXACT_OWNER_PUBLIC_FETCH_OLD_FAILED_LOCK_NO_ROS_NO_GOAL_PASS
