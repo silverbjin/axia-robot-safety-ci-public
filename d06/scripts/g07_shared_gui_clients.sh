@@ -43,7 +43,21 @@ MONITOR_CPU="$(python3 "$GUI_PLAN" --role monitor)" || {
    "$GUI_CPU" != "$MONITOR_CPU" ]] || {
   echo 'G07_SHARED_GUI_CPU_ROLE_OVERLAP_NO_GOAL';exit 3;
 }
-export LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe
+# Cycle36: one integrated official Gazebo GUI belongs to the P4 launch.
+# Only RViz/Marker are external. CI Xvfb can use llvmpipe, Owner WSLg
+# must retain the existing hardware-capable Gazebo renderer.
+INTEGRATED_GUI="${AXIA_G07_CYCLE36_INTEGRATED_GUI:-0}"
+[[ "$INTEGRATED_GUI" == 0 || "$INTEGRATED_GUI" == 1 ]] || {
+  echo G07_CYCLE36_UNKNOWN_DISPLAY_MODE_NO_GOAL >&2;exit 3;
+}
+if [[ "$MODE" == ci ]];then
+  export LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe
+elif [[ "$INTEGRATED_GUI" == 1 ]];then
+  unset LIBGL_ALWAYS_SOFTWARE || true
+  unset GALLIUM_DRIVER || true
+else
+  export LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe
+fi
 unset QT_QPA_PLATFORM || true
 echo "G07_UNIFIED_GUI_CPU_PARTITION renderer=$GUI_CPU observer=$MONITOR_CPU same_process_launcher=true safety_processes_unmodified=true cm_core_isolation_proven=false"
 monitor_pid='';rviz_pid='';gz_pid=''
@@ -72,13 +86,19 @@ setsid taskset -c "$MONITOR_CPU" nice -n 15 python3 -u "$VISUAL/d06/live/d06_rea
 monitor_pid=$!
 setsid taskset -c "$GUI_CPU" nice -n 19 rviz2 -d "$VISUAL/d06/rviz/d06_safety_bubble.rviz" --ros-args -p use_sim_time:=true > "$EVID/rviz.log" 2>&1 &
 rviz_pid=$!
-setsid taskset -c "$GUI_CPU" nice -n 19 gz sim -g > "$EVID/gz_gui.log" 2>&1 &
-gz_pid=$!
+if [[ "$INTEGRATED_GUI" == 1 ]];then
+  # Do not launch a second Gazebo GUI; the official P4 launch has one.
+  echo G07_CYCLE36_INTEGRATED_GUI_NO_EXTERNAL_GZ
+  printf '%s\n' 'Cycle36 official Gazebo integrated GUI: no secondary gz -g' > "$EVID/gz_gui.log"
+else
+  setsid taskset -c "$GUI_CPU" nice -n 19 gz sim -g > "$EVID/gz_gui.log" 2>&1 &
+  gz_pid=$!
+fi
 windows=0
 for _ in {1..80};do
   if ! kill -0 "$monitor_pid" 2>/dev/null ||
      ! kill -0 "$rviz_pid" 2>/dev/null ||
-     ! kill -0 "$gz_pid" 2>/dev/null;then
+     ( "$INTEGRATED_GUI" != 1 && ! kill -0 "$gz_pid" 2>/dev/null );then
     echo 'G07_SHARED_GUI_CHILD_EARLY_EXIT';exit 3
   fi
   if command -v xwininfo >/dev/null;then
@@ -93,11 +113,32 @@ for _ in {1..80};do
   [[ "$MODE" == ci ]] || { sleep 0.5; break; }
   sleep .5
 done
+# Verify real Gazebo transport world and official Waffle entity, not a
+# GUI PID or an empty window. These checks are read-only: no Goal/STOP.
+world_entity_verified=0
+if [[ "$INTEGRATED_GUI" == 1 ]];then
+  for _ in {1..24};do
+    services="$(timeout 4s gz service -l 2>/dev/null || true)"
+    models="$(timeout 4s gz model --list 2>/dev/null || true)"
+    if grep -Eq '/world/[^/]+/control' <<< "$services" &&
+       grep -Eiq '(waffle|turtlebot3)' <<< "$models";then
+      world_entity_verified=1
+      printf '%s\n' "$services" > "$EVID/gz_services.txt"
+      printf '%s\n' "$models" > "$EVID/gz_models.txt"
+      echo G07_CYCLE36_WORLD_ENTITY_REAL_GAZEBO_PASS
+      break
+    fi
+    sleep 0.5
+  done
+  if [[ "$world_entity_verified" != 1 ]];then
+    echo G07_CYCLE36_WORLD_ENTITY_MISSING_NO_GOAL >&2;exit 3
+  fi
+fi
 if [[ "$MODE" == ci && "$windows" != 1 ]];then
   echo 'G07_UNIFIED_GUI_DISPLAY_WINDOW_UNVERIFIED_RVIZ_OR_GAZEBO'
   exit 3
 fi
-export GUI_CPU MONITOR_CPU windows MODE
+export GUI_CPU MONITOR_CPU windows MODE INTEGRATED_GUI world_entity_verified
 python3 - "$EVID/display_attestation.json" <<'PY'
 import json,os,sys,time
 mode=os.environ["MODE"]
@@ -111,7 +152,10 @@ with open(sys.argv[1],"x",encoding="utf-8") as f:
                "wslg_verified":False,"xvfb_window_verified":mode=="ci" and windows,
                "renderer_cpu":int(os.environ["GUI_CPU"]),
                "monitor_cpu":int(os.environ["MONITOR_CPU"]),
-               "shared_gui_launcher":True,"headless_server_required":True,
+               "shared_gui_launcher":True,
+               "headless_server_required":os.environ["INTEGRATED_GUI"]!="1",
+               "world_entity_verified":os.environ["world_entity_verified"]=="1",
+               "external_gazebo_gui_spawned":os.environ["INTEGRATED_GUI"]!="1",
                "new_cmd_vel_publisher_authorized":False,
                "owner_l3_accepted":False,"certified_estop":False},f)
 PY
@@ -124,7 +168,7 @@ else
 fi
 while kill -0 "$rviz_pid" 2>/dev/null &&
       kill -0 "$monitor_pid" 2>/dev/null &&
-      kill -0 "$gz_pid" 2>/dev/null;do
+      ( "$INTEGRATED_GUI" == 1 || kill -0 "$gz_pid" 2>/dev/null );do
   sleep 1
 done
 if [[ "$MODE" == owner ]];then
