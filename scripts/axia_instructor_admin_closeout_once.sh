@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Owner-only GitHub administration: no Instructor Actions/ROS/Gazebo or stored tokens.
 set -Eeuo pipefail
-MODE="\${1:---self-check}"
+MODE="${1:---self-check}"
 if [[ $# -gt 1 || ( "$MODE" != --self-check && "$MODE" != --run ) ]]; then
   echo 'AXIA_INSTRUCTOR_ADMIN_USAGE=--self-check|--run' >&2
   exit 2
