@@ -50,3 +50,12 @@
 공개 CI의 `block_c/scripts/axia_block_c_owner_final_once.sh`를 **검증된 Git commit SHA에 고정해 SHA256 검증 후 `--run`** 한다. 성공 시 `BLOCK_C_OWNER_ACCEPTED=READY_FOR_OWNER_APPROVAL`만 도출하며 자동 승인하지 않는다. 실패 시 `BLOCK_C_STAGE_HOLD=<최초 실패>`/`BLOCK_C_OWNER_ACCEPTED=HOLD`와 증거 보존을 유지한다.
 
 지침: `docs/AXIA_PUBLIC_CI_FIELD_ERROR_PARITY_STANDARD_20261116_KO.md`.
+
+## 추가 회귀: 이동하는 Instructor 브랜치 (원격 별도 RED→GREEN)
+
+- 교육 보고서 커밋 등으로 Instructor 또는 Student 개발 브랜치 HEAD가 이동해도 **불변 소스 SHA 검증을 유지**해야 한다. 공개 Owner 실행기는 두 저장소를 clone한 후 각각 지정된 정확한 `INSTRUCTOR_SHA`/`STUDENT_SHA`를 `git fetch --depth 1` 및 `git checkout --detach`로 복원한다. 실패하면 BLOCKED로 처리한다.
+- RED 커밋 `f7c6102c83b6ae195159d8474d6cba4740360612`의 [Run 43781933456](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43781933456) failure → GREEN `600f240d2995fafed283e739e06a333d0b5e9ac3`.
+- 해당 **코드 커밋** 공개 CI: [현장 회귀 Run 43782000245](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43782000245) `9 passed`; [원샷 계약 Run 43782000243](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43782000243) `10 passed`; [C01 Run 43782000236](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43782000236) success; [canary Run 43782000275](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43782000275) success.
+- 고정된 배포 실행기: `block_c/scripts/axia_block_c_owner_final_once.sh` at **`600f240d2995fafed283e739e06a333d0b5e9ac3`**, raw SHA256 **`141b60f9736d7619ac4df8af302130ef85eeed00dadb0e049c8b9ef0cb0db8d5`**.
+- 추가 읽기 전용 내용 감사: Instructor `eb91a334...`의 Manifest 49개 항목 중 UTF-8 소스/문서 등 **44/44** 실제 SHA256 일치; 이전 생성 원본 PPTX **4/4** SHA256 일치. AE checkpoint 바이너리는 본 별도 원격 읽기 감사에서 bytes를 확보하지 못해, 실제 Owner 원샷의 Manifest hash 검사로 최종 확인할 것.
+- 이 CI 결과는 합성 공개 Instructor mirror 기반 **공유 실행기/Manifest 단계 parity**다. Private 정답 Python3.12/실제 Owner WSL2 및 ROS 단계는 미실행, **출고 판정 HOLD 그대로**.
