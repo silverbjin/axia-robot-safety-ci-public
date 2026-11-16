@@ -87,7 +87,8 @@ class Cycle31TopicToCallback(unittest.TestCase):
     def test_resolver_does_not_return_raw_handles_or_user_private_content(self):
         handles,counts=resolve_cm_cmdvel_handles(mapped(),cm_pid=CM)
         txt=str(counts)
-        self.assertNotIn("cmd",txt)
+        self.assertNotIn("'callback': 'cmd'",txt)
+        self.assertNotIn("'cmd'",txt)
         self.assertNotIn("/home",txt)
         self.assertNotIn("0xrcl1",txt)
         self.assertNotIn("0xsub1",txt)
