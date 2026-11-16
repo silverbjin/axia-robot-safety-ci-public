@@ -1,7 +1,7 @@
 name: AXIA Block C Owner WSL2 field failure parity (PUBLIC, same runner)
 on:
   push:
-    branches: ['feat/block-c-owner-final-wsl2-*']
+    branches: ['main', 'feat/block-c-owner-final-wsl2-*']
     paths:
       - 'block_c/scripts/axia_block_c_owner_final_once.sh'
       - 'block_c/tests/test_owner_field_parity_public.py'
