@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 8549626f3852d706c38db6e2db5a73545b5c8b4e
+          ref: 9213fe2806a7db9151f761b9a9285117983fc135
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -23,7 +23,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor rev-parse HEAD)" = '8549626f3852d706c38db6e2db5a73545b5c8b4e'
+          test "$(git -C instructor rev-parse HEAD)" = '9213fe2806a7db9151f761b9a9285117983fc135'
           cd instructor
           python3 -m unittest discover -s tests/unit -p test_d07_h01_gui_owner_contract.py -v
           python3 -m unittest discover -s tests/unit -p test_d07_h01_path_visual.py -v
@@ -40,6 +40,7 @@ jobs:
           python3 -m unittest discover -s tests/unit -p test_d07_h01_gui_watcher_process_contract.py -v
           python3 -m py_compile tools/d07_h01_geometry_l2.py tools/d07_h01_path_visual.py tools/p2_staged_no_goal.py tools/d07_h01_cm_lifecycle_ready.py
           python3 -m py_compile tools/d07_h01_gz_world_topic_gate.py
+          bash -n tools/d07_h01_gpu_gui_watcher.sh
           bash -n scripts/p2_no_goal_smoke_ci.sh scripts/d07_h01_gui_no_goal_once.sh
           echo D07_H01_GUI_L0_PASS_NO_ROS_NO_GAZEBO_NO_GOAL
       - name: Public pinned Owner WSL2 bootstrap static L0; no WSL2 or Gazebo on CI
