@@ -7,7 +7,7 @@ set -Eeuo pipefail
 umask 077
 
 readonly PRIVATE_REPO='silverbjin/axia-robot-safety-instructor'
-readonly PRIVATE_SHA='8e9445315c5f503b628ca381b1152b35da1db1fa'
+readonly PRIVATE_SHA='bea66767961416e3b0154447eb2ab38405122cd3'
 readonly PUBLIC_BASELINE_GAZEBO_L2_RUN='43793585641'
 readonly PUBLIC_NO_ROS_L0_RUN='43793526290'
 readonly CI_CONTAINER_DIGEST='sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e'
@@ -313,7 +313,9 @@ command -v glxinfo >/dev/null || {
   exit 3
 }
 set +e
+# Do not depend on the Owner's permanent ~/.bashrc GALLIUM_DRIVER.
 env -u LIBGL_ALWAYS_SOFTWARE \
+  GALLIUM_DRIVER=d3d12 \
   MESA_D3D12_DEFAULT_ADAPTER_NAME="${AXIA_D07_H01_GPU_ADAPTER:-NVIDIA}" \
   glxinfo -B > "$RUN/gpu_glxinfo_unforced.txt" 2>&1
 GPU_PROBE_RC=$?
@@ -329,6 +331,12 @@ export AXIA_D07_H01_GPU_GUI_TRIAL=1
 export AXIA_D07_H01_GPU_ADAPTER="${AXIA_D07_H01_GPU_ADAPTER:-NVIDIA}"
 echo "AXIA_D07_GUI_GPU_PREFLIGHT_D3D12_ACCELERATED adapter=$AXIA_D07_H01_GPU_ADAPTER"
 echo "AXIA_D07_GPU_GUI_TRIAL_PRIVATE_SOURCE=$PRIVATE_SHA"
+# Server, physics/sensors, Nav2 and safety nodes keep their baseline
+# environment. The private GUI children opt-in to D3D12 individually.
+# This also neutralizes accidental global ~/.bashrc GALLIUM_DRIVER=d3d12.
+unset GALLIUM_DRIVER MESA_D3D12_DEFAULT_ADAPTER_NAME
+echo AXIA_D07_GPU_GUI_SERVER_RENDER_ENV_ISOLATED
+
 echo 'AXIA_D07_H01_PRIOR_PUBLIC_L2_IS_SOFTWARE_BASELINE_NOT_GPU_GUI_TRIAL'
 # Capture-only tools; if unavailable, record the dependency boundary and
 # still run the unchanged original ROS simulation (visual verdict stays HOLD).
@@ -354,6 +362,14 @@ set +e
 bash "$PRIVATE_RUNNER" --run 2>&1 | tee "$RUN/owner_stdout.log"
 RUNNER_RC=${PIPESTATUS[0]}
 set -e
+# The primary failure, if any, is emitted by the GUI watcher BEFORE the
+# geometry observer reports a missing DDS subscriber or phase evidence.
+if [[ "$RUNNER_RC" != 0 && -f "$RUN/real-l2/d07_gui_watcher.log" ]]; then
+  FIRST_GUI_ERROR="$(grep -m1 -E 'D07_H01_GUI_(TRANSPORT_|GPU_TRIAL_SCOPE_DENIED|AFTER_FREE_BASELINE_MARKER_MISSING)' "$RUN/real-l2/d07_gui_watcher.log" || true)"
+  if [[ -n "$FIRST_GUI_ERROR" ]]; then
+    echo "AXIA_D07_H01_FIRST_GUI_FAILURE_FROM_WATCHER=$FIRST_GUI_ERROR"
+  fi
+fi
 axia_d07_watch_stop
 
 # Read-only scoped L3 verifier: same pure three-phase oracle as the L2 workflow,
