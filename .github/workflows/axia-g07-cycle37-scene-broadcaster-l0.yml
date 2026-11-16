@@ -16,14 +16,14 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: b7b8b4674d11c9d4ba7168e0908665f67cd3a887
+          ref: 4f2d4d8ce1a53978a4c7f3ee24a77a43a376c132
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
       - name: Real structural G07 headless scene regression, no ROS and no Goal
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor rev-parse HEAD)" = b7b8b4674d11c9d4ba7168e0908665f67cd3a887
+          test "$(git -C instructor rev-parse HEAD)" = 4f2d4d8ce1a53978a4c7f3ee24a77a43a376c132
           cd instructor
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
             -s tests/unit -p 'test_p4_g07_scene_broadcaster_overlay.py' -v
