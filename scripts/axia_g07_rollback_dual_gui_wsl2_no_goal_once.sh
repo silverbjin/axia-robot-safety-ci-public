@@ -197,6 +197,21 @@ assert v.get("wslg_verified") is False
 PY
 echo AXIA_G07_ROLLBACK_OLD_TWO_GUI_PROCESSES_LAUNCHED_WSLG_RENDER_NOT_PROVEN
 
+# Read-only distinction: Gazebo transport world/Waffle vs actual GUI pixels.
+# A healthy transport MUST NEVER be promoted to 'WSLg pixels rendered'.
+(timeout 8s gz service -l > "$OUT/visual/gz_services.txt" 2>&1) || true
+(timeout 8s gz model --list > "$OUT/visual/gz_models.txt" 2>&1) || true
+if grep -Eq '/world/[^/]+/control' "$OUT/visual/gz_services.txt" &&
+   grep -Eiq 'waffle|turtlebot3' "$OUT/visual/gz_models.txt";then
+  echo AXIA_G07_ROLLBACK_REAL_WORLD_WAFFLE_TRANSPORT_PASS_WSLG_PIXELS_UNVERIFIED
+else
+  echo AXIA_G07_ROLLBACK_GAZEBO_TRANSPORT_MISSING_NO_GOAL >&2
+  stop WORLD_OR_WAFFLE_TRANSPORT_MISSING
+fi
+if command -v glxinfo >/dev/null;then
+  (timeout 5s glxinfo -B > "$OUT/visual/glxinfo_renderer.txt" 2>&1) || true
+fi
+
 # Exact first Owner pregoal failure root boundary, without moving fixture.
 PYTHONDONTWRITEBYTECODE=1 timeout 30s python3 \
  "$PROBE/d06/live/g07_precycle36_readonly_preclear_probe.py" \
