@@ -44,6 +44,17 @@ fi
 # BEFORE private download, ROS startup, TTY consent or any real Goal.
 # The receipt is NOT an Owner acceptance verdict; only CI preflight admission.
 GATE="$ROOT/d06/acceptance/g07_cycle16_owner_ci_gate_v3.json"
+# Cycle18 actual WSL2 previous-Goal first-Guard evidence always wins over
+# the older CI-only admission. This is READ-ONLY and BEFORE GUI, ROS and
+# any attempt reservation. Existing failed run is never overwritten.
+FIELD_FIRST="$ROOT/d06/live/g07_cycle18_field_owner_admission_v5.py"
+FIELD_RECORD="$ROOT/d06/tests/fixtures/g07_cycle17_wsl2_guard_174ms_rmw_186ms_sanitized.json"
+if [[ ! -s "$FIELD_FIRST" || ! -s "$FIELD_RECORD" ]] ||
+   ! python3 "$FIELD_FIRST" --home "$HOME" --ci-gate "$GATE" \
+     --field-evidence "$FIELD_RECORD";then
+  echo AXIA_G07_CYCLE18_FIELD_PREVIOUS_GOAL_CM_TTL_BREACH_HOLD_NO_ROS_NO_GOAL
+  exit 3
+fi
 GATE_VERIFY="$ROOT/d06/live/g07_cycle16_owner_ci_gate_v4.py"
 if ! /usr/bin/python3 "$GATE_VERIFY" --gate "$GATE" --private-sha "$P4_OWNER_PRIVATE_SHA" --ci-run 43727149856 --private-tree "$P4_OWNER_PRIVATE_TREE";then
   echo 'AXIA_G07_FINAL_OWNER_BLOCKED_CI_GUI_L2_OR_PIN_MISMATCH_NO_ROS_NO_GOAL'
