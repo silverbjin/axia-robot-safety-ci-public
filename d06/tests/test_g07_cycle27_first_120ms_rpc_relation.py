@@ -71,6 +71,19 @@ class FirstReleaseGapVsStopRPC(unittest.TestCase):
         self.assertEqual(classify(e[1:],r)["status"],"GOAL_MARKER_MISSING_HOLD")
         self.assertEqual(classify(e[:3],r)["status"],"SUPERVISOR_COVERAGE_UNVERIFIED_HOLD")
 
+    def test_pre_goal_output_and_upstream_cannot_invalidate_real_goal_window(self):
+        events,report=fixture(10.30,10.41)
+        events.insert(0,evt("pre_guard",8.0,0.0,2))
+        events.insert(1,evt("supervised",8.5,20.0,3))
+        report["cm_first_120ms_rmw_release_margin"]={
+            "status":"CM_SOURCE_GAP_EXCEEDS_120MS",
+            "cm_source_gap_sec":.140667774,
+            "upstream_publications_inside_gap":3}
+        r=classify(events,report,require_oracle=True)
+        self.assertEqual(r["status"],"CM_SOURCE_120MS_GAP_BEFORE_RPC_HOLD")
+        self.assertAlmostEqual(r["first_cm_source_gap_ms"],140.667774,places=4)
+        self.assertEqual(r["skipped_pregoal_rows"],2)
+
     def test_non_rmw_events_after_goal_cannot_hide_valid_first_gap(self):
         events,report=fixture(10.30,10.41)
         events.append({"kind":"pre_guard","t":10.5,"rmw_source_ns":None})
