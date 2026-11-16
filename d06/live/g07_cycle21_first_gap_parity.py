@@ -166,16 +166,66 @@ def classify_first_gap(doc):
         ],
     }
 
-def main():
-    if len(sys.argv)!=2:
-        print("USAGE: python3 g07_cycle21_first_gap_parity.py sanitized_numeric_fixture.json",file=sys.stderr)
-        return 2
-    p=Path(sys.argv[1])
+def classify_cycle20_bundle(path):
+    """Verify exact six-member sanitized Cycle20 TAR before deriving metrics.
+
+    Extract no archive files; hold on missing/changed members or unexpected
+    schema. Never expose private source SHA, raw events or identifiers.
+    """
+    from d06.live.g07_cycle20_single_bundle import read_bundle_manifest
+    import tarfile
+    p=Path(path)
+    if p.is_symlink() or not p.is_file() or p.stat().st_size>10*1024*1024:
+        raise ValueError("CYCLE20_BUNDLE_PATH_OR_SIZE_INVALID")
     try:
-        if p.is_symlink() or not p.is_file():
-            raise ValueError("INPUT_UNTRUSTED")
-        doc=json.loads(p.read_text(encoding="utf-8"))
-        r=classify_first_gap(doc)
+        manifest=read_bundle_manifest(p)
+        if (manifest.get("no_ros_no_goal") is not True
+            or manifest.get("original_archive_verified") is not True
+            or manifest.get("owner_l3_accepted") is not False
+            or manifest.get("owner_release_allowed") is not False):
+            raise ValueError("CYCLE20_MANIFEST_SCOPE_UNVERIFIED")
+        with tarfile.open(p,"r:gz") as tar:
+            first=json.load(tar.extractfile("01_first_boundary.json"))
+            window=json.load(tar.extractfile("02_event_window.json"))
+        if (first.get("schema")!="axia.g07.owner_first_cm_breach_summary_v1"
+            or window.get("schema")!="axia.g07.owner_first_cm_bounded_window_v1"
+            or first.get("status")!="OWNER_FIRST_GUARD_TTL_BREACH_CAUSE_PENDING"):
+            raise ValueError("CYCLE20_FIRST_BOUNDARY_SCHEMA_UNVERIFIED")
+        numeric={
+            "schema":SCHEMA,
+            "first_guard_cm_age_ms":first.get("first_guard_cm_age_ms"),
+            "guard_hard_ttl_ms":first.get("first_guard_cm_hard_ttl_ms"),
+            "first_guard_transition":first.get("guard_first_transition"),
+            "cm_release_target_ms":RELEASE_CM_MS,
+            "host_clock_step_excluded":first.get("host_clock_step_excluded"),
+            "native_stop_rpc":{
+                "overlaps_first_cm_gap":first.get("native_stop_rpc_overlaps_first_cm_gap"),
+                "relative_relation":first.get("native_stop_rpc_temporal_relation"),
+                "nearest_distance_ms":first.get("native_stop_rpc_nearest_gap_distance_ms"),
+            },
+            "events_by_kind":window.get("events_by_kind"),
+        }
+        result=classify_first_gap(numeric)
+        if result["status"]!="FIELD_CM_SOURCE_GAP_AND_OBSERVER_JITTER_CANDIDATE_HOLD":
+            raise ValueError("CYCLE20_BUNDLE_FIRST_BOUNDARY_CLASSIFICATION_UNVERIFIED")
+        return result
+    except (KeyError,TypeError,AttributeError,tarfile.TarError,OSError,ValueError) as exc:
+        raise ValueError("CYCLE20_BUNDLE_UNVERIFIED_"+type(exc).__name__) from exc
+
+
+def main():
+    if not (len(sys.argv)==2 or (len(sys.argv)==3 and sys.argv[1]=="--bundle")):
+        print("USAGE: python3 g07_cycle21_first_gap_parity.py [--bundle] sanitized_input",file=sys.stderr)
+        return 2
+    p=Path(sys.argv[-1])
+    try:
+        if len(sys.argv)==3:
+            r=classify_cycle20_bundle(p)
+        else:
+            if p.is_symlink() or not p.is_file():
+                raise ValueError("INPUT_UNTRUSTED")
+            doc=json.loads(p.read_text(encoding="utf-8"))
+            r=classify_first_gap(doc)
     except (OSError,ValueError,UnicodeError) as exc:
         r=_default("INPUT_UNVERIFIED_HOLD_"+type(exc).__name__)
     print("AXIA_G07_CYCLE21_FIRST_MULTICHANNEL_GAP "+json.dumps(r,sort_keys=True))
