@@ -21,7 +21,7 @@ def test_owner_runner_exists_and_is_shell_valid():
 def test_pinned_three_sources_and_public_ci_evidence():
     content = RUNNER.read_text()
     for expected in (
-        '961b574e7623eede6ae94bf7b9cf06e62dc3674a',
+        'eb91a334ab8ad826eb863afbb56a55f0b4991a53',
         'dff7b4a2710525a72287f5416b7b613a9d979f1e',
         '18631cf070b4c2afb994aa49013fee69224d2aa1',
         '43716783675', '43720178979', '43725720019',
