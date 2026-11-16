@@ -20,7 +20,9 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
+          set +u
           source /opt/ros/jazzy/setup.bash
+          set -u
           echo AXIA_G07_TRACE_PRECHECK_NO_ROS_NO_GOAL=true
           echo "ROS_DISTRO=$ROS_DISTRO"
           if ros2 pkg prefix tracetools >/dev/null 2>&1;then
