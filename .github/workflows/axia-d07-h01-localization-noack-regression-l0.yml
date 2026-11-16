@@ -17,15 +17,15 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: b2dd112c6fc819e24ad5b509070dd709186a47ca
+          ref: 43f83daee851d7c5f55cede053143a9af54afe09
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
-      - name: RED new first-response-lost regression, no ROS or Gazebo
+      - name: GREEN new first-response-lost regression, no ROS or Gazebo
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor rev-parse HEAD)" = 'b2dd112c6fc819e24ad5b509070dd709186a47ca'
+          test "$(git -C instructor rev-parse HEAD)" = '43f83daee851d7c5f55cede053143a9af54afe09'
           cd instructor
           python3 -m unittest discover -s tests/unit -p test_d07_h01_lifecycle_reconcile.py -v
           echo D07_H01_LOCALIZATION_NOACK_L0_PASS_NO_ROS_NO_GOAL
