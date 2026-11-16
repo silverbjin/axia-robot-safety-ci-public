@@ -15,13 +15,13 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-ci-public
-          ref: 62024de04949d9bc9b885efc0e240178c3b67d24
+          ref: 352ea7c2197b937e8566ba90cd4d8fff46dd9f88
           path: visual
           persist-credentials: false
       - name: Reproduce real CM overlap and verify no safety changes
         run: |
           set -Eeuo pipefail
-          test "$(git -C visual rev-parse HEAD)" = 62024de04949d9bc9b885efc0e240178c3b67d24
+          test "$(git -C visual rev-parse HEAD)" = 352ea7c2197b937e8566ba90cd4d8fff46dd9f88
           cd visual
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
             -s d06/tests -p 'test_g07_cycle37_readonly_monitor_noncm_cpu.py' -v
