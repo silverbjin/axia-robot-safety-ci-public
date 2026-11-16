@@ -6,9 +6,9 @@ set -Eeuo pipefail
 umask 077
 
 readonly PRIVATE_SHA="01d45d46b6eb6a05b1bd313d73f1fc3549575545"
-readonly OLD_PUBLIC_SHA="70f9d4ece5c405cff0fb2d17843391856f3d8c08"
+readonly OLD_PUBLIC_SHA="48d473070d201f4f0a6c9b22510c0ac64c8f59ba"
 readonly VISUAL_SHA="0f66059d9110f8e667200bbca22396bd0c78c02e"
-readonly PROBE_SHA="cdce9164e642539018c62a777bc792c98c003bfb"
+readonly PROBE_SHA="34a122fa1e6e03de45c31864806cd3837226366f"
 readonly CI_WORKFLOW_SHA="fa05a437db3b55d3e5e242322a4b66b7f71ae601"
 readonly CI_RUN="43727149856"
 readonly SRC_REPO="silverbjin/axia-robot-safety-ci-public"
@@ -201,13 +201,26 @@ echo AXIA_G07_ROLLBACK_OLD_TWO_GUI_PROCESSES_LAUNCHED_WSLG_RENDER_NOT_PROVEN
 # A healthy transport MUST NEVER be promoted to 'WSLg pixels rendered'.
 (timeout 8s gz service -l > "$OUT/visual/gz_services.txt" 2>&1) || true
 (timeout 8s gz model --list > "$OUT/visual/gz_models.txt" 2>&1) || true
-if grep -Eq '/world/[^/]+/control' "$OUT/visual/gz_services.txt" &&
-   grep -Eiq 'waffle|turtlebot3' "$OUT/visual/gz_models.txt";then
-  echo AXIA_G07_ROLLBACK_REAL_WORLD_WAFFLE_TRANSPORT_PASS_WSLG_PIXELS_UNVERIFIED
+# Owner evidence 5aAPfVy9 proved /world/default/control and the exact
+# Waffle sensor service while gz model --list timed out. Do not infer
+# "WORLD_MISSING" from a heavyweight state RPC timeout. Accumulate actual
+# ROS Scan/World services without granting GUI/Goal acceptance.
+for _ in {1..40};do
+  [[ -f "$OUT/visual/monitor.log" ]] &&
+    grep -Fq '"front_m": ' "$OUT/visual/monitor.log" && break
+  sleep .25
+done
+if python3 "$PROBE/d06/live/g07_wslg_actual_evidence_contract.py" \
+     --services "$OUT/visual/gz_services.txt" \
+     --models "$OUT/visual/gz_models.txt" \
+     --monitor "$OUT/visual/monitor.log" \
+     --gazebo-gui-log "$OUT/visual/gz_gui.log" \
+     --output "$OUT/visual/gazebo_transport_review.json";then
+  echo AXIA_G07_ROLLBACK_WORLD_WAFFLE_SCAN_EVIDENCE_CANDIDATE_NO_PIXELS_INFERRED
 else
-  echo AXIA_G07_ROLLBACK_GAZEBO_TRANSPORT_MISSING_NO_GOAL >&2
-  stop WORLD_OR_WAFFLE_TRANSPORT_MISSING
+  echo AXIA_G07_ROLLBACK_WORLD_TRANSPORT_REVIEW_HOLD_GUI_DIAGNOSTIC_CONTINUES
 fi
+echo AXIA_G07_ROLLBACK_WSLG_PIXEL_CONFIRMATION_REQUIRED
 if command -v glxinfo >/dev/null;then
   (timeout 5s glxinfo -B > "$OUT/visual/glxinfo_renderer.txt" 2>&1) || true
 fi
