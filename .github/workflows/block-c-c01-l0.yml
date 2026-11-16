@@ -3,7 +3,7 @@ on:
   pull_request:
     paths: ['block_c/**', '.github/workflows/block-c-c01-l0.yml']
   push:
-    branches: ['feat/block-c-c01-*']
+    branches: ['main', 'feat/block-c-c01-*']
     paths: ['block_c/**', '.github/workflows/block-c-c01-l0.yml']
   workflow_dispatch:
 permissions:
