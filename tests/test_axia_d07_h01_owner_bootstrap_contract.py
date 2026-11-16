@@ -81,12 +81,14 @@ class OwnerBootstrapContract(unittest.TestCase):
         self.assertIn('axia_d07_pack_failure "$CHECK_DIR"',src)
         self.assertIn('axia_d07_pack_failure "$RUN"',src)
 
-    def test_synthetic_complete_evidence_can_only_pass_scoped_gui(self):
+    def test_synthetic_source_success_never_promotes_missing_scene_pixels(self):
         self.assertTrue(PRIVATE_TOOLS.is_dir(),"private tools L0 checkout missing")
         with tempfile.TemporaryDirectory() as folder:
             r,o=verify(Path(folder),"RVIZ\nGAZEBO\n")
-            self.assertEqual(r.returncode,0,r.stderr)
-            self.assertTrue(o["owner_wsl2_gui_l3_accepted"])
+            self.assertEqual(r.returncode,3,r.stderr)
+            self.assertTrue(o["owner_wsl2_source_l3_verified"])
+            self.assertFalse(o["owner_wsl2_gui_l3_accepted"])
+            self.assertFalse(o["gazebo_3d_scene_render_proven"])
             self.assertFalse(o["moving_goal_accepted"])
             self.assertFalse(o["formal_axia_mvp_accepted"])
             self.assertFalse(o["certified_estop"])
@@ -112,6 +114,20 @@ class OwnerBootstrapContract(unittest.TestCase):
         self.assertIn("glxinfo_B.txt",src)
         self.assertIn('axia_d07_pack_failure "$RUN"',src)
         self.assertIn("D07_H01_OWNER_GUI_VISUAL_HOLD",src)
+
+    def test_fake_screenshot_file_cannot_autoprove_3d_scene(self):
+        self.assertTrue(PRIVATE_TOOLS.is_dir())
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder)
+            d=root/"gui_diagnostics"
+            d.mkdir()
+            (d/"gazebo_scene.xwd").write_bytes(b"x"*1024)
+            (d/"resource_samples.jsonl").write_text('{"utc":"synthetic"}\n')
+            r,o=verify(root,"RVIZ\nGAZEBO\n")
+            self.assertEqual(r.returncode,3,r.stderr)
+            self.assertEqual(o["first_missing_visual_boundary"],
+                             "OWNER_GUI_SCENE_PIXEL_REVIEW_PENDING")
+            self.assertFalse(o["owner_wsl2_gui_l3_accepted"])
 
     def test_missing_x11_or_nonzero_runner_holds(self):
         self.assertTrue(PRIVATE_TOOLS.is_dir())
