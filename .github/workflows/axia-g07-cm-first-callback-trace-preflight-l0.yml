@@ -94,6 +94,10 @@ jobs:
           lttng enable-event --userspace -s "$SESSION" 'ros2:callback_start' >/dev/null
           lttng enable-event --userspace -s "$SESSION" 'ros2:callback_end' >/dev/null
           lttng enable-event --userspace -s "$SESSION" 'ros2:rclcpp_callback_register' >/dev/null
+          lttng enable-event --userspace -s "$SESSION" 'ros2:rcl_subscription_init' >/dev/null
+          lttng enable-event --userspace -s "$SESSION" 'ros2:rclcpp_subscription_init' >/dev/null
+          lttng enable-event --userspace -s "$SESSION" 'ros2:rclcpp_subscription_callback_added' >/dev/null
+          echo AXIA_G07_CYCLE31_JAZZY_SUBSCRIPTION_TOPIC_CALLBACK_TRACEPOINTS_ENABLED_NO_GOAL
           lttng add-context --userspace -s "$SESSION" -t vpid >/dev/null
           lttng start "$SESSION" >/dev/null
           START_ANCHOR="$(python3 -c 'import json,time; print(json.dumps({"mono_ns":time.monotonic_ns(),"wall_ns":time.time_ns()}))')"
@@ -176,5 +180,32 @@ jobs:
                             "unique_names":sorted(set(symbols))[:14]},sort_keys=True))
           assert is_mono or is_wall, "LTTNG_CLOCK_DOMAIN_UNVERIFIED"
           assert offset_drift_ms<50, "HOST_WALL_TO_MONOTONIC_STEP_DETECTED_NOT_PROVEN"
+          PY
+          /usr/bin/python3 - "$WORK/trace" <<'PY'
+          import bt2,collections,json,sys
+          names=("ros2:rcl_subscription_init",
+                 "ros2:rclcpp_subscription_init",
+                 "ros2:rclcpp_subscription_callback_added")
+          seen=collections.Counter()
+          schemas={}
+          for msg in bt2.TraceCollectionMessageIterator(sys.argv[1]):
+              if not isinstance(msg,bt2._EventMessageConst):
+                  continue
+              event=msg.event
+              if event.name in names:
+                  seen[event.name]+=1
+                  schemas.setdefault(event.name,sorted(list(event.payload_field)))
+          print("AXIA_G07_CYCLE31_JAZZY_SUBSCRIPTION_TRACE_FIELDS_NO_GOAL "+
+                json.dumps({"counts":dict(seen),"payload_keys":schemas},sort_keys=True))
+          missing=[n for n in names if seen[n]<=0]
+          if missing:
+              print("AXIA_G07_CYCLE31_TRACE_TOPIC_LINK_EVENTS_ABSENT_NO_GOAL "+",".join(missing))
+              raise SystemExit(3)
+          required={"ros2:rcl_subscription_init":("subscription_handle","topic_name"),
+                    "ros2:rclcpp_subscription_init":("subscription_handle","subscription"),
+                    "ros2:rclcpp_subscription_callback_added":("subscription","callback")}
+          if any(not set(fields).issubset(schemas.get(name,[])) for name,fields in required.items()):
+              raise SystemExit("AXIA_G07_CYCLE31_JAZZY_TRACE_PAYLOAD_SHAPE_INVALID")
+          print("AXIA_G07_CYCLE31_JAZZY_TRACEPOINT_SCHEMA_VERIFIED_NO_GOAL")
           PY
           echo AXIA_G07_CYCLE27_TRACE_TOOLS_CI_DIAGNOSTIC_ONLY_FORMAL_OWNER_HOLD
