@@ -1,7 +1,7 @@
 name: AXIA Block C Owner WSL2 final acceptance runner PUBLIC CONTRACT
 on:
   push:
-    branches: ['feat/block-c-owner-acceptance-*']
+    branches: ['main', 'feat/block-c-owner-acceptance-*']
     paths:
       - 'block_c/scripts/axia_block_c_owner_final_once.sh'
       - 'block_c/tests/test_owner_wsl2_acceptance_contract.py'
