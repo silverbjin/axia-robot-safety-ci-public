@@ -88,6 +88,7 @@ class FirstGapCrossLayer(unittest.TestCase):
             path=Path(tmp)/"sanitized.tar.gz"
             boundary={
                 "schema":"axia.g07.owner_first_cm_breach_summary_v1",
+                "status":"OWNER_FIRST_GUARD_TTL_BREACH_CAUSE_PENDING",
                 "first_guard_cm_age_ms":self.fixture["first_guard_cm_age_ms"],
                 "first_guard_cm_hard_ttl_ms":150,
                 "guard_first_transition":"UPSTREAM_STALE_AFTER_MOTION",
