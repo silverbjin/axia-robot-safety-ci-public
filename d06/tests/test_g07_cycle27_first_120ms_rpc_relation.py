@@ -71,6 +71,32 @@ class FirstReleaseGapVsStopRPC(unittest.TestCase):
         self.assertEqual(classify(e[1:],r)["status"],"GOAL_MARKER_MISSING_HOLD")
         self.assertEqual(classify(e[:3],r)["status"],"SUPERVISOR_COVERAGE_UNVERIFIED_HOLD")
 
+    def test_non_rmw_events_after_goal_cannot_hide_valid_first_gap(self):
+        events,report=fixture(10.30,10.41)
+        events.append({"kind":"pre_guard","t":10.5,"rmw_source_ns":None})
+        events.append({"kind":"supervised","t":10.6,"rmw_publication_seq":None})
+        report["cm_first_120ms_rmw_release_margin"]={
+            "status":"CM_SOURCE_GAP_EXCEEDS_120MS",
+            "cm_source_gap_sec":.140667774,
+            "upstream_publications_inside_gap":3}
+        r=classify(events,report,require_oracle=True)
+        self.assertEqual(r["status"],"CM_SOURCE_120MS_GAP_BEFORE_RPC_HOLD")
+        self.assertEqual(r["skipped_incomplete_rmw_rows"],2)
+        self.assertTrue(r["scoped_original_oracle_gap_matched"])
+        self.assertFalse(r["owner_goal_authorized"])
+
+    def test_scoped_oracle_mismatch_or_missing_fails_closed(self):
+        events,report=fixture()
+        r=classify(events,report,require_oracle=True)
+        self.assertEqual(r["status"],"ORIGINAL_GOAL_SCOPED_ORACLE_UNVERIFIED_HOLD")
+        report["cm_first_120ms_rmw_release_margin"]={
+            "status":"CM_SOURCE_GAP_EXCEEDS_120MS",
+            "cm_source_gap_sec":.121,
+            "upstream_publications_inside_gap":3}
+        r=classify(events,report,require_oracle=True)
+        self.assertEqual(r["status"],"ORIGINAL_GOAL_SCOPED_ORACLE_MISMATCH_HOLD")
+        self.assertFalse(r["owner_goal_authorized"])
+
     def test_no_private_origin_in_diagnostic(self):
         e,r=fixture()
         out=classify(e,r)
