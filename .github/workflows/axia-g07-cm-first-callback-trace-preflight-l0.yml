@@ -78,7 +78,7 @@ jobs:
           set -Eeuo pipefail
           export DEBIAN_FRONTEND=noninteractive
           timeout 120 apt-get update -qq
-          timeout 120 apt-get install -y -qq --no-install-recommends babeltrace2
+          timeout 120 apt-get install -y -qq --no-install-recommends babeltrace2 python3-bt2
           command -v babeltrace2
           set +u
           source /opt/ros/jazzy/setup.bash
@@ -118,5 +118,22 @@ jobs:
           assert start>=2 and end>=2,(start,end)
           print("AXIA_G07_CYCLE27_RCLCPP_CALLBACK_START_END_TRACE_DECODE_L1_PASS_NO_GOAL"+
                 " callback_start="+str(start)+" callback_end="+str(end))
+          PY
+          /usr/bin/python3 - "$WORK/trace" <<'PY'
+          import bt2,json,sys
+          rows=[]
+          for msg in bt2.TraceCollectionMessageIterator(sys.argv[1]):
+              if isinstance(msg,bt2._EventMessageConst) and
+                  msg.event.name in ("ros2:callback_start","ros2:callback_end"):
+                  rows.append({
+                      "name":msg.event.name,
+                      "payload_keys":sorted(list(msg.event.payload_field)),
+                      "common_context_keys":sorted(list(msg.event.common_context_field)),
+                      "clock_snapshot_ns_available":
+                          msg.default_clock_snapshot is not None,
+                  })
+          assert len(rows)>=4,len(rows)
+          print("AXIA_G07_CYCLE27_BABELTRACE_BT2_SCHEMA_L1 "+
+                json.dumps(rows[:2],sort_keys=True))
           PY
           echo AXIA_G07_CYCLE27_TRACE_TOOLS_CI_DIAGNOSTIC_ONLY_FORMAL_OWNER_HOLD
