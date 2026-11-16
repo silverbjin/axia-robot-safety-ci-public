@@ -25,7 +25,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 0e16c3781cdee603518a653f120a3be352e5f7b2
+          ref: a9f0d2b6ae1f0dcf2e8f92b263d9b66480924c4e
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -33,7 +33,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '0e16c3781cdee603518a653f120a3be352e5f7b2'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 'a9f0d2b6ae1f0dcf2e8f92b263d9b66480924c4e'
           cd instructor
           python3 -m unittest discover -s tests/unit -p test_d07_h01_gui_owner_contract.py -v
           python3 -m unittest discover -s tests/unit -p test_d07_h01_path_visual.py -v
@@ -44,6 +44,11 @@ jobs:
           python3 -m unittest discover -s tests/unit -p test_d07_h01_native_master_full_restore.py -v
           python3 -m unittest discover -s tests/unit -p test_d07_h01_planner_source_barrier.py -v
           python3 -m unittest discover -s tests/unit -p test_d07_h01_post_free_plan_epoch.py -v
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_gpu_gui_trial.py -v
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_gz_world_topic_gate.py -v
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_gui_watcher_process_contract.py -v
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_ci_render_backend_parity.py -v
+          bash -n tools/d07_h01_gpu_gui_watcher.sh
           python3 -m py_compile tools/d07_h01_post_free_plan_epoch.py
           python3 -m py_compile tools/d07_h01_native_master_full_evidence.py
           python3 -m py_compile tools/d07_h01_gui_lidar_noise_overlay.py
@@ -76,6 +81,9 @@ jobs:
           GZ_PARTITION: axia_p2_d07_h01_gui_95
           AXIA_P0_SIM_ONLY: '1'
           AXIA_D07_H01_GUI_NO_GOAL: '1'
+          # Identical watcher/marker/transport/DDS code; Xvfb cannot test WSLg GPU.
+          AXIA_D07_H01_GPU_GUI_TRIAL: '1'
+          AXIA_D07_H01_CI_SOFTWARE_GUI: '1'
           AXIA_D07_GUI_HOLD_S: '8'
           AXIA_G07_CI_SIM_GOAL_ALLOWED: '0'
           AXIA_P2_G07_PHYSICAL_PREFLIGHT: '1'
@@ -141,7 +149,7 @@ jobs:
           geo=json.loads((root/'d07_h01_geometry/d07_h01_geometry.json').read_text())
           lines=(root/'d07_h01_geometry/phase_evidence.jsonl').read_text().splitlines()
           phases=[json.loads(x) for x in lines]
-          assert geo['source_sha']=='0e16c3781cdee603518a653f120a3be352e5f7b2'
+          assert geo['source_sha']=='a9f0d2b6ae1f0dcf2e8f92b263d9b66480924c4e'
           assert geo['goal_sent'] is False
           assert geo['real_nav2'] is True
           assert geo['real_laser_scan'] is True
@@ -150,8 +158,19 @@ jobs:
           assert geo['obstacle_restored_away'] is True
           assert geo['certified_estop'] is False
           assert geo['formal_accepted'] is False
+          watcher=(root/'d07_gui_watcher.log').read_text()
+          for required in (
+              'D07_H01_GUI_WATCHER_PROCESS_ENTERED',
+              'D07_H01_GUI_SERVER_WORLD_DISCOVERED_NOT_GUI_RENDER_PROOF',
+              'D07_H01_GUI_CI_SOFTWARE_BACKEND_XVFB_NO_WSLG_GPU_PROOF',
+              'D07_H01_GUI_CHILDREN_SPAWNED',
+          ):
+              assert required in watcher,('FIRST_GUI_LIFECYCLE_BOUNDARY',required)
+          ack=(root/'d07_gui_watcher_started.txt').read_text()
+          assert 'pid=' in ack, 'GUI_WATCHER_SPAWN_ACK_ABSENT'
+          print('D07_H01_REAL_GAZEBO_XVFB_WATCHER_LIFECYCLE_OBSERVED_NO_GPU_CLAIM')
           report=assess_gui_stages(
-              phases,source_sha='0e16c3781cdee603518a653f120a3be352e5f7b2',actual_ros=True,
+              phases,source_sha='a9f0d2b6ae1f0dcf2e8f92b263d9b66480924c4e',actual_ros=True,
               actual_gazebo=geo['obstacle_pose_native_ack'] is True,
               rviz_window=True)
           (root/'d07_h01_gui_verdict.json').write_text(
@@ -160,6 +179,7 @@ jobs:
           print('D07_H01_GUI_EVIDENCE',json.dumps(report,sort_keys=True))
           assert report['ready'] is True,report
           print('D07_H01_GUI_NO_MOVING_GOAL_L2_PASS')
+          print('D07_H01_CI_GUI_BACKEND_SOFTWARE_XVFB_L2_ONLY_WSLG_D3D12_NOT_VERIFIED')
           print('D07_H01_OWNER_WSL2_GUI_L3_NOT_RUN')
           print('D07_H01_MOVING_CONTROLLER_CONTACT_AND_TTL_NOT_VERIFIED')
           PY
