@@ -1,0 +1,33 @@
+# Actual WSL2 CM first Guard violation versus earlier real GUI L2 CI PASS.
+# Public sanitized evidence only, Ubuntu 24.04, no ROS, no Goal.
+name: AXIA G07 Owner WSL2 first Guard TTL and attempt parity L0
+on:
+  push:
+    branches: ['fix/g07-owner-real-first-ttl-ci-parity-20261116']
+    paths:
+      - '.github/workflows/axia-g07-owner-real-field-first-ttl-l0.yml'
+      - 'd06/tests/test_g07_cycle18_field_first_owner_parity_v5.py'
+      - 'd06/tests/fixtures/g07_cycle17_wsl2_guard_174ms_rmw_186ms_sanitized.json'
+      - 'd06/live/g07_cycle18_field_owner_admission_v5.py'
+      - 'scripts/axia_g07_cycle18_owner_readonly_preflight.sh'
+      - 'd06/docs/G07_OWNER_WSL2_FIRST_FAILURE_CI_PARITY_AGENT_INSTRUCTIONS_20261116_KO.md'
+      - 'd06/docs/G07_CYCLE18_FIELD_OWNER_FIRST_FAILURE_REPORT_20261116_KO.md'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: g07-field-real-first-ttl-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  replay-original-first-failure-no-ros-no-goal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Actual WSL2 historical CM source and first Guard transition
+        run: |
+          set -Eeuo pipefail
+          grep -q '^VERSION_ID="24.04"' /etc/os-release || grep -q '^VERSION_ID=24.04' /etc/os-release
+          python3 -m unittest discover -s d06/tests -p 'test_g07_cycle18_field_first_owner_parity_v5.py' -v
+          bash -n scripts/axia_g07_cycle18_owner_readonly_preflight.sh
+          echo AXIA_G07_FIELD_PREVIOUS_CM_TTL_BREACH_CI_L0_PASS_NO_ROS_NO_GOAL_OWNER_RELEASE_HOLD
