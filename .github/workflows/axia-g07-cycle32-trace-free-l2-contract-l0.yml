@@ -1,0 +1,24 @@
+# L0 replay for real owner/CI physical L2 acceptance WITHOUT all-node LTTng.
+name: AXIA G07 Cycle32 split intrusive tracing from real L2 acceptance L0
+on:
+  push:
+    branches: ['fix/g07-cycle32-separate-lttng-acceptance-20261116']
+    paths:
+      - '.github/workflows/axia-g07-cycle32-trace-free-l2-contract-l0.yml'
+      - '.github/workflows/axia-g07-unified-gui-one-goal-l2.yml'
+      - 'd06/tests/test_g07_cycle32_l2_without_intrusive_trace.py'
+      - 'd06/docs/G07_CYCLE32_TRACE_FREE_REAL_L2_REPORT_20261116_KO.md'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify-acceptance-tracer-absent:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: 'RED/GREEN exact existing real L2 no-intrusive-tracing admission'
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest discover -s d06/tests -p 'test_g07_cycle32_l2_without_intrusive_trace.py' -v
+          echo AXIA_G07_CYCLE32_TRACE_FREE_REAL_L2_L0_PASS_NO_ROS_NO_GOAL
