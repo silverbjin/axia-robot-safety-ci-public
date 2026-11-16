@@ -112,6 +112,22 @@ class Cycle19FirstOwnerGap(unittest.TestCase):
                 M.ORIGINAL_SHA=saved
             self.assertEqual(sorted(x.name for x in base.iterdir()),[p.name])
 
+    def test_sha256_custody_object_original_filename_supported_without_copy(self):
+        # Actual G11 retention has an immutable object named by the SHA256.
+        with tempfile.TemporaryDirectory() as tmp:
+            base=Path(tmp)
+            p,sha=archive(base,*data())
+            stored=base/sha
+            p.rename(stored)
+            original=M.ORIGINAL_SHA
+            try:
+                M.ORIGINAL_SHA=sha
+                d=M.inspect(stored,expected_sha=sha)
+                self.assertEqual(d["status"],"OWNER_FIRST_CM_GAP_CONFIRMED_CAUSE_PENDING")
+            finally:
+                M.ORIGINAL_SHA=original
+            self.assertEqual(list(base.iterdir()),[stored])
+
     def test_duplicate_and_wrong_source_members_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:
             base=Path(tmp)
