@@ -15,6 +15,14 @@ on:
   push:
     branches: ['fix/g07-cycle39-rviz-scan-timing-20261117']
     paths: ['.github/workflows/axia-g07-cycle39-gazebo-scan-snapshot-l2.yml']
+  pull_request:
+    branches: ['fix/g07-cycle38-d07-wslg-gpu-xcb-capture-20261117']
+    paths:
+      - '.github/workflows/axia-g07-cycle39-**'
+      - 'd06/live/g07_cycle39_*'
+      - 'd06/live/d06_readonly_monitor.py'
+      - 'd06/rviz/d06_safety_bubble.rviz'
+      - 'd06/tests/test_g07_cycle39_*'
 permissions:
   contents: read
 jobs:
