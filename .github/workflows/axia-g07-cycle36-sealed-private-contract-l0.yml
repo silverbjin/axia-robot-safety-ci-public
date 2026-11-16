@@ -1,0 +1,30 @@
+# Exact Cycle36 sealed Instructor L0, public workflow on the existing
+# approved release branch. No ROS, Gazebo or Goal. Private files not published.
+name: AXIA G07 Cycle36 sealed Instructor GUI contract L0
+on:
+  push:
+    branches: ['release/p2-g06-cm-ttl-20261110']
+    paths: ['.github/workflows/axia-g07-cycle36-sealed-private-contract-l0.yml']
+permissions:
+  contents: read
+jobs:
+  private-source-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    environment: axia-instructor-sealed
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 040ca2e780922c74aa493297461b2851ed59acdc
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Exact Instructor source + GUI mode tests (NO_ROS_NO_GOAL)
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = 040ca2e780922c74aa493297461b2851ed59acdc
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests/unit -p 'test_g07_cycle36_integrated_gui_mode_20261116.py' -v
+          bash -n scripts/p4_g07_shared_runtime.sh
+          bash -n scripts/p2_no_goal_smoke_ci.sh
+          bash -n scripts/p2_owner_l3_wsl2.sh
+          echo AXIA_G07_CYCLE36_PRIVATE_GUI_RESTORE_L0_PASS_NO_ROS_NO_GOAL
