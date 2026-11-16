@@ -1,0 +1,52 @@
+# Read-only capability check for official ROS 2 Jazzy callback/Executor tracing.
+# Same pinned G07 container, no private Instructor, no Gazebo, ROS Goal, cmd_vel.
+name: AXIA G07 callback tracing capability preflight no Goal
+on:
+  push:
+    branches: ['release/p2-g06-cm-ttl-20261110']
+    paths: ['.github/workflows/axia-g07-cm-first-callback-trace-preflight-l0.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  official-jazzy-runtime-no-goal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+      options: --dns 1.1.1.1 --dns 8.8.8.8
+    steps:
+      - name: 'Read-only trace instrumentation preflight'
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          source /opt/ros/jazzy/setup.bash
+          echo AXIA_G07_TRACE_PRECHECK_NO_ROS_NO_GOAL=true
+          echo "ROS_DISTRO=$ROS_DISTRO"
+          if ros2 pkg prefix tracetools >/dev/null 2>&1;then
+            echo AXIA_G07_TRACE_TOOLS_ROS_PKG_PRESENT=true
+          else
+            echo AXIA_G07_TRACE_TOOLS_ROS_PKG_PRESENT=false
+          fi
+          if ros2 trace --help >/tmp/g07-trace-help.txt 2>&1;then
+            echo AXIA_G07_ROS2_TRACE_CLI_PRESENT=true
+          else
+            echo AXIA_G07_ROS2_TRACE_CLI_PRESENT=false
+          fi
+          if command -v lttng >/dev/null;then
+            echo AXIA_G07_LTTNG_CLI_PRESENT=true
+            lttng version | head -n 3 || true
+          else
+            echo AXIA_G07_LTTNG_CLI_PRESENT=false
+          fi
+          if command -v babeltrace2 >/dev/null;then
+            echo AXIA_G07_BABELTRACE2_PRESENT=true
+          else
+            echo AXIA_G07_BABELTRACE2_PRESENT=false
+          fi
+          python3 - <<'PY'
+          import importlib.util
+          for pkg in ('tracetools_trace','tracetools_read','lttngpy','ros2trace'):
+              print('AXIA_G07_TRACE_MODULE_'+pkg.upper()+'='+str(importlib.util.find_spec(pkg) is not None).lower())
+          PY
+          echo AXIA_G07_TRACE_CAPABILITY_SCOPED_ONLY_NOT_CM_CAUSE_NOT_OWNER_RELEASE
