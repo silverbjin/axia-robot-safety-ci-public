@@ -1,0 +1,77 @@
+# AXIA G07: actual Xvfb L2 PASS #43727149856, roll back display topology.
+# First check the exact pre-Cycle36 two-client sources; NEVER run Goal or ROS.
+name: AXIA G07 pre-Cycle36 dual GUI rollback L0 (NO_ROS_NO_GOAL)
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-g07-precycle36-dual-gui-rollback-l0.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  rollback-contract-no-goal:
+    runs-on: ubuntu-24.04
+    environment: axia-instructor-sealed
+    timeout-minutes: 8
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Exact public pre-Cycle36 2-client rollback source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-ci-public
+          ref: c8404eaf752dd5ac8aedcb455d6f40c0a48e18c3
+          path: rollback-public
+          persist-credentials: false
+      - name: Exact original old Instructor source (without Cycle36)
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 01d45d46b6eb6a05b1bd313d73f1fc3549575545
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          path: precycle36-instructor
+          persist-credentials: false
+      - name: Reproduce original baseline contracts and fail closed without ROS or Goal
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C rollback-public rev-parse HEAD)" = c8404eaf752dd5ac8aedcb455d6f40c0a48e18c3
+          test "$(git -C precycle36-instructor rev-parse HEAD)" = 01d45d46b6eb6a05b1bd313d73f1fc3549575545
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
+            -s rollback-public/d06/tests \
+            -p 'test_g07_precycle36_dual_gui_rollback_contract.py' -v
+          bash -n rollback-public/scripts/axia_g07_rollback_dual_gui_wsl2_no_goal_once.sh
+          bash -n rollback-public/d06/scripts/g07_shared_gui_clients.sh
+          bash -n precycle36-instructor/scripts/p2_owner_l3_wsl2.sh
+          bash -n precycle36-instructor/scripts/p4_g07_shared_runtime.sh
+          bash rollback-public/scripts/axia_g07_rollback_dual_gui_wsl2_no_goal_once.sh --self-check
+          ACTUAL="$(
+            AXIA_G07_UNIFIED_GUI_SIDECAR=1 bash -c '
+              source precycle36-instructor/scripts/p4_g07_shared_runtime.sh
+              axia_g07_shared_headless_mode owner-gui'
+          )"
+          test "$ACTUAL" = True
+          # Opposite baseline: default standalone backend still allows the
+          # original official Gazebo GUI, no Cycle36 wrapper injection.
+          WITHOUT_SIDECAR="$(
+            AXIA_G07_UNIFIED_GUI_SIDECAR=0 bash -c '
+              source precycle36-instructor/scripts/p4_g07_shared_runtime.sh
+              axia_g07_shared_headless_mode owner-gui'
+          )"
+          test "$WITHOUT_SIDECAR" = False
+          grep -Fq 'setsid taskset -c "$GUI_CPU" nice -n 19 gz sim -g' \
+            rollback-public/d06/scripts/g07_shared_gui_clients.sh
+          grep -Fq 'setsid taskset -c "$GUI_CPU" nice -n 19 rviz2' \
+            rollback-public/d06/scripts/g07_shared_gui_clients.sh
+          ! grep -Fq 'AXIA_G07_CYCLE36_INTEGRATED_GUI' \
+            rollback-public/d06/scripts/g07_shared_gui_clients.sh
+          grep -Fq 'OWNER_PREGOAL_NOT_CLEAR_BEFORE_FIXTURE' \
+            precycle36-instructor/tools/p2_g07_owner_pregoal_l2.py
+          ! grep -Fq 'p2_l3_live_session.py' \
+            rollback-public/scripts/axia_g07_rollback_dual_gui_wsl2_no_goal_once.sh
+          echo AXIA_G07_PRE_CYCLE36_DUAL_GUI_ROLLBACK_L0_PASS_NO_ROS_NO_GOAL
+      - name: Verify prior real Gazebo and RViz2 Xvfb full L2 success
+        run: |
+          set -Eeuo pipefail
+          P="$(gh api repos/silverbjin/axia-robot-safety-ci-public/actions/runs/43727149856 --jq '(.head_sha // "")+" "+(.status // "")+" "+(.conclusion // "")')"
+          test "$P" = 'fa05a437db3b55d3e5e242322a4b66b7f71ae601 completed success'
+          echo AXIA_G07_PRE_CYCLE36_XVFB_2_WINDOWS_PRIOR_L2_PROVEN_WSLG_NOT_PROVEN
