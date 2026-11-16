@@ -2,6 +2,12 @@
 
 작성: 2026-11-16 · ROS 2 Jazzy / Gazebo Harmonic / 공식 Nav2 · stationary TurtleBot3 Waffle · **NO MOVING GOAL**
 
+## 최신 인수 원샷 우선 안내 (Cycle 14, 2026-11-16)
+
+**이 문서에 남아 있는 이전 SHA는 과거 RED/GREEN 기록입니다.** 현재 원샷 실행기 public SHA는 `b56d88d1c6602208ef9b2ca596a72985d03f95f3`, pinned private GUI code SHA는 `9213fe2806a7db9151f761b9a9285117983fc135`입니다. 이 GPU 시연은 **실제 WSL2 GUI L3가 아직 HOLD**입니다.
+
+Owner mVWZNr7m 증거에서 Free marker까지 생성됐지만 GUI watcher log=0바이트, X11 Gazebo/RViz 창 없음, `d07_gui_transport_topics.txt` 없음. 원인(프로세스 조기 종료·SIG/Kill·스케줄러 등)은 **미확정**. GPU GUI를 별도 watcher로 분리, 시작 즉시 PID/ACK·최초 child exit·종료 사유 파일 생성, 3초 이내 ACK fail-closed, Owner verdict가 다음 FileNotFoundError를 첫 오류로 오인하지 않도록 수정. 공개 CI GREEN [#43813250599](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43813250599) 및 [#43813737168](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43813737168). 실제 GPU 장면 성공은 다음 Owner 원본 검수 전 **미검증**.
+
 ## 결론과 제한
 
 실제 Owner ZIP/cNAPf8A0에서 Gazebo 서버 `Entity creation successful`, Scan/Odom/Costmap 및 공식 Before/Intrusion/Restored Path 3단계는 PASS. 동시에 Ogre2 로그 `Device Name: llvmpipe`, CPU 평균 부하 높음, 사용자 화면의 Gazebo GUI/Entity Tree가 비었음을 확인했다. Windows RAM 32GB 중 WSL 15.48GiB/가용 13GiB 이상으로 RAM 병목 증거는 없다.
@@ -39,7 +45,7 @@ OpenGL renderer string: D3D12 (NVIDIA GeForce RTX ...)
 ```bash
 (
   set -Eeuo pipefail
-  SHA='65e6a47f59bb47d201ca8bc998bc98f92bca4e3e'
+  SHA='b56d88d1c6602208ef9b2ca596a72985d03f95f3'
   SCRIPT="$(mktemp)"
   trap 'rm -f -- "$SCRIPT"' EXIT
   curl -fL --retry 3 -sS \
