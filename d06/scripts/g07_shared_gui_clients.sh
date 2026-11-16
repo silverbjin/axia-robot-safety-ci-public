@@ -110,10 +110,21 @@ trap 'exit 130' INT
 # Exactly these THREE commands and affinity/nice settings for BOTH environments.
 setsid taskset -c "$MONITOR_CPU" nice -n 15 python3 -u "$VISUAL/d06/live/d06_readonly_monitor.py" --out "$EVID" > "$EVID/monitor.log" 2>&1 &
 monitor_pid=$!
-setsid taskset -c "$GUI_CPU" nice -n 19 "${GUI_RENDER_ENV[@]}" rviz2 -d "$VISUAL/d06/rviz/d06_safety_bubble.rviz" --ros-args -p use_sim_time:=true > "$EVID/rviz.log" 2>&1 &
-rviz_pid=$!
-setsid taskset -c "$GUI_CPU" nice -n 19 "${GUI_RENDER_ENV[@]}" gz sim -g -v 4 > "$EVID/gz_gui.log" 2>&1 &
-gz_pid=$!
+if [[ "$MODE" == ci ]];then
+  # Preserve EXACT previously successful Xvfb display process command,
+  # to avoid weakening its old separate-GUI regression contract.
+  setsid taskset -c "$GUI_CPU" nice -n 19 rviz2 -d "$VISUAL/d06/rviz/d06_safety_bubble.rviz" --ros-args -p use_sim_time:=true > "$EVID/rviz.log" 2>&1 &
+  rviz_pid=$!
+  setsid taskset -c "$GUI_CPU" nice -n 19 gz sim -g > "$EVID/gz_gui.log" 2>&1 &
+  gz_pid=$!
+else
+  # D07 Cycle19's real Owner WSLg working Qt xcb / NVIDIA D3D12 path.
+  # No child setting reaches the official headless Gazebo server or CM.
+  setsid taskset -c "$GUI_CPU" nice -n 19 "${GUI_RENDER_ENV[@]}" rviz2 -d "$VISUAL/d06/rviz/d06_safety_bubble.rviz" --ros-args -p use_sim_time:=true > "$EVID/rviz.log" 2>&1 &
+  rviz_pid=$!
+  setsid taskset -c "$GUI_CPU" nice -n 19 "${GUI_RENDER_ENV[@]}" gz sim -g -v 4 > "$EVID/gz_gui.log" 2>&1 &
+  gz_pid=$!
+fi
 windows=0
 gazebo_id=''
 rviz_id=''
