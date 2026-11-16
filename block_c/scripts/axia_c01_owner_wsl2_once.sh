@@ -7,7 +7,7 @@ MODE="${1:---run}"
 [[ "$#" -le 1 ]] || { echo C01_BOOTSTRAP_USAGE_ERROR >&2; exit 2; }
 case "$MODE" in --self-check|--run) ;; *) echo C01_BOOTSTRAP_USAGE_ERROR >&2; exit 2 ;; esac
 PINNED_STUDENT_SHA=766ef987fc0357fdf171fa0926dbef65c6aae972
-STUDENT_BRANCH=feat/block-c-c01-synthetic-20261115
+STUDENT_BRANCH=main
 STUDENT_URL=https://github.com/silverbjin/axia-robot-safety-student.git
 if [[ "$MODE" == --self-check ]]; then
   bash -n "${BASH_SOURCE[0]}"
