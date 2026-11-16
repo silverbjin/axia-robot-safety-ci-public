@@ -30,6 +30,16 @@ class Cycle36PublicRestore(unittest.TestCase):
         self.assertIn('unset LIBGL_ALWAYS_SOFTWARE',s)
         self.assertIn('unset GALLIUM_DRIVER',s)
         self.assertIn("G07_CYCLE36_INTEGRATED_GUI_NO_EXTERNAL_GZ",s)
+    def test_integrated_gui_liveness_checks_are_shell_boolean_not_executable(self):
+        # Real CI #43852572728 sidecar exit BEFORE Goal:
+        # 'line 101: 1: command not found'; 'line 171: 1: command not found'.
+        # Literal '( "$INTEGRATED_GUI" == 1 ... )' executes binary named '1'.
+        s=SHARED.read_text()
+        self.assertNotIn('( "$INTEGRATED_GUI" != 1 &&',s)
+        self.assertNotIn('( "$INTEGRATED_GUI" == 1 ||',s)
+        self.assertIn('{ [[ "$INTEGRATED_GUI" != 1 ]] &&',s)
+        self.assertIn('{ [[ "$INTEGRATED_GUI" == 1 ]] ||',s)
+
     def test_readonly_and_single_goal_ownership_preserved(self):
         s=SHARED.read_text()
         for bad in ("ros2 action send_goal","ros2 topic pub /cmd_vel",
