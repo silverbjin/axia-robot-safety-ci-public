@@ -122,5 +122,19 @@ class Cycle33OwnerRelease(unittest.TestCase):
         self.assertIn(PRIVATE,r.stdout)
         self.assertIn("NO_ROS_NO_GOAL",r.stdout)
 
+
+    def test_bootstrap_pinned_checkout_has_actual_gate_and_checker(self):
+        """Regression: never advertise Owner release if pinned checkout lacks dependencies."""
+        import re
+        bootstrap=(ROOT/"scripts/axia_g07_cycle33_owner_wsl2_bootstrap.sh").read_text()
+        for variable in ("GATE","CHECK","OWNER"):
+            match=re.search(r'(?m)^'+variable+r'="\\$WORK/([^"]+)"    unittest.main()
+,bootstrap)
+            self.assertIsNotNone(match,f"missing pinned {variable} binding")
+            required=ROOT/match.group(1)
+            self.assertTrue(required.is_file(),f"pinned checkout missing {variable}: {required}")
+        self.assertIn('readonly RELEASE_SHA=',bootstrap)
+        self.assertIn('readonly RELEASE_TREE=',bootstrap)
+
 if __name__=="__main__":
     unittest.main()
