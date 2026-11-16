@@ -142,6 +142,11 @@ jobs:
           [[ "$RVIZ" == 1 && "$GAZEBO" == 1 ]] || {
             echo D07_H01_GUI_X11_WINDOW_ABSENT; exit 2;
           }
+          # Previous L2: simulator succeeded, but separate post-run shell
+          # lacked the ROS Python site-packages for /opt/ros/jazzy/bin/xacro.
+          set +u
+          source /opt/ros/jazzy/setup.bash
+          set -u
           python3 - <<'PY'
           import json,sys
           from pathlib import Path
