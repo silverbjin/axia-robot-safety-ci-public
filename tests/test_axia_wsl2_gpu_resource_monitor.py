@@ -37,6 +37,32 @@ class WSL2ResourceMonitorContract(unittest.TestCase):
         self.assertFalse(x["gui_connection_verified"])
         self.assertEqual(m.assess_gz_partitions([])["status"],"NO_SERVER_OR_GUI_PROCESS")
 
+    def test_real_owner_ruby_gz_wrappers_do_not_disappear_from_monitor(self):
+        # Owner cNAPf8A0 genuine ps captured Gazebo-server PID 4581 and
+        # GUI PID 5767 as 'ruby' processes, not 'gz-sim-server' binaries.
+        # This models /proc/PID/cmdline's Ruby launcher arguments; exact
+        # historical argv was NOT preserved in the evidence bundle.
+        m=load()
+        simulated=[
+            (["/usr/bin/ruby","/opt/ros/jazzy/opt/gz_tools_vendor/bin/gz",
+              "sim","-s","world.sdf"],"gazebo_server"),
+            (["/usr/bin/ruby","/usr/bin/gz","sim","-g"],"gazebo_gui"),
+            (["/usr/bin/ruby","/usr/bin/gz","sim","-r","-s","world.sdf"],
+             "gazebo_server"),
+            (["/usr/bin/ruby","/tmp/unrelated-task.rb"],None),
+        ]
+        for argv,role in simulated:
+            with self.subTest(argv=argv):
+                self.assertEqual(m.classify_process(argv),role)
+        processes=[{"role":m.classify_process(argv),
+                    "gz_partition":"axia_owner_sim_95"} for argv,role
+                   in simulated[:2]]
+        diagnosis=m.assess_gz_partitions(processes)
+        self.assertEqual(diagnosis["status"],"MATCH_NOT_CONNECTION_PROOF")
+        self.assertEqual(diagnosis["servers"],1)
+        self.assertEqual(diagnosis["guis"],1)
+        self.assertFalse(diagnosis["gui_connection_verified"])
+
     def test_missing_gpu_tool_does_not_equal_zero_gpu(self):
         m=load()
         self.assertEqual(m.assess_renderer("OpenGL renderer string: llvmpipe (LLVM 17)",True)["status"],"SOFTWARE_RENDERER")
