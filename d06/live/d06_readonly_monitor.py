@@ -17,7 +17,8 @@ def front_distance(scan):
     """Front range teaching annotation, NOT official CM polygon+min_points."""
     a = [
         float(v) for i, v in enumerate(scan.ranges)
-        if abs(float(scan.angle_min) + i * float(scan.angle_increment)) <= 0.18
+        if abs(math.atan2(math.sin(float(scan.angle_min) + i * float(scan.angle_increment)),
+                          math.cos(float(scan.angle_min) + i * float(scan.angle_increment)))) <= 0.18
         and math.isfinite(v) and scan.range_min <= v <= scan.range_max
     ]
     return min(a) if a else None
@@ -50,6 +51,8 @@ def run(out: Path):
     node = Node("axia_d06_gazebo_readonly_monitor", parameter_overrides=[
         Parameter("use_sim_time", Parameter.Type.BOOL, True)])
     state = {"front": None, "last_scan": None, "scan_count": 0,
+             "scan_frame_id": None, "scan_header_stamp_sim_s": None,
+             "scan_header_delta_sim_s": None, "scan_interarrival_wall_s": None,
              "odom_vx": None, "supervised_vx": None,
              "cm_vx": None, "final_vx": None, "cm_action_event": None}
     first_scan_gap = None
@@ -61,6 +64,14 @@ def run(out: Path):
         if previous is not None and now - previous > 0.30 and first_scan_gap is None:
             first_scan_gap = {"gap_sec": round(now - previous, 5),
                               "after_scan_count": state["scan_count"]}
+        stamp_s = float(msg.header.stamp.sec) + float(msg.header.stamp.nanosec) * 1e-9
+        prev_stamp = state["scan_header_stamp_sim_s"]
+        state["scan_header_delta_sim_s"] = (round(stamp_s-prev_stamp, 6)
+            if prev_stamp is not None else None)
+        state["scan_header_stamp_sim_s"] = stamp_s
+        state["scan_frame_id"] = msg.header.frame_id
+        state["scan_interarrival_wall_s"] = (round(now-previous, 6)
+            if previous is not None else None)
         state["front"] = front_distance(msg)
         state["last_scan"] = now
         state["scan_count"] += 1
@@ -137,6 +148,10 @@ def run(out: Path):
                     "t_monotonic": round(now, 5),
                     "actual_scan_messages": state["scan_count"],
                     "front_m": state["front"],
+                    "scan_frame_id": state["scan_frame_id"],
+                    "scan_header_stamp_sim_s": state["scan_header_stamp_sim_s"],
+                    "scan_header_delta_sim_s": state["scan_header_delta_sim_s"],
+                    "scan_interarrival_wall_s": state["scan_interarrival_wall_s"],
                     "scan_age_s": round(age, 4) if age is not None else None,
                     "annotated_zone_NOT_CM_VERDICT": zone,
                     "cm_action_last_event": state["cm_action_event"],
