@@ -1,0 +1,26 @@
+name: AXIA G07 Cycle39 read-only display-scan-timing L0
+on:
+  push:
+    branches: ['fix/g07-cycle39-rviz-scan-timing-20261117']
+    paths:
+      - '.github/workflows/axia-g07-cycle39-display-scan-l0.yml'
+      - 'd06/rviz/d06_safety_bubble.rviz'
+      - 'd06/live/d06_readonly_monitor.py'
+      - 'd06/live/g07_cycle39_scan_geometry.py'
+      - 'd06/live/g07_cycle39_scan_timing.py'
+      - 'd06/tests/test_g07_cycle39_display_scan_timing.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  l0-readonly:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: No ROS, no Goal, fail-closed P0-P2 regressions
+        run: |
+          set -Eeuo pipefail
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s d06/tests -p 'test_g07_cycle39_display_scan_timing.py' -v
+          python3 -m py_compile d06/live/d06_readonly_monitor.py d06/live/g07_cycle39_scan_geometry.py d06/live/g07_cycle39_scan_timing.py
+          echo AXIA_G07_C39_P0_P1_P2_PUBLIC_L0_PASS_NO_ROS_NO_GOAL_NO_L3
