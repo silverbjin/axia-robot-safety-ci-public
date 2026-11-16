@@ -24,6 +24,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -q block_c/tests/test_postmerge_branchless_checkout.py
           PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -q block_c/tests/test_c01_owner_bootstrap_contract.py
           PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -q block_c/tests/test_c01_public_ci_policy.py
           bash block_c/scripts/axia_c01_owner_wsl2_once.sh --self-check
