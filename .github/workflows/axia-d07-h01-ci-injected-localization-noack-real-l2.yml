@@ -151,8 +151,10 @@ jobs:
           assert data['status']=='READONLY_ACTIVE_RECONCILED_NO_ACK',data
           assert data['admitted_for_d07_no_goal'] is True
           assert data['startup_resent'] is False and data['lifecycle_ack_received'] is False
+          # This probe starts immediately after the navigation native ACK,
+          # before the entire staged sequence can be SMOKE_READY. Check only
+          # the already-emitted no-ACK recovery gate here.
           startup=json.loads((root/'startup_verdict.json').read_text())
-          assert startup['status']=='SMOKE_READY', startup
           assert any(
               'D07_ONLY_READONLY_ACTIVE_NO_ACK_NOT_LIFECYCLE_ACK' in x.get('detail','')
               for x in startup['stages']),startup['stages']
@@ -257,6 +259,17 @@ jobs:
               [t for t in expected if t not in topics])
           print('D07_H01_REAL_GAZEBO_RUNTIME_SCENE_TOPICS_CONFIRMED')
 
+          startup=json.loads((root/'startup_verdict.json').read_text())
+          assert startup['status']=='SMOKE_READY',startup
+          assert startup['failed_gate'] is None
+          assert any('D07_ONLY_READONLY_ACTIVE_NO_ACK_NOT_LIFECYCLE_ACK'
+                     in x.get('detail','') for x in startup['stages'])
+          actual=json.loads((root/'startup_verdict.localization_start.readonly_reconcile.json').read_text())
+          assert actual['status']=='READONLY_ACTIVE_RECONCILED_NO_ACK',actual
+          assert actual['admitted_for_d07_no_goal'] is True
+          assert actual['startup_resent'] is False
+          assert actual['lifecycle_ack_received'] is False
+          print('D07_H01_REAL_L2_CI_ACK_LOSS_STAGED_RECOVERY_COMPLETE_NO_SECOND_STARTUP')
           geo=json.loads((root/'d07_h01_geometry/d07_h01_geometry.json').read_text())
           lines=(root/'d07_h01_geometry/phase_evidence.jsonl').read_text().splitlines()
           phases=[json.loads(x) for x in lines]
