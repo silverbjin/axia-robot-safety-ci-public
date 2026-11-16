@@ -2,7 +2,7 @@ name: AXIA Block C — prune only verified merged release branches
 on:
   push:
     branches: [main]
-    paths: ['docs/BLOCK_C_EDUCATIONAL_RELEASE_APPROVAL_20261116_KO.md', 'docs/BLOCK_C_POSTMERGE_CHECKOUT_REPAIR_20261116_KO.md']
+    paths: ['docs/BLOCK_C_EDUCATIONAL_RELEASE_APPROVAL_20261116_KO.md', 'docs/BLOCK_C_POSTMERGE_CHECKOUT_REPAIR_20261116_KO.md', 'docs/AXIA_INSTRUCTOR_ACTIONS_ADMIN_CLOSEOUT_20261116_KO.md']
   workflow_dispatch:
 permissions:
   contents: write
@@ -22,6 +22,7 @@ jobs:
               { pr: 130, branch: 'feat/block-c-c02-c06-20261115' },
               { pr: 131, branch: 'feat/block-c-owner-final-wsl2-20261116' },
               { pr: 132, branch: 'fix/block-c-postmerge-branchless-source-20261116' },
+              { pr: 134, branch: 'ops/instructor-actions-admin-closeout-20261116' },
             ];
             // Never prune before every intended release PR is actually merged.
             for (const item of scope) {
