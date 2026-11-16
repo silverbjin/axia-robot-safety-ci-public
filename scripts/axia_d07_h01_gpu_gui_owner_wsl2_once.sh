@@ -7,7 +7,7 @@ set -Eeuo pipefail
 umask 077
 
 readonly PRIVATE_REPO='silverbjin/axia-robot-safety-instructor'
-readonly PRIVATE_SHA='bea66767961416e3b0154447eb2ab38405122cd3'
+readonly PRIVATE_SHA='9213fe2806a7db9151f761b9a9285117983fc135'
 readonly PUBLIC_BASELINE_GAZEBO_L2_RUN='43793585641'
 readonly PUBLIC_NO_ROS_L0_RUN='43793526290'
 readonly CI_CONTAINER_DIGEST='sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e'
@@ -362,11 +362,24 @@ set +e
 bash "$PRIVATE_RUNNER" --run 2>&1 | tee "$RUN/owner_stdout.log"
 RUNNER_RC=${PIPESTATUS[0]}
 set -e
-# The primary failure, if any, is emitted by the GUI watcher BEFORE the
-# geometry observer reports a missing DDS subscriber or phase evidence.
-if [[ "$RUNNER_RC" != 0 && -f "$RUN/real-l2/d07_gui_watcher.log" ]]; then
-  FIRST_GUI_ERROR="$(grep -m1 -E 'D07_H01_GUI_(TRANSPORT_|GPU_TRIAL_SCOPE_DENIED|AFTER_FREE_BASELINE_MARKER_MISSING)' "$RUN/real-l2/d07_gui_watcher.log" || true)"
+# FIRST GUI execution boundary outranks later DDS subscriber failure
+# or FileNotFoundError (Owner mVWZNr7m source evidence had a zero-byte
+# watcher log and no GUI/transport file despite the free baseline marker).
+if [[ "$RUNNER_RC" != 0 ]]; then
+  GUI_L2="$RUN/real-l2"
+  FIRST_GUI_ERROR=''
+  if [[ -s "$GUI_L2/d07_gui_watcher.log" ]]; then
+    FIRST_GUI_ERROR="$(grep -m1 -E 'D07_H01_GUI_(CHILD_TERMINATED|WATCHER_|TRANSPORT_|GPU_TRIAL_SCOPE_DENIED|AFTER_FREE_BASELINE_MARKER_MISSING)' "$GUI_L2/d07_gui_watcher.log" || true)"
+  fi
+  if [[ -z "$FIRST_GUI_ERROR" && -s "$GUI_L2/d07_gui_watcher_exit.txt" ]]; then
+    FIRST_GUI_ERROR="D07_H01_GUI_WATCHER_EXITED_BEFORE_DDS"
+  elif [[ -z "$FIRST_GUI_ERROR" && ! -s "$GUI_L2/d07_gui_watcher_started.txt" ]]; then
+    FIRST_GUI_ERROR="D07_H01_GUI_WATCHER_SPAWN_ACK_ABSENT"
+  elif [[ -z "$FIRST_GUI_ERROR" && ! -s "$GUI_L2/d07_gui_watcher.log" ]]; then
+    FIRST_GUI_ERROR="D07_H01_GUI_WATCHER_LOG_EMPTY_BEFORE_DDS"
+  fi
   if [[ -n "$FIRST_GUI_ERROR" ]]; then
+    printf '%s\n' "$FIRST_GUI_ERROR" > "$RUN/owner_first_gui_boundary.txt"
     echo "AXIA_D07_H01_FIRST_GUI_FAILURE_FROM_WATCHER=$FIRST_GUI_ERROR"
   fi
 fi
@@ -424,6 +437,11 @@ try:
 except (OSError,ValueError,TypeError,KeyError,ImportError) as exc:
     require=False
     reason='PROVENANCE_OR_REPORT_INVALID_'+type(exc).__name__
+first_gui_file=root/'owner_first_gui_boundary.txt'
+first_gui_boundary=(first_gui_file.read_text().strip()
+                    if runner_rc!=0 and first_gui_file.is_file() else '')
+if first_gui_boundary:
+    reason=first_gui_boundary
 # Actual WSL2 X11 window titles and ROS/DDS do NOT prove rendered 3D
 # pixels. Current Owner Xoszr6rv demonstrates why. Snapshot files must
 # be manually reviewed for robot+world and RViz TF/map, never auto-accepted.
@@ -438,7 +456,9 @@ out={
     'schema':'axia_d07_h01_owner_gui_l3_scoped_v2_visual_review',
     'status':'D07_H01_OWNER_GUI_VISUAL_HOLD',
     'reason':reason,
-    'first_missing_visual_boundary':reason if source_scope_ready else 'ROS_SOURCE_OR_X11_NOT_READY',
+    'first_missing_visual_boundary':(first_gui_boundary or
+        (reason if source_scope_ready else 'ROS_SOURCE_OR_X11_NOT_READY')),
+    'first_gui_boundary':first_gui_boundary or None,
     'private_source_sha':source,
     'public_prior_baseline_l2_run_not_gpu_trial':ci_run,
     'owner_runner_rc':runner_rc,
