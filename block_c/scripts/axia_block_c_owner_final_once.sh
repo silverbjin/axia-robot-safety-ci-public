@@ -4,11 +4,11 @@
 set -Eeuo pipefail
 umask 077
 MODE="${1:---run}"
-if [[ "$#" -gt 1 ]] || [[ "$MODE" != --run && "$MODE" != --self-check ]]; then
-  echo 'BLOCK_C_OWNER_USAGE_ERROR expected=--run|--self-check' >&2
+if [[ "$#" -gt 1 ]] || [[ "$MODE" != --run && "$MODE" != --self-check && "$MODE" != --ci-parity ]]; then
+  echo 'BLOCK_C_OWNER_USAGE_ERROR expected=--run|--self-check|--ci-parity' >&2
   exit 2
 fi
-INSTRUCTOR_SHA=961b574e7623eede6ae94bf7b9cf06e62dc3674a
+INSTRUCTOR_SHA=eb91a334ab8ad826eb863afbb56a55f0b4991a53
 STUDENT_SHA=dff7b4a2710525a72287f5416b7b613a9d979f1e
 PUBLIC_CI_SHA=18631cf070b4c2afb994aa49013fee69224d2aa1
 INSTRUCTOR_BRANCH=plan/block-c-d09-d12-freeze-20261115
@@ -190,7 +190,7 @@ clone_repos() {
 }
 
 check_manifests_and_source_parity() {
-  python3 - "$TEACHER" "$STUDENT_BLOCK" <<'PY'
+  python3 - "$TEACHER" "$STUDENT_BLOCK" <<'PY' || return $?
 import hashlib,hmac,json,re,sys
 from pathlib import Path
 teacher,student=map(Path,sys.argv[1:])
@@ -208,6 +208,14 @@ for role,root,manifest in [('instructor',teacher,teacher/'release/RELEASE_MANIFE
         assert full.is_file() and not full.is_symlink(),f'MISSING_OR_LINK_{role}:{rel}'
         assert hmac.compare_digest(hashlib.sha256(full.read_bytes()).hexdigest(),sha),f'SHA256_MISMATCH_{role}:{rel}'
     print(f'BLOCK_C_{role.upper()}_MANIFEST_SHA256_PASS files={len(inventory)}')
+# Reject nonportable Python test references even when a stale manifest is regenerated
+# with the same invalid absolute path. This protects next Owner WSL2 execution.
+for test in sorted((teacher/'tests').rglob('test_*.py')):
+    source=test.read_text(encoding='utf-8')
+    for forbidden in ('/mnt/data/', '/home/oai/share/', '/tmp/pytest-of-'):
+        if forbidden in source:
+            raise SystemExit(f'BLOCK_C_AUTHORING_ABSOLUTE_PATH file={test.relative_to(teacher)} prefix={forbidden}')
+print('BLOCK_C_INSTRUCTOR_TEST_PATH_PORTABILITY_PASS')
 PY
   local path
   for path in generator.py normal_train.csv normal_valid.csv test_mixed.csv schema.json scenario_manifest.json PROVENANCE.md SHA256SUMS; do
@@ -228,7 +236,7 @@ install_python_venv() {
   export PYTHONDONTWRITEBYTECODE=1
   local py="$RUN/venv/bin/python3"
   "$py" -m pip install --disable-pip-version-check --no-input --timeout 30 --retries 2 \
-    'pytest==8.3.5' 'numpy==2.2.6' 'scikit-learn==1.8.0' 'python-pptx==1.0.2'
+    'pytest==8.3.5' 'numpy==2.2.6' 'scikit-learn==1.8.0' 'python-pptx==1.0.2' || return $?
   if ! "$py" - <<'PY'
 import torch
 assert torch.__version__=='2.10.0+cpu',torch.__version__
@@ -271,13 +279,13 @@ assert_student_expected_red() {
 }
 model_pipeline() {
   mkdir -p "$RUN/lab"/{c02,c03,c04,c05}
-  python3 "$TEACHER/day09/eda_pipeline.py" --fixtures "$TEACHER/fixtures" --out "$RUN/lab/c02"
-  python3 "$TEACHER/day10/isolation_forest_pipeline.py" --features "$RUN/lab/c02" --out "$RUN/lab/c03"
+  python3 "$TEACHER/day09/eda_pipeline.py" --fixtures "$TEACHER/fixtures" --out "$RUN/lab/c02" || return $?
+  python3 "$TEACHER/day10/isolation_forest_pipeline.py" --features "$RUN/lab/c02" --out "$RUN/lab/c03" || return $?
   python3 "$TEACHER/day11/autoencoder_pipeline.py" --features "$RUN/lab/c02" \
      --if-metrics "$RUN/lab/c03" --checkpoint "$TEACHER/day11/reference_outputs/ae_checkpoint.pt" \
-     --out "$RUN/lab/c04"
-  python3 "$TEACHER/day12/events.py" --scores "$RUN/lab/c04/ae_scores_test.csv" --out "$RUN/lab/c05"
-  python3 - "$RUN/lab" <<'PY'
+     --out "$RUN/lab/c04" || return $?
+  python3 "$TEACHER/day12/events.py" --scores "$RUN/lab/c04/ae_scores_test.csv" --out "$RUN/lab/c05" || return $?
+  python3 - "$RUN/lab" <<'PY' || return $?
 import csv,json,sys
 from pathlib import Path
 base=Path(sys.argv[1]); features=base/'c02';c03=base/'c03';c04=base/'c04';c05=base/'c05'
@@ -309,12 +317,12 @@ build_educational_ros_package() {
   set -u
   colcon --log-base "$RUN/colcon/log" build --base-paths "$TEACHER/day12/ros2_ws/src" \
     --packages-select axia_block_c_diagnostics --build-base "$RUN/colcon/build" \
-    --install-base "$RUN/colcon/install" --event-handlers console_cohesion+
+    --install-base "$RUN/colcon/install" --event-handlers console_cohesion+ || return $?
   set +u
   source "$RUN/colcon/install/local_setup.bash"
   set -u
-  ros2 pkg prefix axia_block_c_diagnostics
-  ros2 pkg executables axia_block_c_diagnostics | grep -F 'axia-block-c-diagnostics'
+  ros2 pkg prefix axia_block_c_diagnostics || return $?
+  ros2 pkg executables axia_block_c_diagnostics | grep -F 'axia-block-c-diagnostics' || return $?
   echo 'BLOCK_C_OWNER_COLCON_JAZZY_BUILD_PASS'
 }
 
@@ -322,11 +330,11 @@ ros_l1_scoped() {
   export ROS_DOMAIN_ID="$((110 + (($$ + RANDOM) % 90)))"
   echo "BLOCK_C_OWNER_ISOLATED_ROS_DOMAIN_ID=$ROS_DOMAIN_ID"
   AXIA_BLOCK_C_EVIDENCE_DIR="$RUN/evidence/instructor_ros_l1" \
-    bash "$TEACHER/scripts/block_c_once.sh" --ros-l1
+    bash "$TEACHER/scripts/block_c_once.sh" --ros-l1 || return $?
   AXIA_BLOCK_C_EVIDENCE_DIR="$RUN/evidence/student_ros_l1" \
-    bash "$STUDENT_BLOCK/scripts/block_c_once.sh" --ros-l1
+    bash "$STUDENT_BLOCK/scripts/block_c_once.sh" --ros-l1 || return $?
   python3 - "$RUN/evidence/instructor_ros_l1/ros_l1/verdict.json" \
-    "$RUN/evidence/student_ros_l1/ros_l1/verdict.json" <<'PY'
+    "$RUN/evidence/student_ros_l1/ros_l1/verdict.json" <<'PY' || return $?
 import json,sys
 from pathlib import Path
 for p in sys.argv[1:]:
@@ -345,7 +353,7 @@ PY
 model_event_to_ros() {
   # Use eight events CREATED BY THE ACTUAL AE evaluation, not unrelated sample_events.
   # Keep original chronological order within each trace for EventGate replay safety.
-  python3 - "$RUN/lab/c05/anomaly_events.jsonl" "$RUN/evidence/model_derived_8.jsonl" <<'PY'
+  python3 - "$RUN/lab/c05/anomaly_events.jsonl" "$RUN/evidence/model_derived_8.jsonl" <<'PY' || return $?
 import json,sys
 from pathlib import Path
 src,dst=map(Path,sys.argv[1:])
@@ -365,8 +373,8 @@ PY
   set -u
   export PYTHONPATH="$TEACHER/day12/shared${PYTHONPATH:+:$PYTHONPATH}"
   python3 "$TEACHER/day12/shared/ros_l1_probe.py" \
-    --events "$RUN/evidence/model_derived_8.jsonl" --out "$RUN/evidence/model_to_ros_l1" --messages 8
-  python3 - "$RUN/evidence/model_to_ros_l1/verdict.json" <<'PY'
+    --events "$RUN/evidence/model_derived_8.jsonl" --out "$RUN/evidence/model_to_ros_l1" --messages 8 || return $?
+  python3 - "$RUN/evidence/model_to_ros_l1/verdict.json" <<'PY' || return $?
 import json,sys
 from pathlib import Path
 v=json.loads(Path(sys.argv[1]).read_text())
@@ -378,6 +386,18 @@ assert v['production_guard_ttl_verified'] is False
 print(f'BLOCK_C_OWNER_MODEL_TO_JAZZY_DDS_L1_PASS samples=8 period_max_ms={v["period_max_ms"]}')
 PY
 }
+
+# Public CI exercises EXACT SAME runner and integrity/stage functions, but never
+# accepts or checks out Instructor private source. The caller supplies public-only
+# synthetic mirrored fixtures; --run remains the sole real Owner WSL2 acceptance.
+if [[ "$MODE" == --ci-parity ]]; then
+  TEACHER="${AXIA_BLOCK_C_CI_TEACHER_DIR:?CI_TEACHER_DIR_REQUIRED}"
+  STUDENT_BLOCK="${AXIA_BLOCK_C_CI_STUDENT_DIR:?CI_STUDENT_DIR_REQUIRED}"
+  [[ -d "$TEACHER" && -d "$STUDENT_BLOCK" ]] || { echo 'BLOCK_C_CI_PARITY_ROOT_MISSING' >&2; exit 2; }
+  run_step MANIFEST_SHA_AND_PARITY check_manifests_and_source_parity
+  printf 'BLOCK_C_CI_MANIFEST_PARITY_PASS_NO_WSL2\n'
+  exit 0
+fi
 
 run_step WSL2_GATE check_wsl2
 run_step TOOLS_AND_JAZZY check_preflight
