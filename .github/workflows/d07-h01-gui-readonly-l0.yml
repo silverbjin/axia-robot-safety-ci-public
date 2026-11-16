@@ -90,6 +90,20 @@ jobs:
           bash -n gpu-owner-source/scripts/axia_d07_h01_gpu_gui_owner_wsl2_once.sh
           python3 -m unittest discover -s gpu-owner-source/tests -p test_axia_d07_gpu_gui_owner_contract.py -v
           echo D07_GPU_GUI_OWNER_PREFLIGHT_ONLY_NO_ACTUAL_WSLG_NO_GAZEBO
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-ci-public
+          ref: 34291802fd11f145ce78fe74678571b184e6b7b4
+          path: d07-scene-diagnostic-source
+          persist-credentials: false
+      - name: Exact D07 scene archive diagnostic L0, no Gazebo no GUI
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C d07-scene-diagnostic-source rev-parse HEAD)" = '34291802fd11f145ce78fe74678571b184e6b7b4'
+          python3 -m py_compile d07-scene-diagnostic-source/scripts/axia_d07_h01_scene_archive_diagnose.py
+          python3 -m unittest discover -s d07-scene-diagnostic-source/tests -p test_axia_d07_h01_scene_archive_diagnose.py -v
+          echo D07_SCENE_ARCHIVE_DIAGNOSTIC_L0_PASS_NOT_GUI_PIXEL_PROOF
       - name: Destroy private checkout
         if: always()
         run: rm -rf -- instructor
