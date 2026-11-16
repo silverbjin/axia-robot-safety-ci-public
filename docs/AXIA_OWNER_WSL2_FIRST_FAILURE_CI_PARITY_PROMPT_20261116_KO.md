@@ -41,3 +41,21 @@
 | L2 ROS/Gazebo GUI | 실제 native Waffle/official Nav2/RViz2, 동일 private source, 실제 X11 | 기존 성공 증거 재사용 PASS |
 | L3 Owner WSL2 | 실제 WSLg 원샷, X11·ROS·Nav2 원본, 최종 JSON 및 exit0 | **NOT_RUN** |
 | Moving/인증 안전 | Contact, 이동 Goal, CM→Guard·Scan/Odom TTL, 하드웨어 E-Stop | **NOT_VERIFIED** |
+
+## D07-H01 Owner Xoszr6rv 추가 지침 — GUI 창≠시각 인수 (2026-11-16)
+
+실제 Owner ZIP `d07-h01-owner-Xoszr6rv.zip`의 서버·ROS 근거는 3단계 Path, Gazebo Entity 생성, Scan/Odom/Costmap을 증명했다. 그러나 실제 사용자는 Gazebo 창 내부에 월드·로봇이 보이지 않았다고 보고했으며 ZIP에 GUI 프레임은 한 장도 없었다. 따라서 기존의 `D07_H01_OWNER_WSL2_GUI_L3_ACCEPTED`는 *ROS 데이터 및 X11 창 수준*까지만 소급 해석한다. **시각적 시연 L3 인수는 HOLD.**
+
+새로운 동일 유형 결함의 CI 규칙:
+
+1. **출처별 독립 판정** — 실제 ROS/Planner Path 3단계, Gazebo server entity·센서, X11 top-level window, Gazebo 3D scene pixels, RViz RobotModel/TF/Path pixels를 별도 필드로 검증한다. 단순 X11 창 제목만으로 render proof=true를 만들지 않는다.
+2. **렌더링 증거 수집 필수** — Owner --run이 뜬 실행에서 6초 및 18초 경과 시 Gazebo/RViz 창 단위 XWD 프레임을 유한 횟수 촬영한다. 작업 중 OS·드라이버·GPU 메모리·CPU RAM/PSI·최상위 process RSS와 `glxinfo -B`, Ogre2 오류 로그를 같은 run 폴더에 보관한다. `xwd`, `glxinfo` 실패도 원본 오류 텍스트로 기록한다.
+3. **화면 파일이 있어도 자동 승인 금지** — XWD 파일의 존재·크기·픽셀 변화만으로 로봇·월드·경로의 올바른 시각화를 보장하지 않는다. 원본 장면을 육안 검토하기 전에는 `OWNER_GUI_SCENE_PIXEL_REVIEW_PENDING` 또는 `OWNER_GUI_SCENE_PIXELS_UNVERIFIED`로 HOLD 유지.
+4. **리소스 추측 금지** — `LIBGL_ALWAYS_SOFTWARE=1`가 기존 실행기에 강제된 사실은 기록하되, CPU/RAM 부족·WSLg GPU 문제·GUI↔server Gazebo Transport 연결 실패 중 어느 것이 원인인지 실제 계측 이전에 단정하지 않는다. 공식 Gazebo `gz sim -g`는 서버가 없어도 빈 창을 낼 수 있음을 고려한다.
+5. **종료 사고 별도 기록** — 실제 원본 `launch.log`의 `collision_monitor exit code -11`은 정상 `teardown.txt` 및 wrapper RC=0으로 삭제·무시할 수 없다. 첫 GUI 표시 문제와 종료 SIGSEGV를 분리하고, 완전 정상 종료 검증은 별도 HOLD.
+6. **실행 증거 보존** — ROS 3단계가 PASS더라도 화면이 미검증이면 Owner source PASS / visual HOLD로 구분하며, `.tar.gz` + `.sha256`을 자동 생성하고 사용자는 현장 동일 실행을 반복하지 않는다. ZIP 재압축 또는 원본 증거 유실 방지를 위해 run-scoped 증거만 포함하고 `gh` 토큰·비공개 Instructor 체크아웃은 포함하지 않는다.
+7. **공개 CI** — 합성 이미지 파일을 넣어도 L3 GUI visual=true가 되지 않는 RED→GREEN 테스트를 요구한다. 실제 Gazebo L2 이전 성공은 private ROS 원본 SHA와 시연 범위가 불변일 때 재사용하되 Xvfb 창 제목만으로 WSLg 시각적 성공을 주장하지 않는다.
+
+원본 현장 사후 분석: `/odom` 1,105개, `/scan` 372개, `/clock` 7,599개, stationary odom, 공식 Path 회피 `path_delta_m=0.3659`, 서버 `Entity creation successful`; XWD/PNG 없음, CPU/메모리 metrics 없음, RViz GLSL sampler error, TF message drops, 마지막 CM shutdown `exit -11`. 후속 계측이 있어야 GUI resource root cause를 확정할 수 있다.
+
+공개 CI RED: [#43800699882](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43800699882) / GREEN: [#43801133217](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43801133217). **이번 GUI L3의 WSL2 새 주행은 NOT_RUN.**
