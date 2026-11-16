@@ -7,8 +7,8 @@ set -Eeuo pipefail
 umask 077
 
 readonly PRIVATE_REPO='silverbjin/axia-robot-safety-instructor'
-readonly PRIVATE_SHA='9213fe2806a7db9151f761b9a9285117983fc135'
-readonly PUBLIC_BASELINE_GAZEBO_L2_RUN='43793585641'
+readonly PRIVATE_SHA='a9f0d2b6ae1f0dcf2e8f92b263d9b66480924c4e'
+readonly PUBLIC_REAL_GAZEBO_XVFB_L2_RUN='43817527534'
 readonly PUBLIC_NO_ROS_L0_RUN='43793526290'
 readonly CI_CONTAINER_DIGEST='sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e'
 
@@ -139,7 +139,7 @@ axia_d07_pack_failure() {
 }
 if [[ "${1:-}" == '--self-check' ]]; then
   [[ $# == 1 && "$PRIVATE_SHA" =~ ^[0-9a-f]{40}$ &&
-     "$PUBLIC_BASELINE_GAZEBO_L2_RUN" =~ ^[0-9]{11}$ ]] || exit 3
+     "$PUBLIC_REAL_GAZEBO_XVFB_L2_RUN" =~ ^[0-9]{11}$ ]] || exit 3
   # Compile exactly the embedded L3 verdict code before any WSL2/Gazebo work.
   # This check is purely static; no ROS imports or fabricated acceptance.
   python3 - "$0" <<'PYCHECK'
@@ -173,7 +173,7 @@ PYCHECK
   tar -tzf "$CHECK_DIR.tar.gz" > "$CHECK_DIR/tar_listing.txt" || exit 3
   grep -Fq 'fixture.txt' "$CHECK_DIR/tar_listing.txt" || exit 3
   echo 'AXIA_D07_H01_FAILURE_BUNDLE_L0_PASS'
-  echo "AXIA_D07_H01_OWNER_BOOTSTRAP_STATIC_L0_PASS pinned_private=$PRIVATE_SHA public_l2=$PUBLIC_BASELINE_GAZEBO_L2_RUN"
+  echo "AXIA_D07_H01_OWNER_BOOTSTRAP_STATIC_L0_PASS pinned_private=$PRIVATE_SHA public_l2=$PUBLIC_REAL_GAZEBO_XVFB_L2_RUN"
   echo 'NO_ROS_NO_GAZEBO_NO_GOAL OWNER_WSL2_L3_NOT_RUN'
   exit 0
 fi
@@ -259,7 +259,7 @@ trap 'exit 143' TERM
 
 # Credential-free WSLg/ROS package provenance preserved on every failure.
 {
-  printf 'private_source_sha=%s\npublic_real_l2_run=%s\n' "$PRIVATE_SHA" "$PUBLIC_BASELINE_GAZEBO_L2_RUN"
+  printf 'private_source_sha=%s\npublic_real_l2_run=%s\n' "$PRIVATE_SHA" "$PUBLIC_REAL_GAZEBO_XVFB_L2_RUN"
   printf 'display_present=%s\n' "$([[ -n "${DISPLAY:-}" ]] && echo yes || echo no)"
   uname -sr
   grep -E '^(NAME|VERSION_ID)=' /etc/os-release || true
@@ -297,7 +297,7 @@ export QT_QPA_PLATFORM=xcb
 export QT_X11_NO_MITSHM=1
 
 echo "AXIA_D07_H01_OWNER_PRIVATE_SOURCE_VERIFIED=$PRIVATE_SHA"
-echo "AXIA_D07_H01_CI_REAL_GAZEBO_L2_PASS_RUN=$PUBLIC_BASELINE_GAZEBO_L2_RUN"
+echo "AXIA_D07_H01_CI_SAME_SHA_GAZEBO_XVFB_L2_PASS_RUN=$PUBLIC_REAL_GAZEBO_XVFB_L2_RUN"
 echo "AXIA_D07_H01_CI_L0_PASS_RUN=$PUBLIC_NO_ROS_L0_RUN"
 echo "AXIA_D07_H01_CI_RUNTIME_DIGEST=$CI_CONTAINER_DIGEST"
 echo 'AXIA_D07_H01_OWNER_WSLG_KERNEL_GPU_PARITY_NOT_YET_VERIFIED'
@@ -335,9 +335,11 @@ echo "AXIA_D07_GPU_GUI_TRIAL_PRIVATE_SOURCE=$PRIVATE_SHA"
 # environment. The private GUI children opt-in to D3D12 individually.
 # This also neutralizes accidental global ~/.bashrc GALLIUM_DRIVER=d3d12.
 unset GALLIUM_DRIVER MESA_D3D12_DEFAULT_ADAPTER_NAME
+# Never allow the CI software-GL fallback inside Owner WSL2.
+unset AXIA_D07_H01_CI_SOFTWARE_GUI
 echo AXIA_D07_GPU_GUI_SERVER_RENDER_ENV_ISOLATED
 
-echo 'AXIA_D07_H01_PRIOR_PUBLIC_L2_IS_SOFTWARE_BASELINE_NOT_GPU_GUI_TRIAL'
+echo 'AXIA_D07_H01_CI_SAME_SHA_GAZEBO_XVFB_L2_PASS_WSLG_D3D12_GUI_NOT_VERIFIED'
 # Capture-only tools; if unavailable, record the dependency boundary and
 # still run the unchanged original ROS simulation (visual verdict stays HOLD).
 if ! command -v xwd >/dev/null || ! command -v glxinfo >/dev/null; then
@@ -389,7 +391,7 @@ axia_d07_watch_stop
 # plus original exit status and physically observed X11 window titles.
 set +e
 python3 - "$WORK/instructor/tools" "$RUN" "$PRIVATE_SHA" "$RUNNER_RC" \
-  "$PUBLIC_BASELINE_GAZEBO_L2_RUN" <<'PY'
+  "$PUBLIC_REAL_GAZEBO_XVFB_L2_RUN" <<'PY'
 import json,sys
 from pathlib import Path
 sys.path.insert(0,sys.argv[1])
@@ -460,7 +462,7 @@ out={
         (reason if source_scope_ready else 'ROS_SOURCE_OR_X11_NOT_READY')),
     'first_gui_boundary':first_gui_boundary or None,
     'private_source_sha':source,
-    'public_prior_baseline_l2_run_not_gpu_trial':ci_run,
+    'public_same_source_gazebo_xvfb_l2_run_not_wslg_gpu':ci_run,
     'owner_runner_rc':runner_rc,
     'rviz_x11_window_observed':'RVIZ' in windows,
     'gazebo_x11_window_observed':'GAZEBO' in windows,
