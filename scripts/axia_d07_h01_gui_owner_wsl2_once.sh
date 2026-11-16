@@ -305,6 +305,22 @@ echo 'D07_H01_SIMULATED_NOISE_FREE_LIDAR_ONLY: not real sensor safety'
 echo 'NO NavigateToPose / NO cmd_vel / NO certified hardware E-Stop'
 echo 'AXIA_MVP_DEMO_ACCEPTED=HOLD; this validates only D07-H01 GUI L3'
 echo "AXIA_D07_H01_OWNER_EVIDENCE_ROOT=$RUN"
+# Capture-only tools; if unavailable, record the dependency boundary and
+# still run the unchanged original ROS simulation (visual verdict stays HOLD).
+if ! command -v xwd >/dev/null || ! command -v glxinfo >/dev/null; then
+  (
+    set +e
+    echo 'D07_H01_RENDER_DIAGNOSTICS_OPTIONAL_PACKAGES=x11-apps mesa-utils'
+    if command -v sudo >/dev/null; then
+      sudo env DEBIAN_FRONTEND=noninteractive apt-get update -qq &&
+      sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends x11-apps mesa-utils
+    else
+      echo 'SUDO_MISSING_RENDER_CAPTURE_TOOLS_NOT_INSTALLED'
+    fi
+    command -v xwd || echo XWD_NOT_INSTALLED
+    command -v glxinfo || echo GLXINFO_NOT_INSTALLED
+  ) > "$RUN/renderer_probe_dependencies.log" 2>&1 || true
+fi
 
 # Same X11 watcher lifecycle as --self-check, no separate shell recipe.
 axia_d07_watch_start "$RUN"
@@ -367,21 +383,36 @@ try:
 except (OSError,ValueError,TypeError,KeyError,ImportError) as exc:
     require=False
     reason='PROVENANCE_OR_REPORT_INVALID_'+type(exc).__name__
+# Actual WSL2 X11 window titles and ROS/DDS do NOT prove rendered 3D
+# pixels. Current Owner Xoszr6rv demonstrates why. Snapshot files must
+# be manually reviewed for robot+world and RViz TF/map, never auto-accepted.
+frame_dir=root/'gui_diagnostics'
+frames=[p.name for p in frame_dir.glob('*.xwd') if p.is_file() and p.stat().st_size>=512] if frame_dir.is_dir() else []
+resource_present=(frame_dir/'resource_samples.jsonl').is_file()
+source_scope_ready=bool(require)
+if source_scope_ready:
+    reason=('OWNER_GUI_SCENE_PIXEL_REVIEW_PENDING' if frames
+            else 'OWNER_GUI_SCENE_PIXELS_UNVERIFIED')
 out={
-    'schema':'axia_d07_h01_owner_gui_l3_scoped_v1',
-    'status':('D07_H01_OWNER_WSL2_GUI_L3_ACCEPTED'
-              if require else 'D07_H01_OWNER_WSL2_GUI_L3_HOLD'),
+    'schema':'axia_d07_h01_owner_gui_l3_scoped_v2_visual_review',
+    'status':'D07_H01_OWNER_GUI_VISUAL_HOLD',
     'reason':reason,
+    'first_missing_visual_boundary':reason if source_scope_ready else 'ROS_SOURCE_OR_X11_NOT_READY',
     'private_source_sha':source,
     'public_real_gazebo_l2_run':ci_run,
     'owner_runner_rc':runner_rc,
     'rviz_x11_window_observed':'RVIZ' in windows,
     'gazebo_x11_window_observed':'GAZEBO' in windows,
     'stage_names':[x.get('stage') for x in phases if isinstance(x,dict)],
-    'official_path_pose_counts':[x.get('pose_count') for x in phases
-                                 if isinstance(x,dict)],
+    'official_path_pose_counts':[x.get('pose_count') for x in phases if isinstance(x,dict)],
     'gui_stage_oracle':scope,
-    'owner_wsl2_gui_l3_accepted':bool(require),
+    'owner_wsl2_source_l3_verified':source_scope_ready,
+    'owner_wsl2_gui_l3_accepted':False,
+    'gazebo_3d_scene_render_proven':False,
+    'rviz_robot_visual_render_proven':False,
+    'render_frame_files':frames,
+    'resource_probe_file_present':resource_present,
+    'visual_review_required':True,
     'moving_goal_accepted':False,
     'formal_axia_mvp_accepted':False,
     'certified_estop':False,
@@ -389,11 +420,11 @@ out={
 report_file.write_text(json.dumps(out,sort_keys=True,indent=2)+'\n')
 print('AXIA_D07_H01_OWNER_L3_VERDICT '+json.dumps(out,sort_keys=True))
 print('AXIA_D07_H01_OWNER_L3_EVIDENCE='+str(report_file))
-if require:
-    print('D07_H01_OWNER_WSL2_GUI_L3_ACCEPTED NO_MOVING_GOAL')
-else:
-    print('D07_H01_OWNER_WSL2_GUI_L3_HOLD FIRST_BOUNDARY='+reason)
-sys.exit(0 if require else 3)
+if source_scope_ready:
+    print('D07_H01_OWNER_ROS_PATH_L3_VERIFIED_GUI_VISUAL_HOLD NO_MOVING_GOAL')
+print('D07_H01_OWNER_GUI_VISUAL_HOLD FIRST_BOUNDARY='+reason)
+# Synthetic screenshots or X11 title matching CANNOT promote this to L3.
+sys.exit(3)
 PY
 VERDICT_RC=$?
 set -e
