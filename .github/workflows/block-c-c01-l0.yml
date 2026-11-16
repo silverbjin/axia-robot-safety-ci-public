@@ -1,0 +1,40 @@
+name: AXIA Block C C01 public pinned-student L0
+on:
+  pull_request:
+    paths: ['block_c/**', '.github/workflows/block-c-c01-l0.yml']
+  push:
+    branches: ['feat/block-c-c01-*']
+    paths: ['block_c/**', '.github/workflows/block-c-c01-l0.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  fixture-pinned:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install pytest==8.3.5
+      - name: Owner exact clone path and pinned student L0
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -q block_c/tests/test_c01_owner_bootstrap_contract.py
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -q block_c/tests/test_c01_public_ci_policy.py
+          bash block_c/scripts/axia_c01_owner_wsl2_once.sh --self-check
+          AXIA_C01_OWNER_ROOT="$RUNNER_TEMP/axia_c01_owner" \
+            bash block_c/scripts/axia_c01_owner_wsl2_once.sh --run
+          echo C01_PUBLIC_PINNED_STUDENT_L0_PASS_NO_ROS
+          echo C01_OWNER_BOOTSTRAP_CI_PARITY_PASS_NO_WSL2
+      - name: Persist C01 public L0 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: c01-public-l0-evidence
+          path: ${{ runner.temp }}/axia_c01_owner/*/evidence/
+          if-no-files-found: warn
