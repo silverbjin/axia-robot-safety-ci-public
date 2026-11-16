@@ -6,13 +6,13 @@ import tempfile
 import unittest
 ROOT=Path(__file__).resolve().parents[1]
 SCRIPT=ROOT/"scripts/axia_d07_h01_gpu_gui_owner_wsl2_once.sh"
-PRIVATE_SHA="c069052cc491117006f63b499577ef766a30f7ea"
+PRIVATE_SHA="43f83daee851d7c5f55cede053143a9af54afe09"
 
 class OwnerGpuTrialContract(unittest.TestCase):
     def test_owner_pins_real_shared_l2_and_does_not_enable_ci_xvfb(self):
         source=SCRIPT.read_text()
-        self.assertIn("c069052cc491117006f63b499577ef766a30f7ea",source)
-        self.assertIn("43866354976",source)
+        self.assertIn("43f83daee851d7c5f55cede053143a9af54afe09",source)
+        self.assertIn("43900733862",source)
         self.assertIn("CI_SAME_SHA_GAZEBO_XVFB_L2",source)
         self.assertIn("WSLG_D3D12_GUI_NOT_VERIFIED",source)
         self.assertIn("unset AXIA_D07_H01_CI_SOFTWARE_GUI",source)
@@ -60,12 +60,36 @@ class OwnerGpuTrialContract(unittest.TestCase):
             first="D07_H01_GUI_WATCHER_SPAWN_ACK_ABSENT"
             (p/"owner_first_gui_boundary.txt").write_text(first+"\n")
             result=subprocess.run(["python3","-",str(private_tools),str(p),
-                 PRIVATE_SHA,"2","43866354976"],input=code[start:end],
+                 PRIVATE_SHA,"2","43900733862"],input=code[start:end],
                  text=True,capture_output=True,timeout=12)
             verdict=json.loads((p/"owner_l3_verdict.json").read_text())
             self.assertEqual(result.returncode,3,result.stderr)
             self.assertEqual(verdict["first_missing_visual_boundary"],first)
             self.assertEqual(verdict["reason"],first)
+            self.assertFalse(verdict["owner_wsl2_gui_l3_accepted"])
+
+    def test_first_native_localization_failure_outweighs_watcher(self):
+        # Owner gx74: watcher was never launched because LOCALIZATION_START
+        # had already failed. Never mislabel the first failure.
+        code=SCRIPT.read_text()
+        start=code.rfind("<<'PY'\n")+len("<<'PY'\n")
+        end=code.index("\nPY\nVERDICT_RC=",start)
+        private_tools=ROOT.parent/"instructor"/"tools"
+        self.assertTrue(private_tools.is_dir())
+        with tempfile.TemporaryDirectory() as folder:
+            p=Path(folder)
+            gate="LOCALIZATION_START: G07_NATIVE_LIFECYCLE_STARTUP_SERVICE_TIMEOUT:request_sent=True"
+            (p/"owner_first_staged_boundary.txt").write_text(gate+"\n")
+            (p/"owner_first_gui_boundary.txt").write_text(
+                "D07_H01_GUI_WATCHER_SPAWN_ACK_ABSENT\n")
+            result=subprocess.run(["python3","-",str(private_tools),str(p),
+                PRIVATE_SHA,"2","43900733862"],input=code[start:end],
+                text=True,capture_output=True,timeout=12)
+            verdict=json.loads((p/"owner_l3_verdict.json").read_text())
+            self.assertEqual(result.returncode,3,result.stderr)
+            self.assertEqual(verdict["reason"],gate)
+            self.assertEqual(verdict["first_staged_boundary"],gate)
+            self.assertEqual(verdict["first_missing_visual_boundary"],gate)
             self.assertFalse(verdict["owner_wsl2_gui_l3_accepted"])
 
     def test_gpu_trial_failclosed_pre_ros_and_baseline_not_promoted(self):
