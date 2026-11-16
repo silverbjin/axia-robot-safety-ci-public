@@ -14,6 +14,11 @@ import math
 
 EVENTS={"ros2:callback_start","ros2:callback_end"}
 REGISTER="ros2:rclcpp_callback_register"
+SUBSCRIPTION_LINKS={
+    "ros2:rcl_subscription_init",
+    "ros2:rclcpp_subscription_init",
+    "ros2:rclcpp_subscription_callback_added",
+}
 
 def _valid_anchor(anchors):
     if type(anchors) is not dict:
@@ -67,13 +72,14 @@ def select_cm_first_window(iterator,*,cm_pid,first_pair,clock_anchors,
     hi_ns=int((b["t"]+.30)*1e9)
     chosen=[]
     counts={"total_events_seen":0,"cm_register_events_kept":0,
-            "cm_callback_events_kept":0,"other_pid_events_skipped":0,
+            "cm_callback_events_kept":0,"cm_subscription_link_events_kept":0,
+            "other_pid_events_skipped":0,
             "cm_callback_events_outside_window":0,"raw_trace_exported":False,
             "owner_goal_authorized":False,"owner_l3_accepted":False,
             "certified_estop":False,"no_ros_no_goal":True}
     for item in iterator:
         counts["total_events_seen"]+=1
-        if not isinstance(item,dict) or item.get("name") not in EVENTS|{REGISTER}:
+        if not isinstance(item,dict) or item.get("name") not in EVENTS|{REGISTER}|SUBSCRIPTION_LINKS:
             continue
         if type(item.get("vpid")) is not int or item["vpid"]!=cm_pid:
             counts["other_pid_events_skipped"]+=1
@@ -81,9 +87,13 @@ def select_cm_first_window(iterator,*,cm_pid,first_pair,clock_anchors,
         stamp=item.get("timestamp_ns")
         if type(stamp) is not int or stamp<0:
             raise ValueError("CM_TRACE_TIMESTAMP_UNVERIFIED")
-        if item["name"]==REGISTER:
-            counts["cm_register_events_kept"]+=1
-            if counts["cm_register_events_kept"]>max_cm_regs:
+        if item["name"]==REGISTER or item["name"] in SUBSCRIPTION_LINKS:
+            if item["name"]==REGISTER:
+                counts["cm_register_events_kept"]+=1
+            else:
+                counts["cm_subscription_link_events_kept"]+=1
+            if (counts["cm_register_events_kept"]+
+                    counts["cm_subscription_link_events_kept"])>max_cm_regs:
                 raise ValueError("CM_CALLBACK_REGISTRATION_UNBOUNDED")
             chosen.append(item)
             continue
