@@ -39,7 +39,7 @@ OpenGL renderer string: D3D12 (NVIDIA GeForce RTX ...)
 ```bash
 (
   set -Eeuo pipefail
-  SHA='40a1712fed562dd93e98e8bf4952bde5938120dd'
+  SHA='65e6a47f59bb47d201ca8bc998bc98f92bca4e3e'
   SCRIPT="$(mktemp)"
   trap 'rm -f -- "$SCRIPT"' EXIT
   curl -fL --retry 3 -sS \
@@ -52,9 +52,9 @@ OpenGL renderer string: D3D12 (NVIDIA GeForce RTX ...)
 
 기본 GPU 후보: NVIDIA. Windows Intel을 쓸 때에만 같은 스크립트 앞에 `AXIA_D07_H01_GPU_ADAPTER=Intel`을 지정한다. **하드웨어 GLX preflight가 D3D12·Accelerated yes를 동시에 만족하지 못하면 ROS/Gazebo 시작 전 fail-closed**. 이 상태에서는 반복 시연하지 않는다.
 
-강사 pinned source: `8e9445315c5f503b628ca381b1152b35da1db1fa` (`feat/d07-h01-wslg-gpu-gui-trial-20261116`).
+강사 pinned source: `bea66767961416e3b0154447eb2ab38405122cd3` (`feat/d07-h01-wslg-gpu-gui-trial-20261116`).
 
-사용 범위: `AXIA_D07_H01_GPU_GUI_TRIAL=1`, `AXIA_D07_H01_GUI_NO_GOAL=1`, moving Goal 비허가, Gazebo Harmonic GUI-only `gz sim -g -v 4` 및 `rviz2`에만 `env -u LIBGL_ALWAYS_SOFTWARE MESA_D3D12_DEFAULT_ADAPTER_NAME=NVIDIA` 적용. 기존 Gazebo 서버 측 GPU-LiDAR/물리 시뮬레이션의 소프트웨어 설정은 변하지 않음. 이전 GUI-only 기본 분기는 여전히 `gz sim -g &` 그대로 유지.
+사용 범위: `AXIA_D07_H01_GPU_GUI_TRIAL=1`, `AXIA_D07_H01_GUI_NO_GOAL=1`, moving Goal 비허가, Gazebo Harmonic GUI-only `gz sim -g -v 4` 및 `rviz2`에만 `env -u LIBGL_ALWAYS_SOFTWARE GALLIUM_DRIVER=d3d12 MESA_D3D12_DEFAULT_ADAPTER_NAME=NVIDIA` 적용. 기존 Gazebo 서버 측 GPU-LiDAR/물리 시뮬레이션의 소프트웨어 설정은 변하지 않음. 이전 GUI-only 기본 분기는 여전히 `gz sim -g &` 그대로 유지.
 
 ## 3. GUI 서버 연결 선행 검증
 
@@ -63,8 +63,10 @@ Geometry가 실제 Free Path 안정쌍과 marker를 작성한 **후** `gz sim -g
 ```bash
 echo "D07_H01_GUI_TRANSPORT_PARTITION=$GZ_PARTITION"
 timeout 10s gz topic -l > <RUN>/real-l2/d07_gui_transport_topics.txt
-grep -E '^/world/[^/]+/(pose/info|dynamic_pose/info|scene/info|state)$' \
-  <RUN>/real-l2/d07_gui_transport_topics.txt
+python3 tools/d07_h01_gz_world_topic_gate.py \
+  --topics-file <RUN>/real-l2/d07_gui_transport_topics.txt
+# 공식 서버 토픽: /world/default/clock 및 /world/default/stats (동일 월드)
+# /world/default/scene/info는 서비스이며 topic 목록에 없어도 정상
 ```
 
 실제 로그 기대:
@@ -84,8 +86,8 @@ WSL2 테스트에서는 GUI 창이 보여도 `D07_H01_OWNER_GUI_VISUAL_HOLD`를 
 ## 5. 증거/CI 검증 범위와 Git
 
 - Private RED test: `tests/unit/test_d07_h01_gpu_gui_trial.py` SHA `e24994efd563bf85320f425dede9ab477a89371b`.
-- Private GREEN: `scripts/p2_no_goal_smoke_ci.sh` SHA `8e9445315c5f503b628ca381b1152b35da1db1fa`.
-- PUBLIC owner GPU opt-in new runner: `scripts/axia_d07_h01_gpu_gui_owner_wsl2_once.sh` exact public source SHA `40a1712fed562dd93e98e8bf4952bde5938120dd`.
+- Private GREEN: `scripts/p2_no_goal_smoke_ci.sh` SHA `bea66767961416e3b0154447eb2ab38405122cd3`.
+- PUBLIC owner GPU opt-in new runner: `scripts/axia_d07_h01_gpu_gui_owner_wsl2_once.sh` exact public source SHA `65e6a47f59bb47d201ca8bc998bc98f92bca4e3e`.
 - 공개 GREEN 기존 sealed release [#43807844152](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43807844152): private opt-in GUI tests 3건, public pinned owner selfcheck 2건 포함 PASS; source pin 기존 release workflow commit `8f0c7bf483e0be8adaa5d0ae51d9c336d7d3a81e`.
 - 새로운 feature-only 독립 workflow는 저장소 environment 권한 또는 runner 단계 문제를 명확히 읽지 못해 실패함. 성공했다고 보고하지 않으며, 이미 통과한 release L0를 검증 기준으로 사용한다.
 - **WSLg GPU 가속 실측, Gazebo GUI 3D 실제 장면, GPU 모드 Gazebo L2/Owner L3는 NOT_RUN/NOT_VERIFIED.** 이전 #43793585641은 이전 software GL 인수로서 이번 GPU GUI 후보의 L2 성공이 아니다.
@@ -95,3 +97,17 @@ WSL2 테스트에서는 GUI 창이 보여도 `D07_H01_OWNER_GUI_VISUAL_HOLD`를 
 - https://github.com/microsoft/wslg/wiki/GPU-selection-in-WSLg
 - https://gazebosim.org/docs/harmonic/
 - https://gazebosim.org/docs/harmonic/troubleshooting
+
+
+## Cycle 13 — 현장 t5NiPaeP 월드 탐색 오판 수정 (2026-11-16)
+
+- Owner 제출 압축본 `d07-h01-owner-t5NiPaeP.tar.gz` SHA256 `ecdf343a0c17073bbd085faf4b379902d152182e7e6341e585a8634830fe9b7e` VERIFIED.
+- 실제 `d07_gui_transport_topics.txt`에는 21개 토픽과 `/world/default/clock`, `/world/default/stats`, `/world/default/light_config`, `/world/default/material_color`가 있음. 구 코드의 `scene/info` 등 **비발행 주제만 요구**하여 거짓 실패 `D07_H01_GUI_TRANSPORT_NO_WORLD_DISCOVERED` 발생.
+- 최초 실패는 `d07_gui_watcher.log`에 존재. 이후 `D07_H01_GUI_RVIZ_PATH_SUBSCRIPTION_ABSENT`와 `owner_l3_verdict.json`의 FileNotFoundError는 GUI 미기동에 따른 **후속** 오류.
+- Gazebo 공식 Sim 8 Server API는 `/world/<world>/clock`과 `/world/<world>/stats`를 **topic**, `/world/<world>/scene/info`를 **service**로 명시함. <https://gazebosim.org/api/sim/8/classgz_1_1sim_1_1Server.html>
+- 새 private 검사기 `tools/d07_h01_gz_world_topic_gate.py`는 동일 월드의 clock+stats 둘 모두 필요, 그 외/혼합/파일 부재는 fail-closed. **서버 발견 ≠ GUI 연결·렌더링 승인**.
+- `tests/fixtures/d07_h01_owner_t5_gz_topics.txt`는 현장 21개 토픽을 보존한 회귀 입력.
+- 사용자 `~/.bashrc`의 영구 `GALLIUM_DRIVER=d3d12`에 의존하지 않음. GPU preflight는 해당 변수 명시 후 검사, Gazebo 서버 시작 전 이를 unset, 새 Gazebo·RViz GUI 자식에서만 `GALLIUM_DRIVER=d3d12`를 명시. `~/.bashrc`는 자동 편집하지 않음. **일반 ROS 사용 시 전역 GPU 설정의 파급을 피하려면 사용자가 설정한 block을 추후 직접 삭제하는 것을 권장**.
+- 공개 CI RED [#43810417272](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43810417272), 중간 GREEN 시도 #43810630015의 기존 정적 테스트 기대값 문제 개선, 최종 private 회귀 [#43810808927](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43810808927) PASS.
+- 최종 고정 Owner 부트스트랩 공개 CI [#43811003834](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43811003834) PASS. Owner 코드 SHA `65e6a47f59bb47d201ca8bc998bc98f92bca4e3e`, private 실행 소스 SHA `bea66767961416e3b0154447eb2ab38405122cd3`.
+- **WSL2 현장 새 GPU GUI 시각 검증은 NOT_RUN**. 다시 실행할 때 위 §2의 최신 SHA만 사용하고, 실물 XWD/Gazebo 서버 world discovery/GLX/종료 로그를 하나의 tar.gz+SHA256에 남겨야 한다. ROS/Nav2·Safety Supervisor·TTL·기존 강사 답안·Student·main에는 변경 없음.
