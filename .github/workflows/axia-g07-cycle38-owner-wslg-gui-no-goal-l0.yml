@@ -1,0 +1,77 @@
+name: AXIA G07 Cycle38 Owner WSLg D07 GPU GUI-only NO_GOAL L0
+on:
+  push:
+    branches: ['release/p2-g06-cm-ttl-20261110']
+    paths: ['.github/workflows/axia-g07-cycle38-owner-wslg-gui-no-goal-l0.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  owner-gui-no-ros:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Pinned Owner one-shot latest
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-ci-public
+          ref: 516ea1ab8d009c2784d7de6481b369ba91bcff47
+          path: owner
+          persist-credentials: false
+      - name: Pinned D07 GPU/XCB and XWD visual evidence contract
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-ci-public
+          ref: c4dca31b210d28037116e49fe39d8d0b5aebdc34
+          path: gui
+          persist-credentials: false
+      - name: No ROS / No Goal Owner one-shot static and GPU replay
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C owner rev-parse HEAD)" = '516ea1ab8d009c2784d7de6481b369ba91bcff47'
+          test "$(git -C gui rev-parse HEAD)" = 'c4dca31b210d28037116e49fe39d8d0b5aebdc34'
+          SCRIPT='owner/scripts/axia_g07_cycle38_d07_gpu_wslg_gui_once.sh'
+          bash -n "$SCRIPT"
+          bash "$SCRIPT" --self-check
+          bash -n gui/d06/scripts/g07_shared_gui_clients.sh
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s gui/d06/tests \
+            -p 'test_g07_cycle38_d07_wslg_visual_first_boundary.py' -v
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('owner/scripts/axia_g07_cycle38_d07_gpu_wslg_gui_once.sh').read_text()
+          required=[
+            'readonly PRIVATE_SHA=966886c4627deb2bb3b37111fe336eeee6b9ebb4',
+            'readonly GUI_SHA=c4dca31b210d28037116e49fe39d8d0b5aebdc34',
+            'readonly CI_L2_RUN=43905300294',
+            'readonly CI_L2_HEAD=91cb68471809bd661f7b861f2b9c4cc8b54b4373',
+            'MESA_D3D12_DEFAULT_ADAPTER_NAME=NVIDIA',
+            'GALLIUM_DRIVER=d3d12',
+            'QT_QPA_PLATFORM=xcb',
+            'AXIA_G07_C38_TWO_TRUE_X11_WINDOW_XWD_RECORDED_OWNER_PIXELS_CONTENT_NEEDS_HUMAN_REVIEW',
+            'gui_user_observation.json',
+            'YES-G07-GUI-VISIBLE',
+            'AXIA_P2_MVP_ONE_GOAL=0',
+            'AXIA_G07_CI_SIM_GOAL_ALLOWED=0',
+            'AXIA_P2_G07_RELOCATED_OBSTACLE=0',
+            'AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false',
+          ]
+          for token in required: assert token in s,token
+          for token in ['ros2 action send_goal','--mvp-relocated-obstacle',
+                        'YES-P2-G07-GOAL','AXIA_G07_CI_SIM_GOAL_ALLOWED=1',
+                        'AXIA_P2_MVP_ONE_GOAL=1','bash scripts/p2_owner_l3_wsl2.sh']:
+              assert token not in s,token
+          assert 'AXIA_G07_C38_GUI_ONLY_ARCHIVE=' in s
+          print('AXIA_G07_C38_OWNER_XCB_GPU_XWD_EVIDENCE_NO_GOAL_CONTRACT_PASS')
+          PY
+      - name: Verify real 2-XWD Gazebo CI L2 provenance without Goal
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          result="$(gh api 'repos/silverbjin/axia-robot-safety-ci-public/actions/runs/43905300294' \
+            --jq '(.head_sha // "")+" "+(.status // "")+" "+(.conclusion // "")')"
+          test "$result" = '91cb68471809bd661f7b861f2b9c4cc8b54b4373 completed success'
+          echo AXIA_G07_C38_D07_VISUAL_GUI_XVFB_REAL_L2_PROVEN_OWNER_WSLG_NOT_YET_VERIFIED
+          echo AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false
