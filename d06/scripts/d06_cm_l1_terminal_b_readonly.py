@@ -156,6 +156,9 @@ def main():
         node.destroy_node()
         rclpy.shutdown()
         print("D06_L1_TERMINAL_B_OBSERVATION_FINISHED; not an L1 acceptance verdict", flush=True)
+    if counts["scan"] == 0 or counts["cmd_out"] == 0:
+        print("D06_L1_TERMINAL_B_NOT_OBSERVED: scan/cmd_out samples missing", flush=True)
+        return 2
     return 0
 
 
