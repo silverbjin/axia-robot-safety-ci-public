@@ -1,0 +1,27 @@
+# First Owner WSL2 Guard TTL violation: distinguish CM output from observer-only jitter.
+name: AXIA G07 Cycle21 first cross-layer gap L0
+on:
+  push:
+    branches: ['fix/g07-cycle21-multichannel-first-gap-20261116']
+    paths:
+      - '.github/workflows/axia-g07-cycle21-first-multichannel-gap-l0.yml'
+      - 'd06/tests/fixtures/g07_cycle21_first_cm_8channel_sanitized.json'
+      - 'd06/tests/test_g07_cycle21_multichannel_first_gap.py'
+      - 'd06/live/g07_cycle21_first_gap_parity.py'
+      - 'd06/docs/G07_CYCLE21_FIRST_MULTICHANNEL_CM_GAP_REPORT_20261116_KO.md'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  ubuntu24-no-ros-first-boundary:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: 'Original Owner numeric-only eight-channel RED or GREEN'
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest discover -s d06/tests -p 'test_g07_cycle21_multichannel_first_gap.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_g07_cycle20_single_evidence_bundle.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_g07_cycle19_first_cm_archive_readonly.py' -v
+          echo AXIA_G07_CYCLE21_FIRST_MULTICHANNEL_GAP_CI_L0_PASS_NO_ROS_NO_GOAL
