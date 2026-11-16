@@ -49,8 +49,18 @@ def classify_process(argv):
     joined=" ".join(argv[:6]).lower()
     if "rviz2" in cmd:
         return "rviz2"
+    # Gazebo Harmonic's 'gz sim' launcher is frequently a Ruby interpreter.
+    # Actual Owner cNAPf8A0 ps evidence: server PID4581 and GUI PID5767
+    # appear as 'ruby'. The old monitor labelled both as absent.
+    # Require a literal gz executable followed by the 'sim' subcommand
+    # so unrelated Ruby applications never masquerade as Gazebo.
+    gz_sim_command=any(
+        (Path(argv[i]).name.lower()=="gz" and i+1<len(argv)
+         and argv[i+1].lower()=="sim")
+        for i in range(min(len(argv),6))
+    )
     if ("gz-sim" in cmd or "gz-sim" in joined or "gazebo" in cmd
-        or (cmd=="gz" and "sim" in argv[1:4])):
+        or gz_sim_command):
         if "-g" in argv or "gui" in cmd:
             return "gazebo_gui"
         if "-s" in argv or "server" in cmd:
