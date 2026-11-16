@@ -23,7 +23,7 @@ Owner WSL2에서 이미 `gh` 인증이 되어 있다면 다음 명령을 한 번
 ```bash
 (
   set -Eeuo pipefail
-  SHA="<검증된 Public CI main 커밋 SHA>"
+  SHA="ba1b9ac257244c41235f1c9e46700a3b8998a11b"
   SCRIPT="$(mktemp)"
   trap 'rm -f -- "$SCRIPT"' EXIT
 
@@ -37,7 +37,7 @@ Owner WSL2에서 이미 `gh` 인증이 되어 있다면 다음 명령을 한 번
 )
 ```
 
-이 문서의 `<검증된 Public CI main 커밋 SHA>`는 **PR #134 병합 후 확인된 실제 HEAD**로 대체한다. 미확인 SHA는 사용하지 않는다.
+이 SHA는 GitHub에 저장된 수정 완료 원샷의 **고정 소스 커밋**이며 공개 CI [Run #43793348577](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43793348577)에서 168 passed, 1 skipped로 검증됐다. PR #134 병합 후에도 이 Git 객체는 main 역사에 보존된다.
 
 ### 기대 성공 출력(아직 실제 관리 실행 증거 아님)
 
