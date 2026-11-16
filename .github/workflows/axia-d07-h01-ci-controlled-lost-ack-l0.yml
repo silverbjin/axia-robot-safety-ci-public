@@ -15,10 +15,10 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 1e758e54015c749d85a7c2bf7fbb21922793b43a
+          ref: 60288a604d8d114758de6fe3ef823c7572c19364
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
-      - name: RED CI-only simulated loss guarded by real source contract
+      - name: GREEN CI-only simulated loss guarded by real source contract
         run: |
           set -Eeuo pipefail
           python3 -m unittest discover -s tests/unit -p test_d07_h01_lifecycle_reconcile.py -v
