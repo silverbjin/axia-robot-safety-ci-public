@@ -1,0 +1,45 @@
+# Public-only no-ROS/no-Goal exact completed L2+old WSL2 field lock release contract.
+name: AXIA G07 Cycle33 Owner single WSLg release static L0
+on:
+  push:
+    branches: ['release/g07-cycle33-owner-wsl2-20261116']
+    paths:
+      - '.github/workflows/axia-g07-cycle33-owner-release-l0.yml'
+      - 'd06/acceptance/g07_cycle33_owner_ci_gate_v1.json'
+      - 'd06/live/g07_cycle33_owner_ci_gate_v1.py'
+      - 'd06/live/d06_gui_cpu_plan.py'
+      - 'd06/scripts/g07_cycle33_owner_wsl2_once.sh'
+      - 'scripts/axia_g07_cycle33_p4_owner_once.sh'
+      - 'scripts/axia_g07_cycle33_owner_wsl2_bootstrap.sh'
+      - 'd06/tests/test_g07_cycle33_owner_release.py'
+      - 'd06/docs/G07_CYCLE33_FINAL_OWNER_RELEASE_20261116_KO.md'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  public-owner-release-no-ros-no-goal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Strict exact Goal-free Owner release/previous field lock
+        run: |
+          set -Eeuo pipefail
+          export PYTHONPATH="$PWD"
+          export PYTHONDONTWRITEBYTECODE=1
+          python3 -m unittest discover -s d06/tests -p 'test_g07_cycle33_owner_release.py' -v
+          bash -n scripts/axia_g07_cycle33_p4_owner_once.sh
+          bash -n d06/scripts/g07_cycle33_owner_wsl2_once.sh
+          bash -n scripts/axia_g07_cycle33_owner_wsl2_bootstrap.sh
+          echo AXIA_G07_CYCLE33_OWNER_RELEASE_L0_PASS_NO_ROS_NO_GOAL_OLD_LOCKS_PRESERVED
+      - name: Verify actual public Gazebo L2 immutable CI run, not fixture-only
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+          gh api repos/silverbjin/axia-robot-safety-ci-public/actions/runs/43824411236 \
+            --jq '(.head_sha // "")+" "+(.conclusion // "")+" "+(.status // "")' \
+            > /tmp/axia_g07_cycle33_l2_receipt.txt
+          grep -Fxq 'f96add0db55ffba28943c5d3739703c3fc503a0b success completed' \
+            /tmp/axia_g07_cycle33_l2_receipt.txt
+          echo AXIA_G07_CYCLE33_LIVE_GITHUB_L2_RUN_SUCCESS_SOURCE_PIN_VERIFIED_NO_GOAL
