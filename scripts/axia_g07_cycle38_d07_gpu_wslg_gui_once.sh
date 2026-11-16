@@ -150,7 +150,7 @@ source /opt/ros/jazzy/setup.bash
 set -u
 export ROS_DOMAIN_ID="$((50 + RANDOM % 100))"
 export ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
-export GZ_PARTITION="axia_p2_c37_gui_$$_$RANDOM"
+export GZ_PARTITION="axia_p2_c38_gui_$_$RANDOM"
 export AXIA_P0_SIM_ONLY=1
 export AXIA_G07_UNIFIED_GUI_SIDECAR=1
 export AXIA_G07_CYCLE36_INTEGRATED_GUI=0
@@ -298,7 +298,7 @@ fi
 if command -v glxinfo >/dev/null;then
   (timeout 8s glxinfo -B > "$OUT/visual/glxinfo_optional.txt" 2>&1) || true
 fi
-echo AXIA_G07_C37_GUI_TRANSPORT_AND_TWO_CLIENTS_READY_WSLG_PIXELS_UNVERIFIED_NO_GOAL
+echo AXIA_G07_C38_GUI_TRANSPORT_AND_TWO_CLIENTS_READY_WSLG_PIXELS_UNVERIFIED_NO_GOAL
 echo 'Check Gazebo: actual 3D World, Waffle robot, G07 obstacle and Entity Tree.'
 echo 'Check RViz2: 3D robot/laser view as available without an active Nav2 Goal.'
 echo 'No robot movement is expected. You may capture Windows Win+Shift+S now.'
@@ -313,7 +313,7 @@ python3 - "$OUT/visual/gui_user_observation.json" <<'PY'
 import json,os,sys,time
 reply=os.environ.get("AXIA_G07_GUI_USER_REPLY","")
 with open(sys.argv[1],"x",encoding="utf-8") as f:
-    json.dump({"schema":"axia.g07.c37.wslg_gui_user_observation_v1",
+    json.dump({"schema":"axia.g07.c38.wslg_gui_user_observation_v1",
                "user_confirmed_3d_and_rviz":reply=="YES-G07-GUI-VISIBLE",
                "automated_wslg_pixel_certification":False,
                "goal_sent":False,"cm_120ms_checked":False,
@@ -323,7 +323,7 @@ with open(sys.argv[1],"x",encoding="utf-8") as f:
 PY
 if [[ "$answer" == YES-G07-GUI-VISIBLE ]];then
   kill -0 "$GUI_PID" 2>/dev/null || hold GUI_DIED_BEFORE_USER_CONFIRMATION
-  echo AXIA_G07_C37_GUI_WSLG_USER_VISUAL_CONFIRMED_NO_GOAL_NOT_FORMAL_L3
+  echo AXIA_G07_C38_GUI_WSLG_USER_VISUAL_CONFIRMED_NO_GOAL_NOT_FORMAL_L3
   echo AXIA_G07_C38_GUI_ONLY_CHECK_COMPLETED CM_120MS_NOT_TESTED
 else
   hold GUI_USER_VISUAL_NOT_CONFIRMED_NO_GOAL
