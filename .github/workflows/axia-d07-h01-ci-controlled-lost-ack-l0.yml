@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 60288a604d8d114758de6fe3ef823c7572c19364
+          ref: 5376fbf15acc6d6539b99f5387bbfade04f7ee62
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: GREEN CI-only simulated loss guarded by real source contract
