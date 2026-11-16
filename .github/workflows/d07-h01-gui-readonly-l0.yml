@@ -56,14 +56,14 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-ci-public
-          ref: 27d9ee5bb486f3de5846fccd8cfb29efb007a8fa
+          ref: d8cdbd0bcd7728289fc83974d1391484077f4ac8
           path: owner-source
           persist-credentials: false
       - name: Owner WSL2 bootstrap source-pinned L0 (synthetic, no ROS)
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C owner-source rev-parse HEAD)" = '27d9ee5bb486f3de5846fccd8cfb29efb007a8fa'
+          test "$(git -C owner-source rev-parse HEAD)" = 'd8cdbd0bcd7728289fc83974d1391484077f4ac8'
           bash -n owner-source/scripts/axia_d07_h01_gui_owner_wsl2_once.sh
           python3 -m unittest discover -s owner-source/tests -p test_axia_d07_h01_owner_bootstrap_contract.py -v
           python3 -m unittest discover -s owner-source/tests -p test_axia_wsl2_gpu_resource_monitor.py -v
