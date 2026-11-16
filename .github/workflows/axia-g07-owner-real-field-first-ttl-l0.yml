@@ -43,7 +43,7 @@ jobs:
           export HOME="$HOME_DEMO"
           ATTEMPT="$HOME/.axia_g07_final_owner_attempts/01d45d46b6eb6a05b1bd313d73f1fc3549575545-43727149856"
           mkdir -p "$ATTEMPT"
-          printf 'private_sha=%s\\nci_run=%s\\n' 01d45d46b6eb6a05b1bd313d73f1fc3549575545 43727149856 > "$ATTEMPT/source.txt"
+          printf 'private_sha=%s\nci_run=%s\n' 01d45d46b6eb6a05b1bd313d73f1fc3549575545 43727149856 > "$ATTEMPT/source.txt"
           set +e
           bash scripts/axia_g07_cycle18_field_readonly_wsl2_bootstrap.sh > "$HOME_DEMO/result.log" 2>&1
           RC=$?
