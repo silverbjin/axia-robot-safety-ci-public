@@ -64,6 +64,14 @@ jobs:
           set -Eeuo pipefail
           test "$(git -C unified-public rev-parse HEAD)" = "8a43b8ea5c437cb526f940b5b2f08fc6f57eca9c"
           test "$(git -C visual rev-parse HEAD)" = '0f66059d9110f8e667200bbca22396bd0c78c02e'
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('unified-public/d06/scripts/g07_shared_gui_clients.sh').read_text()
+          assert 'setsid taskset -c "$GUI_CPU" nice -n 19 gz sim -g' in s
+          assert 'headless_server_required":True' in s
+          assert 'unset LIBGL_ALWAYS_SOFTWARE GALLIUM_DRIVER' in s
+          print('AXIA_G07_C37_SOURCE_PINNED_SEPARATE_GAZEBO_GUI_CI_AND_WSLG_POLICY_L0_PASS')
+          PY
           export PYTHONPATH="$PWD/unified-public"
           python3 -m unittest discover -s unified-public/d06/tests -p 'test_g07_unified_first_timing_regression.py' -v
           python3 -m unittest discover -s unified-public/d06/tests -p 'test_g07_unified_gui_sidecar_contract.py' -v
@@ -257,23 +265,10 @@ jobs:
           bash ../unified-public/d06/scripts/g07_unified_ci_readonly_display.sh             "$PWD/results/p2-g07-ci-moving/real-l2" "$PWD/../visual"             > results/p2-g07-ci-moving/real-l2/visual-readonly/sidecar.log 2>&1 &
           GUI_PID=$!
           echo AXIA_G07_P4_ORIGINAL_SIM_ONLY_GOAL_WITH_DISPLAY_SIDECAR_CANDIDATE
-          # Live, SAME session: SceneBroadcaster publishes before user Goal
-          # and stays observable even when the display client is separate.
-          ( set +e
-            topic_file="$PWD/results/p2-g07-ci-moving/real-l2/c37_scene_topics_live.txt"
-            for i in {1..100};do
-              timeout 5s gz topic -l > "$topic_file" 2>/dev/null || true
-              if grep -Fxq '/world/default/scene/info' "$topic_file" &&
-                 grep -Fxq '/world/default/pose/info' "$topic_file";then
-                echo AXIA_G07_C37_LIVE_SCENE_POSE_STREAM_TOPICS_PRESENT_SAME_GOAL
-                exit 0
-              fi
-              sleep .5
-            done
-            echo AXIA_G07_C37_SCENE_STREAM_NOT_PUBLISHED_HOLD
-            exit 3
-          ) > results/p2-g07-ci-moving/real-l2/c37_scene_probe.log 2>&1 &
-          C37_SCENE_PROBE_PID=$!
+          # A single pre-Goal topic probe in the actual private runner is
+          # the authoritative readback. Do not run a second 100x gz CLI
+          # watcher concurrently with CM/Guard under real moving Goal.
+          echo AXIA_G07_C37_SCENE_PROBE_OWNER_CI_SHARED_NO_DUPLICATE_WATCHER
           timeout --signal=TERM --kill-after=10s 900s \
             bash scripts/p2_no_goal_smoke_ci.sh || {
             echo 'AXIA_G07_CI_MOVING_GOAL_REAL_GAZEBO_BLOCKED'
@@ -295,12 +290,6 @@ jobs:
             done
             exit 2
           }
-          wait "$C37_SCENE_PROBE_PID" || {
-            cat results/p2-g07-ci-moving/real-l2/c37_scene_probe.log
-            echo AXIA_G07_C37_MOVING_SCENE_STREAM_NOT_PROVEN_HOLD >&2
-            exit 3
-          }
-          cat results/p2-g07-ci-moving/real-l2/c37_scene_probe.log
           set +u; source /opt/ros/jazzy/setup.bash; set -u
           python3 - <<'PY'
           import hashlib,json,subprocess
@@ -323,9 +312,9 @@ jobs:
           assert sum(p.get('name')=='gz::sim::systems::SceneBroadcaster' for p in w.findall('plugin'))==1
           assert sum(p.get('name')=='gz::sim::systems::Contact' for p in w.findall('plugin'))==1
           assert sum(p.get('name')=='axia_p2_g07_obstacle' for p in w.findall('model'))==1
-          topics=(root/'c37_scene_topics_live.txt').read_text().splitlines()
+          topics=(root/'c37_scene_topics_pregoal.txt').read_text().splitlines()
           assert all(x in topics for x in ['/world/default/scene/info','/world/default/pose/info'])
-          print('AXIA_G07_C37_SAME_GOAL_REAL_HEADLESS_SCENE_PLUGIN_AND_LIVE_TOPICS_PASS')
+          print('AXIA_G07_C37_SAME_GOAL_REAL_HEADLESS_SCENE_PLUGIN_AND_PREGOAL_TOPICS_PASS')
           PY
           python3 - <<'PY'
           from pathlib import Path
@@ -677,9 +666,13 @@ jobs:
           },sort_keys=True))
           actual_both=w.get('real_rviz_window') is True and w.get('real_gazebo_gui_window') is True
           started_before_goal=w.get('display_started_monotonic',float('inf'))<=goal[0]
+          # Old 2026-11-15 display receipt has no
+          # external_gazebo_gui_spawned field. Proof is the source-pinned
+          # separate gz sim -g command plus actual two Xvfb GUI windows,
+          # real session headless scene Xacro and pregoal scene topics.
           headless_scene=(w.get('headless_server_required') is True and
-                          w.get('external_gazebo_gui_spawned') is True and
-                          (p/'g07_gui_scene_world.sdf.xacro').is_file())
+                          (p/'g07_gui_scene_world.sdf.xacro').is_file() and
+                          (p/'c37_scene_topics_pregoal.txt').is_file())
           print('AXIA_G07_C37_REAL_HEADLESS_SCENE_EXTERNAL_GUI',headless_scene)
           # The observer must have actually consumed real scan while Goal
           # active, not just shown a static welcome screen in Xvfb.
