@@ -1,0 +1,125 @@
+{
+  "schema": "axia.g07.cycle21.first_gap_numeric_fixture_v1",
+  "basis": "User-provided Cycle20 sanitized bundle, selected relative timing only",
+  "first_guard_cm_age_ms": 174.184617,
+  "guard_hard_ttl_ms": 150,
+  "first_guard_transition": "UPSTREAM_STALE_AFTER_MOTION",
+  "cm_release_target_ms": 120,
+  "host_clock_step_excluded": false,
+  "native_stop_rpc": {
+    "overlaps_first_cm_gap": false,
+    "relative_relation": "FIRST_GAP_AFTER_RPC",
+    "nearest_distance_ms": 435.347732
+  },
+  "events_by_kind": {
+    "pre_guard": [
+      {
+        "callback_offset_ms": 0,
+        "rmw_source_offset_ms": 0,
+        "rmw_receive_offset_ms": 0.201513,
+        "publication_sequence_relative": 5
+      },
+      {
+        "callback_offset_ms": 227.710904,
+        "rmw_source_offset_ms": 186.714207,
+        "rmw_receive_offset_ms": 189.658463,
+        "publication_sequence_relative": 6
+      }
+    ],
+    "supervised": [
+      {
+        "callback_offset_ms": -7.459757,
+        "rmw_source_offset_ms": -17.496433,
+        "publication_sequence_relative": 4
+      },
+      {
+        "callback_offset_ms": 50.728867,
+        "rmw_source_offset_ms": 38.687898,
+        "publication_sequence_relative": 5
+      },
+      {
+        "callback_offset_ms": 152.732088,
+        "rmw_source_offset_ms": 86.04632,
+        "publication_sequence_relative": 6
+      },
+      {
+        "callback_offset_ms": 170.810691,
+        "rmw_source_offset_ms": 150.94263,
+        "publication_sequence_relative": 7
+      },
+      {
+        "callback_offset_ms": 227.826722,
+        "rmw_source_offset_ms": 185.269716,
+        "publication_sequence_relative": 8
+      }
+    ],
+    "guard": [
+      {
+        "callback_offset_ms": 21.514761
+      },
+      {
+        "callback_offset_ms": 64.460079
+      },
+      {
+        "callback_offset_ms": 171.03497
+      },
+      {
+        "callback_offset_ms": 173.739041
+      },
+      {
+        "callback_offset_ms": 227.961727
+      }
+    ],
+    "clock": [
+      {
+        "callback_offset_ms": 51.070753
+      },
+      {
+        "callback_offset_ms": 53.221682
+      },
+      {
+        "callback_offset_ms": 152.604639
+      },
+      {
+        "callback_offset_ms": 171.238173
+      }
+    ],
+    "supervisor": [
+      {
+        "callback_offset_ms": 50.938532
+      },
+      {
+        "callback_offset_ms": 152.868385
+      },
+      {
+        "callback_offset_ms": 171.138361
+      },
+      {
+        "callback_offset_ms": 228.068398
+      }
+    ],
+    "odom": [
+      {
+        "callback_offset_ms": -47.112968
+      },
+      {
+        "callback_offset_ms": -7.600925
+      },
+      {
+        "callback_offset_ms": 33.797605
+      },
+      {
+        "callback_offset_ms": 290.572401
+      }
+    ],
+    "scan": [
+      {
+        "callback_offset_ms": -56.063542
+      },
+      {
+        "callback_offset_ms": 228.298344
+      }
+    ],
+    "source": []
+  }
+}
