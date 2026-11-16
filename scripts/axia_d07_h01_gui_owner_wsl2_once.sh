@@ -12,6 +12,68 @@ readonly PUBLIC_REAL_GAZEBO_L2_RUN='43793585641'
 readonly PUBLIC_NO_ROS_L0_RUN='43793526290'
 readonly CI_CONTAINER_DIGEST='sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e'
 
+# Bounded read-only WSLg GUI screenshot and resource capture. Never auto PASS.
+axia_d07_capture_render_evidence() {
+  local run_dir="${1:-}" tag="${2:-initial}"
+  [[ -n "$run_dir" && -d "$run_dir" && ! -L "$run_dir" ]] || return 3
+  [[ "$tag" == initial || "$tag" == late || "$tag" == selfcheck ]] || return 3
+  local dir="$run_dir/gui_diagnostics" tree id title output
+  mkdir -p -- "$dir" || return 3
+  printf '{"tag":"%s","utc":"%s"}\n' "$tag" "$(date -u +%FT%TZ)" >> "$dir/resource_samples.jsonl"
+  {
+    echo "sample=$tag"
+    date -u +%FT%TZ
+    echo "LIBGL_ALWAYS_SOFTWARE=${LIBGL_ALWAYS_SOFTWARE:-unset}"
+    echo "DISPLAY_PRESENT=$([[ -n "${DISPLAY:-}" ]] && echo yes || echo no)"
+    cat /proc/loadavg /proc/pressure/cpu /proc/pressure/memory 2>/dev/null || true
+    free -m 2>/dev/null || true
+    ps -eo pid,ppid,stat,comm,%cpu,%mem,rss --sort=-%cpu 2>/dev/null | head -n 24 || true
+  } >> "$dir/resources_processes.txt" 2>&1
+  if [[ "$tag" == initial || "$tag" == selfcheck ]]; then
+    if command -v glxinfo >/dev/null; then
+      timeout 8s glxinfo -B > "$dir/glxinfo_B.txt" 2>&1 || \
+        echo GLXINFO_PROBE_FAILED_OR_TIMEOUT >> "$dir/glxinfo_B.txt"
+    else
+      echo 'GLXINFO_NOT_INSTALLED' > "$dir/glxinfo_B.txt"
+    fi
+    if command -v nvidia-smi >/dev/null; then
+      timeout 8s nvidia-smi -L > "$dir/nvidia_smi.txt" 2>&1 || true
+    else
+      echo 'NVIDIA_SMI_NOT_AVAILABLE' > "$dir/nvidia_smi.txt"
+    fi
+    if [[ -r "$HOME/.gz/rendering/ogre2.log" ]]; then
+      tail -n 180 "$HOME/.gz/rendering/ogre2.log" > "$dir/ogre2_gui.log"
+    else
+      echo 'OGRE2_LOG_NOT_PRESENT' > "$dir/ogre2_gui.log"
+    fi
+  fi
+  tree="$(xwininfo -root -tree 2>/dev/null || true)"
+  printf '%s\n' "$tree" > "$dir/x11_tree_$tag.txt"
+  for title in Gazebo RViz; do
+    id="$(printf '%s\n' "$tree" | grep -Ei "\"[^\"]*${title}[^\"]*\"" | \
+         awk 'NR==1 {print $1}' || true)"
+    case "$id" in
+      0x[0-9a-fA-F]*)
+        if command -v xwd >/dev/null; then
+          if [[ "$title" == Gazebo ]]; then
+            output="$dir/gazebo_scene.xwd"
+            [[ "$tag" == late ]] && output="$dir/gazebo_scene_late.xwd"
+          else
+            output="$dir/rviz_scene.xwd"
+            [[ "$tag" == late ]] && output="$dir/rviz_scene_late.xwd"
+          fi
+          timeout 8s xwd -silent -id "$id" -out "$output" 2>> "$dir/xwd_capture.log" || {
+            rm -f -- "$output"
+            echo "XWD_CAPTURE_FAILED title=$title tag=$tag" >> "$dir/xwd_capture.log"
+          }
+        else
+          echo 'XWD_NOT_INSTALLED' >> "$dir/xwd_capture.log"
+        fi
+        ;;
+      *) echo "X11_WINDOW_ID_UNAVAILABLE title=$title tag=$tag" >> "$dir/xwd_capture.log";;
+    esac
+  done
+}
 # Shared production and public CI L0 pre-ROS watcher lifecycle.
 axia_d07_watch_start() {
   local run_dir="${1:-}"
@@ -28,10 +90,19 @@ axia_d07_watch_start() {
   }
   [[ -f "$WATCH" ]] || return 3
   (
+    observed=0
     while [[ -e "$WATCH" ]]; do
       tree="$(xwininfo -root -tree 2>/dev/null || true)"
       if grep -Eiq 'RViz' <<<"$tree"; then echo 'RVIZ' >> "$WINDOWS"; fi
       if grep -Eiq 'Gazebo' <<<"$tree"; then echo 'GAZEBO' >> "$WINDOWS"; fi
+      if grep -Eiq 'Gazebo' <<<"$tree" && grep -Eiq 'RViz' <<<"$tree"; then
+        observed=$((observed+1))
+        if [[ "$observed" -eq 3 ]]; then
+          axia_d07_capture_render_evidence "$run_dir" initial || true
+        elif [[ "$observed" -eq 9 ]]; then
+          axia_d07_capture_render_evidence "$run_dir" late || true
+        fi
+      fi
       sleep 2
     done
   ) &
@@ -91,6 +162,10 @@ PYCHECK
   axia_d07_watch_stop
   [[ ! -e "$CHECK_DIR/.x11_watch_alive" ]] || exit 3
   echo 'AXIA_D07_H01_WATCH_SENTINEL_LIFECYCLE_L0_PASS'
+  axia_d07_capture_render_evidence "$CHECK_DIR" selfcheck
+  [[ -s "$CHECK_DIR/gui_diagnostics/resource_samples.jsonl" &&
+     -s "$CHECK_DIR/gui_diagnostics/glxinfo_B.txt" ]] || exit 3
+  echo 'AXIA_D07_H01_RENDER_RESOURCE_PROBE_L0_PASS_NO_DISPLAY'
   echo 'simulated PRE-ROS failure fixture, NOT an Owner run' > "$CHECK_DIR/fixture.txt"
   axia_d07_pack_failure "$CHECK_DIR" >/dev/null
   [[ -f "$CHECK_DIR.tar.gz" && -s "$CHECK_DIR.tar.gz.sha256" ]] || exit 3
