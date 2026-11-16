@@ -43,7 +43,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-ci-public
-          ref: 83b10811b316e7e83765420c96fbf2cb677b0926
+          ref: 5f0ca47ed9f60378be2bac323f4a9f1710174e08
           path: unified-public
           persist-credentials: false
       - name: Published D06 read-only viewer sources pinned at public main
@@ -57,7 +57,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C unified-public rev-parse HEAD)" = "83b10811b316e7e83765420c96fbf2cb677b0926"
+          test "$(git -C unified-public rev-parse HEAD)" = "5f0ca47ed9f60378be2bac323f4a9f1710174e08"
           test "$(git -C visual rev-parse HEAD)" = '0f66059d9110f8e667200bbca22396bd0c78c02e'
           export PYTHONPATH="$PWD/unified-public"
           python3 -m unittest discover -s unified-public/d06/tests -p 'test_g07_unified_first_timing_regression.py' -v
@@ -369,7 +369,9 @@ jobs:
           import bt2,json,sys
           from pathlib import Path
           sys.path.insert(0,str(Path("../unified-public").resolve()))
-          from d06.live.g07_cycle29_first_cm_callback_trace import classify_callback_gap
+          from d06.live.g07_cycle29_first_cm_callback_trace import (
+              classify_callback_gap,_first_source_pair)
+          from d06.live.g07_cycle30_bounded_cm_trace import select_cm_first_window
           root=Path("results/p2-g07-ci-moving/real-l2")
           event_path=root/"g07_ci_moving/actual_ros_events.jsonl"
           report_path=root/"g07_ci_moving/ci_moving_goal_result.json"
@@ -384,28 +386,57 @@ jobs:
           report=json.loads(report_path.read_text())
           anchors={"start":json.loads(Path(sys.argv[2]).read_text()),
                    "end":json.loads(Path(sys.argv[3]).read_text())}
-          trace=[]
-          for msg in bt2.TraceCollectionMessageIterator(sys.argv[1]):
-              if not isinstance(msg,bt2._EventMessageConst):
-                  continue
-              event=msg.event
-              if event.name not in ("ros2:callback_start","ros2:callback_end",
-                                    "ros2:rclcpp_callback_register"):
-                  continue
-              if msg.default_clock_snapshot is None:
-                  continue
-              p=event.payload_field
-              x={"name":event.name,
-                 "timestamp_ns":int(msg.default_clock_snapshot.ns_from_origin),
-                 "vpid":int(event.common_context_field["vpid"]),
-                 "vtid":int(event.common_context_field["vtid"]),
-                 "callback":str(p["callback"])}
-              if event.name=="ros2:rclcpp_callback_register":
-                  x["symbol"]=str(p["symbol"])
-              trace.append(x)
-              if len(trace)>500000:
-                  print("AXIA_G07_CYCLE29_TRACE_EVENT_COUNT_UNBOUNDED_HOLD")
+          # Cycle30: actual L2 #43809629649 had >500k callback events
+          # across unrelated ROS nodes. Iterate the trace ONCE, retain only
+          # exact owned CM vpid and a bounded first output gap window.
+          # Never silently truncate events of the CM itself. Preserve raw
+          # trace only locally until this diagnostic step exits.
+          pair=_first_source_pair(rows)
+          if pair is None:
+              prior=report.get("cm_first_120ms_rmw_release_margin",{})
+              if prior.get("status")=="CM_SOURCE_GAP_EXCEEDS_120MS":
+                  print("AXIA_G07_CYCLE30_ORACLE_GAP_WITHOUT_SOURCE_PAIR_HOLD")
                   raise SystemExit(3)
+              print("AXIA_G07_CYCLE30_NO_CM_120MS_RMW_GAP_TRACE_NOT_REQUIRED_CI_ONLY")
+              raise SystemExit(0)
+          counts={"global":0,"other_pid":0}
+          def cm_only_trace_events():
+              for msg in bt2.TraceCollectionMessageIterator(sys.argv[1]):
+                  if not isinstance(msg,bt2._EventMessageConst):
+                      continue
+                  counts["global"]+=1
+                  event=msg.event
+                  if event.name not in ("ros2:callback_start","ros2:callback_end",
+                                        "ros2:rclcpp_callback_register"):
+                      continue
+                  if msg.default_clock_snapshot is None:
+                      continue
+                  vpid=int(event.common_context_field["vpid"])
+                  if vpid!=pid:
+                      counts["other_pid"]+=1
+                      continue
+                  p=event.payload_field
+                  item={"name":event.name,
+                        "timestamp_ns":int(msg.default_clock_snapshot.ns_from_origin),
+                        "vpid":vpid,"vtid":int(event.common_context_field["vtid"]),
+                        "callback":str(p["callback"])}
+                  if event.name=="ros2:rclcpp_callback_register":
+                      item["symbol"]=str(p["symbol"])
+                  yield item
+          try:
+              trace,selected=select_cm_first_window(
+                  cm_only_trace_events(),cm_pid=pid,first_pair=pair,
+                  clock_anchors=anchors,max_cm_callbacks=40000,max_cm_regs=2048)
+          except ValueError as exc:
+              print("AXIA_G07_CYCLE30_CM_TRACE_FAIL_CLOSED "+str(exc))
+              raise SystemExit(3)
+          print("AXIA_G07_CYCLE30_TRACE_STREAM_BOUNDED "+
+                json.dumps({"global_ros_events_scanned":counts["global"],
+                  "other_pid_ros_events_ignored":counts["other_pid"],
+                  "owned_cm_callback_events":selected["cm_callback_events_kept"],
+                  "owned_cm_registration_events":selected["cm_register_events_kept"],
+                  "raw_trace_exported":False,"owner_goal_authorized":False},
+                  sort_keys=True))
           result=classify_callback_gap(rows,report,trace,cm_pid=pid,clock_anchors=anchors)
           print("AXIA_G07_CYCLE29_OFFICIAL_CM_CALLBACK_FIRST_GAP "+
                 json.dumps(result,sort_keys=True))
