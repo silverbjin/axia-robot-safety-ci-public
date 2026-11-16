@@ -18,6 +18,16 @@ class OwnerGpuTrialContract(unittest.TestCase):
         self.assertIn("unset AXIA_D07_H01_CI_SOFTWARE_GUI",source)
         self.assertNotIn("AXIA_D07_H01_PRIOR_PUBLIC_L2_IS_SOFTWARE_BASELINE_NOT_GPU_GUI_TRIAL",source)
 
+    def test_owner_scene_runtime_contract_precedes_visual_hold(self):
+        script=SCRIPT.read_text()
+        self.assertIn("D07_H01_SCENE_BROADCASTER_SOURCE_OR_RUNTIME_NOT_PROVEN",script)
+        self.assertIn("scene_world_source_verified",script)
+        self.assertIn("scene_transport_observed",script)
+        self.assertIn("d07_gui_scene_world_manifest.json",script)
+        self.assertIn("d07_gui_transport_topics.txt",script)
+        self.assertIn("gazebo_3d_scene_render_proven':False",script)
+        self.assertNotIn("AXIA_MVP_DEMO_ACCEPTED=PASS",script)
+
     def test_bootstrap_l0_executes_without_gazebo(self):
         x=subprocess.run(["bash",str(SCRIPT),"--self-check"],text=True,
                          capture_output=True,timeout=25)
