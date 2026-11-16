@@ -72,3 +72,46 @@ jobs:
           fi
           rm -rf -- "$TRACE_DIR"
           echo AXIA_G07_TRACE_CAPABILITY_SCOPED_ONLY_NOT_CM_CAUSE_NOT_OWNER_RELEASE
+      - name: 'Cycle27: real Jazzy callback trace decode proof, no Nav2 Goal'
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          export DEBIAN_FRONTEND=noninteractive
+          timeout 120 apt-get update -qq
+          timeout 120 apt-get install -y -qq --no-install-recommends babeltrace2
+          command -v babeltrace2
+          set +u
+          source /opt/ros/jazzy/setup.bash
+          set -u
+          if ! ros2 pkg prefix demo_nodes_cpp >/dev/null 2>&1;then
+            echo AXIA_G07_TRACE_REAL_CALLBACK_TEST_DEPENDENCY_MISSING_NO_GOAL
+            exit 3
+          fi
+          WORK="$(mktemp -d)"
+          SESSION="axia_g07_callback_l1_\${RANDOM}_\${RANDOM}"
+          trap 'lttng destroy "$SESSION" >/dev/null 2>&1 || true; rm -rf -- "$WORK"' EXIT
+          lttng create "$SESSION" --output="$WORK/trace" >/dev/null
+          lttng enable-event --userspace -s "$SESSION" 'ros2:callback_start' >/dev/null
+          lttng enable-event --userspace -s "$SESSION" 'ros2:callback_end' >/dev/null
+          lttng add-context --userspace -s "$SESSION" -t vpid >/dev/null
+          lttng start "$SESSION" >/dev/null
+          export ROS_DOMAIN_ID=97
+          timeout 4 ros2 run demo_nodes_cpp talker >"$WORK/demo.log" 2>&1 || rc=$?
+          if [[ "\${rc:-124}" != 124 && "\${rc:-124}" != 0 ]];then
+            echo AXIA_G07_TRACE_DEMO_NODE_L1_FAILED_NO_GOAL
+            exit 3
+          fi
+          lttng stop "$SESSION" >/dev/null
+          lttng destroy "$SESSION" >/dev/null
+          babeltrace2 "$WORK/trace" > "$WORK/events.txt"
+          python3 - "$WORK/events.txt" <<'PY'
+          from pathlib import Path
+          import sys
+          rows=Path(sys.argv[1]).read_text().splitlines()
+          start=sum("ros2:callback_start" in row for row in rows)
+          end=sum("ros2:callback_end" in row for row in rows)
+          assert start>=2 and end>=2,(start,end)
+          print("AXIA_G07_CYCLE27_RCLCPP_CALLBACK_START_END_TRACE_DECODE_L1_PASS_NO_GOAL"+
+                " callback_start="+str(start)+" callback_end="+str(end))
+          PY
+          echo AXIA_G07_CYCLE27_TRACE_TOOLS_CI_DIAGNOSTIC_ONLY_FORMAL_OWNER_HOLD
