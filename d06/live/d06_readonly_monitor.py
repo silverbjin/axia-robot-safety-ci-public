@@ -17,7 +17,8 @@ def front_distance(scan):
     """Front range teaching annotation, NOT official CM polygon+min_points."""
     a = [
         float(v) for i, v in enumerate(scan.ranges)
-        if abs(float(scan.angle_min) + i * float(scan.angle_increment)) <= 0.18
+        if abs(math.atan2(math.sin(float(scan.angle_min) + i * float(scan.angle_increment)),
+                          math.cos(float(scan.angle_min) + i * float(scan.angle_increment)))) <= 0.18
         and math.isfinite(v) and scan.range_min <= v <= scan.range_max
     ]
     return min(a) if a else None
