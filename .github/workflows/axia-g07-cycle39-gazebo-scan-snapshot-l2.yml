@@ -1,0 +1,283 @@
+# Cycle39: OBSERVATION-ONLY actual scan snapshot, not geometry/TTL proof.
+# Cycle38: D07 Cycle19 Owner restored real XCB / NVIDIA GUI via targeted
+# display subprocess. CI is actual official Gazebo+Waffle+SceneBroadcaster
+# and two real Xvfb XWD windows; NVIDIA-specific path is pure L0/Owner only.
+# Cycle37 GUI preflight parity: Goal-free actual Gazebo L2, same Instructor
+# 966886... and visual 352ea... as a future Owner WSLg script. Safety/CM
+# 120ms moving release is a separate gate; this job never authorizes Goal.
+# G07 Cycle37: D07 Cycle19 Owner-proven SceneBroadcaster restored in session Xacro.
+# Xvfb L2 validates actual Gazebo scene/pose topics; WSLg pixel still HOLD.
+# AXIA G07 GUI ONLY: actual ROS 2 Jazzy/Gazebo Harmonic Waffle, real
+# independent gz sim -g + rviz2 Xvfb windows, NO Nav2 lifecycle/Goal.
+# Reuse 2026-11-15 exact original Instructor SHA; Owner WSLg remains unverified.
+name: AXIA G07 Cycle39 read-only RViz Scan stamps real Gazebo L2 NO_GOAL
+on:
+  push:
+    branches: ['fix/g07-cycle39-rviz-scan-timing-20261117']
+    paths: ['.github/workflows/axia-g07-cycle39-gazebo-scan-snapshot-l2.yml']
+permissions:
+  contents: read
+jobs:
+  actual-gazebo-two-gui-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 26
+    environment: axia-instructor-sealed
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+      options: --dns 1.1.1.1 --dns 8.8.8.8
+    steps:
+      - name: Frozen 2026-11-15 Instructor proven GUI baseline
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 966886c4627deb2bb3b37111fe336eeee6b9ebb4
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          path: instructor
+          persist-credentials: false
+      - name: Source-pinned old dual-GUI with native WSLg only policy
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-ci-public
+          ref: 4851f69c92b4fb928d60608b57078eafe8a6ada7
+          path: gui
+          persist-credentials: false
+      - name: Frozen 2026-11-15 RViz and Marker display
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-ci-public
+          ref: 4851f69c92b4fb928d60608b57078eafe8a6ada7
+          path: visual
+          persist-credentials: false
+      - name: Exact source and 9 read-only regression tests
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 966886c4627deb2bb3b37111fe336eeee6b9ebb4
+          test "$(git -C gui -c safe.directory="$PWD/gui" rev-parse HEAD)" = 4851f69c92b4fb928d60608b57078eafe8a6ada7
+          python3 -m unittest discover -s gui/d06/tests -p 'test_g07_precycle36_dual_gui_rollback_contract.py' -v
+          python3 -m unittest discover -s gui/d06/tests -p 'test_g07_rollback_wslg_actual_evidence_20261116.py' -v
+          bash -n gui/d06/scripts/g07_shared_gui_clients.sh
+          python3 -m unittest discover -s instructor/tests/unit -p 'test_p4_g07_scene_broadcaster_overlay.py' -v
+          python3 -m unittest discover -s gui/d06/tests -p 'test_g07_cycle37_readonly_monitor_noncm_cpu.py' -v
+          python3 -m unittest discover -s gui/d06/tests -p 'test_g07_cycle38_d07_wslg_visual_first_boundary.py' -v
+          bash -n instructor/scripts/p4_g07_shared_runtime.sh
+          python3 -m unittest discover -s gui/d06/tests -p 'test_g07_cycle39_display_scan_timing.py' -v
+          python3 -m py_compile gui/d06/live/g07_cycle39_scan_geometry.py gui/d06/live/g07_cycle39_scan_timing.py visual/d06/live/d06_readonly_monitor.py
+          echo AXIA_G07_C39_REAL_GAZEBO_L2_PRECHECK_AND_8_SCOPED_TESTS_PASS_NO_GOAL
+      - name: Install exact official GUI test tools without base ROS upgrades
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends --no-upgrade \
+            ros-jazzy-rviz2 ros-jazzy-visualization-msgs xvfb xauth x11-utils x11-apps libgl1-mesa-dri
+          set +u
+          source /opt/ros/jazzy/setup.bash
+          set -u
+          for c in Xvfb rviz2 gz colcon ros2 xwininfo;do command -v "$c" || exit 3;done
+          echo AXIA_G07_ROLLBACK_GUI_XVFB_DEPS_INSTALLED_NO_GOAL
+      - name: Actual headless Gazebo World/Waffle and two real display windows NO_GOAL
+        shell: bash
+        timeout-minutes: 11
+        env:
+          ROS_DOMAIN_ID: '72'
+          ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+          GZ_PARTITION: axia_p2_rollback_gui_l2_72
+          AXIA_P0_SIM_ONLY: '1'
+          AXIA_G07_UNIFIED_GUI_SIDECAR: '1'
+          AXIA_G07_CI_SIM_GOAL_ALLOWED: '0'
+          AXIA_G07_GUI_SCENE_OVERLAY: '1'
+          AXIA_G07_CYCLE36_INTEGRATED_GUI: '0'
+          AXIA_G07_C37_SCENE_RATE_HZ: '25'
+        run: |
+          set -Eeuo pipefail
+          root="$PWD"
+          mkdir -p "$root/actual-gui-evidence/visual"
+          chmod 700 "$root/actual-gui-evidence/visual"
+          export DISPLAY=:99 LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe
+          Xvfb :99 -screen 0 1530x900x24 > "$root/actual-gui-evidence/xvfb.log" 2>&1 &
+          xvfb_pid=$!
+          launch_pid='' gui_pid=''
+          cleanup() {
+            trap - EXIT
+            set +e
+            if [[ "$gui_pid" =~ ^[0-9]+$ ]];then
+              kill -TERM "$gui_pid" 2>/dev/null || true
+              wait "$gui_pid" 2>/dev/null || true
+            fi
+            if [[ "$launch_pid" =~ ^[0-9]+$ ]];then
+              kill -INT -- "-$launch_pid" 2>/dev/null || true
+              sleep 4
+              kill -TERM -- "-$launch_pid" 2>/dev/null || true
+              wait "$launch_pid" 2>/dev/null || true
+            fi
+            kill -TERM "$xvfb_pid" 2>/dev/null || true
+            wait "$xvfb_pid" 2>/dev/null || true
+            echo AXIA_G07_ROLLBACK_GUI_ONLY_L2_CLEANUP_DISPLAY_ONLY_NO_GOAL
+          }
+          trap cleanup EXIT
+          sleep 1
+          kill -0 "$xvfb_pid"
+          cd "$root/instructor"
+          set +u
+          source /opt/ros/jazzy/setup.bash
+          set -u
+          colcon build --base-paths ros2_ws/src --packages-select \
+            axia_safety_supervisor axia_fault_injector axia_scenario_verifier \
+            --event-handlers console_direct+ > "$root/actual-gui-evidence/build.log" 2>&1
+          set +u
+          source install/setup.bash
+          set -u
+          export ROS_DOMAIN_ID=72 ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
+          export GZ_PARTITION=axia_p2_rollback_gui_l2_72 AXIA_P0_SIM_ONLY=1
+          source scripts/p4_g07_shared_runtime.sh
+          world="$(ros2 pkg prefix nav2_minimal_tb3_sim)/share/nav2_minimal_tb3_sim/worlds/tb3_sandbox.sdf.xacro"
+          waffle="$(ros2 pkg prefix nav2_minimal_tb3_sim)/share/nav2_minimal_tb3_sim/urdf/gz_waffle.sdf.xacro"
+          python3 tools/p2_l3_world_overlay.py --source "$world" \
+             --output "$root/actual-gui-evidence/g07_world.sdf.xacro" \
+             --manifest "$root/actual-gui-evidence/world_manifest.json"
+          python3 tools/p2_g07_demo_lidar_overlay.py --source "$waffle" \
+             --output "$root/actual-gui-evidence/g07_waffle.sdf.xacro" \
+             --manifest "$root/actual-gui-evidence/waffle_manifest.json"
+          axia_g07_shared_launch owner-gui \
+            "$PWD/ros2_ws/src/axia_safety_bringup/launch/axia_tb3_p2.launch.py" \
+            "$root/actual-gui-evidence/g07_world.sdf.xacro" \
+            "$root/actual-gui-evidence/g07_waffle.sdf.xacro" \
+            "$root/actual-gui-evidence/launch.log"
+          launch_pid="$AXIA_G07_SHARED_LAUNCH_PID"
+          test "$(axia_g07_shared_headless_mode owner-gui)" = True
+          test -s "$root/actual-gui-evidence/g07_gui_scene_world.sdf.xacro"
+          test -s "$root/actual-gui-evidence/g07_gui_scene_world_manifest.json"
+          python3 - "$root/actual-gui-evidence" <<'PY'
+          import hashlib,json,sys
+          from pathlib import Path
+          root=Path(sys.argv[1])
+          o=(root/'g07_world.sdf.xacro').read_bytes()
+          scene=(root/'g07_gui_scene_world.sdf.xacro').read_bytes()
+          j=json.loads((root/'g07_gui_scene_world_manifest.json').read_text())
+          assert j['schema']=='axia_g07_cycle37_headless_scene_broadcaster_v1'
+          assert j['original_sha256']==hashlib.sha256(o).hexdigest()
+          assert j['overlay_sha256']==hashlib.sha256(scene).hexdigest()
+          assert j['scene_broadcaster_count']==1 and j['scene_broadcaster_unconditional'] is True
+          assert j.get('state_hertz')==25,'C37_GUI_NO_GOAL_REAL_SOURCE_RATE_25_REQUIRED'
+          assert j['official_source_mutated'] is False
+          assert b'axia_p2_g07_obstacle' in scene and b'gz::sim::systems::Contact' in scene
+          print('AXIA_G07_C37_SESSION_SCENE_SOURCE_SHA256_VERIFIED')
+          PY
+          /opt/ros/jazzy/bin/xacro              "$root/actual-gui-evidence/g07_gui_scene_world.sdf.xacro"              headless:=True > "$root/actual-gui-evidence/expanded_world.sdf"
+          python3 - "$root/actual-gui-evidence/expanded_world.sdf" <<'PY'
+          import sys,xml.etree.ElementTree as ET
+          w=ET.parse(sys.argv[1]).getroot().find('world')
+          assert w is not None
+          scene=[p for p in w.findall('plugin') if p.get('name')=='gz::sim::systems::SceneBroadcaster']
+          assert len(scene)==1 and scene[0].get('filename')=='gz-sim-scene-broadcaster-system'
+          assert scene[0].findtext('state_hertz')=='25', 'C37_GUI_NO_GOAL_EXPANDED_RATE_25_NOT_LOADED'
+          assert len([p for p in w.findall('plugin') if p.get('name')=='gz::sim::systems::Contact'])==1
+          assert len([x for x in w.findall('model') if x.get('name')=='axia_p2_g07_obstacle'])==1
+          print('AXIA_G07_C37_REAL_XACRO_HEADLESS_SCENE_BROADCASTER_CONFIRMED')
+          PY
+          actual=0
+          for i in {1..150};do
+            timeout 5s gz service -l > "$root/actual-gui-evidence/services.txt" 2>/dev/null || true
+            if grep -Fq '/world/default/control' "$root/actual-gui-evidence/services.txt" &&
+               grep -Fq '/world/default/model/turtlebot3_waffle/' "$root/actual-gui-evidence/services.txt";then
+              actual=1;break
+            fi
+            sleep .4
+          done
+          test "$actual" = 1
+          echo AXIA_G07_C37_REAL_GAZEBO_WORLD_WAFFLE_SERVICES_PASS_NO_GOAL
+          scene_topics=0
+          for i in {1..60};do
+            timeout 6s gz topic -l > "$root/actual-gui-evidence/gz_topics.txt" 2>/dev/null || true
+            if grep -Fxq '/world/default/scene/info' "$root/actual-gui-evidence/gz_topics.txt" &&
+               grep -Fxq '/world/default/pose/info' "$root/actual-gui-evidence/gz_topics.txt";then
+              scene_topics=1;break
+            fi
+            sleep .3
+          done
+          test "$scene_topics" = 1 || {
+            echo AXIA_G07_C37_REAL_SCENE_POSE_TRANSPORT_MISSING_NO_GOAL >&2
+            tail -n 45 "$root/actual-gui-evidence/launch.log" || true
+            exit 3
+          }
+          timeout 8s gz topic -i -t /world/default/scene/info             > "$root/actual-gui-evidence/gz_scene_topic_info.txt" 2>&1 || true
+          timeout 8s gz topic -i -t /world/default/pose/info             > "$root/actual-gui-evidence/gz_pose_topic_info.txt" 2>&1 || true
+          echo AXIA_G07_C37_REAL_GAZEBO_SCENE_POSE_TRANSPORT_TOPICS_CONFIRMED_NO_GOAL
+          # Bounded native ROS/Gazebo snapshots are independent, NOT timestamp-aligned;
+          # never claim sensor/world geometry or source->Guard TTL acceptance here.
+          (timeout 20s ros2 topic echo /scan sensor_msgs/msg/LaserScan --once --qos-reliability best_effort \
+            > "$root/actual-gui-evidence/ros_scan_once.yaml" 2> "$root/actual-gui-evidence/ros_scan_capture.log") || {
+              echo AXIA_G07_C39_REAL_SCAN_MISSING_L2_HOLD_NO_GOAL >&2; exit 3;
+            }
+          timeout 12s ros2 topic echo /tf tf2_msgs/msg/TFMessage --once \
+            > "$root/actual-gui-evidence/ros_tf_once.yaml" 2>&1 || true
+          timeout 4s gz topic -e -t /world/default/pose/info \
+            > "$root/actual-gui-evidence/gz_pose_native.txt" 2>&1 || true
+          python3 - "$root/actual-gui-evidence" <<'PY'
+          from pathlib import Path
+          import sys
+          p=Path(sys.argv[1])
+          scan=(p/"ros_scan_once.yaml").read_text()
+          assert "angle_min:" in scan and "ranges:" in scan and "frame_id:" in scan
+          assert (p/"gz_pose_native.txt").stat().st_size>0
+          print("AXIA_G07_C39_REAL_GAZEBO_ROS_SCAN_AND_POSE_RAW_CAPTURED_NO_TIME_ALIGNMENT_NO_GEOMETRY_PASS")
+          PY
+          echo AXIA_G07_C37_WSLG_PREGATE_ACTUAL_GUI_SCENE_25HZ_CI_SOURCE_PROVEN_NO_GOAL
+          # EXACT old dual GUI subprocess, but CI gets unchanged llvmpipe.
+          # The one-use CI GUI auth flag exists only in this subshell;
+          # no Nav2 command/Goal process is launched anywhere in this job.
+          ( AXIA_G07_CI_SIM_GOAL_ALLOWED=1 \
+            bash "$root/gui/d06/scripts/g07_shared_gui_clients.sh" ci \
+              "$root/actual-gui-evidence/visual" "$root/visual" "$root/gui" ) \
+              > "$root/actual-gui-evidence/visual/sidecar.log" 2>&1 &
+          gui_pid=$!
+          for i in {1..120};do
+            [[ -s "$root/actual-gui-evidence/visual/display_attestation.json" ]] && break
+            kill -0 "$gui_pid" 2>/dev/null || break
+            sleep .5
+          done
+          test -s "$root/actual-gui-evidence/visual/display_attestation.json" || {
+            tail -n 70 "$root/actual-gui-evidence/visual/sidecar.log"; exit 3;
+          }
+          python3 - "$root/actual-gui-evidence/visual/display_attestation.json" <<'PY'
+          import json,sys
+          with open(sys.argv[1],encoding='utf-8') as f:d=json.load(f)
+          assert d['real_rviz_window'] is True,d
+          assert d['real_gazebo_gui_window'] is True,d
+          assert d['headless_server_required'] is True,d
+          assert d['wslg_verified'] is False,d
+          assert d['new_cmd_vel_publisher_authorized'] is False,d
+          print('AXIA_G07_C37_GUI_PRECHECK_REAL_GAZEBO_RVIZ_XVFB_L2_PASS_OWNER_WSLG_PIXELS_NOT_VERIFIED_NO_GOAL')
+          PY
+          kill -0 "$gui_pid"
+          kill -0 "$launch_pid"
+          # Xvfb is NOT WSLg. This captures *real* rendered window buffers
+          # to verify the CI has more than a Qt Selection Owner placeholder.
+          xwininfo -root -tree > "$root/actual-gui-evidence/visual/actual_windows_late.txt"
+          gaz_id="$(python3 "$root/gui/d06/live/g07_cycle38_gui_window_evidence.py" \
+            --tree "$root/actual-gui-evidence/visual/actual_windows_late.txt" --role gazebo)"
+          rviz_id="$(python3 "$root/gui/d06/live/g07_cycle38_gui_window_evidence.py" \
+            --tree "$root/actual-gui-evidence/visual/actual_windows_late.txt" --role rviz)"
+          timeout 12s xwd -silent -id "$gaz_id" -out "$root/actual-gui-evidence/visual/actual_gazebo.xwd"
+          timeout 12s xwd -silent -id "$rviz_id" -out "$root/actual-gui-evidence/visual/actual_rviz.xwd"
+          test "$(stat -c %s "$root/actual-gui-evidence/visual/actual_gazebo.xwd")" -gt 65536
+          test "$(stat -c %s "$root/actual-gui-evidence/visual/actual_rviz.xwd")" -gt 65536
+          sha256sum "$root/actual-gui-evidence/visual/actual_gazebo.xwd" \
+                    "$root/actual-gui-evidence/visual/actual_rviz.xwd"
+          echo AXIA_G07_C38_XVFB_REAL_X11_WINDOW_PIXEL_BUFFERS_CAPTURED_OWNER_WSLG_NOT_PROVEN
+          python3 - "$root/actual-gui-evidence/visual/readonly_samples.jsonl" <<'PY'
+          from pathlib import Path
+          import json,sys,time
+          p=Path(sys.argv[1])
+          for _ in range(20):
+              if p.exists() and p.stat().st_size>0:
+                  break
+              time.sleep(.25)
+          rows=[json.loads(x) for x in p.read_text().splitlines() if x.strip()]
+          good=[r for r in rows if r.get("actual_scan_messages",0)>0 and
+                r.get("scan_frame_id") and r.get("scan_header_stamp_sim_s") is not None]
+          assert good, "NO_REAL_ROS_SCAN_HEADER_AND_OBSERVER_PROVENANCE"
+          print("AXIA_G07_C39_REAL_SCAN_HEADER_AND_OBSERVER_TIMING_CAPTURED_GEOMETRY_AND_GUARD_TTL_UNVERIFIED")
+          PY
+          echo 'AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false'
