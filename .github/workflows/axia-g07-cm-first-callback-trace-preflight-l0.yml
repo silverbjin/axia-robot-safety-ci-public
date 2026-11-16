@@ -124,7 +124,7 @@ jobs:
           PY
           /usr/bin/python3 - "$WORK/trace" "$START_ANCHOR" "$END_ANCHOR" <<'PY'
           import bt2,json,sys
-          rows=[]; registered=[]; ticks=[]
+          rows=[]; registered=[]; symbols=[]; ticks=[]
           for msg in bt2.TraceCollectionMessageIterator(sys.argv[1]):
               if not isinstance(msg,bt2._EventMessageConst):
                   continue
@@ -144,6 +144,7 @@ jobs:
                       "has_callback": "callback" in p,
                       "has_symbol": "symbol" in p,
                   })
+                  symbols.append(str(p["symbol"])[:180])
           assert len(rows)>=4,len(rows)
           print("AXIA_G07_CYCLE27_BABELTRACE_BT2_SCHEMA_L1 "+
                 json.dumps(rows[:2],sort_keys=True))
@@ -169,6 +170,10 @@ jobs:
                     "trace_vs_wall_start_sec":round((min(ticks)-begin["wall_ns"])/1e9,3),
                     "host_wall_mono_offset_drift_ms":round(offset_drift_ms,3),
                 },sort_keys=True))
+          print("AXIA_G07_CYCLE29_OFFICIAL_CM_CALLBACK_SYMBOLS_NO_GOAL "+
+                json.dumps({"cmdvel_like_count":sum("cmdvel" in s.lower()
+                                                    or "cmd_vel" in s.lower() for s in symbols),
+                            "unique_names":sorted(set(symbols))[:14]},sort_keys=True))
           assert is_mono or is_wall, "LTTNG_CLOCK_DOMAIN_UNVERIFIED"
           assert offset_drift_ms<50, "HOST_WALL_TO_MONOTONIC_STEP_DETECTED_NOT_PROVEN"
           PY
