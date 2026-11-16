@@ -17,7 +17,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-ci-public
-          ref: 516ea1ab8d009c2784d7de6481b369ba91bcff47
+          ref: 2917d083c99dffa70a87e78548592b9db5a0acb8
           path: owner
           persist-credentials: false
       - name: Pinned D07 GPU/XCB and XWD visual evidence contract
@@ -31,7 +31,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C owner rev-parse HEAD)" = '516ea1ab8d009c2784d7de6481b369ba91bcff47'
+          test "$(git -C owner rev-parse HEAD)" = '2917d083c99dffa70a87e78548592b9db5a0acb8'
           test "$(git -C gui rev-parse HEAD)" = 'c4dca31b210d28037116e49fe39d8d0b5aebdc34'
           SCRIPT='owner/scripts/axia_g07_cycle38_d07_gpu_wslg_gui_once.sh'
           bash -n "$SCRIPT"
@@ -52,6 +52,7 @@ jobs:
             'QT_QPA_PLATFORM=xcb',
             'AXIA_G07_C38_TWO_TRUE_X11_WINDOW_XWD_RECORDED_OWNER_PIXELS_CONTENT_NEEDS_HUMAN_REVIEW',
             'gui_user_observation.json',
+            'AXIA_G07_C38_GUI_WSLG_USER_VISUAL_CONFIRMED_NO_GOAL_NOT_FORMAL_L3',
             'YES-G07-GUI-VISIBLE',
             'AXIA_P2_MVP_ONE_GOAL=0',
             'AXIA_G07_CI_SIM_GOAL_ALLOWED=0',
