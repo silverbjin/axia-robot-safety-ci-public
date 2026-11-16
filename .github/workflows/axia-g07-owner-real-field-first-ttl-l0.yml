@@ -10,6 +10,8 @@ on:
       - 'd06/tests/fixtures/g07_cycle17_wsl2_guard_174ms_rmw_186ms_sanitized.json'
       - 'd06/live/g07_cycle18_field_owner_admission_v5.py'
       - 'scripts/axia_g07_cycle18_owner_readonly_preflight.sh'
+      - 'd06/scripts/g07_cycle16_owner_wsl2_once.sh'
+      - 'scripts/axia_g07_cycle16_owner_wsl2_bootstrap.sh'
       - 'd06/docs/G07_OWNER_WSL2_FIRST_FAILURE_CI_PARITY_AGENT_INSTRUCTIONS_20261116_KO.md'
       - 'd06/docs/G07_CYCLE18_FIELD_OWNER_FIRST_FAILURE_REPORT_20261116_KO.md'
   workflow_dispatch:
