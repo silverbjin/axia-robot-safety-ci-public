@@ -98,7 +98,7 @@ windows=0
 for _ in {1..80};do
   if ! kill -0 "$monitor_pid" 2>/dev/null ||
      ! kill -0 "$rviz_pid" 2>/dev/null ||
-     ( "$INTEGRATED_GUI" != 1 && ! kill -0 "$gz_pid" 2>/dev/null );then
+     { [[ "$INTEGRATED_GUI" != 1 ]] && ! kill -0 "$gz_pid" 2>/dev/null; };then
     echo 'G07_SHARED_GUI_CHILD_EARLY_EXIT';exit 3
   fi
   if command -v xwininfo >/dev/null;then
@@ -168,7 +168,7 @@ else
 fi
 while kill -0 "$rviz_pid" 2>/dev/null &&
       kill -0 "$monitor_pid" 2>/dev/null &&
-      ( "$INTEGRATED_GUI" == 1 || kill -0 "$gz_pid" 2>/dev/null );do
+      { [[ "$INTEGRATED_GUI" == 1 ]] || kill -0 "$gz_pid" 2>/dev/null; };do
   sleep 1
 done
 if [[ "$MODE" == owner ]];then
