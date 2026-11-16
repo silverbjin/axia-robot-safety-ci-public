@@ -1,0 +1,25 @@
+# 120ms (release) gap native STOP relation, not 150ms hard gap.
+name: AXIA G07 Cycle27 first 120ms CM RPC window L0
+on:
+  push:
+    branches: ['fix/g07-cycle27-first120-rpc-classifier-20261116']
+    paths:
+      - '.github/workflows/axia-g07-cycle27-first120-rpc-no-goal-l0.yml'
+      - 'd06/live/g07_cycle27_first120_rpc_relation.py'
+      - 'd06/tests/test_g07_cycle27_first_120ms_rpc_relation.py'
+      - 'd06/docs/G07_CYCLE27_FIRST_120MS_RPC_L2_REPORT_20261116_KO.md'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  no-ros-no-goal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: 'First CM 120ms vs RPC RED GREEN evidence only'
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest discover -s d06/tests -p 'test_g07_cycle27_first_120ms_rpc_relation.py' -v
+          python3 -m py_compile d06/live/g07_cycle27_first120_rpc_relation.py
+          echo AXIA_G07_CYCLE27_FIRST_120MS_RPC_L0_PASS_NO_ROS_NO_GOAL
