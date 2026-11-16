@@ -12,6 +12,7 @@ on:
       - 'scripts/axia_g07_cycle18_owner_readonly_preflight.sh'
       - 'd06/scripts/g07_cycle16_owner_wsl2_once.sh'
       - 'scripts/axia_g07_cycle16_owner_wsl2_bootstrap.sh'
+      - 'scripts/axia_g07_cycle18_field_readonly_wsl2_bootstrap.sh'
       - 'd06/docs/G07_OWNER_WSL2_FIRST_FAILURE_CI_PARITY_AGENT_INSTRUCTIONS_20261116_KO.md'
       - 'd06/docs/G07_CYCLE18_FIELD_OWNER_FIRST_FAILURE_REPORT_20261116_KO.md'
   workflow_dispatch:
@@ -32,4 +33,27 @@ jobs:
           grep -q '^VERSION_ID="24.04"' /etc/os-release || grep -q '^VERSION_ID=24.04' /etc/os-release
           python3 -m unittest discover -s d06/tests -p 'test_g07_cycle18_field_first_owner_parity_v5.py' -v
           bash -n scripts/axia_g07_cycle18_owner_readonly_preflight.sh
+          bash -n scripts/axia_g07_cycle18_field_readonly_wsl2_bootstrap.sh
           echo AXIA_G07_FIELD_PREVIOUS_CM_TTL_BREACH_CI_L0_PASS_NO_ROS_NO_GOAL_OWNER_RELEASE_HOLD
+      - name: Real pinned public bootstrap versus existing Owner lock (NO ROS)
+        run: |
+          set -Eeuo pipefail
+          HOME_DEMO="$(mktemp -d)"
+          trap 'rm -rf -- "$HOME_DEMO"' EXIT
+          export HOME="$HOME_DEMO"
+          ATTEMPT="$HOME/.axia_g07_final_owner_attempts/01d45d46b6eb6a05b1bd313d73f1fc3549575545-43727149856"
+          mkdir -p "$ATTEMPT"
+          printf 'private_sha=%s\\nci_run=%s\\n' 01d45d46b6eb6a05b1bd313d73f1fc3549575545 43727149856 > "$ATTEMPT/source.txt"
+          set +e
+          bash scripts/axia_g07_cycle18_field_readonly_wsl2_bootstrap.sh > "$HOME_DEMO/result.log" 2>&1
+          RC=$?
+          set -e
+          cat "$HOME_DEMO/result.log"
+          [[ "$RC" == 3 ]]
+          grep -Fq 'AXIA_G07_CYCLE18_FIELD_PUBLIC_SHA_TREE_VERIFIED=1527a5080e2e7d417696aae79aab615c02e49b5d' "$HOME_DEMO/result.log"
+          grep -Fq 'FIELD_PREVIOUS_GOAL_CM_TTL_BREACH_HOLD' "$HOME_DEMO/result.log"
+          grep -Fq 'AXIA_MVP_DEMO_ACCEPTED=HOLD' "$HOME_DEMO/result.log"
+          if grep -Eq 'D06_RVIZ_NOT_CONFIRMED|ADMITTED_ONE_FINAL_WSLG_OWNER_ONLY' "$HOME_DEMO/result.log";then exit 3;fi
+          [[ -r "$ATTEMPT/source.txt" ]]
+          echo AXIA_G07_FIELD_OWNER_SAME_PINNED_WSL2_BOOTSTRAP_CI_PASS_NO_ROS_NO_GOAL
+
