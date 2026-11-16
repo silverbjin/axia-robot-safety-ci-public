@@ -45,10 +45,10 @@ class UnifiedGuiSidecarContract(unittest.TestCase):
     def test_renderer_and_readonly_observer_use_distinct_advisory_cpus(self):
         # Actual #43683837146: a native 150ms CM/Guard deadline was exceeded
         # while Xvfb+Gazebo GUI+RViz were on unrestricted host cores.
-        # Isolate only display workloads; never move CM/Guard/Nav2 or bag.
+        # Read-only Marker no longer shares CM; Guard/Nav2/CM policy unchanged.
         from d06.live.d06_gui_cpu_plan import select_cpu, select_monitor_cpu
         self.assertEqual(select_cpu({2,3,4,5}),2)
-        self.assertEqual(select_monitor_cpu({2,3,4,5}),4)
+        self.assertEqual(select_monitor_cpu({2,3,4,5}),5)
         self.assertNotEqual(select_cpu({2,3,4,5}),select_monitor_cpu({2,3,4,5}))
         with self.assertRaises(ValueError):
             select_monitor_cpu({2,3,4})
