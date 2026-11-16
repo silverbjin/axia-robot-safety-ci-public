@@ -179,6 +179,20 @@ clone_repos() {
   fi
   GIT_TERMINAL_PROMPT=0 git clone --depth 1 --branch "$STUDENT_BRANCH" --single-branch --quiet \
     https://github.com/silverbjin/axia-robot-safety-student.git "$STUDENT" || return 2
+  # A training/report branch can advance without changing this accepted source.
+  # Always fetch/check out the exact immutable reviewed SHA (detached) first.
+  GIT_TERMINAL_PROMPT=0 git -C "$INSTRUCTOR" fetch --quiet --depth 1 origin "$INSTRUCTOR_SHA" || {
+    echo BLOCK_C_INSTRUCTOR_PIN_FETCH_BLOCKED >&2; return 2;
+  }
+  git -C "$INSTRUCTOR" checkout --quiet --detach "$INSTRUCTOR_SHA" || {
+    echo BLOCK_C_INSTRUCTOR_PIN_CHECKOUT_BLOCKED >&2; return 2;
+  }
+  GIT_TERMINAL_PROMPT=0 git -C "$STUDENT" fetch --quiet --depth 1 origin "$STUDENT_SHA" || {
+    echo BLOCK_C_STUDENT_PIN_FETCH_BLOCKED >&2; return 2;
+  }
+  git -C "$STUDENT" checkout --quiet --detach "$STUDENT_SHA" || {
+    echo BLOCK_C_STUDENT_PIN_CHECKOUT_BLOCKED >&2; return 2;
+  }
   local actual_teacher actual_student
   actual_teacher="$(git -C "$INSTRUCTOR" rev-parse HEAD)"
   actual_student="$(git -C "$STUDENT" rev-parse HEAD)"
