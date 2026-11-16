@@ -1,0 +1,27 @@
+name: AXIA G07 Cycle38 D07 WSLg first GUI boundary L0
+on:
+  push:
+    branches: ['release/p2-g06-cm-ttl-20261110']
+    paths: ['.github/workflows/axia-g07-cycle38-d07-wslg-gpu-first-boundary-l0.yml']
+permissions:
+  contents: read
+jobs:
+  first-boundary:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Immutable exact G07 owner visual evidence source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-ci-public
+          ref: dd43c6e1238c033da2102b79815ed9346c25af16
+          persist-credentials: false
+      - name: Replay Owner Intel D3D12 and Qt-selection-only first visual failure
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = dd43c6e1238c033da2102b79815ed9346c25af16
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s d06/tests \
+            -p 'test_g07_cycle38_d07_wslg_visual_first_boundary.py' -v
+          bash -n d06/scripts/g07_shared_gui_clients.sh
+          echo AXIA_G07_C38_D07_OWNER_XCB_NVIDIA_XWD_FIRST_BOUNDARY_L0_PASS_NO_ROS_NO_GOAL
