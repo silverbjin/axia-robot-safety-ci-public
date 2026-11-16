@@ -1,0 +1,70 @@
+# Owner WSLg GUI-only precheck contract. No ROS/Goal. Uses exact
+# previously proven real GUI-only L2 #43900946956 pinned by runner itself.
+name: AXIA G07 Cycle37 Owner GUI only precheck L0
+on:
+  push:
+    branches: ['release/p2-g06-cm-ttl-20261110']
+    paths: ['.github/workflows/axia-g07-cycle37-owner-gui-only-precheck-static-l0.yml']
+permissions:
+  contents: read
+jobs:
+  owner-gui-script-static:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Pin exact public GUI-only WSL2 run script
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-ci-public
+          ref: ccf3abed7d59e3bdca5aba1e47bad46762883b6a
+          persist-credentials: false
+      - name: NO ROS/NO Goal source/syntax/parity contracts
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = 'ccf3abed7d59e3bdca5aba1e47bad46762883b6a'
+          SCRIPT='scripts/axia_g07_cycle37_gui_only_wslg_precheck_once.sh'
+          bash -n "$SCRIPT"
+          bash "$SCRIPT" --self-check
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          p=Path('scripts/axia_g07_cycle37_gui_only_wslg_precheck_once.sh')
+          s=p.read_text(encoding='utf-8')
+          required={
+            'PRIVATE_SHA':'966886c4627deb2bb3b37111fe336eeee6b9ebb4',
+            'GUI_SHA':'352ea7c2197b937e8566ba90cd4d8fff46dd9f88',
+            'RVIZ_SHA':'0f66059d9110f8e667200bbca22396bd0c78c02e',
+            'CI_L2_RUN':'43900946956',
+            'CI_L2_HEAD':'2d35c673b20586fa1f113585503737be5170b7fd',
+          }
+          for key,value in required.items():
+              assert re.search(r'^readonly '+key+r'='+value+r'$',s,re.M),key
+          for token in (
+              'AXIA_G07_C37_SCENE_RATE_HZ=25',
+              'AXIA_G07_GUI_SCENE_OVERLAY=1',
+              'AXIA_G07_CYCLE36_INTEGRATED_GUI=0',
+              'AXIA_G07_CI_SIM_GOAL_ALLOWED=0',
+              'AXIA_P2_MVP_ONE_GOAL=0',
+              'AXIA_P2_G07_RELOCATED_OBSTACLE=0',
+              'axia_g07_shared_scene_ready',
+              'gz::sim::systems::SceneBroadcaster',
+              'GUI_WSLG_USER_VISUAL_CONFIRMED_NO_GOAL_NOT_FORMAL_L3',
+              'AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false',
+              'headless:=True',
+          ):
+              assert token in s,token
+          for forbidden in (
+              'ros2 action send_goal','ros2 topic pub /cmd_vel',
+              'bash scripts/p2_owner_l3_wsl2.sh','--mvp-relocated-obstacle',
+              'YES-P2-G07-GOAL',
+              'AXIA_G07_CI_SIM_GOAL_ALLOWED=1',
+              'AXIA_P2_MVP_ONE_GOAL=1',
+              'AXIA_P2_G07_RELOCATED_OBSTACLE=1',
+          ):
+              assert forbidden not in s,forbidden
+          assert s.count('axia_g07_shared_launch owner-gui')==1
+          assert 'autostart:=false' not in s or 'NO_GOAL' in s
+          print('AXIA_G07_C37_OWNER_WSLG_GUI_ONLY_SOURCE_PINNED_STATIC_L0_PASS_NO_ROS_NO_GOAL')
+          PY
+          echo 'AXIA_G07_OWNER_MOVING_L3_NOT_RUN CM_120MS_NOT_TESTED CERTIFIED_ESTOP=false'
