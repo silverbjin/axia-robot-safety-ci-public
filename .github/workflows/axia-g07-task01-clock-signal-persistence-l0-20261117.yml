@@ -43,6 +43,10 @@ jobs:
             grep -E '^ModuleNotFoundError:|^ImportError:|^rclpy\.|^Traceback' "$LOG" | head -n 5 || true
             exit 3
           fi
+          if [[ "$RC" -ne 0 ]]; then
+            echo "AXIA_G07_TASK01_REAL_JAZZY_CLOCK_SIGTERM_CHILD_EXIT_NONZERO_HOLD rc=$RC"
+            exit 3
+          fi
           python3 - "$OUTPUT" <<'PY'
           import json,sys
           from pathlib import Path
