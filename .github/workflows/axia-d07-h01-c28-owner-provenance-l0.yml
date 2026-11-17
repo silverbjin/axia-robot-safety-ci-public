@@ -28,6 +28,10 @@ jobs:
           if not r.wasSuccessful(): raise SystemExit(2)
           print('AXIA_D07_C28_PUBLIC_OWNER_S75_PROVENANCE_L0_PASS')
           PY
+          test "$(git hash-object scripts/axia_d07_h01_gpu_gui_owner_wsl2_once.sh)" = 5eb9aa534076d606b63ed422e5979faa888e6fe3
+          test "$(git hash-object tests/test_axia_d07_gpu_gui_owner_contract.py)" = 9e90f0bce9984da44ab45bf6bcb5d2784659a3db
+          grep -Fq "3a893c1875d2647979a608afaaa335a88158469f" scripts/axia_d07_h01_gpu_gui_owner_wsl2_once.sh
+          grep -Fq "44002483668" scripts/axia_d07_h01_gpu_gui_owner_wsl2_once.sh
           bash -n scripts/axia_d07_h01_gpu_gui_owner_wsl2_once.sh
           bash scripts/axia_d07_h01_gpu_gui_owner_wsl2_once.sh --self-check
           echo AXIA_D07_C28_OWNER_NO_ROS_NO_GAZEBO_NO_GOAL
