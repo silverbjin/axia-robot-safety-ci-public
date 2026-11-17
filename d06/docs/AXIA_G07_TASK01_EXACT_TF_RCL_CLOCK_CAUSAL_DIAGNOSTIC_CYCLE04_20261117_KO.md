@@ -40,7 +40,16 @@
 - `d06/diagnostic/analyze_first_cm_tf.py` 원래 S1/S2 분석기는 신규 TF_CLOCK 행을 읽어도 기존 안전/인과 verdict 의미를 바꾸지 않는다.
 - 6개 새 synthetic clock 테스트와 기존 privacy 회귀가 공개 L0에서 GREEN. 이후 **정확한 Jazzy OCI C++ ABI 빌드/real symbol selftest**를 별도 수행.
 
-**RED 현황:** 최초 C++ 공식 Jazzy ABI run [#44064016874](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44064016874) `completed/failure`: `rcl_get_zero_initialized_clock`는 이 Jazzy rcl header에 없는 API. 기존 공개 CI로 작은 범위의 **실제 ABI RED**를 확보했다. `rcl_clock_t c{};` 후 `rcl_clock_init(...)`으로 수정했고, 결과를 [Run #44064224537](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44064224537)에서 검증 중. **CI Run이 실제 completed/success임을 확인하기 전 C++ ABI PASS를 주장하지 않는다.**
+**실제 C++ ABI RED→GREEN:**
+- [RED #44064016874](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44064016874): `rcl_get_zero_initialized_clock` 함수는 Jazzy rcl API에 존재하지 않아 컴파일 실패.
+- 정확한 공식 `rcl_clock_init()` 계약에 따라 `rcl_clock_t c{};` zero-init 후 API를 호출하는 최소 수정.
+- [실제 Jazzy ABI GREEN #44064224537](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44064224537), tested public code **`7dc045b82c953b17d697b7896ead5317fca97102`**, `completed/success`, 공식 GCC/CMake shared lib 빌드+원본 nav2_util ABI/sleep_for selftest + 신규 **rcl_clock_get_now C ABI selftest PASS**, 기존 6+3+4 Python unit **13/13 PASS**, ROS/Gazebo/Goal 실행 없음. 실제 stdout:
+```text
+[100%] Built target axia_g07_cm120_tf_diag
+AXIA_G07_TASK01_ORIGINAL_JAZZY_ADVANCED_TF_ABI_AND_SLEEP_SELFTEST_PASS_NO_GOAL
+AXIA_G07_TASK01_GENUINE_RCL_CLOCK_GET_NOW_ABI_SELFTEST_PASS_NO_GOAL
+```
+- 별도 공식 Jazzy/Harmonic **실제 CM NO_GOAL** 시계 후킹 L2는 공개 릴리스 lane `.github/workflows/axia-g07-task01-internal-rcl-clock-nogoal-l2-20261117.yml`, workflow commit `153ad2ccf16f74562d42989bcb41d3f7b4b77476` [Run #44064889546](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44064889546) **실행 중이며 완료판정 미검증**. 공개 CI는 Instructor SHA `966886c4627deb2bb3b37111fe336eeee6b9ebb4`를 읽기 전용 checkout하며 `AXIA_G07_CI_SIM_GOAL_ALLOWED=0`. 실증 전 `TF_CLOCK` native event/ROS clock 활성/CM PID·TID mapping 성공을 주장하지 않는다.
 
 ## 5. 실행·검증 명령 및 원본 정책
 
@@ -72,8 +81,8 @@ python3 -m unittest discover -s d06/tests -p test_g07_task01_public_evidence_ada
 AXIA_G07_TASK01_PUBLIC_EXACT_TF_CALL_L0=PASS_13
 AXIA_G07_TASK01_PUBLIC_CLOCK_FIRST_WINDOW_L0=PASS_9
 AXIA_G07_TASK01_PUBLIC_PRIVACY_AND_CAUSAL_CONTRACT_L0=PASS_27
-AXIA_G07_TASK01_REAL_RCL_CLOCK_ABI=VERIFY_RUN_44064224537
-AXIA_G07_TASK01_GAZEBO_NO_GOAL_NEW_HOOK=NOT_RUN
+AXIA_G07_TASK01_REAL_RCL_CLOCK_ABI=PASS_44064224537
+AXIA_G07_TASK01_GAZEBO_NO_GOAL_NEW_HOOK=VERIFY_RUN_44064889546
 AXIA_G07_TASK01_NEW_DIAGNOSTIC_MOVING_GOAL=NOT_RUN
 AXIA_G07_TASK01_TF_BUFFER_CAUSE=UNPROVEN
 AXIA_G07_TASK02=BLOCKED_CAUSE_UNPROVEN
