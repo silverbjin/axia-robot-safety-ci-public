@@ -24,6 +24,7 @@ from d04_waffle_pi_rgb_preflight import _start,_stop_all,sync_ros_discovery_envi
 from d08_live_world import build_overlay,RGB_TOPIC,DEPTH_TOPIC
 from d08_live_readonly_probe import select_pair
 from d08_runtime_provenance import make_runtime_provenance
+from d08_scan_gap_trace import first_scan_receive_gap
 from p2_contact_discovery import resolve_g07_contact_topic
 from d08_contact_positive_contract import count_nonrobot_positive_contacts
 
@@ -151,6 +152,8 @@ def observe_real_front_scan(timeout_s=30.0):
                         'sim_stamp_period_median_sec':round(statistics.median(sim_gaps),6),
                         'observed_rtf':round(sum(sim_gaps)/sum(wall_gaps),4),
                         'wallclock_measured':True,
+                        'first_rx_gap_over_500ms':
+                            first_scan_receive_gap(samples,limit_s=0.5),
                         'source':'actual_ros_sensor_msgs_LaserScan',
                         'no_synthetic_scan':True}
         raise RuntimeError('D08_REAL_GAZEBO_LIDAR_SCAN_MISSING')
