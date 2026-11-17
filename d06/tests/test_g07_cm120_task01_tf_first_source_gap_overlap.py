@@ -20,26 +20,38 @@ class Task01FirstSourceGapTemporalJoin(unittest.TestCase):
         # First source gap is [12.000, 12.132]; callback overlaps by 20ms.
         # TF consumes 100ms of the callback, but ends before 12.000.
         r = synthetic(11.880, 12.020, 11.889, 11.989)
-        self.assertEqual(r["status"], "TF_OUTSIDE_FIRST_CM_SOURCE_GAP_HOLD")
+        self.assertEqual(r["status"], "TF_OUTSIDE_FIRST_CM_OBSERVER_PAIR_HOLD")
         self.assertFalse(r["root_cause_proven"])
         self.assertFalse(r["gate_c_authorized"])
         self.assertFalse(r["cm120_release_pass"])
+        self.assertFalse(r["source_publication_to_monotonic_alignment_proven"])
 
     def test_tf_straddles_first_source_gap_cannot_locate_aggregated_sleep(self):
         r = synthetic(11.960, 12.110, 11.970, 12.080)
-        self.assertEqual(r["tf_first_gap_temporal_relation"], "PARTIAL_OVERLAP")
-        self.assertAlmostEqual(r["tf_nominal_overlap_first_gap_ms"], 80.0, places=3)
-        self.assertFalse(r["tf_sleep_inside_first_gap_proven"])
+        self.assertEqual(r["tf_observer_pair_temporal_relation"], "PARTIAL_OVERLAP")
+        self.assertAlmostEqual(r["tf_nominal_overlap_observer_pair_ms"], 80.0, places=3)
+        self.assertFalse(r["tf_sleep_in_source_gap_proven"])
+        self.assertFalse(r["root_cause_proven"])
+        self.assertFalse(r["gate_c_authorized"])
+
+    def test_mono_observer_window_never_proves_rmw_system_publication_alignment(self):
+        # RMW source nanoseconds identify the first gap; a.t/b.t are a
+        # different host-MONOTONIC observer interval. It is invalid to treat
+        # their absolute epochs as identical without source-clock calibration.
+        r = synthetic(12.010, 12.110, 12.014, 12.105)
+        self.assertEqual(r["tf_observer_pair_temporal_relation"], "FULL_NOMINAL_OVERLAP")
+        self.assertFalse(r["source_publication_to_monotonic_alignment_proven"])
+        self.assertFalse(r["tf_sleep_in_source_gap_proven"])
         self.assertFalse(r["root_cause_proven"])
         self.assertFalse(r["gate_c_authorized"])
 
     def test_tf_fully_in_first_source_gap_is_still_not_tf_buffer_or_scheduler_cause(self):
         r = synthetic(12.010, 12.110, 12.014, 12.105)
-        self.assertEqual(r["tf_first_gap_temporal_relation"], "FULL_NOMINAL_OVERLAP")
-        self.assertAlmostEqual(r["tf_nominal_overlap_first_gap_ms"], 91.0, places=3)
+        self.assertEqual(r["tf_observer_pair_temporal_relation"], "FULL_NOMINAL_OVERLAP")
+        self.assertAlmostEqual(r["tf_nominal_overlap_observer_pair_ms"], 91.0, places=3)
         # Existing TF clock interval cannot prove which library sleep or queue
         # caused the gap. S2 sleep totals are from a DIFFERENT Goal run.
-        self.assertFalse(r["tf_sleep_inside_first_gap_proven"])
+        self.assertFalse(r["tf_sleep_in_source_gap_proven"])
         self.assertFalse(r["root_cause_proven"])
         self.assertFalse(r["tf_wait_proven"])
         self.assertFalse(r["scheduler_wait_proven"])
