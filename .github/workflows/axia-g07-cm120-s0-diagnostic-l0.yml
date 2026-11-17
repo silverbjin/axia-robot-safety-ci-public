@@ -1,0 +1,45 @@
+name: AXIA G07 S0 exact CM trace bounded filter RED GREEN NO GOAL
+on:
+  push:
+    branches: ['fix/g07-cm120-s0-no-goal-diagnostic-regression-20261117']
+    paths:
+      - '.github/workflows/axia-g07-cm120-s0-diagnostic-l0.yml'
+      - 'd06/diagnostic/s0_cm_diag_readiness.py'
+      - 'd06/tests/test_g07_cm120_s0_no_goal_diagnostic.py'
+permissions:
+  contents: read
+jobs:
+  exact-callback-no-goal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-ci-public
+          ref: 00ab632b51d1cae6aec254d440253e4f6b44cbe6
+          path: baseline
+          persist-credentials: false
+      - name: Old source expected RED then bounded exact CM identity GREEN
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C baseline rev-parse HEAD)" = '00ab632b51d1cae6aec254d440253e4f6b44cbe6'
+          cp d06/tests/test_g07_cm120_s0_no_goal_diagnostic.py baseline/d06/tests/
+          if (cd baseline && PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
+             -s d06/tests -p 'test_g07_cm120_s0_no_goal_diagnostic.py' -v) \
+             > /tmp/axia_s0_red.log 2>&1;then
+              echo AXIA_G07_S0_BASELINE_UNEXPECTED_GREEN >&2;exit 3
+          fi
+          grep -Fq "No module named 'd06.diagnostic.s0_cm_diag_readiness'" /tmp/axia_s0_red.log || {
+              cat /tmp/axia_s0_red.log
+              echo AXIA_G07_S0_RED_REASON_DRIFT >&2;exit 3
+          }
+          echo AXIA_G07_S0_BASELINE_RED_100K_AND_CM_LOADER_CHECK_ABSENT
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
+             -s d06/tests -p 'test_g07_cm120_s0_no_goal_diagnostic.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
+             -s d06/tests -p 'test_g07_cm120_tf_first_gap_join.py' -v
+          python3 -m py_compile d06/diagnostic/s0_cm_diag_readiness.py
+          echo AXIA_G07_S0_EXACT_CM_FILTER_GREEN4_AND_PREVIOUS_TF_JOIN_GREEN3
+          echo AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false
