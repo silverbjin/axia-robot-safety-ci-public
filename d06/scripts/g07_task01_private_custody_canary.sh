@@ -46,11 +46,23 @@ git -C "$D" add -- "$REL"
 git -C "$D" commit -m "evidence(g07 task01): pregoal private SHA256 canary run $GITHUB_RUN_ID" >/dev/null
 
 # A missing write permission, wrong branch, or remote round-trip blocks Goal.
-git -C "$D" -c "http.extraheader=AUTHORIZATION: basic $AUTH" \
-  push origin "HEAD:refs/heads/$CUSTODY_BRANCH" >/dev/null 2>&1 || {
-  echo AXIA_G07_TASK01_PRIVATE_REMOTE_PUSH_FAILED_NO_GOAL >&2
+PUSH_ERR="$(mktemp)"
+if ! git -C "$D" -c "http.extraheader=AUTHORIZATION: basic $AUTH" \
+  push origin "HEAD:refs/heads/$CUSTODY_BRANCH" >/dev/null 2>"$PUSH_ERR"; then
+  # Never expose a Git transport stderr that could contain a credential URL.
+  DIAG=UNCLASSIFIED_REMOTE_REJECTION
+  if grep -Eqi 'write access to repository not granted|permission.*denied|403|authentication failed' "$PUSH_ERR"; then
+    DIAG=AUTH_OR_CONTENT_WRITE_DENIED
+  elif grep -Eqi 'protected branch|GH006|GH013|repository rule' "$PUSH_ERR"; then
+    DIAG=BRANCH_PROTECTION_REJECTED
+  elif grep -Eqi 'non-fast-forward|fetch first|stale info' "$PUSH_ERR"; then
+    DIAG=REMOTE_HEAD_CONFLICT
+  fi
+  rm -f -- "$PUSH_ERR"
+  echo "AXIA_G07_TASK01_PRIVATE_REMOTE_PUSH_FAILED_NO_GOAL class=$DIAG" >&2
   exit 3
-}
+fi
+rm -f -- "$PUSH_ERR"
 git -C "$D" -c "http.extraheader=AUTHORIZATION: basic $AUTH" \
   fetch --no-tags --depth=1 origin "refs/heads/$CUSTODY_BRANCH" >/dev/null 2>&1 || {
   echo AXIA_G07_TASK01_PRIVATE_REMOTE_READBACK_FAILED_NO_GOAL >&2
