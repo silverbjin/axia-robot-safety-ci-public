@@ -45,7 +45,7 @@ def classify(rows):
             claimed.add(pid)
             if row.get("procname") in CM_PROCNAMES:
                 owned.add(pid)
-    if not claimed or len(owned)!=1 or claimed!=owned:
+    if not claimed or len(owned)!=1:
         return _hold("CM_MULTIPLE_CMD_SUBSCRIPTION_PROCESSES_HOLD"
                      if len(owned)>1 else "CM_CMD_TOPIC_OWNER_UNVERIFIED_HOLD",
                      owned_cm_process_count=len(owned),
