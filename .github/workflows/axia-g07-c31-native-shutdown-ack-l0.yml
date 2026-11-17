@@ -15,17 +15,18 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 9261c66b3d2f6ad3170f2219b2ed2b3679ddb7e6
+          ref: 77eb00993ab3884fe9641ad0f3668fdacf71bc1b
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Assert immutable RED candidate and execute reduced fixture
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git rev-parse HEAD)" = 9261c66b3d2f6ad3170f2219b2ed2b3679ddb7e6
+          test "$(git rev-parse HEAD)" = 77eb00993ab3884fe9641ad0f3668fdacf71bc1b
           python3 -m unittest discover -s tests/unit -p test_g07_c31_native_shutdown_ack_trace.py -v
           python3 -m unittest discover -s tests/unit -p test_g07_c31_gui_readonly_scope.py -v
           python3 -m unittest discover -s tests/unit -p test_g07_c31_guard_small_reverse_first_latch.py -v
+          python3 -m unittest discover -s tests/unit -p test_g07_one_goal_first_ttl_join.py -v
           # Existing safety priority tests use pytest-style free functions;
           # invoke them explicitly, not unittest discovery (would run ZERO).
           python3 - <<'PY_GUARD'
