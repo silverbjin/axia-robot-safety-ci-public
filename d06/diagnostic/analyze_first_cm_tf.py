@@ -30,6 +30,12 @@ TF_CLOCK_LINE=re.compile(
     r"^TF_CLOCK pid=(\d+) tid=(\d+) mono_ns=(\d+) "
     r"ros_ns=(\d+) clock_type=([123]) override_active=([01])$"
 )
+TF_AVAIL_LINE=re.compile(
+    r"^TF_AVAIL pid=(\d+) tid=(\d+) mono_pre_ns=(\d+) "
+    r"mono_pre_end_ns=(\d+) mono_post_start_ns=(\d+) "
+    r"mono_post_end_ns=(\d+) pre_available=([01]) "
+    r"post_available=([01])$"
+)
 TOPIC="/cmd_vel_supervised"
 CM_PROCS={"collision_monitor","collision_monit"}
 
@@ -104,6 +110,10 @@ def analyze(observer,trace,tf_lines,anchors):
         # but do not upgrade its TF/source causal verdict here.
         clock_match=TF_CLOCK_LINE.fullmatch(line.strip())
         if clock_match is not None:
+            continue
+        if TF_AVAIL_LINE.fullmatch(line.strip()) is not None:
+            # Read-only optional zero-timeout probes; the historical S1/S2
+            # analyzer's causal verdict remains unchanged.
             continue
         m=TF_LINE.fullmatch(line.strip())
         if m is None:
