@@ -76,3 +76,57 @@ CERTIFIED_ESTOP=false
 ```
 
 **결론:** 사용자가 지시한 후속 순서를 원본 증거 조사·기존 회귀 확인·릴리스 판단까지 수행했다. **추가 성능 튜닝, 새 Goal, 중복 디버거 생성이 아닌 C31의 종료 ACK 서버측 첫 경계 확보**가 다음 독립된 유일한 미해결 조사 과제다.
+
+## 5. 실제 실행 명령·콘솔 출력·검증 영수증 (재검증 없는 원본 회수)
+
+### 원본 L0 워크플로에서 실행한 명령
+
+```bash
+# 공개 S2 CI 워크플로의 실제 실행 명령(시뮬레이션 계측 코드 L0)
+python3 -m unittest discover -s d06/tests -p 'test_g07_cm120_s2_offcpu_classification.py' -v
+python3 -m unittest discover -s d06/tests -p 'test_g07_cm120_s2_exact_tf_offcpu_join.py' -v
+python3 -m unittest discover -s d06/tests -p 'test_g07_cm120_s2_actual_sleep_provenance.py' -v
+python3 -m unittest discover -s d06/tests -p 'test_g07_cm120_tf_first_gap_join.py' -v
+cmake -S d06/diagnostic -B /tmp/axia_g07_s2_offcpu
+cmake --build /tmp/axia_g07_s2_offcpu --parallel 2
+```
+
+공개 CI 원본 job 로그 `133805514237` ([#44013410740](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44013410740))의 **실제 표준출력**:
+
+```text
+Ran 5 tests in 0.001s
+OK
+Ran 4 tests in 0.001s
+OK
+Ran 3 tests in 0.000s
+OK
+Ran 3 tests in 0.000s
+OK
+AXIA_G07_S2_OFFCPU_PURE_GREEN5_4_PLUS_S1_3_NO_ROS_NO_GOAL
+AXIA_G07_S2_REAL_CXX_SLEEP_FOR_INTERPOSITION_L0_GREEN_NO_GOAL
+AXIA_G07_S2_OFFICIAL_ADVANCED_TF_ORIGINAL_ABI_L0_GREEN_NO_GOAL
+```
+
+C31 기존 공개 CI 원본 로그 `133811565713` ([#44015268905](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44015268905)), `133812546398` ([#44015565478](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44015565478))의 **실제 표준출력**:
+
+```text
+Ran 3 tests in 0.001s
+OK
+AXIA_G07_C31_NATIVE_SHUTDOWN_ACK_TIMING_L0_PASS_NO_ROS_NO_GOAL
+Ran 3 tests in 0.002s
+OK
+Ran 2 tests in 0.004s
+OK
+AXIA_G07_C31_NATIVE_SHUTDOWN_ACK_AND_GUI_SCOPE_L0_PASS_NO_ROS_NO_GOAL
+```
+
+GitHub CLI에서 **원본만 읽는 명령**(로그 확인용이며 ROS/Goal/시뮬레이터 실행 없음):
+
+```bash
+gh run view 44013410740 -R silverbjin/axia-robot-safety-ci-public --log
+gh run view 44015268905 -R silverbjin/axia-robot-safety-ci-public --log
+gh run view 44015565478 -R silverbjin/axia-robot-safety-ci-public --log
+gh run view 44017286929 -R silverbjin/axia-robot-safety-ci-public --log
+```
+
+**검증 수준:** PR 브랜치 HEAD·문서 파일 GitHub API 실존 확인; **실제 실행 기록 재열람** (S2 L0/ABI, C31 L0, C31 실패 L2). 새로 실행한 테스트/ROS/Gazebo **0회**, 기존 SUCCESS/FAILURE를 새 결과로 재표기하지 않음. CI L2 #44017286929는 재실행하지 않았으며 공개 보관 artifact는 **0개**. 실물 WSL2/Gazebo WSLg 픽셀·안전 120ms tracer-OFF·Localization 서버측 원인 미검증. 전용 기능 코드 또는 CI 워크플로 변경 없이 보고서만 추가하고 PR Draft를 유지.
