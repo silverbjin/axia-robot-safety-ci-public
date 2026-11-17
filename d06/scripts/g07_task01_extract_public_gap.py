@@ -23,11 +23,16 @@ EVENTS = {
     "ros2:rclcpp_subscription_callback_added",
     "ros2:callback_start",
     "ros2:callback_end",
+    "ros2:rcl_publisher_init",
+    "ros2:rmw_publish",
 }
+PUBLISH_EVENTS = {"ros2:rcl_publisher_init", "ros2:rmw_publish"}
 
 
 def exact_trace_rows(trace_dir):
     import bt2  # system Python in pinned ROS2 Jazzy container
+    # Only CM process publication metadata; bounded and private IN CI RUNNER.
+    pub_rows=[]
     def rows():
         for msg in bt2.TraceCollectionMessageIterator(str(trace_dir)):
             if not isinstance(msg, bt2._EventMessageConst):
@@ -43,17 +48,25 @@ def exact_trace_rows(trace_dir):
                     r[key]=int(c[key])
             if c is not None and "procname" in c:
                 r["procname"]=str(c["procname"])
-            for key in ("subscription_handle","subscription","callback","topic_name"):
+            for key in ("subscription_handle","subscription","callback","topic_name",
+                        "publisher_handle","rmw_publisher_handle"):
                 if p is not None and key in p:
                     r[key]=str(p[key])
+            if p is not None and event.name=="ros2:rmw_publish" and "timestamp" in p:
+                r["timestamp"]=int(p["timestamp"])
             snap=msg.default_clock_snapshot
             if snap is not None:
                 r["timestamp_ns"]=snap.ns_from_origin
+            if event.name in PUBLISH_EVENTS and r.get("procname") in (
+                    "collision_monit","collision_monitor"):
+                pub_rows.append(r)
+                if len(pub_rows)>12000:
+                    raise ValueError("NATIVE_CM_PUBLISH_TRACE_UNBOUNDED")
             yield r
     result=select_exact_cm_callbacks(rows())
     if result.get("status")!="EXACT_CM_CALLBACK_FILTER_READY":
         raise ValueError("EXACT_CM_CALLBACK_FILTER_NOT_READY")
-    return result["rows"]
+    return result["rows"]+pub_rows
 
 
 def _narrow_first_observer_window_tf(observer, tf_lines):
@@ -195,6 +208,13 @@ def extract(*, events, trace_dir, tf_file, anchors_dir,
             data=export_sanitized(observer,trace,tf_lines,anchors,
                     run_id=run_id,public_sha=public_sha,
                     clock_rows=clock_rows)
+            # New publisher trace is a read-only, independently verified
+            # FastDDS source stamp -> SAME CM native CTF pub event join.
+            # It cannot make CM120 release, Guard TTL or E-Stop PASS.
+            from d06.diagnostic.classify_cm_rmw_publish_join import classify_publish_join
+            failure_stage="EXACT_NATIVE_RMW_PUBLISH_JOIN"
+            data["native_publish_tf_join"]=classify_publish_join(
+                observer, trace, anchors, data.get("tf_calls"))
     except (OSError,ValueError,KeyError,TypeError,ImportError,RuntimeError) as exc:
         data=_fallback("PUBLIC_EVIDENCE_EXTRACTION_UNVERIFIED_HOLD",
                        run_id,public_sha)
