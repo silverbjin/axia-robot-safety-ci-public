@@ -14,7 +14,7 @@ from pathlib import Path
 
 from d06.live.g07_cycle05_cm_callback_window import _first_pair
 from d06.live.g07_cycle31_cm_topic_callback_identity import resolve_cm_cmdvel_handles
-from d06.diagnostic.analyze_first_cm_tf import TF_LINE, TF_SLEEP_LINE, TF_CLOCK_LINE
+from d06.diagnostic.analyze_first_cm_tf import TF_LINE, TF_SLEEP_LINE, TF_CLOCK_LINE, TF_AVAIL_LINE
 
 SCHEMA = "axia.g07.cm120.public_first_gap_v1"
 SHA = re.compile(r"[0-9a-f]{40}\Z")
@@ -132,7 +132,7 @@ def export_sanitized(observer, trace, tf_lines, anchors, *, run_id, public_sha, 
         out["status"]="CM_CALLBACK_THREAD_UNVERIFIED_HOLD"
         return out
 
-    tf_calls, sleeps, internal_clock=[],[],[]
+    tf_calls, sleeps, internal_clock, avail_rows=[],[],[],[]
     mapped=False
     for line in tf_lines:
         if line.strip()==READY:
@@ -159,6 +159,14 @@ def export_sanitized(observer, trace, tf_lines, anchors, *, run_id, public_sha, 
             if p==pid and tid in tids and (
                 pair_start_ns-200_000_000<=mono_ns<=pair_end_ns+200_000_000):
                 internal_clock.append((p,tid,mono_ns,ros_ns,clock_type,active))
+            continue
+        match=TF_AVAIL_LINE.fullmatch(line.strip())
+        if match:
+            row=tuple(map(int,match.groups()))
+            p,tid,p0,p1,q0,q1,pre,post=row
+            if (p==pid and tid in tids and q1>=pair_start_ns-200_000_000
+                    and p0<=pair_end_ns+200_000_000):
+                avail_rows.append(row)
             continue
         match=TF_SLEEP_LINE.fullmatch(line.strip())
         if match:
@@ -230,6 +238,42 @@ def export_sanitized(observer, trace, tf_lines, anchors, *, run_id, public_sha, 
         count=len(spans),spans=spans,
         coverage_proven=(bool(call_spans)
                          and all(c["coverage_complete"] for c in call_spans)))
+    if avail_rows:
+        # Never export PID/TID, frame names, TF geometry or ROS messages.
+        # The original TF_ADV interval excludes both nonblocking probes.
+        if len(avail_rows)>MAX_TFS:
+            out["tf_availability"]={"status":"TF_AVAILABILITY_AMBIGUOUS_CALL_HOLD"}
+        else:
+            attached={}
+            error=None
+            for p,tid,p0,p1,q0,q1,pre,post in avail_rows:
+                if not (p0<=p1<=q0<=q1):
+                    error="TF_AVAILABILITY_BOUNDARY_UNVERIFIED_HOLD"
+                    break
+                owners=[i for i,(cp,ct,t0,t1,_,_) in enumerate(tf_calls)
+                        if cp==p and ct==tid and p1<=t0<=t1<=q0]
+                if len(owners)!=1:
+                    error="TF_AVAILABILITY_BOUNDARY_UNVERIFIED_HOLD"
+                    break
+                idx=owners[0]
+                if idx in attached:
+                    error="TF_AVAILABILITY_AMBIGUOUS_CALL_HOLD"
+                    break
+                _,_,t0,t1,_,_=tf_calls[idx]
+                attached[idx]=dict(
+                    pre_available=bool(pre),
+                    post_available=bool(post),
+                    pre_probe_wall_ns=p1-p0,
+                    post_probe_wall_ns=q1-q0,
+                    original_tf_call_wall_ns=t1-t0,
+                    pre_start_rel_observer_ns=p0-pair_start_ns,
+                    post_end_rel_observer_ns=q1-pair_start_ns)
+            if error:
+                out["tf_availability"]={"status":error}
+            else:
+                out["tf_availability"]=dict(
+                    status="TF_AVAILABILITY_READ_ONLY_RECORDED_HOLD",
+                    spans=[attached[i] for i in sorted(attached)])
     if internal_clock:
         from d06.diagnostic.classify_internal_tf_clock import summarize_tf_clock
         out["tf_internal_clock"]=summarize_tf_clock(
