@@ -294,8 +294,6 @@ jobs:
           ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
           GZ_PARTITION: axia_p2_ci_moving_83
           AXIA_P0_SIM_ONLY: '1'
-          LD_PRELOAD: /tmp/axia_g07_cm120_abi/libaxia_g07_cm120_tf_diag.so
-          AXIA_G07_CM120_TF_DIAG_FILE: /tmp/axia_g07_cm120_tf_diag.log
           AXIA_P2_G07_PHYSICAL_PREFLIGHT: '1'
           AXIA_G07_CI_SIM_GOAL_ALLOWED: '1'
           AXIA_G07_CI_OWNER_OBSERVER_PARITY: '1'
@@ -377,8 +375,13 @@ jobs:
           rm -f /tmp/axia_g07_cm120_tf_diag.log
           echo AXIA_G07_CM120_ONLY_ONE_REAL_GOAL_BOUNDED_TF_USERSpace_DIAG_ARMED_NOT_RELEASE
           echo AXIA_G07_C05_OFFICIAL_CM_ONLY_CALLBACK_WINDOW_TRACE_ARMED_DIAGNOSTIC_NOT_RELEASE
+          # S0 real NO_GOAL #44009454224 proved the actual original CM
+          # mapping and 337 TF_ADV calls with preload scoped to its child.
+          # Do not preload the parent shell/earlier prebuild tools.
+          SO=/tmp/axia_g07_cm120_abi/libaxia_g07_cm120_tf_diag.so
           set +e
-          timeout --signal=TERM --kill-after=10s 900s \
+          env LD_PRELOAD="$SO" AXIA_G07_CM120_TF_DIAG_FILE=/tmp/axia_g07_cm120_tf_diag.log \
+            timeout --signal=TERM --kill-after=10s 900s \
             bash scripts/p2_no_goal_smoke_ci.sh
           GOAL_DIAG_RC=$?
           set -e
