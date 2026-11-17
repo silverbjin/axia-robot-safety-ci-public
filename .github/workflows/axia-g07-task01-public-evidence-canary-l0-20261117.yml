@@ -6,6 +6,8 @@ on:
       - '.github/workflows/axia-g07-task01-public-evidence-canary-l0-20261117.yml'
       - 'd06/diagnostic/export_public_cm120_first_gap.py'
       - 'd06/tests/test_g07_task01_public_evidence_allowlist.py'
+      - 'd06/scripts/g07_task01_extract_public_gap.py'
+      - 'd06/tests/test_g07_task01_public_evidence_adapter.py'
   workflow_dispatch:
 permissions:
   contents: read
@@ -21,6 +23,9 @@ jobs:
           set -Eeuo pipefail
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s d06/tests \
             -p 'test_g07_task01_public_evidence_allowlist.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s d06/tests \
+            -p 'test_g07_task01_public_evidence_adapter.py' -v
+          python3 -m py_compile d06/diagnostic/export_public_cm120_first_gap.py d06/scripts/g07_task01_extract_public_gap.py
           echo AXIA_G07_TASK01_PUBLIC_ALLOWLIST_TEST_GREEN_NO_GOAL
       - name: Produce synthetic timing-only artifact (NO private inputs)
         shell: bash
