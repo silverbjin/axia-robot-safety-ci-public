@@ -1,0 +1,60 @@
+name: AXIA G07 Task01 public allowlisted timing artifact L0, no private write token
+on:
+  push:
+    branches: ['fix/g07-cm120-task01-public-evidence-20261117']
+    paths:
+      - '.github/workflows/axia-g07-task01-public-evidence-canary-l0-20261117.yml'
+      - 'd06/diagnostic/export_public_cm120_first_gap.py'
+      - 'd06/tests/test_g07_task01_public_evidence_allowlist.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  no-ros-no-goal-public-evidence-preflight:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: RED GREEN sanitized allowlist regression
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s d06/tests \
+            -p 'test_g07_task01_public_evidence_allowlist.py' -v
+          echo AXIA_G07_TASK01_PUBLIC_ALLOWLIST_TEST_GREEN_NO_GOAL
+      - name: Produce synthetic timing-only artifact (NO private inputs)
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p public-evidence
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          from d06.diagnostic.export_public_cm120_first_gap import export_sanitized
+          from d06.tests.test_g07_cm120_tf_first_gap_join import observer,trace,anchor,line,READY
+          from d06.tests.test_g07_cm120_task01_per_sleep_span_join import poll
+          out=export_sanitized(observer(),trace(),[READY,line(12.014,12.105),
+              poll(12.024,12.034),poll(12.044,12.054)],anchor(),
+              run_id='44040000001',public_sha='0123456789abcdef0123456789abcdef01234567')
+          p=Path('public-evidence/first_gap_sanitized.json')
+          p.write_text(json.dumps(out,sort_keys=True,separators=(',',':'))+'\n')
+          assert p.stat().st_size<32768
+          assert out['root_cause_proven'] is False
+          PY
+          (cd public-evidence && sha256sum first_gap_sanitized.json > SHA256SUMS.txt && sha256sum -c SHA256SUMS.txt)
+          test "$(find public-evidence -type f | wc -l)" = 2
+          echo AXIA_G07_TASK01_PUBLIC_ARTIFACT_CANARY_READY_NO_ROS_NO_GOAL
+      - name: Upload only two reviewed public timing evidence files
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: axia-g07-task01-public-timing-only-l0
+          path: |
+            public-evidence/first_gap_sanitized.json
+            public-evidence/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 9
+      - name: No secrets nor instructor source in public artifact
+        shell: bash
+        run: |
+          echo AXIA_G07_TASK01_PUBLIC_CUSTODY_CANARY_GREEN_NO_PRIVATE_WRITE_SECRET
