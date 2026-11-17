@@ -6,13 +6,13 @@ import tempfile
 import unittest
 ROOT=Path(__file__).resolve().parents[1]
 SCRIPT=ROOT/"scripts/axia_d07_h01_gpu_gui_owner_wsl2_once.sh"
-PRIVATE_SHA="a2ea5bbebf7c24137353773f88984dd4cf6d9383"
+PRIVATE_SHA="7306b27bc1d146d99d1657308549db45c9878407"
 
 class OwnerGpuTrialContract(unittest.TestCase):
     def test_owner_pins_real_shared_l2_and_does_not_enable_ci_xvfb(self):
         source=SCRIPT.read_text()
-        self.assertIn("a2ea5bbebf7c24137353773f88984dd4cf6d9383",source)
-        self.assertIn("43994275942",source)
+        self.assertIn("7306b27bc1d146d99d1657308549db45c9878407",source)
+        self.assertIn("43997663084",source)
         self.assertIn("CI_SAME_SHA_GAZEBO_XVFB_L2",source)
         self.assertIn("WSLG_D3D12_GUI_NOT_VERIFIED",source)
         self.assertIn("unset AXIA_D07_H01_CI_SOFTWARE_GUI",source)
@@ -60,7 +60,7 @@ class OwnerGpuTrialContract(unittest.TestCase):
             first="D07_H01_GUI_WATCHER_SPAWN_ACK_ABSENT"
             (p/"owner_first_gui_boundary.txt").write_text(first+"\n")
             result=subprocess.run(["python3","-",str(private_tools),str(p),
-                 PRIVATE_SHA,"2","43994275942"],input=code[start:end],
+                 PRIVATE_SHA,"2","43997663084"],input=code[start:end],
                  text=True,capture_output=True,timeout=12)
             verdict=json.loads((p/"owner_l3_verdict.json").read_text())
             self.assertEqual(result.returncode,3,result.stderr)
@@ -83,7 +83,7 @@ class OwnerGpuTrialContract(unittest.TestCase):
             (p/"owner_first_gui_boundary.txt").write_text(
                 "D07_H01_GUI_WATCHER_SPAWN_ACK_ABSENT\n")
             result=subprocess.run(["python3","-",str(private_tools),str(p),
-                PRIVATE_SHA,"2","43994275942"],input=code[start:end],
+                PRIVATE_SHA,"2","43997663084"],input=code[start:end],
                 text=True,capture_output=True,timeout=12)
             verdict=json.loads((p/"owner_l3_verdict.json").read_text())
             self.assertEqual(result.returncode,3,result.stderr)
