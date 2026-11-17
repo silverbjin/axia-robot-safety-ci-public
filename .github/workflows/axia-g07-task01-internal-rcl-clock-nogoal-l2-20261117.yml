@@ -29,7 +29,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-ci-public
-          ref: 7dc045b82c953b17d697b7896ead5317fca97102
+          ref: 15701efb43606c5d548573dc325bc21bded2bbf9
           path: public-task01
           persist-credentials: false
       - name: Strict noGoal source + existing localization first-timeout regression
@@ -37,7 +37,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '966886c4627deb2bb3b37111fe336eeee6b9ebb4'
-          test "$(git -C public-task01 -c safe.directory="$PWD/public-task01" rev-parse HEAD)" = '7dc045b82c953b17d697b7896ead5317fca97102'
+          test "$(git -C public-task01 -c safe.directory="$PWD/public-task01" rev-parse HEAD)" = '15701efb43606c5d548573dc325bc21bded2bbf9'
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
              -s tests/unit -p test_g07_cycle16_first_localization_shutdown_20261115.py -v
           PYTHONPATH="$PWD/public-task01" PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
