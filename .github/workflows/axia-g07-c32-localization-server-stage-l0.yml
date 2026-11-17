@@ -1,0 +1,23 @@
+name: AXIA G07 C32 exact Localization server-stage vs native ACK L0
+on:
+  push:
+    branches: [fix/g07-c32-localization-server-stage-20261117]
+    paths:
+      - '.github/workflows/axia-g07-c32-localization-server-stage-l0.yml'
+      - 'd06/tests/test_g07_c32_localization_native_server_boundary.py'
+      - 'd06/diagnostic/g07_c32_localization_stage.py'
+permissions:
+  contents: read
+jobs:
+  native-server-stage-l0:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout public diagnostic only (no private answers, ROS or Goal)
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Exact original response missing vs SIGINT and active server regression
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest discover -s d06/tests -p test_g07_c32_localization_native_server_boundary.py -v
+          python3 -m py_compile d06/diagnostic/g07_c32_localization_stage.py
+          echo AXIA_G07_C32_NATIVE_SERVER_STAGE_NO_FALSE_ACK_L0_PASS_NO_ROS_NO_GOAL
