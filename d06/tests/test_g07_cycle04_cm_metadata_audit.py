@@ -34,6 +34,13 @@ class OfficialCMMetadata(unittest.TestCase):
         self.assertNotIn("0xopaque",str(r))
         self.assertNotIn("4242",str(r))
 
+    def test_second_readonly_observer_of_same_topic_is_not_second_cm(self):
+        r=classify(good()+[
+            ev("ros2:rcl_subscription_init",7654,"other_node",
+               topic_name="/cmd_vel_supervised",subscription_handle="0xobserver")])
+        self.assertEqual(r["status"],"CM_INPUT_CALLBACK_HANDLE_IDENTIFIED_NO_GOAL")
+        self.assertEqual(r["owned_cm_process_count"],1)
+
     def test_duplicate_cm_process_and_invalid_metadata_fail_closed(self):
         r=classify(good()+good(pid=4243))
         self.assertEqual(r["status"],"CM_MULTIPLE_CMD_SUBSCRIPTION_PROCESSES_HOLD")
