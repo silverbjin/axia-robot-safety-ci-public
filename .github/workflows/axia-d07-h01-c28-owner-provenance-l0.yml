@@ -1,0 +1,33 @@
+name: AXIA D07 Cycle28 Owner S75 final teardown first-error contract L0
+on:
+  push:
+    branches: [fix/d07-h01-c28-owner-teardown-provenance-20261117]
+    paths: ['.github/workflows/axia-d07-h01-c28-owner-provenance-l0.yml']
+permissions:
+  contents: read
+jobs:
+  owner-rc0-provenance:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Original Owner S75 successful GUI exit zero followed by blocked child cleanup
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 - <<'PY'
+          import sys, unittest
+          sys.path.insert(0,'tests')
+          from test_axia_d07_gpu_gui_owner_contract import OwnerGpuTrialContract
+          ts=('test_owner_s75_finished_gui_rc0_never_first_error_and_fault_injector_audit_visible',
+              'test_owner_scene_runtime_contract_precedes_visual_hold',
+              'test_bootstrap_l0_executes_without_gazebo',
+              'test_gui_gpu_backend_scoped_without_bashrc_global_exports',
+              'test_gpu_trial_failclosed_pre_ros_and_baseline_not_promoted')
+          r=unittest.TextTestRunner(verbosity=2).run(unittest.TestSuite(OwnerGpuTrialContract(t) for t in ts))
+          if not r.wasSuccessful(): raise SystemExit(2)
+          print('AXIA_D07_C28_PUBLIC_OWNER_S75_PROVENANCE_L0_PASS')
+          PY
+          bash -n scripts/axia_d07_h01_gpu_gui_owner_wsl2_once.sh
+          bash scripts/axia_d07_h01_gpu_gui_owner_wsl2_once.sh --self-check
+          echo AXIA_D07_C28_OWNER_NO_ROS_NO_GAZEBO_NO_GOAL
