@@ -1,4 +1,4 @@
-name: AXIA G07 CM120 Task01 TF exact first-source-gap overlap L0
+name: AXIA G07 CM120 Task01 RMW source-pair observer vs TF overlap L0
 on:
   push:
     branches: [fix/g07-cm120-task01-first-gap-tf-overlap-20261117]
