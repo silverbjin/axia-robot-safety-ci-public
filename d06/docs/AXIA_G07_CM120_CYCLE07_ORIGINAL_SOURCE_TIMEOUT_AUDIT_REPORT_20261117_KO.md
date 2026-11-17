@@ -39,3 +39,47 @@ AXIA_MVP_DEMO_ACCEPTED=HOLD
 CERTIFIED_ESTOP=false
 MAIN_MERGED=false
 ```
+
+## Cycle07 실제 NO_GOAL L2 결과와 최초 종료 실패
+
+- 실제 GitHub Actions [Run #43999183495](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43999183495), release SHA `5998246de354c8f5e991f7df03e8fffcc9fe7814`. 이전 C06 exact source에서 예상 RED(module missing), 신규 test GREEN 3/3, bash syntax/py_compile PASS. **실제 Jazzy+Gazebo/Nav2 실행 중** `ros2 param get /collision_monitor` 세 파라미터 및 설치된 공식 Nav2 YAML 바이트 SHA256 대조 통과.
+- 원본 실제 출력:
+```text
+AXIA_G07_C07_RED_MISSING_LIVE_CM_PARAM_PROVENANCE_ANALYZER
+AXIA_G07_C07_L0_GREEN3_NO_ROS_NO_GOAL
+AXIA_G07_C07_ORIGINAL_CM_RUNTIME_PARAM_PROVENANCE {
+  "status": "ORIGINAL_CM_RUNTIME_PARAMS_MATCH_NO_GOAL",
+  "source_timeout_sec": 1.0,
+  "original_source_timeout_sec": 1.0,
+  "base_shift_correction": true,
+  "transform_tolerance_sec": 0.02,
+  "official_nav2_installed_source_sha256": "299f9002d6dcfbf661e532c99f32dda1766eab3afa3ab71a52378d80e7ef956f",
+  "goal_sent": false, "cm120_release_pass": false
+}
+AXIA_G07_C07_INSTALLED_SOURCE_VS_LIVE_CM_RESULT {
+  "startup_status": "SMOKE_READY",
+  "shutdown_status": "BLOCKED_LIFECYCLE_NAVIGATION_SERVICE_TIMEOUT",
+  "rc": 3, "goal_sent": false
+}
+```
+- 실제 **최종 CI completed FAILURE**, 단 최초 연구 질문이었던 원래 `source_timeout=1.0` source->runtime 경로는 VERIFIED. NO_GOAL shutdown 재현 오류 `BLOCKED_LIFECYCLE_NAVIGATION_SERVICE_TIMEOUT`가 시작 이후 발생. 이에 대한 진단 원본 private log는 cleanup으로 삭제되고 본 public log에 첫 상태만 남음; 원인(일시적인 lifecycle manager availability/launch process scheduler)은 **UNPROVEN**. 다른 정상 종료 run #43991016109, #43994237080과 합쳐서 안정성 PASS 판정 금지.
+- 이 종료 오류는 Cycle06의 `G07_C06_SOURCE_TIMEOUT_UNVERIFIED`와 다른 단계이다. 소스/인수 기준을 바꾸거나, 동일 조건을 무작정 반복해 통과했다고 처리하지 않는다. 향후 실제 시연 moving CI에서 lifecycle shutdown ACK를 반드시 같은 run에서 확인해야 한다.
+
+## 제품 설계 결정
+- Cycle06의 `source_timeout<=0.5` 상한은 **원본 official source_timeout=1.0과 불일치**한 자체 추가 검증 조건이다. 그 상한을 source_timeout 실측치라고 주장한 부분을 정정한다.
+- 그러나 `base_shift_correction=false` 자체는 동적 스캔 위치 오차 가능성을 갖는다. 실제 Scan header age/max speed/angular speed·원본 STOP/Slow zone/원본 CM source runtime contract 없이 이를 WSL2에 적용하는 것은 안전하지 않다.
+- 다음 Cycle은 **원래 source_timeout=1.0을 보존**하면서 센서 프레임 시각·실제 age가 Guard TTL 안에 있는지 확인하거나, 이 근거가 없다면 공식 단일 TF 옵션 후보를 폐기해야 한다. 임의 0.3초 timeout 변경은 별도 Safety 정책 변경이며 이번 MVP의 최소 목표에서 제외.
+- 공개 CI 통합 Moving Goal의 120ms source/Observer, Guard150ms, Scan300ms, Contact0/CancelGoal/Shutdown ACK가 같은 실행에서 PASS하기 전까지 Owner WSL2 L3 금지.
+
+```text
+AXIA_G07_C07_PUBLIC_L0=RED_GREEN3_PASS
+AXIA_G07_C07_ACTUAL_OFFICIAL_CM_SOURCE_TIMEOUT=1.0
+AXIA_G07_C07_ACTUAL_SOURCE_RUNTIME_PARAMS=PASS_NO_GOAL
+AXIA_G07_C07_NO_GOAL_L2_SHUTDOWN=FAIL_NAVIGATION_SERVICE_TIMEOUT
+AXIA_G07_C07_OVERALL_CI=FAIL
+CM_120MS_RELEASE=HOLD
+OWNER_WSL2_MOVING_L3=NOT_RUN
+AXIA_MVP_DEMO_ACCEPTED=HOLD
+CERTIFIED_ESTOP=false
+MAIN_MERGED=false
+```
