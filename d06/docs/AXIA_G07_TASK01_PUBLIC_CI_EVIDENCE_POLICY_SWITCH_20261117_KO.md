@@ -46,7 +46,7 @@
 - [최종 순수 GREEN #44048860819](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44048860819), tested source `5e6db932728085398fd1b6d9441847286d70c2be`, `Ran 5 tests ... OK`, `Ran 3 tests ... OK`, Python compile PASS.
 - 같은 실행에서 synthetic allowlisted evidence JSON + SHA256SUMS 생성, SHA256 검증, official GitHub `actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02` 업로드 PASS:
   - artifact `axia-g07-task01-public-timing-only-l0`, ID `14312528121`
-  - GitHub 저장 ZIP SHA256 `0bfef7bacafd46722572ebcea1d2ad8483f915f8c8887f3c81e5be9e966b99d0` (**이 ZIP digest는 #44048351427 이전 run의 값**; #44048860819의 checksum/digest는 GitHub 아티팩트 API에서 다시 확인 후 별개 기록할 것)
+  - 실제 같은 run #44048860819 GitHub 저장 ZIP SHA256 `140e4d76f5a060957d59acd5f5abbe58f8c62b57a1668615c3db9e763f789303` (artifact API 재조회, 원본 JSON 내부 SHA256SUMS.txt의 값과는 별개의 ZIP digest)
   - 다운로드 URL: https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44048860819
   - **이는 synthetic NO_GOAL L0 파일 custody 검증이지 실제 Gazebo Moving artifact가 아니다.**
 
