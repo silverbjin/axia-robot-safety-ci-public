@@ -237,8 +237,13 @@ jobs:
         run: |
           set -Eeuo pipefail
           test "$(git -C cm-diag-public rev-parse HEAD)" = 89aadd43ad61499c43415f2326eaf770e6e68cc5
-          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
+          # First CI RED #43995476156: nested checkout is NOT importable without
+          # an explicit Python module root. Assert the exact real CI layout.
+          PYTHONPATH="$PWD/cm-diag-public" python3 -c \
+             'from d06.live.g07_cycle05_cm_callback_window import classify; assert callable(classify)'
+          PYTHONPATH="$PWD/cm-diag-public" PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
              -s cm-diag-public/d06/tests -p 'test_g07_cycle05_cmd_callback_window.py' -v
+          echo AXIA_G07_C05_NESTED_PUBLIC_CHECKOUT_IMPORT_GREEN_BEFORE_GOAL
           command -v lttng
           if ! /usr/bin/python3 -c 'import bt2' >/dev/null 2>&1;then
             export DEBIAN_FRONTEND=noninteractive
