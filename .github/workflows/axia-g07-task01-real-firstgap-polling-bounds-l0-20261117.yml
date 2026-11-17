@@ -8,6 +8,9 @@ on:
       - 'd06/diagnostic/classify_exact_tf_sleep_budget.py'
       - 'd06/tests/test_g07_task01_tf_call_exact_sleep_budget.py'
       - 'd06/diagnostic/export_public_cm120_first_gap.py'
+      - 'd06/diagnostic/analyze_first_cm_tf.py'
+      - 'd06/diagnostic/classify_internal_tf_clock.py'
+      - 'd06/tests/test_g07_task01_internal_tf_clock_source.py'
       - 'd06/tests/test_g07_task01_actual_first_gap_polling_bounds.py'
       - 'd06/evidence/g07_cm120_task01/run_44049067368_first_gap_sanitized.json'
       - 'd06/tests/test_g07_task01_real_no_first_gap_custody.py'
@@ -39,5 +42,12 @@ jobs:
             -s d06/tests -p 'test_g07_task01_real_no_first_gap_custody.py' -v
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
             -s d06/tests -p 'test_g07_task01_tf_call_exact_sleep_budget.py' -v
-          python3 -m py_compile d06/diagnostic/classify_first_cm_gap_polling.py d06/diagnostic/classify_exact_tf_sleep_budget.py
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
+            -s d06/tests -p 'test_g07_task01_internal_tf_clock_source.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
+            -s d06/tests -p 'test_g07_task01_public_evidence_allowlist.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
+            -s d06/tests -p 'test_g07_task01_public_evidence_adapter.py' -v
+          python3 -m py_compile d06/diagnostic/classify_first_cm_gap_polling.py d06/diagnostic/classify_exact_tf_sleep_budget.py \
+            d06/diagnostic/classify_internal_tf_clock.py d06/diagnostic/analyze_first_cm_tf.py d06/diagnostic/export_public_cm120_first_gap.py
           echo AXIA_G07_TASK01_REAL_FIRST_GAP_POLLING_BOUNDS_L0_GREEN_RELEASE_HOLD
