@@ -50,5 +50,40 @@ class TestPublicEvidenceAdapter(unittest.TestCase):
                     run_id="bogus",public_sha=SHA)
             self.assertFalse((root/"out.json").exists())
 
+    def test_trace_failure_preserves_only_numeric_first_source_gap(self):
+        # A genuine observer RMW source pair must not be discarded merely
+        # because a separate LTTng/bt2 owner link cannot be decoded.
+        # No PID, pose, raw ROS or TF line is allowed in the fallback.
+        from unittest.mock import patch
+        from d06.tests.test_g07_cm120_tf_first_gap_join import observer,anchor
+        from d06.diagnostic.export_public_cm120_first_gap import READY
+        with tempfile.TemporaryDirectory() as t:
+            r=Path(t)
+            (r/"trace").mkdir()
+            (r/"anchors").mkdir()
+            (r/"events").write_text("".join(
+                json.dumps(x)+"\\n" for x in observer()),encoding="utf-8")
+            (r/"tf").write_text(READY+"\\n",encoding="utf-8")
+            (r/"anchors/start_anchor.json").write_text(
+                json.dumps(anchor()["start"]))
+            (r/"anchors/end_anchor.json").write_text(
+                json.dumps(anchor()["end"]))
+            with patch("d06.scripts.g07_task01_extract_public_gap.exact_trace_rows",
+                       side_effect=ValueError("sensitive RAW event text")):
+                status,p=extract(events=r/"events",trace_dir=r/"trace",
+                    tf_file=r/"tf",anchors_dir=r/"anchors",
+                    out=r/"safe"/"first_gap_sanitized.json",
+                    run_id="44040000001",public_sha=SHA)
+            d=json.loads(p.read_text())
+            self.assertEqual(status,"PUBLIC_EVIDENCE_EXTRACTION_UNVERIFIED_HOLD")
+            self.assertEqual(d["failure_stage"],"NATIVE_LTTNG_CALLBACK_ROWS")
+            self.assertEqual(d["first_gap"]["rmw_source_gap_ns"],132000000)
+            self.assertEqual(d["first_gap"]["observer_gap_ns"],132000000)
+            self.assertFalse(d["source_publication_to_monotonic_alignment_proven"])
+            self.assertFalse(d["root_cause_proven"])
+            self.assertNotIn("sensitive RAW",p.read_text())
+            self.assertNotIn("pose",p.read_text().lower())
+            self.assertLess(p.stat().st_size,1024)
+
 if __name__=="__main__":
     unittest.main()
