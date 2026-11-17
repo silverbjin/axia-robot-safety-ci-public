@@ -1,0 +1,64 @@
+name: AXIA G07 CM120 bounded userspace TF diagnostic ABI preflight L0
+on:
+  push:
+    branches: ['fix/g07-cm120-four-gates-evidence-first-20261117']
+    paths:
+      - '.github/workflows/axia-g07-cm120-tf-shim-build-l0.yml'
+      - 'd06/diagnostic/cm_tf_gettransform_preload.cpp'
+      - 'd06/diagnostic/CMakeLists.txt'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  diagnostic-only-linkage:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: RED prior C05 trace lacked direct TF timing, expected inability to classify
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('d06/live/g07_cycle05_cm_callback_window.py').read_text()
+          assert 'tf_lookup_causality_proven=False' in p
+          assert 'scheduler_causality_proven=False' in p
+          assert 'AXIA_G07_CM120' not in p
+          print('AXIA_G07_CM120_GATE_B_OLD_CALLBACK_TRACE_TF_CAUSALITY_RED_CONFIRMED')
+          PY
+      - name: Real installed Jazzy ABI compile and RTLD_NEXT linkage GREEN without ROS or Goal
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          set +u
+          source /opt/ros/jazzy/setup.bash
+          set -u
+          mkdir -p /tmp/axia_g07_cm120_abi
+          cmake -S d06/diagnostic -B /tmp/axia_g07_cm120_abi \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          cmake --build /tmp/axia_g07_cm120_abi --parallel 2
+          SO=/tmp/axia_g07_cm120_abi/libaxia_g07_cm120_tf_diag.so
+          test -s "$SO"
+          nm -D -C "$SO" | grep -F 'nav2_util::getTransform(' | grep -F 'tf2::Transform&'
+          env LD_PRELOAD="$SO" AXIA_G07_CM120_LIB="$SO" python3 - <<'PY'
+          import ctypes,glob,os
+          # The exact official helper implementation must be discoverable.
+          # RTLD_NEXT only works if loaded AFTER the userspace wrapper.
+          candidates=glob.glob('/opt/ros/jazzy/lib/libnav2_util*.so*')
+          loaded=[]
+          for p in candidates:
+              if p.endswith('.so'):
+                  loaded.append(ctypes.CDLL(p,mode=ctypes.RTLD_GLOBAL))
+          assert loaded, 'AXIA_G07_CM120_OFFICIAL_NAV2_UTIL_LIBRARY_MISSING'
+          so=ctypes.CDLL(os.environ['AXIA_G07_CM120_LIB'])
+          so.axia_cm120_original_transform_linkage_selftest.restype=ctypes.c_int
+          assert so.axia_cm120_original_transform_linkage_selftest()==1, 'AXIA_G07_CM120_ABI_INTERPOSITION_UNPROVEN'
+          print('AXIA_G07_CM120_OFFICIAL_ADVANCED_TF_ABI_INTERPOSITION_L0_PASS_NO_ROS_NO_GOAL')
+          PY
+          echo 'AXIA_G07_CM120_DIAGNOSTIC_ONLY_L0_PASS_NOT_RELEASE'
+      - name: Leave no compiled diagnostic in installed ROS
+        if: always()
+        run: rm -rf -- /tmp/axia_g07_cm120_abi
