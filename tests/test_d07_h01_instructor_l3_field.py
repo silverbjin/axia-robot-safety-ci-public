@@ -7,7 +7,7 @@ import unittest
 
 ROOT=Path(__file__).resolve().parents[1]
 SCRIPT=ROOT/"scripts/axia_d07_h01_instructor_l3_wsl2_once.sh"
-PIN="d1a453d42929bbdc423505adf1b9dd76ad7f5b2b"
+PIN="6a3047b5aa219687f5fc918e467cea5115d3d482"
 STAGES=("free","intrusion","lateral","restored")
 
 
