@@ -6,6 +6,9 @@ on:
       - '.github/workflows/axia-g07-task01-ros-clock-firstgap-l0-20261117.yml'
       - 'd06/diagnostic/firstgap_clock_progress.py'
       - 'd06/tests/test_g07_task01_first_gap_clock_probe.py'
+      - 'd06/tests/test_g07_task01_clock_probe_public_export.py'
+      - 'd06/diagnostic/export_public_cm120_first_gap.py'
+      - 'd06/diagnostic/g07_clock_probe_ros.py'
   workflow_dispatch:
 permissions:
   contents: read
@@ -21,5 +24,10 @@ jobs:
           set -Eeuo pipefail
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s d06/tests \
             -p 'test_g07_task01_first_gap_clock_probe.py' -v
-          python3 -m py_compile d06/diagnostic/firstgap_clock_progress.py
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s d06/tests \
+            -p 'test_g07_task01_clock_probe_public_export.py' -v
+          python3 -m py_compile d06/diagnostic/firstgap_clock_progress.py \
+            d06/diagnostic/export_public_cm120_first_gap.py \
+            d06/diagnostic/g07_clock_probe_ros.py
+          python3 d06/diagnostic/g07_clock_probe_ros.py --help >/dev/null
           echo AXIA_G07_TASK01_SAME_OBSERVER_CLOCK_PROGRESS_L0_GREEN_NO_GOAL
