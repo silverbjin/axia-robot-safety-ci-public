@@ -53,6 +53,7 @@ jobs:
           python3 -m unittest discover -s ci/d06/tests -p 'test_g07_task01_public_only_execution_contract.py' -v
           python3 -m unittest discover -s ci/d06/tests -p 'test_g07_task01_tf_zero_timeout_availability.py' -v
           python3 -m unittest discover -s ci/d06/tests -p 'test_g07_task01_public_evidence_adapter.py' -v
+          echo AXIA_G07_TASK01_BOUNDED_FIRST_PAIR_TF_EXPORT_L0_GREEN_NO_GOAL
           test -s runtime/block_B/day07/h01_runtime/scripts/p2_no_goal_smoke_ci.sh
           test -s runtime/block_B/day07/h01_runtime/tools/p2_g07_ci_moving_goal.py
           test -s runtime/block_B/day07/h01_runtime/tools/p2_g07_lifecycle_service.py
