@@ -229,7 +229,7 @@ extern "C" rcl_ret_t rcl_clock_get_now(
 extern "C" __attribute__((visibility("default")))
 int axia_g07_task01_clock_get_now_abi_selftest() {
   const auto before=tf_clock_samples.load(std::memory_order_relaxed);
-  rcl_clock_t c=rcl_get_zero_initialized_clock();
+  rcl_clock_t c{};  // Jazzy rcl_clock_init requires zero-initialized storage.
   auto alloc=rcutils_get_default_allocator();
   if(rcl_clock_init(RCL_STEADY_TIME,&c,&alloc)!=RCL_RET_OK) return 0;
   rcl_time_point_value_t t=0;
