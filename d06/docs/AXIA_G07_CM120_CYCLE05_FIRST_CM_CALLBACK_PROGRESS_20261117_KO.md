@@ -83,3 +83,7 @@ CM_120MS_RELEASE=HOLD
 OWNER_WSL2_L3=NOT_RUN
 AXIA_MVP_DEMO_ACCEPTED=HOLD
 CERTIFIED_ESTOP=false
+
+## Cycle05 최종 정리/REVIEW/COMMIT
+- 일회성 공개 release 진단 Moving Goal 워크플로는 전체 L2 결과 보존 후 release 브랜치에서만 삭제, cleanup commit c10b6b27d0fbb62c92ef238732f46c6302eac9e9. 기존 C37/Unified moving HOLD 소스는 수정하지 않았다.
+- 첫 CI #43995476156 NO_GOAL(최초 nested import failure), 둘째 CI #43995793080 실제 Goal·callback81.973ms 관측·120.173ms release FAIL, 둘 다 삭제하지 않고 보존한다. 새 Owner Goal 원샷 배포 금지.
