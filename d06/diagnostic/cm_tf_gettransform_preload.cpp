@@ -5,6 +5,7 @@
 // and per-thread CPU time; NOT an E-Stop or release benchmark.
 #include <nav2_util/robot_utils.hpp>
 #include <rcl/time.h>
+#include <rclcpp/clock.hpp>
 #include <rcutils/allocator.h>
 #include <dlfcn.h>
 #include <fcntl.h>
@@ -105,6 +106,7 @@ thread_local unsigned tf_sleep_calls=0;
 thread_local int tf_sleep_depth=0;
 std::atomic<unsigned> tf_clock_samples{0};
 std::atomic<unsigned> tf_cpp_clock_samples{0};
+thread_local bool tf_cpp_clock_inside=false;
 constexpr unsigned kMaxTfClockSamples=18000;
 std::atomic<unsigned> tf_poll_samples{0};
 constexpr unsigned kMaxTfPollSamples=15000;
@@ -135,6 +137,46 @@ TransformFn actual_transform() {
   return reinterpret_cast<TransformFn>(p);
 }
 }  // namespace
+
+// Native C++ Jazzy Clock::now symbol interposition. Some official CM
+// library call sites resolve through the C++ member rather than through
+// the C rcl_clock_get_now interposition observed by a standalone test.
+// Delegate unchanged to the original exact C++ ABI and log READ ONLY only
+// on the already-diagnostic official Advanced TF callback thread.
+namespace rclcpp {
+Time Clock::now() const
+{
+  using F=Time (*)(const Clock*);
+  static F original=reinterpret_cast<F>(
+      ::dlsym(RTLD_NEXT,"_ZNK6rclcpp5Clock3nowEv"));
+  if(!original) std::abort();
+  // Avoid duplicate C and C++ record output for the same original Clock.
+  struct Suppress { Suppress(){tf_cpp_clock_inside=true;}
+                    ~Suppress(){tf_cpp_clock_inside=false;} };
+  Time now=[&](){Suppress guard;return original(this);}();
+  const int saved_errno=errno;
+  const bool track=tf_window_active &&
+    tf_cpp_clock_samples.fetch_add(1,std::memory_order_relaxed)<kMaxTfClockSamples;
+  if(track) {
+    const int file=active_fd();
+    if(file>=0) {
+      const int typ=static_cast<int>(now.get_clock_type());
+      const int active=typ==static_cast<int>(RCL_ROS_TIME) &&
+        const_cast<Clock*>(this)->ros_time_is_active() ? 1:0;
+      const long long mono=clock_ns(CLOCK_MONOTONIC);
+      char line[240];
+      const int n=std::snprintf(line,sizeof(line),
+        "TF_CLOCK pid=%ld tid=%ld mono_ns=%lld ros_ns=%lld clock_type=%d override_active=%d\n",
+        static_cast<long>(::getpid()),static_cast<long>(::syscall(SYS_gettid)),
+        mono,static_cast<long long>(now.nanoseconds()),typ,active);
+      if(n>0 && n<static_cast<int>(sizeof(line)))
+        (void)::write(file,line,static_cast<size_t>(n));
+    }
+  }
+  errno=saved_errno;
+  return now;
+}
+}  // namespace rclcpp
 
 // Other nodes/threads can preload this library but will not be measured.
 // Nested libc nanosleep->clock_nanosleep wrappers count only the outer call.
@@ -192,7 +234,7 @@ extern "C" rcl_ret_t rcl_clock_get_now(
   using F=rcl_ret_t (*)(rcl_clock_t*,rcl_time_point_value_t*);
   static F next=reinterpret_cast<F>(::dlsym(RTLD_NEXT,"rcl_clock_get_now"));
   if(!next) std::abort();  // Fail closed when official ROS ABI absent.
-  const bool count=tf_window_active &&
+  const bool count=tf_window_active && !tf_cpp_clock_inside &&
     tf_clock_samples.fetch_add(1,std::memory_order_relaxed)<kMaxTfClockSamples;
   const rcl_ret_t rc=next(clock,time_point_value);
   const int saved_errno=errno;
@@ -249,12 +291,14 @@ int axia_g07_task01_clock_get_now_abi_selftest() {
 extern "C" __attribute__((visibility("default")))
 int axia_g07_task01_real_rclcpp_clock_dispatch_selftest() {
   const auto before=tf_clock_samples.load(std::memory_order_relaxed);
+  const auto cpp_before=tf_cpp_clock_samples.load(std::memory_order_relaxed);
   rclcpp::Clock test_clock(RCL_ROS_TIME);
   tf_window_active=true;
   const auto now=test_clock.now();
   tf_window_active=false;
   return now.nanoseconds()>0 &&
-    tf_clock_samples.load(std::memory_order_relaxed)>before ? 1:0;
+    (tf_clock_samples.load(std::memory_order_relaxed)>before ||
+     tf_cpp_clock_samples.load(std::memory_order_relaxed)>cpp_before) ? 1:0;
 }
 
 // Strict external ABI proof: intercept rclcpp::Clock::now itself, not
