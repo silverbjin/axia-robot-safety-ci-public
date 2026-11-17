@@ -108,6 +108,30 @@ def _narrow_first_observer_window_tf(observer, tf_lines):
     return selected
 
 
+# Only literal internal parser error IDs may be written to a PUBLIC
+# artifact. Never propagate exception strings, raw trace, node metadata,
+# file paths, or arbitrary user-controlled messages into the output.
+SAFE_EXPORT_REJECTIONS=frozenset({
+    "PUBLIC_CLOCK_ANCHOR_INVALID",
+    "PUBLIC_CLOCK_ANCHOR_MISSING",
+    "PUBLIC_CLOCK_ANCHOR_FIELD_INVALID",
+    "PUBLIC_CLOCK_ANCHOR_ORDER_INVALID",
+    "PUBLIC_CLOCK_ANCHOR_DRIFT_INVALID",
+    "PUBLIC_RUN_ID_INVALID",
+    "PUBLIC_SHA_INVALID",
+    "PUBLIC_INPUT_UNBOUNDED",
+    "PUBLIC_TF_LINE_OVERSIZE",
+    "PUBLIC_RMW_SOURCE_FIELDS_UNVERIFIED",
+    "PUBLIC_RMW_SOURCE_PAIR_INVALID",
+    "PUBLIC_TF_INTERVAL_INVALID",
+    "PUBLIC_TF_SLEEP_INTERVAL_INVALID",
+    "PUBLIC_TF_RAW_LINE_UNEXPECTED",
+    "PUBLIC_TIMING_SPAN_LIMIT_EXCEEDED",
+    "PUBLIC_OUTPUT_SCHEMA_UNVERIFIED",
+    "PUBLIC_OUTPUT_OVERSIZE",
+})
+
+
 def _fallback(status, run_id, public_sha):
     # Fixed strings and fixed SHA validated by caller; no raw exceptions leak.
     return {
@@ -171,10 +195,16 @@ def extract(*, events, trace_dir, tf_file, anchors_dir,
             data=export_sanitized(observer,trace,tf_lines,anchors,
                     run_id=run_id,public_sha=public_sha,
                     clock_rows=clock_rows)
-    except (OSError,ValueError,KeyError,TypeError,ImportError,RuntimeError):
+    except (OSError,ValueError,KeyError,TypeError,ImportError,RuntimeError) as exc:
         data=_fallback("PUBLIC_EVIDENCE_EXTRACTION_UNVERIFIED_HOLD",
                        run_id,public_sha)
         data["failure_stage"]=failure_stage  # fixed internal enum, no exception text
+        if failure_stage=="EXACT_SOURCE_TF_ALLOWLIST_JOIN":
+            candidate=(exc.args[0] if type(exc) is ValueError
+                       and len(exc.args)==1 and type(exc.args[0]) is str
+                       else None)
+            data["failure_code"]=(candidate if candidate in SAFE_EXPORT_REJECTIONS
+                                  else "UNCLASSIFIED_PUBLIC_EXPORT_ERROR")
         # In contrast with TF/Callback causality, this *independent* RMW
         # source interval needs only MessageInfo sequence and receive rows.
         # The original publisher clock domain remains UNVERIFIED.
