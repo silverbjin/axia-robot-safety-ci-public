@@ -93,3 +93,33 @@ AXIA_MVP_DEMO_ACCEPTED=HOLD
 MAIN_MERGED=false
 CERTIFIED_ESTOP=false
 ```
+
+## 8. NO_GOAL 시계 진단기 실제 실패 → 최소 RED→GREEN
+
+### 최초 실제 실패
+
+신규 첫 NO_GOAL real Jazzy/Harmonic CI [#44055379123](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44055379123) source `d91808aa5eee28afdfb737bd03838c43335e728a`은 **completed/failure**. 외부 Python 검사 마지막 exception은 `FileNotFoundError: /__w/_temp/g07_task01_clock_probe.jsonl`, 실제 최초 검증 경계는 **읽기 전용 Clock 진단기가 SIGTERM 후 자신의 JSONL을 저장하지 못한 것**. 이 결과를 TF/Collision Monitor/Navigation 실패라고 합성하지 않는다. 구독자 자체 로그는 공개하지 않고 정리되어 정확한 내부 exception은 미보존이다.
+
+### 공식 소스에 근거한 단일 가설
+
+[ros2/rclpy Jazzy rclpy/__init__.py](https://github.com/ros2/rclpy/blob/jazzy/rclpy/rclpy/__init__.py) `init` 기본 컨텍스트는 `SignalHandlerOptions.ALL`로 SIGINT/SIGTERM을 설치한다. 이전 독립 구독자 `d06/diagnostic/g07_clock_probe_ros.py`는 커스텀 signal handler를 `rclpy.init()` **전** 설치했으며, `finally`의 `rclpy.shutdown()`이 파일 원자적 저장 **전** 있었다. 따라서 ROS signal shutdown 경로가 커스텀 handler를 덮거나 예외 발생 시 파일을 누락할 수 있는 구조였다. **명시적으로 검증한 것은 파일 보존 실패와 수정 후 결과이며, 최초 hidden Python exception의 직접 원문을 복구했다고 주장하지 않는다.**
+
+### 실제 ROS 2 Jazzy 프로세스 TDD
+
+- 새로운 **실제 Jazzy OCI** 공개 L0 `.github/workflows/axia-g07-task01-clock-signal-persistence-l0-20261117.yml`: Gazebo/Goal 없이 `rclpy` 구독자 프로세스를 구동→`SIGTERM`→JSONL 파일 실재/종료코드 확인.
+- [RED #44056046571](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44056046571), code `adee432d65a139c0064fccfcc89e603d6945225a`: 실제 stdout `AXIA_G07_TASK01_REAL_JAZZY_CLOCK_SIGTERM_FILE_MISSING_RED child_rc=1`. 순수 mock가 아닌 실제 Jazzy `rclpy` RED.
+- 수정 `d06/diagnostic/g07_clock_probe_ros.py`, SHA `74b076cc4d92a49e26953452b1c722ffb5550df3`: `rclpy.init(signal_handler_options=SignalHandlerOptions.NO)` 뒤에 SIGTERM handler 설치, `finally`에서 **file flush/atomic replace FIRST**, ROS node destroy/context shutdown SECOND.
+- [GREEN #44056374762](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44056374762): `AXIA_G07_TASK01_CLOCK_JAZZY_SIGTERM_FILE_PERSISTENCE_L0_GREEN_NO_GOAL`.
+- REVIEW: 단순 파일 생성만으로 정상 종료를 위장하지 않도록 프로세스 `rc=0`도 요구한 강화 [GREEN #44056618278](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44056618278), code/runner SHA `319b0b467acf1e0d2b31357cf626e1644734b58d`, PASS.
+- 공식 Gazebo/Harmonic read-only NO_GOAL 시험은 **실제 원인 수정 코드로 한 번만** 재실행: [Run #44056741357](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44056741357), workflow SHA `e61d6f26528b50f47e6ca902ddb5cdd1cb16f0ef`; 결과는 실제 Run 종료 확인 뒤 확정. 이 보고서 갱신 당시 실행 중이면 **PENDING, NOT PASS**.
+
+**수정 범위:** 공개 CI read-only clock observer의 shutdown/원시 타이밍 임시 파일 보존만. 공식 Nav2/TB3 Waffle, TF buffer, CM/Guard, ROS 노드간 publish, STOP/Goal, safety TTL은 변경 없음. 이것은 인증된 물리 E-Stop이 아니라 진단 저장 경계 수리다.
+
+```text
+AXIA_G07_TASK01_REAL_JAZZY_CLOCK_SIGTERM_RED=REPRODUCED_44056046571
+AXIA_G07_TASK01_REAL_JAZZY_CLOCK_SIGTERM_GREEN=PASS_44056618278
+AXIA_G07_TASK01_REAL_HARMONIC_NO_GOAL_RECHECK=VERIFY_RUN_44056741357
+AXIA_G07_TASK01_FIRST_MOVING_CLOCK_CAUSALITY=UNPROVEN
+AXIA_G07_CM120_RELEASE=HOLD
+AXIA_MVP_DEMO_ACCEPTED=HOLD
+```
