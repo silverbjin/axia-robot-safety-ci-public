@@ -48,6 +48,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           test "$(git -C runtime rev-parse HEAD)" = 6a3047b5aa219687f5fc918e467cea5115d3d482
+          export PYTHONPATH="$GITHUB_WORKSPACE/ci${PYTHONPATH:+:$PYTHONPATH}"
           test "$(git -C ci rev-parse HEAD)" = "${{ github.sha }}"
           python3 -m unittest discover -s ci/d06/tests -p 'test_g07_task01_public_only_execution_contract.py' -v
           python3 -m unittest discover -s ci/d06/tests -p 'test_g07_task01_tf_zero_timeout_availability.py' -v
