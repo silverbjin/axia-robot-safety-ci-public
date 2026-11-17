@@ -36,3 +36,11 @@ CM_120MS_RELEASE=HOLD
 AXIA_MVP_DEMO_ACCEPTED=HOLD
 OWNER_WSL2_MOVING_L3=NOT_RUN
 CERTIFIED_ESTOP=false
+
+## C07 첫 실제 L2 실패와 정확한 공식 입력 YAML 재검증
+- 첫 sim-only public [Run #43998639510](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43998639510) FAILED PRE-GOAL. 최초 launch error: G07_C07_SOURCE_TIMEOUT_NOT_APPROVED_FOR_SIMPLE_TF, 이후 CLOCK_MISSING, FIELD_NO_REAL_GOAL_CANNOT_RELEASE는 cascade. Goal/Stop/CM period는 이 실행에서 수집되지 않았다.
+- Jazzy official nav2_bringup/params/nav2_params.yaml (ros-navigation/navigation2@jazzy, exact file blob ac52c787f587288c448079fdcaa2f4c686f25fbd) 에 source_timeout: 1.0 명시. C++ undeclared parameter fallback은 2.0, 둘은 다르다. 시스템 기본값2.0이라는 이유로 원본 YAML의 실제1.0을 무시한 것이 첫 pregoal failure의 원인. 해당 1.0 source 값을 대조하고 다른 정체불명 값은 거부.
+- 신규 unit test exact official 1.0→0.300s tightening, unknown1.5 거부를 RED로 편입; private test commit 997e794b82322590d0ddf7f78290cc307b9a1991. 기존 private source commit 682849f5dd85cba14fe091fd3317cb0be8a1619b에서 해당 테스트 FAILED(errors=1) 재현. GREEN code commit 3cdbb65ec6130ed74b28b1368246bb70f99ed423: 공식 YAML1.0 또는 C++ fallback2.0만 .3으로 조정, original already <=0.3은 유지.
+- 공개 sealed [Run #43999271004](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43999271004) completed SUCCESS, original C06 RED3 + previously rejected C07 real1.0 RED1 + current GREEN6. 실제 로그: AXIA_G07_C07_PREVIOUS_ACTUAL_JAZZY_ONE_SECOND_SOURCE_TIMEOUT_RED, Ran 6 tests, OK, AXIA_G07_C07_RED3_PLUS_REAL_1S_SOURCE_RED1_GREEN6_PUBLIC_SEALED_L0_PASS_NO_GOAL.
+- 새 sim-only 1개 real one-Goal release trigger commit ba31400e01ab98d893b5fc9e221b4cc5743ffcbb, [Run #43999412342](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43999412342) actual outcome pending. 이전 failed Run과 다른 SHA이며, 같은 오류 현장 재시도가 아니라 원본 official config에 대한 새로운 CI RED→GREEN 증거를 갖춘 실행이다.
+- 수업 핵심: '기본값(Default)'과 '실제 설정값(Effective configuration)'이 다를 수 있다. 정확한 source provenance를 확인하지 않고 CI 코드를 반복 조정하면 pregoal false negatives에 시간 소모가 크다. 따라서 G07 실제 source_timeout=1.0와 official fallback2.0을 별도로 기록한다.
