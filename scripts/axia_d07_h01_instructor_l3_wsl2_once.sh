@@ -61,6 +61,16 @@ need(len(complete)>=2, "TWO_COMPLETE_REAL_PHYSICAL_REPEAT_CYCLES_NOT_PROVEN")
 teardown=native/"evidence/teardown.txt"
 need(teardown.is_file() and "P2_L2_GRACEFUL_TEARDOWN" in teardown.read_text()
      and "FORCED" not in teardown.read_text(), "CLEAN_NATIVE_TEARDOWN_NOT_PROVEN")
+# An outer graceful summary does not prove that each owned ROS child exited
+# cleanly. Real Owner lQkNadLW had CM SIGSEGV (-11) and Guard exit 1.
+launch=native/"evidence/launch.log"
+need(launch.is_file(), "NATIVE_LAUNCH_LOG_MISSING")
+if launch.is_file():
+    launch_text=launch.read_text(errors="replace")
+    need("process has died" not in launch_text,
+         "NATIVE_CHILD_UNCLEAN_EXIT")
+    need("Traceback (most recent call last)" not in launch_text,
+         "NATIVE_PROCESS_TRACEBACK")
 teaching=native/"evidence/d07_h01_teaching_loop.log"
 teaching_text=teaching.read_text() if teaching.is_file() else ""
 need("D07_H01_TEACHING_CTRL_C_STOP OPERATOR" in teaching_text,
