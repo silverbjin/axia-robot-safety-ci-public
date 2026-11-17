@@ -97,12 +97,12 @@ class TestPublicEvidenceAdapter(unittest.TestCase):
             root=Path(t)
             (root/"trace").mkdir()
             (root/"anchors").mkdir()
-            (root/"events").write_text("".join(json.dumps(x)+"\\n"
+            (root/"events").write_text("".join(json.dumps(x)+"\n"
                                       for x in observer()),encoding="utf-8")
             far=("TF_CLOCK pid=4242 tid=33 mono_ns=10000000000 "
-                 "ros_ns=10000000000 clock_type=1 override_active=1\\n")
-            (root/"tf").write_text(READY+"\\n"+far*20001+
-                line(12.014,12.105,cpu=.0003)+"\\n",encoding="utf-8")
+                 "ros_ns=10000000000 clock_type=1 override_active=1\n")
+            (root/"tf").write_text(READY+"\n"+far*20001+
+                line(12.014,12.105,cpu=.0003)+"\n",encoding="utf-8")
             (root/"anchors/start_anchor.json").write_text(json.dumps(anchor()["start"]))
             (root/"anchors/end_anchor.json").write_text(json.dumps(anchor()["end"]))
             with patch("d06.scripts.g07_task01_extract_public_gap.exact_trace_rows",
