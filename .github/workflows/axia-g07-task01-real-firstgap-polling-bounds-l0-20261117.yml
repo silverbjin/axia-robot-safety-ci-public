@@ -8,6 +8,8 @@ on:
       - 'd06/diagnostic/classify_exact_tf_sleep_budget.py'
       - 'd06/tests/test_g07_task01_tf_call_exact_sleep_budget.py'
       - 'd06/tests/test_g07_task01_tf_zero_timeout_availability.py'
+      - 'd06/tests/test_g07_task01_public_evidence_adapter.py'
+      - 'd06/scripts/g07_task01_extract_public_gap.py'
       - 'd06/diagnostic/classify_tf_availability.py'
       - 'd06/diagnostic/export_public_cm120_first_gap.py'
       - 'd06/diagnostic/analyze_first_cm_tf.py'
