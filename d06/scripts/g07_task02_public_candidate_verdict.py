@@ -27,7 +27,7 @@ def main():
     if args.runner_rc!=0:
         verdict["status"]="TASK02_ACTUAL_GAZEBO_OR_GUARD_GOAL_BLOCKED_HOLD"
     verdict.update(actual_runner_rc=args.runner_rc,
-        student_source_sha="7292659a7ea92f25076f4ef605d0dc1e0d1f3c5a",
+        student_source_sha="f890c580b025dde1038296401aed251d384d98b8",
         real_gazebo_l2_numeric_accepted=(
             args.runner_rc==0 and verdict["status"]=="TASK02_PUBLIC_L2_NUMERICAL_CANDIDATE"),
         task03_tracer_off_release_pass=False,
