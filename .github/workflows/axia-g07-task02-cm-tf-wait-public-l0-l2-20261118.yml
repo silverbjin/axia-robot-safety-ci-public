@@ -17,14 +17,25 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
+          path: ci
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
           repository: silverbjin/axia-robot-safety-student
-          ref: ddb3524f4dd4ee88b14da2694c306db4f6ff6b33
+          ref: 7292659a7ea92f25076f4ef605d0dc1e0d1f3c5a
           path: student
           persist-credentials: false
       - name: Task02 RED prove missing official CM bounded TF-timeout opt-in
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C student rev-parse HEAD)" = ddb3524f4dd4ee88b14da2694c306db4f6ff6b33
+          test "$(git -C student rev-parse HEAD)" = 7292659a7ea92f25076f4ef605d0dc1e0d1f3c5a
           cd student/block_B/day07/h01_runtime
           python3 -m unittest discover -s tools -p 'test_g07_task02_cm_tf_wait.py' -v
+          bash -n scripts/p2_no_goal_smoke_ci.sh
+          cd "$GITHUB_WORKSPACE"
+      - name: Public CI strict CM120 + Guard150 safety verifier RED
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest discover -s ci/d06/tests -p 'test_g07_task02_public_strict_gate.py' -v
