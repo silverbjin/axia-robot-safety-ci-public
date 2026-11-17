@@ -65,3 +65,14 @@ CM_120MS_RELEASE=HOLD
 AXIA_MVP_DEMO_ACCEPTED=HOLD
 CERTIFIED_ESTOP=false
 MAIN_MERGED=false
+
+## Cycle06 사후 정정 — source_timeout 기본값과 실제 공식 YAML 값의 구분
+- 중요 정정: 앞서 '원래 YAML source_timeout가 부재할 수 있다'고 기술한 문장은 원본 확인 전 가설이었다. 소스 수준에서 원래 `tools/p2_zone_overlay.py::patch_p2_zone_parameters`는 source_timeout 미존재/비양수일 때 ValueError를 내므로, **해당 파라미터가 없다면 최초 Nav2 파라미터 overlay도 통과할 수 없다**. Cycle06 실제 첫 오류는 값의 부재만을 증명하지 않는다.
+- 외부 공식 Jazzy [`nav2_bringup/params/nav2_params.yaml`](https://github.com/ros-navigation/navigation2/blob/jazzy/nav2_bringup/params/nav2_params.yaml)에는 collision_monitor.source_timeout=**1.0초**, transform_tolerance=0.2초, base_shift_correction=True가 명시되어 있다. 반면 [`collision_monitor_node.cpp`](https://github.com/ros-navigation/navigation2/blob/jazzy/nav2_collision_monitor/src/collision_monitor_node.cpp)의 *파라미터 미선언 시* 코드 기본값은 2.0초다. 이 둘은 다른 계약이다. 실제 해당 컨테이너 설치 파일 SHA/파라미터 readback은 아직 직접 확인 전이다.
+- Cycle06 초과로 구동 중단된 직접 원인은 private `p4_g07_cm_sim_simple_tf.py`의 **임의 0.15~0.50초** 범위 제한이며, 공식 YAML의 1.0초를 허용하지 않는 테스트 설계 오류일 가능성이 높다. 안전을 이유로 더 짧은 값을 강요하는 것이 본 실험의 원래 '공식 1개 파라미터만 변경' 계약에 부합하지 않는다.
+- 수정 정책: source_timeout를 인위적으로 0.5초 이하로 변경하지 않고, 기존 공식 YAML의 값과 실제 NO_GOAL 런타임 값을 공개 CI에서 대조한다. 그 결과 없이 `source_timeout=1.0`을 실제 시행값으로 확정하지 않는다. 현재 `base_shift_correction=false`는 Goal 이전 차단 상태 유지.
+- 일회성 공개 release C06 workflow는 이미 cleanup `7b859836724ded52f8fd3f0d436bbcdb627fc3e9`(Moving L2), `59788bf73bef6e8734ed47689b867e6d0b57808e`(L0)로 회수. 원래 자동 GOAL HOLD 유지.
+
+### 교육 포인트
+- **라이브러리 선언 시 기본값**, **공식 패키지 기본 YAML**, **실제 설치된 파일**, **노드 실행 중 readback**의 네 층위는 다르며, 1.0과 2.0을 임의로 혼용해서는 안 된다.
+- 파라미터 검사 코드 자체가 실제 baseline보다 더 제한적인 가설이었는지 의심한다. GREEN4는 존재하지 않는 범위를 단위 테스트로 강제한 자체 검증에 불과할 수 있다. 반드시 실제 런타임을 계약의 기준으로 삼는다.
