@@ -60,3 +60,6 @@ PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests/unit -p 'test_g0
 - 실제 public Run: https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43992804389
 - 검증: 실제 Jazzy+Gazebo+Nav2 NO_GOAL L2 + L0 7/7, 원본 민감데이터 회수. 미검증: Moving CM first-gap/Guard150ms/120ms release, Owner L3. PR 공개 #142 / Instructor private #196 Draft, main 병합 없음.
 - `AXIA_G07_CYCLE03_NO_GOAL_L2=PASS`; `CM_FIRST_CALLBACK_CAUSE=UNPROVEN`; `CM_120MS_RELEASE=HOLD`; `AXIA_MVP_DEMO_ACCEPTED=HOLD`; `CERTIFIED_ESTOP=false`.
+
+## 종료 후 release 정리
+- 단발성 C03 실행 워크플로 release 브랜치에서만 삭제, cleanup commit `f22014064c670fe14827f540e4ae4f2b40ee2305`. 공개 Draft PR #142/비공개 #196의 원본과 실제 Run #43992804389를 보존. Moving Goal release HOLD 워크플로는 수정하지 않음. 
