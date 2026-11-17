@@ -172,3 +172,15 @@ AXIA_MVP_DEMO_ACCEPTED=HOLD
 CERTIFIED_ESTOP=false
 MAIN_MERGED=false
 ```
+
+## 9. 최종 REFACTOR/REVIEW 결과 및 배포 후보 분리
+
+최종 소스 리뷰에서 feature branch의 `.github/workflows/axia-g07-cm120-task01-private-custody-canary-sealed-l0.yml`은 새 feature branch에서 sealed environment **Job step 0개**로 실패한 별도 중복 실행기임을 확인했다. 이 경로를 **작업 브랜치에서 삭제**했다(커밋 `d61df4d72a5456b8ed3bbfaa10adb909c43e57c1`). 성공했던 이전 원본 CI 경로를 훼손하지 않으며, 안전상 승인된 공개 릴리스 경로만 별도 유지한다.
+
+실제 릴리스 경로의 `.github/workflows/axia-g07-task01-private-custody-release-preflight-20261117.yml`은 `workflow_dispatch` **전용**이며, missing scoped write token으로 추가 Job/Goal 반복을 자동 발생시키지 않는다. 소스 SHA와 검사 의미는 매번 정확히 구별한다.
+
+**REVIEW:**
+- Task01 진단기 C++ `TF_SLEEP`는 공식 `RTLD_NEXT` Advanced TF 동작을 변경하지 않고 PID/TID/mono duration/errno를 기록하는 **CI-only** 도구다. 원본 `tf2` sleep count를 통한 최초 Moving source gap 인과는 아직 HOLD.
+- NO_GOAL 실제 `1059/1264` 경계 관측 사실과 종료 Navigation service timeout FAIL을 동시에 보존한다.
+- 비공개 원본 저장 수신처 read 권한만 있는 현황을 코드/CI 성공으로 위장하지 않으며, 사용자에게 **credential 값 자체를 채팅에 제출하라고 요구하지 않는다**. GitHub environment secret UI를 이용하도록 한다.
+- Draft PR #159 및 본 문서는 **main/강사 정답/학생용 릴리스 변경을 하지 않음**. 공식 Nav2 수정 없음.
