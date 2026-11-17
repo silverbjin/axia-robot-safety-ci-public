@@ -7,9 +7,9 @@ set -Eeuo pipefail
 umask 077
 
 readonly PRIVATE_REPO='silverbjin/axia-robot-safety-instructor'
-readonly PRIVATE_SHA='7306b27bc1d146d99d1657308549db45c9878407'
-readonly PUBLIC_REAL_GAZEBO_XVFB_L2_RUN='43997663084'
-readonly PUBLIC_NO_ROS_L0_RUN='43997532528'
+readonly PRIVATE_SHA='3a893c1875d2647979a608afaaa335a88158469f'
+readonly PUBLIC_REAL_GAZEBO_XVFB_L2_RUN='44002483668'
+readonly PUBLIC_NO_ROS_L0_RUN='44002353440'
 readonly CI_CONTAINER_DIGEST='sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e'
 
 # Bounded read-only WSLg GUI screenshot and resource capture. Never auto PASS.
@@ -401,10 +401,14 @@ PYFIRST
     # first fatal native GPU crash over downstream DDS/Path subscriber loss.
     FIRST_GUI_ERROR="$(grep -m1 -E '^D07_H01_GUI_FIRST_NATIVE_GZ_RENDER_SIGSEGV_139' "$GUI_L2/d07_gui_watcher.log" || true)"
     if [[ -z "$FIRST_GUI_ERROR" ]]; then
-      FIRST_GUI_ERROR="$(grep -m1 -E '^D07_H01_GUI_CHILD_TERMINATED_BEFORE_PHASE_COMPLETE|^D07_H01_GUI_(TRANSPORT_TOPIC_PROBE_FAILED|TRANSPORT_WORLD_TOPIC_GATE_FAILED|GPU_TRIAL_SCOPE_DENIED|AFTER_FREE_BASELINE_MARKER_MISSING_NO_GOAL|WATCHER_SPAWN_ACK_UNWRITABLE|WATCHER_EXIT rc=)' "$GUI_L2/d07_gui_watcher.log" || true)"
+      FIRST_GUI_ERROR="$(grep -m1 -E '^D07_H01_GUI_CHILD_TERMINATED_BEFORE_PHASE_COMPLETE|^D07_H01_GUI_(TRANSPORT_TOPIC_PROBE_FAILED|TRANSPORT_WORLD_TOPIC_GATE_FAILED|GPU_TRIAL_SCOPE_DENIED|AFTER_FREE_BASELINE_MARKER_MISSING_NO_GOAL|WATCHER_SPAWN_ACK_UNWRITABLE|WATCHER_EXIT rc=[1-9][0-9]*)' "$GUI_L2/d07_gui_watcher.log" || true)"
     fi
   fi
-  if [[ -z "$FIRST_STAGED_FAILURE" && -z "$FIRST_GUI_ERROR" && -s "$GUI_L2/d07_gui_watcher_exit.txt" ]]; then
+  # Exit code zero of a GUI watcher is expected AFTER the official
+  # three-phase completion marker. It is not a first-failure candidate.
+  if [[ -z "$FIRST_STAGED_FAILURE" && -z "$FIRST_GUI_ERROR"
+        && -s "$GUI_L2/d07_gui_watcher_exit.txt"
+        && ! -s "$GUI_L2/d07_h01_geometry/gui_phase_complete.ready" ]]; then
     FIRST_GUI_ERROR="D07_H01_GUI_WATCHER_EXITED_BEFORE_DDS"
   elif [[ -z "$FIRST_STAGED_FAILURE" && -z "$FIRST_GUI_ERROR" && ! -s "$GUI_L2/d07_gui_watcher_started.txt" ]]; then
     FIRST_GUI_ERROR="D07_H01_GUI_WATCHER_SPAWN_ACK_ABSENT"
@@ -414,6 +418,26 @@ PYFIRST
   if [[ -n "$FIRST_GUI_ERROR" ]]; then
     printf '%s\n' "$FIRST_GUI_ERROR" > "$RUN/owner_first_gui_boundary.txt"
     echo "AXIA_D07_H01_FIRST_GUI_FAILURE_FROM_WATCHER=$FIRST_GUI_ERROR"
+  fi
+  if [[ -z "$FIRST_STAGED_FAILURE" && -z "$FIRST_GUI_ERROR"
+        && -s "$GUI_L2/teardown.txt"
+        && "$(cat "$GUI_L2/teardown.txt")" == 'D07_H01_CHILD_SHUTDOWN_BLOCKED' ]]; then
+    FIRST_TEARDOWN_FAILURE="$(python3 - "$GUI_L2/d07_h01_shutdown_audit.json" <<'PYTEARDOWN'
+import json,sys
+from pathlib import Path
+p=Path(sys.argv[1])
+reason='AUDIT_RECORD_MISSING'
+try:
+    audit=json.loads(p.read_text(encoding='utf-8'))
+    missing=audit.get('missing_child_exits',[])
+    reason=','.join(missing) if missing else str(audit.get('status','CHILD_EXIT_UNVERIFIED'))
+except (OSError,ValueError,TypeError):
+    pass
+print('D07_H01_CHILD_SHUTDOWN_BLOCKED:'+reason)
+PYTEARDOWN
+)"
+    printf '%s\n' "$FIRST_TEARDOWN_FAILURE" > "$RUN/owner_first_teardown_boundary.txt"
+    echo "AXIA_D07_H01_FIRST_TEARDOWN_FAILURE=$FIRST_TEARDOWN_FAILURE"
   fi
 fi
 axia_d07_watch_stop
@@ -501,12 +525,17 @@ first_staged_boundary=(first_staged_file.read_text().strip()
 first_gui_file=root/'owner_first_gui_boundary.txt'
 first_gui_boundary=(first_gui_file.read_text().strip()
                     if runner_rc!=0 and first_gui_file.is_file() else '')
+first_teardown_file=root/'owner_first_teardown_boundary.txt'
+first_teardown_boundary=(first_teardown_file.read_text().strip()
+                         if runner_rc!=0 and first_teardown_file.is_file() else '')
 # A native Lifecycle gate fails BEFORE a GUI watcher can be started.
 # Never overwrite the actual first error with a later missing X11 watcher.
 if first_staged_boundary:
     reason=first_staged_boundary
 elif first_gui_boundary:
     reason=first_gui_boundary
+elif first_teardown_boundary:
+    reason=first_teardown_boundary
 # Actual WSL2 X11 window titles and ROS/DDS do NOT prove rendered 3D
 # pixels. Current Owner Xoszr6rv demonstrates why. Snapshot files must
 # be manually reviewed for robot+world and RViz TF/map, never auto-accepted.
@@ -521,11 +550,12 @@ out={
     'schema':'axia_d07_h01_owner_gui_l3_scoped_v2_visual_review',
     'status':'D07_H01_OWNER_GUI_VISUAL_HOLD',
     'reason':reason,
-    'first_missing_visual_boundary':(first_staged_boundary or first_gui_boundary or
+    'first_missing_visual_boundary':(first_staged_boundary or first_gui_boundary or first_teardown_boundary or
         (reason if source_scope_ready or reason.startswith('D07_H01_SCENE_')
          else 'ROS_SOURCE_OR_X11_NOT_READY')),
     'first_staged_boundary':first_staged_boundary or None,
     'first_gui_boundary':first_gui_boundary or None,
+    'first_teardown_boundary':first_teardown_boundary or None,
     'private_source_sha':source,
     'public_same_source_gazebo_xvfb_l2_run_not_wslg_gpu':ci_run,
     'owner_runner_rc':runner_rc,
