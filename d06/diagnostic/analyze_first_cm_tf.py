@@ -25,6 +25,7 @@ def hold(reason,**extra):
                 original_source_modified=False,goal_count_authorized=0,
                 root_cause_proven=False,tf_wait_proven=False,
                 scheduler_wait_proven=False,gate_c_authorized=False,
+                source_publication_to_monotonic_alignment_proven=False,
                 cm120_release_pass=False,certified_estop=False,**extra)
 
 def analyze(observer,trace,tf_lines,anchors):
@@ -111,23 +112,26 @@ def analyze(observer,trace,tf_lines,anchors):
         covered=sum(t[3]-t[2] for t in intervals)
         if covered>end-start+.006:return hold("TF_TIME_EXCEEDS_CALLBACK_CLOCK_ERROR")
         if intervals:
-            # Callback overlap is NOT proof that its TF function ran in the
-            # first CM RMW source gap. Match TF's actual MONOTONIC interval
-            # to the same observer first-gap window before attributing time.
-            # These are nominal spans, not proof of Buffer wait or scheduler.
-            tf_gap_overlap=sum(max(0.0,min(t[3],b["t"])-max(t[2],a["t"]))
+            # The first source-gap *pair* is identified from RMW SYSTEM
+            # timestamps. Its a["t"], b["t"] window, however, contains
+            # OBSERVER callback MONOTONIC timestamps, not publisher times.
+            # We can reject TF outside this observer interval, but cannot
+            # prove the exact source-publication/TF causal overlap without
+            # validated same-host SYSTEM-to-MONOTONIC sender alignment.
+            tf_observer_overlap=sum(max(0.0,min(t[3],b["t"])-max(t[2],a["t"]))
                                for t in intervals)
-            fully_inside=(tf_gap_overlap>0 and all(
+            fully_inside=(tf_observer_overlap>0 and all(
                 t[2]>=a["t"] and t[3]<=b["t"] for t in intervals))
-            temporal_relation=("NO_OVERLAP" if tf_gap_overlap<=0 else
+            temporal_relation=("NO_OVERLAP" if tf_observer_overlap<=0 else
                                "FULL_NOMINAL_OVERLAP" if fully_inside else
                                "PARTIAL_OVERLAP")
             matched.append(dict(
-                    tf_first_gap_temporal_relation=temporal_relation,
-                    tf_nominal_overlap_first_gap_ms=tf_gap_overlap*1000,
-                    # S2 per-call sleep is aggregated; it is not a precise
-                    # sleep event interval inside the first publication gap.
-                    tf_sleep_inside_first_gap_proven=False,
+                    tf_observer_pair_temporal_relation=temporal_relation,
+                    tf_nominal_overlap_observer_pair_ms=tf_observer_overlap*1000,
+                    # Per-call aggregate sleep lacks per-sleep timestamps.
+                    # Even FULL_NOMINAL_OVERLAP here is observer-relative,
+                    # never proof of sleep in RMW publisher source gap.
+                    tf_sleep_in_source_gap_proven=False,
                     callback_ms=(end-start)*1000,
                     tf_function_wall_ms=covered*1000,
                     tf_thread_cpu_ms=sum(t[4] for t in intervals)*1000,
@@ -141,12 +145,12 @@ def analyze(observer,trace,tf_lines,anchors):
         return hold("TF_NOT_LINKED_TO_FIRST_CM_GAP_CALLBACK_UNPROVEN",
                     first_source_gap_ms=round(source_ms,6))
     selected=max(matched,key=lambda x:x["overlap_first_gap_ms"])
-    if selected["tf_first_gap_temporal_relation"]=="NO_OVERLAP":
-        return hold("TF_OUTSIDE_FIRST_CM_SOURCE_GAP_HOLD",
+    if selected["tf_observer_pair_temporal_relation"]=="NO_OVERLAP":
+        return hold("TF_OUTSIDE_FIRST_CM_OBSERVER_PAIR_HOLD",
             first_cm_rmw_source_gap_ms=round(source_ms,6),
-            tf_first_gap_temporal_relation="NO_OVERLAP",
-            tf_nominal_overlap_first_gap_ms=0.0,
-            tf_sleep_inside_first_gap_proven=False,
+            tf_observer_pair_temporal_relation="NO_OVERLAP",
+            tf_nominal_overlap_observer_pair_ms=0.0,
+            tf_sleep_in_source_gap_proven=False,
             matched_tf_calls=selected["matched_tf_calls"])
     cb=selected["callback_ms"]
     tf=selected["tf_function_wall_ms"]
@@ -167,9 +171,9 @@ def analyze(observer,trace,tf_lines,anchors):
         tf_wall_fraction_of_callback=round(dominance,4),
         cpu_vs_wall_difference_ms=round(max(0,tf-cpu),6),
         matched_tf_calls=selected["matched_tf_calls"],
-        tf_first_gap_temporal_relation=selected["tf_first_gap_temporal_relation"],
-        tf_nominal_overlap_first_gap_ms=round(selected["tf_nominal_overlap_first_gap_ms"],6),
-        tf_sleep_inside_first_gap_proven=False,
+        tf_observer_pair_temporal_relation=selected["tf_observer_pair_temporal_relation"],
+        tf_nominal_overlap_observer_pair_ms=round(selected["tf_nominal_overlap_observer_pair_ms"],6),
+        tf_sleep_in_source_gap_proven=False,
         actual_tf_function_interval_recorded=True,
         s2_offcpu_provenance=(selected.get("offcpu_provenance") or
                              dict(status="S2_SCHEDULER_METRICS_NOT_COLLECTED_HOLD",
