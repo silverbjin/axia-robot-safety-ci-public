@@ -42,7 +42,7 @@
 
 - 기존 실제 Gazebo NO_GOAL 성공 runner를 재사용하여 읽기 전용 sidecar를 포함한 **새 공개 CI L2 [Run #44055379123](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44055379123)** 를 제출했다.
 - Workflow: `.github/workflows/axia-g07-task01-live-clock-no-goal-l2-20261117.yml`, 공개 릴리스 경로 `release/p2-g06-cm-ttl-20261110`, workflow SHA `d91808aa5eee28afdfb737bd03838c43335e728a`, 공개 코드는 `05fbfeaf5cded7dabf991d7ecba045c8563d39c5` pin, sealed private noGoal Instructor code SHA `2df98da9cb9507ce905acbe82da46e93a79f0398`.
-- **보고서 생성 시 실제 GitHub job 진행 중.** 현장 `SMOKE_READY`/lifecycle ACK/clock probe 수치/전체 conclusion을 재조회해 검증한 뒤 결과를 추가 기재할 것. 이 시점에서 PASS를 주장하지 않는다.
+- **최종 판정:** 최초 [#44055379123](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44055379123)은 SIGTERM 이후 Clock JSONL 누락으로 FAIL, [#44056741357](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44056741357)은 계측 성공과 별개로 native shutdown rc3 FAIL, 새 **6초 구간 제한 [#44057915125](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44057915125)은 실제 공식 NO_GOAL L2 PASS**. 자세한 RED→GREEN/원본 ACK 수치는 아래 §8~9 참조. Moving CM120 인과와는 구별한다.
 - 이 새 NO_GOAL 시험은 **원인 입증용 ROS clock probe 자체의 준비 검증**이며, 첫 Moving Goal의 동일 source gap 인과 테스트가 아니다.
 - Goal은 **자동으로 발행하지 않음**. NO_GOAL STOP/종료 실패면 그 첫 경계를 공개 CI 회귀로 좁히고 같은 조건 반복 금지.
 
@@ -82,8 +82,8 @@ python3 -m py_compile d06/scripts/g07_task01_extract_public_gap.py
 ```text
 AXIA_G07_TASK01_REAL_FIRST_GAP_SLEEP_L0=PASS_5
 AXIA_G07_TASK01_SAME_OBSERVER_CLOCK_PROBE_L0=PASS_9
-AXIA_G07_TASK01_REAL_NO_GOAL_CLOCK_PROBE=VERIFY_RUN_44055379123
-AXIA_G07_TASK01_SAME_MOVING_FIRST_SOURCE_CLOCK=NOT_YET_MEASURED
+AXIA_G07_TASK01_REAL_NO_GOAL_CLOCK_PROBE=PASS_44057915125_AFTER_REPRODUCED_FAILURES
+AXIA_G07_TASK01_SAME_MOVING_FIRST_SOURCE_CLOCK=NOT_MEASURABLE_FIRST_SOURCE_GAP_NOT_REPRODUCED_RUN_44059005075
 AXIA_G07_TASK01_TF_SLEEP_VS_SCHEDULER_ROOT_CAUSE=UNPROVEN
 AXIA_G07_TASK02=BLOCKED_CAUSE_UNPROVEN
 AXIA_G07_TASK03_TRACER_OFF=NOT_RUN
@@ -111,14 +111,14 @@ CERTIFIED_ESTOP=false
 - 수정 `d06/diagnostic/g07_clock_probe_ros.py`, SHA `74b076cc4d92a49e26953452b1c722ffb5550df3`: `rclpy.init(signal_handler_options=SignalHandlerOptions.NO)` 뒤에 SIGTERM handler 설치, `finally`에서 **file flush/atomic replace FIRST**, ROS node destroy/context shutdown SECOND.
 - [GREEN #44056374762](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44056374762): `AXIA_G07_TASK01_CLOCK_JAZZY_SIGTERM_FILE_PERSISTENCE_L0_GREEN_NO_GOAL`.
 - REVIEW: 단순 파일 생성만으로 정상 종료를 위장하지 않도록 프로세스 `rc=0`도 요구한 강화 [GREEN #44056618278](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44056618278), code/runner SHA `319b0b467acf1e0d2b31357cf626e1644734b58d`, PASS.
-- 공식 Gazebo/Harmonic read-only NO_GOAL 시험은 **실제 원인 수정 코드로 한 번만** 재실행: [Run #44056741357](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44056741357), workflow SHA `e61d6f26528b50f47e6ca902ddb5cdd1cb16f0ef`; 결과는 실제 Run 종료 확인 뒤 확정. 이 보고서 갱신 당시 실행 중이면 **PENDING, NOT PASS**.
+- 공식 Gazebo/Harmonic read-only NO_GOAL은 처음 [#44056741357](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44056741357) FAIL; scope-only 후속 [#44057915125](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44057915125) **PASS**. 후속은 중복 성공 실행이 아니라 원인 가설에 대한 한 가지 진단기 생존시간 변경. §9에 실제 Navigation/Localization native ACK 기록.
 
 **수정 범위:** 공개 CI read-only clock observer의 shutdown/원시 타이밍 임시 파일 보존만. 공식 Nav2/TB3 Waffle, TF buffer, CM/Guard, ROS 노드간 publish, STOP/Goal, safety TTL은 변경 없음. 이것은 인증된 물리 E-Stop이 아니라 진단 저장 경계 수리다.
 
 ```text
 AXIA_G07_TASK01_REAL_JAZZY_CLOCK_SIGTERM_RED=REPRODUCED_44056046571
 AXIA_G07_TASK01_REAL_JAZZY_CLOCK_SIGTERM_GREEN=PASS_44056618278
-AXIA_G07_TASK01_REAL_HARMONIC_NO_GOAL_RECHECK=VERIFY_RUN_44056741357
+AXIA_G07_TASK01_REAL_HARMONIC_NO_GOAL_RECHECK=PASS_44057915125_AFTER_CLOCK_SCOPE_FIX
 AXIA_G07_TASK01_FIRST_MOVING_CLOCK_CAUSALITY=UNPROVEN
 AXIA_G07_CM120_RELEASE=HOLD
 AXIA_MVP_DEMO_ACCEPTED=HOLD
