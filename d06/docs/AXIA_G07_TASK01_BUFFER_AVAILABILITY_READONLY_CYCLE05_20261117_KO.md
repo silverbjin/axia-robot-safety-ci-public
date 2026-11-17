@@ -90,3 +90,47 @@ AXIA_MVP_DEMO_ACCEPTED=HOLD
 MAIN_MERGED=false
 CERTIFIED_ESTOP=false
 ```
+
+## 7. 단일 실제 Moving 진단 최종 판정 — 두 독립 경계, 추가 재시도 금지
+
+**[공개 원본 Gazebo/ROS2 단일 Moving Goal #44073078458](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44073078458)**; workflow SHA `c3f50090350ac0084bced778d0df2d72c08e663c`, private original source `966886c4627deb2bb3b37111fe336eeee6b9ebb4`, 공개 진단 source `5a067af927a06be6d08d62994fcb578d8a571404`, GitHub result **completed/failure**, job `134003972377`.
+
+### 최초 실제 타이밍 위반
+
+- **이번 실행에는 최초 CM source >120ms 위반이 없음**. 독립 Jazzy `MessageInfo` 검사 RMW publisher source 최대 **0.117998s**, 307 유효 RMW 표본. 별도 CM Observer 최대 **0.118261395s**. 둘 다 경계120ms 이내지만 여유 **2.002ms / 1.739ms**에 불과하다. 이번 계측은 tracer-ON이므로 tracer-OFF 릴리스 PASS 불가.
+- 동일 실제 주행/Goal의 7계층 관찰기 최대 전달 간격: source **93.544ms**, Supervisor **93.604ms**, CM Observer **118.261ms**, Guard **77.571ms**, Clock **98.421ms**, Odom **107.892ms**, Scan **198.392ms**. 120/300ms 목표와 대조하되 소스/Observer 측정치를 혼동하지 않는다.
+- 물리 행동: 공식 로봇 CLEAR→SLOW→STOP 관찰 PASS, 이동 **0.1928m**, odom ZERO dwell **1.025s**, 실제 단일 Goal UUID `0048321280154b189a764c27e7c8736f`의 정확한 `CANCELED` 응답 PASS. 이는 주행 부분의 단계적 증거일 뿐 최종 인수 아니다.
+- C05 진단 step `FIRST_CM_RMW_SOURCE_PAIR_UNVERIFIED_HOLD`는 **결함의 증명 실패가 아니라 첫 >120ms gap 자체가 재현되지 않은 것을 올바르게 거부한 결과**. 따라서 이번 raw 시간에 TF_AVAIL을 연결할 **동일 최초 source gap이 없다**.
+- Fail-closed 공개 allowlist artifact **[#14323023706](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44073078458/artifacts/14323023706)**, digest `sha256:408783bcd45f04ff6be7cf597c3aaa97100505e6cca95ee8a5ed48df4833112c`, ZIP 크기644B. `first_gap=null`, `tf_availability=NOT_RECORDED_NO_FIRST_GAP`, `root_cause_proven=false`, `cm120_release_pass=false` 및 기존 SHA256SUMS 무결성 검사 확인. 코드가 first gap이 없는데 임의의 TF 변환 시간창을 선택하지 않았다.
+
+### 분리해야 할 최초 Native Lifecycle 종료 실패
+
+- 실제 Goal 취소 응답 직후 공식 Navigation Lifecycle `ManageLifecycleNodes(SHUTDOWN)` request **전송 성공**, 서버 graph와 service advertising **존재**, 그러나 원본 응답 timeout **40.000372s**: `BLOCKED_LIFECYCLE_NAVIGATION_SERVICE_TIMEOUT`.
+- `navigation_ack=false`, `localization_ack=false` (Localization manager 호출 전 차단), `cm_clean_process_exit_verified=false`; 이번 세션에서 **전체 native ACK / CM exit0 / S02 Contact0 원본 최종 인수는 PASS 증거가 아님**. 원본 Runner 종료 rc2.
+- 기존 C34 Instructor PR #208는 **optional exact-UUID terminal gate 누락을 fail-closed**로 막는 별도 수정. 이번 실행에서는 exact UUID가 이미 `CANCELED`였으므로 C34에서 검증한 **플래그 누락 문제와 이번 40s 서버 응답 무응답을 동일 원인으로 간주 금지**. 관련 C34 실제 L2 PASS #44030235323 역시 다른 private SHA `49f38d7912bf8930a331577090522ccf52337fba`이므로 새 SHA와 합성 불가.
+- **원인 후보:** 실제 manager service handler 또는 executor 지연, 런타임 부하, lifecycle 충돌 등이지만 **원시 native manager callback 시간증거 없어 미확정**. 더 이상 단순 동일 Goal 재시도로 확인하지 않는다. 확정 첫 경계는 종료 서비스의 `request_sent=true` 이후 response timeout으로 기록한다.
+
+### 다음 차별화 작업의 최소 조건
+
+1. Task01 최초 source 타이밍 결함 자체는 **여전히 UNPROVEN**. 새 성공 NO_GOAL 589 TF calls/478 false→true로 *Advanced TF availability wait mechanism* 자체는 확인됐으나 **실패한 원래 Moving source>120ms와 동일 인과 증명은 없음**. Scheduler runqueue `sched_schedstats=0` → `UNAVAILABLE`, zero로 추정 금지.
+2. 장래 새 계측 Moving을 고려한다면 **최초 source gap이 재현되지 않을 때에도 비공개 내용을 제외한 숫자형 TF availability 집계와 임시 증거 보존**이 가능한지 공개 L0로 먼저 확인. 단 동일 주행을 더 돌리는 이유가 되지는 않는다.
+3. 독립 Navigation ACK 문제는 **정확한 native manager 요청/응답·executor 경계를 공개 CI 회귀로 먼저 편입할 수 있는 부분부터** 검증한다. 통과한 C34 종료계약을 재사용하지만 새 성공을 기정사실화하지 않는다. 기존 안전 TTL/Polygon/Nav2 공식 코드를 임의 수정하지 않는다.
+4. Task02 단일 원인 성능 수정, Task03 tracer-OFF 통합 L2, Task04 WSL2 L3는 모두 선행 인과증거 미충족으로 **BLOCKED/NOT RUN**. 이번 유효한 성공은 L0 정제 진단 34/34, 공식 Jazzy ABI, NO_GOAL L2에 한정.
+
+```text
+AXIA_G07_TASK01_ZERO_TIMEOUT_NO_GOAL=PASS_44072394317
+AXIA_G07_TASK01_MOVING_DIAGNOSTIC=FAIL_44073078458
+AXIA_G07_TASK01_FIRST_CM_SOURCE_OVER_120MS=NOT_REPRODUCED
+AXIA_G07_TASK01_REAL_MOVING_CM_RMW_SOURCE_MAX_MS=117.998
+AXIA_G07_TASK01_REAL_MOVING_CM_OBSERVER_MAX_MS=118.261395
+AXIA_G07_TASK01_REAL_MOVING_NATIVE_NAV_ACK=TIMEOUT_40.000372S
+AXIA_G07_TASK01_REAL_MOVING_NATIVE_LOC_ACK=NOT_REQUESTED
+AXIA_G07_TASK01_ROOT_CAUSE=UNPROVEN
+AXIA_G07_TASK02=BLOCKED_CAUSE_UNPROVEN
+AXIA_G07_TASK03_TRACER_OFF=NOT_RUN
+AXIA_G07_TASK04_OWNER_WSL2=NOT_RUN
+CM120_TRACER_OFF_RELEASE=HOLD
+AXIA_MVP_DEMO_ACCEPTED=HOLD
+MAIN_MERGED=false
+CERTIFIED_ESTOP=false
+```
