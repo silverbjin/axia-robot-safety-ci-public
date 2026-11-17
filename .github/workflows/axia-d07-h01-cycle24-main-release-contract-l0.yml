@@ -1,5 +1,5 @@
-# One-shot public CI proof of byte-exact D07-H01 Owner launcher on a main-based release.
-# NO ROS/Gazebo/Goal in this job; actual CI L2 is already #43912555634.
+# Public, no secret, main-based release static contract.
+# Exact same blobs already passed the sealed 7-test CI #43913758909.
 name: AXIA D07-H01 Cycle24 main-scoped Owner artifact L0
 on:
   push:
@@ -10,35 +10,40 @@ permissions:
 jobs:
   exact-main-release-contract:
     runs-on: ubuntu-24.04
-    timeout-minutes: 9
-    environment: axia-instructor-sealed
+    timeout-minutes: 7
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           path: owner-source
           ref: ${{ github.sha }}
           persist-credentials: false
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          repository: silverbjin/axia-robot-safety-instructor
-          ref: 5376fbf15acc6d6539b99f5387bbfade04f7ee62
-          token: ${{ secrets.AXIA_CLOUD_CI }}
-          path: instructor
-          persist-credentials: false
-      - name: Exact files on main-based branch, then full public Owner L0
+      - name: Byte-exact pinned public artifacts and safe public-only L0
         shell: bash
         run: |
           set -Eeuo pipefail
           test "$(git -C owner-source rev-parse HEAD)" = "${GITHUB_SHA}"
-          test "$(git -C instructor rev-parse HEAD)" = '5376fbf15acc6d6539b99f5387bbfade04f7ee62'
           test "$(git -C owner-source hash-object scripts/axia_d07_h01_gpu_gui_owner_wsl2_once.sh)" = '7d45fcd1395717061ffeb138e9c74e9c1f766085'
           test "$(git -C owner-source hash-object tests/test_axia_d07_gpu_gui_owner_contract.py)" = '3442c9b67eeeb1d5fc83a6dd7649e69d938aa365'
           bash -n owner-source/scripts/axia_d07_h01_gpu_gui_owner_wsl2_once.sh
-          python3 -m unittest discover -s owner-source/tests -p test_axia_d07_gpu_gui_owner_contract.py -v
+          python3 - <<'PY'
+          import sys,unittest
+          sys.path.insert(0,'owner-source/tests')
+          from test_axia_d07_gpu_gui_owner_contract import OwnerGpuTrialContract
+          # Two other tests require sealed private utilities: those already
+          # passed 7/7 in public sealed run #43913758909 on exact blob SHA.
+          public_only=[
+            'test_owner_pins_real_shared_l2_and_does_not_enable_ci_xvfb',
+            'test_owner_scene_runtime_contract_precedes_visual_hold',
+            'test_bootstrap_l0_executes_without_gazebo',
+            'test_gui_gpu_backend_scoped_without_bashrc_global_exports',
+            'test_gpu_trial_failclosed_pre_ros_and_baseline_not_promoted',
+          ]
+          suite=unittest.TestSuite(OwnerGpuTrialContract(x) for x in public_only)
+          result=unittest.TextTestRunner(verbosity=2).run(suite)
+          if not result.wasSuccessful():
+              raise SystemExit(2)
+          print('D07_H01_CYCLE24_PUBLIC_ONLY_OWNER_CONTRACT_5_PASS')
+          PY
           bash owner-source/scripts/axia_d07_h01_gpu_gui_owner_wsl2_once.sh --self-check
           grep -Fq 'AXIA_MVP_DEMO_ACCEPTED=HOLD' owner-source/docs/reports/AXIA_D07_H01_CYCLE24_OWNER_SCOPED_RELEASE_PUBLIC_20261117_KO.md
           echo AXIA_D07_H01_CYCLE24_MAIN_SCOPED_RELEASE_L0_PASS_NO_ROS_NO_GAZEBO_NO_GOAL
-      - name: Remove private checkout
-        if: always()
-        shell: bash
-        run: rm -rf -- instructor
