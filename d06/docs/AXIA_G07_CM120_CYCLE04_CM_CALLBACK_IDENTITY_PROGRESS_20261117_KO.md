@@ -73,3 +73,8 @@ AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false
 - Cycle04 제한된 완료 정의: `OFFICIAL_CM_CALLBACK_TOPIC_IDENTITY=PROVEN_NO_GOAL`. Moving first-gap callback duration/TF wait/Guard150ms는 그대로 미검증.
 - 학습 주제: CI GREEN의 인과와 재현성 한계. 두 번째 성공만 선택해 첫 실패를 삭제하지 않는다.
 - **다음 Cycle05**: 이 exact `topic→callback` 매핑과 기존 Cycle30 bounded CM PID trace를 재사용해서 **Moving Goal 최초 CM source gap 하나의 callback start/end**를 시간축 맞춰 분리할 수 있는지 판단. 기존 표본/immutable trace를 우선하고 원본이 없을 경우에만 단일 짧은 공개 CI 시뮬레이션 진단 Goal을 허용. Tracing을 켠 실행은 별도 진단이며 120ms 운영 Release 통과 근거로 사용하지 않는다.
+
+## 최종 출고/정리
+- 공개 release의 Cycle04 한시 NO_GOAL workflow는 검증 성공 후 삭제 commit `96ae067290a4dad985c29c00c3ec315a2ea2b15c`. 이는 기존 release G07 Moving Goal HOLD workflow를 변경하지 않음.
+- Cycle04 원본과 교육용 보고서, 수정 이력은 Draft PR #143 및 GitHub Run #43993776141(첫 L1 FAIL), #43994237080(둘째 L1 PASS)로 보존. 
+- **완료 범위: 공식 CM callback handle identity YES, 실제 callback 실행시간 및 TF wait root cause NO**. 새로운 Moving Goal 시연 인수 승인 아님.
