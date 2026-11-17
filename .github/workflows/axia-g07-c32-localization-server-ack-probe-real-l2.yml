@@ -33,7 +33,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: fe2081a0cd3013779ca82361756602fdac50a539
+          ref: ee6be5f1a0c6c98964fa8e78e178521d46a79f77
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -48,7 +48,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 'fe2081a0cd3013779ca82361756602fdac50a539'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 'ee6be5f1a0c6c98964fa8e78e178521d46a79f77'
           test "$ROS_DISTRO" = jazzy
           cd instructor
           mkdir -p results/g07-c32-ci-server-probe
@@ -79,6 +79,8 @@ jobs:
           python3 -m unittest discover -s tests/unit -p test_g07_c30_xacro_gz_startup_order.py -v
           python3 -m unittest discover -s tests/unit -p test_g07_c32_localization_server_boundary.py -v
           python3 -m unittest discover -s tests/unit -p test_g07_c32_goal_terminal_before_lifecycle.py -v
+          python3 -m unittest discover -s tests/unit -p test_g07_c32_owner_terminal_parity_scope.py -v
+          bash -n scripts/p2_owner_l3_wsl2.sh
           python3 -m py_compile tools/p2_g07_ci_goal_terminal.py
           python3 -m py_compile tools/p2_g07_localization_shutdown_trace.py tools/p2_g07_lifecycle_service.py
           python3 -m unittest discover -s tests/unit -p test_g07_c31_native_shutdown_ack_trace.py -v
@@ -131,7 +133,7 @@ jobs:
         run: |
           set -euo pipefail
           cd instructor
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 'fe2081a0cd3013779ca82361756602fdac50a539'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 'ee6be5f1a0c6c98964fa8e78e178521d46a79f77'
           # One simulation session: launch the unchanged owner-parity moving
           # runner, wait for real Nav2 staged readiness, attach the PUBLIC D06
           # read-only monitor/RViz plus a Gazebo -g CLIENT (not a server).
@@ -303,7 +305,7 @@ jobs:
           for name in ('/clock','/scan','/odom','/cmd_vel_supervised','/cmd_vel_pre_guard','/axia/p2/base_guard'):
             assert counts.get(name,0)>0,(name,counts)
           print('AXIA_G07_PUBLIC_CI_WSL2_MATCHED_14_TOPIC_REAL_BAG_L2_PASS')
-          assert data.get('source_sha')=='fe2081a0cd3013779ca82361756602fdac50a539'
+          assert data.get('source_sha')=='ee6be5f1a0c6c98964fa8e78e178521d46a79f77'
           assert data.get('first_timing_violation') is None
           for key, bound in (
               ('max_source_interval_sec',.15),('max_cm_interval_sec',.15),
@@ -339,6 +341,10 @@ jobs:
           assert terminal['goal_uuid']==data['goal_uuid']
           assert terminal['certified_estop'] is False
           assert terminal['status'] in ('EXACT_GOAL_CANCELED_TERMINAL','EXACT_GOAL_ALREADY_SUCCEEDED')
+          print('AXIA_G07_C32_REAL_GOAL_TERMINAL_STATUS', terminal['status'], 'goal_uuid',terminal['goal_uuid'])
+          print('AXIA_G07_C32_NATIVE_ACK_RESPONSE_WAIT_SEC',
+                'navigation',teardown['navigation_native']['response_wait_sec'],
+                'localization',teardown['localization_native']['response_wait_sec'])
           print('AXIA_G07_C32_EXACT_OWNED_GOAL_TERMINAL_BEFORE_NATIVE_NAV2_ACK_PASS')
           print('AXIA_G07_C31_REAL_NATIVE_NAV2_SHUTDOWN_REQUEST_RESPONSE_TRACE_PASS')
           assert teardown['status']=='NAV2_LIFECYCLE_SHUTDOWN_ACK'
