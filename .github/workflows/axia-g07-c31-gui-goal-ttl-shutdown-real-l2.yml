@@ -153,13 +153,13 @@ jobs:
           STAGED_READY=0
           for ((n=0;n<3000;n++)); do
             if [[ -s "$READY" ]] && python3 - "$READY" <<'PY_C31_BOOT'
-import json,sys
-try:
-    v=json.load(open(sys.argv[1]))
-    assert v.get('status')=='SMOKE_READY' and v.get('goal_sent') is False
-except Exception:
-    sys.exit(3)
-PY_C31_BOOT
+          import json,sys
+          try:
+              v=json.load(open(sys.argv[1]))
+              assert v.get('status')=='SMOKE_READY' and v.get('goal_sent') is False
+          except Exception:
+              sys.exit(3)
+          PY_C31_BOOT
             then STAGED_READY=1; break; fi
             if ! kill -0 "$SMOKE_PID" 2>/dev/null; then break; fi
             sleep .2
@@ -190,23 +190,23 @@ PY_C31_BOOT
           for ((n=0;n<30;n++)); do
             if [[ -s "$OUT/sidecar/readonly_samples.jsonl" ]] &&
               python3 - "$OUT/sidecar/readonly_samples.jsonl" <<'PY_C31_SCAN'
-import json,sys
-from pathlib import Path
-rows=[json.loads(x) for x in Path(sys.argv[1]).read_text().splitlines() if x.strip()]
-assert rows and max(x.get('actual_scan_messages',0) for x in rows)>0
-PY_C31_SCAN
+          import json,sys
+          from pathlib import Path
+          rows=[json.loads(x) for x in Path(sys.argv[1]).read_text().splitlines() if x.strip()]
+          assert rows and max(x.get('actual_scan_messages',0) for x in rows)>0
+          PY_C31_SCAN
             then break; fi
             sleep 1
           done
           python3 - "$OUT/sidecar/readonly_samples.jsonl" <<'PY_C31_SIDECAR'
-import json,sys
-from pathlib import Path
-rows=[json.loads(x) for x in Path(sys.argv[1]).read_text().splitlines() if x.strip()]
-assert rows and max(x.get('actual_scan_messages',0) for x in rows)>0
-assert all(x.get('certified_estop') is False for x in rows)
-assert all(x.get('safety_cm_attested_by_this_node') is False for x in rows)
-print('AXIA_G07_C31_REAL_D06_READONLY_SCAN_RVIZ_SIDECAR_BEFORE_GOAL_PASS')
-PY_C31_SIDECAR
+          import json,sys
+          from pathlib import Path
+          rows=[json.loads(x) for x in Path(sys.argv[1]).read_text().splitlines() if x.strip()]
+          assert rows and max(x.get('actual_scan_messages',0) for x in rows)>0
+          assert all(x.get('certified_estop') is False for x in rows)
+          assert all(x.get('safety_cm_attested_by_this_node') is False for x in rows)
+          print('AXIA_G07_C31_REAL_D06_READONLY_SCAN_RVIZ_SIDECAR_BEFORE_GOAL_PASS')
+          PY_C31_SIDECAR
           for pid in "$GZGUI_PID" "$RVIZ_PID" "$MON_PID"; do kill -0 "$pid"; done
           git -c safe.directory="$PWD" rev-parse HEAD > "$OUT/real-l2/c31_gui_ready.sha"
           echo AXIA_G07_C31_DUAL_GUI_READONLY_READY_SENT_TO_ONE_GOAL_RUNNER
@@ -230,13 +230,13 @@ PY_C31_SIDECAR
             kill -0 "$pid" || { echo AXIA_G07_C31_SIDECAR_PREMATURE_EXIT; exit 3; }
           done
           python3 - "$OUT/sidecar/readonly_samples.jsonl" <<'PY_C31_POST'
-import json,sys
-from pathlib import Path
-rows=[json.loads(x) for x in Path(sys.argv[1]).read_text().splitlines() if x.strip()]
-assert len(rows)>=3
-assert max(x.get('actual_scan_messages',0) for x in rows)>0
-print('AXIA_G07_C31_D06_SIDECAR_REAL_SCANS_SURVIVED_GOAL_STOP_PASS')
-PY_C31_POST
+          import json,sys
+          from pathlib import Path
+          rows=[json.loads(x) for x in Path(sys.argv[1]).read_text().splitlines() if x.strip()]
+          assert len(rows)>=3
+          assert max(x.get('actual_scan_messages',0) for x in rows)>0
+          print('AXIA_G07_C31_D06_SIDECAR_REAL_SCANS_SURVIVED_GOAL_STOP_PASS')
+          PY_C31_POST
           python3 - <<'PY'
           from pathlib import Path
           import json
