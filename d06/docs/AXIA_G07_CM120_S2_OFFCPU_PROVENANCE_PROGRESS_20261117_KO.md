@@ -85,5 +85,87 @@ AXIA_MVP_DEMO_ACCEPTED=HOLD
 - Existing original Navigation and Localization ACK both SUCCESS. NO_GOAL life-cycle pass does not prove post-Goal lifecycle stability.
 
 ## S2-3 single new Moving Goal status
-- Because S2-2 real CM NO_GOAL loader/actual TF sleep hook was verified and S2 L0 unit+ABI passed, one source-pinned original diagnostic Moving Goal was registered [public Run #44014107942](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44014107942), release trigger SHA `fe57ee49edcde2b7a03080177b8148f917486cf2`. **PENDING at this note**; do not infer actual Goal or result before immutable logs.
+- Because S2-2 real CM NO_GOAL loader/actual TF sleep hook was verified and S2 L0 unit+ABI passed, one source-pinned original diagnostic Moving Goal was registered [public Run #44014107942](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44014107942), release trigger SHA `fe57ee49edcde2b7a03080177b8148f917486cf2`. **completed FAILURE**, actual one Moving Goal executed; full result below. Do not rerun. This S2 Goal differed from S1 by tested trace instrumentation and sleep-for context collection.
 - Future output requires `AXIA_G07_S2_FIRST_CM_TF_OFFCPU_PROVENANCE`: SAME first failed CM RMW source gap→topic-specific official CM callback PID/TID→Advanced TF function→libc sleep intervals, plus Guard/Scan/Odom/Clock, Collision0, Stop/CANCEL/Shutdown, original14 topic. Even if TF sleeps dominate, `root_cause_proven=false`, `gate_c_authorized=false` until standalone causal attribution/safety fix.
+
+
+## S2-3 실제 원본 Moving Goal 1회 — SOURCE GAP 미재현, Observer 120ms 위반, Localization 종료 실패
+
+**Actual [public Run #44014107942](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44014107942), job 133807789938, completed FAILURE**. One-off release commit `fe57ee49edcde2b7a03080177b8148f917486cf2`, original Instructor `966886c4627deb2bb3b37111fe336eeee6b9ebb4`, S2 probe source `9bcdc5cb92ff4da61efb2eba1d2fd77c30dfff96`. Exactly **one** diagnostic Moving Goal; old source, CM/Guard TTL, Nav2 mode/params unchanged. Retired only this release one-off workflow after job completion in commit `b199c72ff5e4f918a35385758d5f187d90579aaa`.
+
+### 최초 타이밍 위반 및 S2 직접 측정의 경계
+
+```text
+AXIA_G07_FIRST_CM_SOURCE_GAP_SCHEDULER_WINDOW
+  status=NO_CM_SOURCE_GAP_OVER_120MS_IN_OBSERVED_WINDOW
+  first_cm_source_gap_ms=null
+  first_cm_observer_callback_gap_ms=null
+  reason=NO_FIRST_GAP_SCHEDULER_PROOF
+
+AXIA_G07_CI_FIRST_120MS_CM_SUPERVISOR_RMW_WINDOW
+  status=NO_CM_SOURCE_GAP_OBSERVED
+  cm_source_gap_sec=null
+  upstream_publications_inside_gap=0
+
+AXIA_G07_CI_MEASURED_MESSAGE_PERIODS
+  clock=0.112780975
+  cm=0.121776640
+  guard=0.062292188
+  odom=0.121693707
+  scan=0.204252238
+  source=0.091394802
+  supervisor=0.091397720
+
+AXIA_G07_S0_ACTUAL_CM_CALLBACK_FILTER_COUNTS
+  raw_examined=125065
+  accepted_cm_callback_count=2692
+  cm_metadata_count=24
+  status=EXACT_CM_CALLBACK_FILTER_READY
+
+AXIA_G07_C05_FIRST_CM_CMD_CALLBACK_DIAGNOSTIC
+  status=FIRST_CM_RMW_SOURCE_PAIR_UNVERIFIED_HOLD
+
+AXIA_G07_C05_CM_CALLBACK_ROOT_CAUSE_UNPROVEN_HOLD
+```
+
+- **실제 CM Observer interval 최대 121.776640ms >120ms**. 하지만 `/cmd_vel_pre_guard` RMW source에서 >120ms first pair가 관측되지 않아 기존 S1 분석기의 단일 실패 창에 해당하는 동일 CM callback/TF/sleep pairing을 실행하지 못했다. `source gap not observed`를 `source <=120ms PASS`로 확대하지 않으며 source/Observer 두 계약 모두 통과했다고 주장 금지.
+- 기존 S0 10만 이벤트 overflow는 **이 실행에서도 해결** (raw125065 이벤트→exact 콜백2692). 그러나 첫 RMW source breach가 없어 분석기가 `FIRST_CM_RMW_SOURCE_PAIR_UNVERIFIED_HOLD`로 정확히 실패했다. 따라서 `AXIA_G07_S2_FIRST_CM_TF_OFFCPU_PROVENANCE`는 **출력되지 않았고 S2 최초 초과 창 정량 분류는 실패**. Private raw TF events는 post-CI cleanup됨; public run artifacts **0건**. NO_GOAL aggregate sleep4399.657ms를 이 Goal 첫 위반에 대입 금지.
+- Original official Waffle/Gazebo/Nav2 moving CLEAR→SLOWDOWN→STOP, displacement0.1921m, odom stopped dwell1.015sec, native STOP request duration0.105846sec, nav Goal CANCELED 확인. **하위 Safety TTL 전체 인수는 미충족**: Guard message interval62.292ms는 Guard internal CM age150ms 검증이 아니며, `AXIA_P4_G07_L2_FIRST_CM_GUARD_BOUNDARY` returned `NO_FIRST_GUARD_LATCH_TRACE`. Native 0 contact + 14-topic raw custody postGoal combined PASS 실패로 이 Goal의 통합 인수 근거가 아님.
+- **독립 Lifecycle first failure**, Navigation ACK true elapsed2.64552sec; Localization managed service request_sent=true, after25.000516sec ACK=false; AMCL+map_server active, localization manage service advertised, `LOCALIZATION_SHUTDOWN_REQUEST_SENT_ACK_TIMEOUT` → `BLOCKED_LIFECYCLE_LOCALIZATION_SERVICE_TIMEOUT`. Same problem as previous #44007105539 but not the cause of first CM Observer interval breach. Neither force timeout increase nor retry Goal.
+- Important: `CM 120ms release FAIL` in real **Observer 121.777ms** and overall CI FAILURE; the S2 trace-on diagnostic is not a release performance measurement.
+- **One Goal allowed/used; no repetition**. All code changes remain CI-only diagnostic and reports; original Nav2/Safety/Instructor/Student untouched.
+
+### S2 도달 가능한 원인 분류 판정 (과잉 결론 금지)
+
+**직접 입증**:
+- Original S1 one actual Moving Goal [#44011055816](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44011055816) had first CM RMW source139.723543ms and exact advanced TF wall101.682875ms of callback102.456878ms; nonCPU101.360045ms.
+- Original S2 actual NO_GOAL [#44013676608](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44013676608) same official CM sim process recorded advanced TF calls477 and **actual within-function nanosleep427 / aggregated sleep4399.656895ms** (not first source violation).
+- Original Jazzy tf2_ros::Buffer::canTransform advanced polling code uses `sleep_for(10ms)`; this mechanism is indeed plausible. Kernel `sched_schedstats=0` means S2 cannot directly quantify runqueue ready-queue preemption in current CI. No sysctl modifications.
+
+**미확정**:
+- S1 first CM source gap139.724ms **안에서** tf2 sleep vs scheduler precise partition was **not captured in the same run**, because S1 lacked sleep counters and S2 did not reproduce first RMW source breach.
+- Whether tf2 Buffer transform availability wait, per-thread CPU preemption, clock tick quantization or a combination is the *dominant causal reason for the 120ms release failure* remains **UNPROVEN**; NO_GOAL aggregate sleep doesn't prove same first-gap cause.
+- No Gate C tuning (TF mode, transform tolerance, source timeout, CPU affinity, safety TTL) allowed from this evidence. No Gate D tracer-OFF same-run full release Green, no Owner WSL2 acceptance, no main merge.
+
+### RED→GREEN→REFACTOR→REVIEW→COMMIT cycle summary
+- RED original S1 instrument lacked scheduler/sleep context; synthetic S2 RED commit `46818d16e4d3deb52ccc56c7ba96bb2108cc5639`.
+- GREEN pure 5 offCPU +4 exact first-window+3 legacy S1+3 sleep cases, true Jazzy ABI and C++ `sleep_for` interposition: [public L0 #44013410740](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44013410740) completed SUCCESS. Prior pure kernel capability [#44012856210](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44012856210) completed SUCCESS but kernel schedstats0.
+- Real official NO_GOAL S2 [#44013676608](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44013676608) completed SUCCESS. Real moving single goal S2 [#44014107942](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44014107942) completed **FAIL** first-source gap absent / Observer121.777ms and first Localization ACK timeout; trace once verified but no exact gap classification.
+- REFACTOR: only CI-only `d06/diagnostic/cm_tf_gettransform_preload.cpp` same-ABI wrapper, `d06/diagnostic/classify_tf_non_cpu.py`, `d06/diagnostic/analyze_first_cm_tf.py`, exact negative unit regressions; no production CM/Nav2 changes.
+- REVIEW: no sensor safety regression from tuning because no tuning; real S2 moving source first-gap classification unverified. COMMIT: public plan/this education report and Draft PR #156 preserved. No exported raw PID/poses/Instructor answer.
+```text
+AXIA_G07_S2_OFFCPU_HYPOTHESIS=TF_FUNCTION_REAL_SLEEP_POLL_OBSERVED_NO_GOAL
+AXIA_G07_S2_KERNEL_RUNQUEUE_ACCOUNTING=DISABLED
+AXIA_G07_S2_FIRST_CM_SOURCE_GAP_MATCH=NOT_REPRODUCED_IN_ONE_GOAL
+AXIA_G07_S2_OBSERVER_MAX_GAP_MS=121.776640
+AXIA_G07_S2_LOCALIZATION_FIRST_ERROR=LOCALIZATION_SHUTDOWN_REQUEST_SENT_ACK_TIMEOUT
+AXIA_G07_S2_REAL_MOVING_GOAL=EXECUTED_ONCE_CI_FAILURE
+AXIA_G07_S2_FIRST_SOURCE_GAP_SLEEP_VS_SCHEDULER=UNPROVEN
+AXIA_G07_GATE_C=NOT_STARTED
+AXIA_G07_GATE_D=NOT_STARTED
+AXIA_G07_CM120_RELEASE=HOLD
+AXIA_MVP_DEMO_ACCEPTED=HOLD
+OWNER_WSL2_L3=NOT_RUN
+MAIN_MERGED=false
+CERTIFIED_ESTOP=false
+```
