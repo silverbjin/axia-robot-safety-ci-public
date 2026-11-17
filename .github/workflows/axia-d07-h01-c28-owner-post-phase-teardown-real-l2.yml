@@ -1,0 +1,144 @@
+# Reuse historical P4 official managed shutdown in stationary D07 GUI.
+# Real Jazzy/Harmonic/Xvfb. No NavigateToPose or cmd_vel sent.
+name: AXIA D07 Cycle28 Owner post-phase managed teardown real Gazebo L2
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-d07-h01-c28-owner-post-phase-teardown-real-l2.yml']
+permissions:
+  contents: read
+jobs:
+  real-d07-teardown:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    environment: axia-instructor-sealed
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+      options: --dns 1.1.1.1 --dns 8.8.8.8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Clone exact sealed GREEN Instructor
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 3a893c1875d2647979a608afaaa335a88158469f
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          path: instructor
+          persist-credentials: false
+      - name: RED-GREEN contract and shell syntax before ROS
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 3a893c1875d2647979a608afaaa335a88158469f
+          cd instructor
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_clean_teardown.py -v
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_owner_s75_shutdown_regression.py -v
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_owner_wslg_gz_segv.py -v
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_ci_render_backend_parity.py -v
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_gui_watcher_process_contract.py -v
+          python3 -m py_compile tools/p2_g07_owner_shutdown_audit.py
+          python3 -m py_compile ros2_ws/src/axia_safety_supervisor/axia_safety_supervisor/p2_supervisor_node.py
+          bash -n scripts/p2_no_goal_smoke_ci.sh
+          bash scripts/d07_h01_gui_no_goal_once.sh --self-check
+          echo AXIA_D07_C28_REAL_L2_PRE_GAZEBO_STATIC_PASS
+      - name: Xvfb and official RViz2 prerequisites
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          set +u; source /opt/ros/jazzy/setup.bash; set -u
+          missing=()
+          command -v Xvfb >/dev/null || missing+=(xvfb)
+          command -v xwininfo >/dev/null || missing+=(x11-utils)
+          command -v rviz2 >/dev/null || missing+=(ros-jazzy-rviz2)
+          if (( ${#missing[@]} )); then
+            apt-get update -qq
+            DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends "${missing[@]}"
+          fi
+          for x in Xvfb xwininfo rviz2 gz ros2 colcon; do command -v "$x" >/dev/null; done
+          echo AXIA_D07_C28_GAZEBO_XVFB_DEPENDENCIES_READY
+      - name: Actual stationary Gazebo official Path and complete child teardown
+        shell: bash
+        env:
+          ROS_DOMAIN_ID: '95'
+          ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+          GZ_PARTITION: axia_p2_d07_c28_renderer_95
+          AXIA_P0_SIM_ONLY: '1'
+          AXIA_D07_H01_GUI_NO_GOAL: '1'
+          AXIA_D07_H01_GPU_GUI_TRIAL: '1'
+          # Same llvmpipe Gazebo backend as new Owner-only mixed mode.
+          # CI Xvfb lacks WSLg D3D12, so RViz also remains software here.
+          AXIA_D07_H01_CI_SOFTWARE_GUI: '1'
+          AXIA_D07_GUI_HOLD_S: '8'
+          AXIA_G07_CI_SIM_GOAL_ALLOWED: '0'
+          AXIA_P2_G07_PHYSICAL_PREFLIGHT: '1'
+          AXIA_G07_OWNER_STARTUP_PARITY: '1'
+          AXIA_G07_CI_OWNER_BAG_PARITY: '0'
+          AXIA_G07_CI_OWNER_OBSERVER_PARITY: '1'
+          AXIA_P2_SMOKE_RESULTS: results/d07-c28/real-l2
+          AXIA_D07_GUI_EVIDENCE_DIR: results/d07-c28/rviz
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          QT_QPA_PLATFORM: xcb
+          QT_X11_NO_MITSHM: '1'
+        run: |
+          set -Eeuo pipefail
+          export DISPLAY=:99
+          mkdir -p instructor/results/d07-c28
+          Xvfb :99 -screen 0 1600x900x24 -nolisten tcp > instructor/results/d07-c28/xvfb.log 2>&1 &
+          XV=$!
+          trap 'kill "$XV" 2>/dev/null || true' EXIT
+          sleep 2
+          cd instructor
+          set +e
+          timeout --signal=TERM --kill-after=12s 910s \
+            bash scripts/d07_h01_gui_no_goal_once.sh --run \
+            > results/d07-c28/live_stdout.log 2>&1
+          RC=$?
+          set -e
+          echo "AXIA_D07_C28_GUI_REAL_OWNER_RUN_RC=$RC"
+          if [[ "$RC" != 0 ]]; then
+            for f in results/d07-c28/real-l2/{g07_ordered_shutdown,d07_h01_shutdown_audit,launch,staged_startup}.log \
+                     results/d07-c28/live_stdout.log; do
+              if [[ -f "$f" ]]; then echo "--- $f ---"; tail -n 100 "$f";fi
+            done
+            exit 3
+          fi
+          python3 - <<'PY_CHECK'
+          from pathlib import Path
+          import json, re
+          root=Path('results/d07-c28/real-l2')
+          boot=json.loads((root/'startup_verdict.json').read_text())
+          ordered=json.loads((root/'g07_ordered_shutdown.json').read_text())
+          audit=json.loads((root/'d07_h01_shutdown_audit.json').read_text())
+          launch=(root/'launch.log').read_text(errors='replace')
+          smoke=Path('results/d07-c28/live_stdout.log').read_text(errors='replace')
+          assert boot['status']=='SMOKE_READY' and boot.get('goal_sent') is False,boot
+          assert ordered['status']=='NAV2_LIFECYCLE_SHUTDOWN_ACK' and ordered['navigation_ack'] and ordered['localization_ack'],ordered
+          assert ordered['cm_managed_by_navigation'] is True,ordered
+          assert audit['status']=='D07_H01_CHILDREN_CLEAN_AFTER_ORDERED_SHUTDOWN',audit
+          assert audit['all_required_children_clean'] is True,audit
+          assert all(value==0 for value in audit['child_exit_codes'].values()),audit
+          assert (root/'teardown.txt').read_text().strip()=='P2_L2_GRACEFUL_TEARDOWN_CHILDREN_VERIFIED'
+          assert re.search(r'\[INFO\] \[p2_supervisor_node-\d+\]: process has finished cleanly',launch)
+          assert not re.search(r'\[ERROR\] \[p2_supervisor_node-\d+\]: process has died',launch)
+          assert 'D07_H01_GUI_H01_GEOMETRY_RETURNED_NO_GOAL' in smoke
+          assert 'D07_H01_GUI_PHASES_COMPLETED_PROVEN_NO_GOAL' in smoke
+          assert 'D07_H01_P4_MANAGED_LAUNCH_EXIT_26S_NATIVE_ACK_REQUIRED' in smoke
+          assert (root/'d07_h01_geometry/gui_phase_complete.ready').read_text().strip()==(
+              '3a893c1875d2647979a608afaaa335a88158469f')
+          watch=(root/'d07_gui_watcher.log').read_text(errors='replace')
+          watch_exit=(root/'d07_gui_watcher_exit.txt').read_text()
+          assert 'D07_H01_GUI_WATCHER_COMPLETED_PHASES_CLEAN' in watch, watch[-2000:]
+          assert 'rc=0' in watch_exit, watch_exit
+          assert 'D07_H01_GUI_CHILD_TERMINATED_BEFORE_PHASE_COMPLETE' not in watch, watch[-2000:]
+          assert 'P2_L2_SMOKE_RC=0' in smoke
+          assert 'D07_H01_NAV2_ORDERED_SHUTDOWN_ACK_BEFORE_SIGINT' in smoke
+          assert 'D07_H01_CHILDREN_CLEAN_AFTER_ORDERED_SHUTDOWN' in smoke
+          assert audit['goal_sent'] is False and audit['certified_estop'] is False
+          print('AXIA_D07_C28_REAL_GAZEBO_NAV2_PATH_L2_PASS_NO_GOAL')
+          print('AXIA_D07_C28_REAL_SUPERVISOR_CHILD_EXIT0_AND_P4_ORDERED_ACK_L2_PASS')
+          print('AXIA_D07_C28_REAL_TEARDOWN_VERDICT_CHILD_PROOF_PASS')
+          PY_CHECK
+      - name: Delete sealed Instructor checkout
+        if: always()
+        shell: bash
+        run: rm -rf -- instructor
