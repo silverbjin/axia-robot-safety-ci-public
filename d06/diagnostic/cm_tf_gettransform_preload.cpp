@@ -9,6 +9,8 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 #include <time.h>
+#include <chrono>
+#include <thread>
 #include <sys/resource.h>
 #include <cstdint>
 #include <atomic>
@@ -144,6 +146,19 @@ extern "C" int clock_nanosleep(clockid_t id,int flags,
     ++tf_sleep_calls;
   }
   return rc;
+}
+
+// Isolated NO_GOAL selftest of the exact std::this_thread::sleep_for()
+// path used by Jazzy tf2_ros::Buffer; never called by production Nav2.
+extern "C" __attribute__((visibility("default")))
+int axia_g07_s2_sleep_interposition_selftest() {
+  tf_sleep_wall_ns=0;
+  tf_sleep_calls=0;
+  tf_sleep_depth=0;
+  tf_window_active=true;
+  std::this_thread::sleep_for(std::chrono::milliseconds(3));
+  tf_window_active=false;
+  return tf_sleep_calls>0 && tf_sleep_wall_ns>=1000000LL ? 1 : 0;
 }
 
 extern "C" __attribute__((visibility("default")))
