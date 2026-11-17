@@ -51,7 +51,88 @@ jobs:
           try: paranoid=int(paranoid_path.read_text().strip())
           except (OSError,ValueError): paranoid=None
           status=pathlib.Path('/proc/self/status').read_text()
-          m=re.search(r'^CapEff:\\s*([0-9a-fA-F]+)$',status,re.M)
+          assert re.search(r'^CapEff:\s*([0-9a-fA-F]+)
+          caps=int(m.group(1),16) if m else 0
+          perf_cap=bool(caps&(1<<38))
+          sys_admin_cap=bool(caps&(1<<21))
+          bpf_cap=bool(caps&(1<<39))
+          tracefs=any(p.exists() for p in (
+            pathlib.Path('/sys/kernel/tracing/uprobe_events'),
+            pathlib.Path('/sys/kernel/debug/tracing/uprobe_events')))
+          tracefs_write=any(p.exists() and __import__('os').access(p,__import__('os').W_OK)
+            for p in (pathlib.Path('/sys/kernel/tracing/uprobe_events'),
+                      pathlib.Path('/sys/kernel/debug/tracing/uprobe_events')))
+          result={
+             'scope':'OFFICIAL_JAZZY_ELF_NO_ROS_NO_GOAL_CAPABILITY_ONLY',
+             'cm_library_candidates':len(bins),
+             'dynamic_symbol_hits':dynamic_hits,
+             'full_symbol_hits':local_hits,
+             'kernel_perf_event_paranoid':paranoid,
+             'cap_perfmon':perf_cap,'cap_sys_admin':sys_admin_cap,
+             'cap_bpf':bpf_cap,
+             'tracefs_uprobe_events_present':tracefs,
+             'tracefs_uprobe_events_writable':tracefs_write,
+             'ros_callback_start_end_already_proven_in_cycle05':True,
+             'tf_function_entry_exit_recorded_in_cycle05':False,
+             'ros_or_gazebo_started':False,
+             'goal_sent':False,
+             'tf_duration_proven':False,
+             'cm120_root_cause':'CAUSE_UNPROVEN',
+             'cm120_release':'HOLD',
+             'owner_l3':'NOT_RUN'
+          }
+          print('AXIA_G07_CM120_DIRECT_TF_CAPABILITY_PREFLIGHT '+json.dumps(result,sort_keys=True))
+          if len(bins)==0:
+              print('AXIA_G07_CM120_TF_ELF_MISSING_NO_INFERRED_SYMBOL_HOLD')
+          if not tracefs_write and not (perf_cap or sys_admin_cap):
+              print('AXIA_G07_CM120_KERNEL_UPROBE_ACCESS_NOT_AUTHORIZED_IN_CI_HOLD')
+          if not any(dynamic_hits.values()) and not any(local_hits.values()):
+              print('AXIA_G07_CM120_TF_OR_CM_INSTRUMENTABLE_ELF_SYMBOL_UNVERIFIED_HOLD')
+          print('AXIA_G07_CM120_CAUSE_UNPROVEN_NO_GOAL_NO_POLICY_MUTATION')
+          PY
+          echo AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false
+, 'CapEff:\t0000000000000000')
+          m=re.search(r'^CapEff:\s*([0-9a-fA-F]+)
+          caps=int(m.group(1),16) if m else 0
+          perf_cap=bool(caps&(1<<38))
+          sys_admin_cap=bool(caps&(1<<21))
+          bpf_cap=bool(caps&(1<<39))
+          tracefs=any(p.exists() for p in (
+            pathlib.Path('/sys/kernel/tracing/uprobe_events'),
+            pathlib.Path('/sys/kernel/debug/tracing/uprobe_events')))
+          tracefs_write=any(p.exists() and __import__('os').access(p,__import__('os').W_OK)
+            for p in (pathlib.Path('/sys/kernel/tracing/uprobe_events'),
+                      pathlib.Path('/sys/kernel/debug/tracing/uprobe_events')))
+          result={
+             'scope':'OFFICIAL_JAZZY_ELF_NO_ROS_NO_GOAL_CAPABILITY_ONLY',
+             'cm_library_candidates':len(bins),
+             'dynamic_symbol_hits':dynamic_hits,
+             'full_symbol_hits':local_hits,
+             'kernel_perf_event_paranoid':paranoid,
+             'cap_perfmon':perf_cap,'cap_sys_admin':sys_admin_cap,
+             'cap_bpf':bpf_cap,
+             'tracefs_uprobe_events_present':tracefs,
+             'tracefs_uprobe_events_writable':tracefs_write,
+             'ros_callback_start_end_already_proven_in_cycle05':True,
+             'tf_function_entry_exit_recorded_in_cycle05':False,
+             'ros_or_gazebo_started':False,
+             'goal_sent':False,
+             'tf_duration_proven':False,
+             'cm120_root_cause':'CAUSE_UNPROVEN',
+             'cm120_release':'HOLD',
+             'owner_l3':'NOT_RUN'
+          }
+          print('AXIA_G07_CM120_DIRECT_TF_CAPABILITY_PREFLIGHT '+json.dumps(result,sort_keys=True))
+          if len(bins)==0:
+              print('AXIA_G07_CM120_TF_ELF_MISSING_NO_INFERRED_SYMBOL_HOLD')
+          if not tracefs_write and not (perf_cap or sys_admin_cap):
+              print('AXIA_G07_CM120_KERNEL_UPROBE_ACCESS_NOT_AUTHORIZED_IN_CI_HOLD')
+          if not any(dynamic_hits.values()) and not any(local_hits.values()):
+              print('AXIA_G07_CM120_TF_OR_CM_INSTRUMENTABLE_ELF_SYMBOL_UNVERIFIED_HOLD')
+          print('AXIA_G07_CM120_CAUSE_UNPROVEN_NO_GOAL_NO_POLICY_MUTATION')
+          PY
+          echo AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false
+,status,re.M)
           caps=int(m.group(1),16) if m else 0
           perf_cap=bool(caps&(1<<38))
           sys_admin_cap=bool(caps&(1<<21))
