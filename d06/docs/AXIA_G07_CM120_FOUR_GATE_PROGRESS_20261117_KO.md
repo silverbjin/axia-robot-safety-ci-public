@@ -38,3 +38,25 @@ OWNER_WSL2_L3=NOT_RUN
 CERTIFIED_ESTOP=false
 MAIN_MERGED=false
 ```
+
+## Gate B 사전검증 실제 결과 — L0 GREEN, 실제 Goal은 별도
+
+- 최초 CI [#44006345463](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44006345463) RED: `ament_target_dependencies` plain과 `target_link_libraries PRIVATE` 혼용. 최초 오류 `CMake Error at CMakeLists.txt:13`; ROS·Goal 시작 전 실패. 한 줄 변경 commit `1cc5a8463d06508ed9656a2a3a6ad06f7cfb4957`.
+- 수정 뒤 실제 pinned Jazzy toolchain CI [#44006597068](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44006597068) **completed SUCCESS**:
+```text
+[100%] Linking CXX shared library libaxia_g07_cm120_tf_diag.so
+AXIA_G07_CM120_OFFICIAL_ADVANCED_TF_ABI_INTERPOSITION_L0_PASS_NO_ROS_NO_GOAL
+AXIA_G07_CM120_DIAGNOSTIC_ONLY_L0_PASS_NOT_RELEASE
+```
+- 시간창·Clock negative cases 추가 CI [#44006795555](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44006795555) **completed SUCCESS**, same source SHA `35abdbef803e08de14d0ffc955bf06ef478a56f0`:
+```text
+Ran 3 tests in 0.001s
+OK
+Ran 3 tests in 0.001s
+OK
+AXIA_G07_CM120_FIRST_GAP_TF_INTERVAL_JOIN_GREEN3_AND_C05_REGRESSION_NO_ROS_NO_GOAL
+AXIA_G07_CM120_OFFICIAL_ADVANCED_TF_ABI_INTERPOSITION_L0_PASS_NO_ROS_NO_GOAL
+```
+- 신규 분석기는 실제 `cm` PID + vtid + C05 callback handle + same host-monotonic TF interval만 인정하고, 잘못된 프로세스·누락된 함수 호출·시계 offset drift를 fail-closed. **TF elapsed가 콜백을 대부분 차지해도 TF function wall 자체가 OS preemption을 포함할 수 있으므로 `tf_wait_proven=false`, `root_cause_proven=false`, `gate_c_authorized=false`로 고정**. 단일 진단만으로 확인 가능한 단계와 실제 원인 분리를 혼동하지 않는다.
+- 사전검증이 통과한 뒤 Original C05 exact private `966886c4627deb2bb3b37111fe336eeee6b9ebb4`, public diagnostic `35abdbef803e08de14d0ffc955bf06ef478a56f0` 소스가 고정된 one-off 공개 진단 workflow `.github/workflows/axia-g07-cm120-four-gate-one-diagnostic-l2.yml`, trigger release commit `3332d7704bc6057f06ddcc15dd188d1188eabb2d`, actual [Run #44007105539](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44007105539) 시작.
+- 이 **한 번의 실제 Goal 진단**은 원래 C05 LTTng, official Waffle/Nav2/Harmonic, original Stop·Contact0·CancelGoal·ordered shutdown·7-channel 120/150/300ms oracle을 그대로 재사용하되, original advanced TF 호출의 entry/end/CPU만 bounded LD_PRELOAD로 관측. 해석 결과나 CI status는 Run 완료 후 아래에 추가. Tracer-ON Goal은 릴리스 PASS 근거가 아니다.
