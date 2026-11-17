@@ -151,3 +151,59 @@ AXIA_G07_TASK01_ROOT_CAUSE=UNPROVEN
 AXIA_G07_CM120_TRACER_OFF_RELEASE=HOLD
 AXIA_MVP_DEMO_ACCEPTED=HOLD
 ```
+
+## 10. 승인된 신규 첫-gap 동시 시계 진단 Moving Goal 실제 결과 — 조건부 종료(HOLD)
+
+### 정확한 실행·증거 원본
+
+- 공개 CI [Run #44059005075](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44059005075): **completed/failure**. 원본 repo/public single-Goal workflow SHA `cd93b3235d432f19e3d6792e81de64f774bacb33`, 진단 공개 SHA `19ec465b7fdcb99391419e8252906961f1cda1a1`, 원본 비공개 Instructor SHA `966886c4627deb2bb3b37111fe336eeee6b9ebb4`. 이 실행은 기존 Goal을 근거 없이 반복한 것이 아니라 **이전 같은 source gap에 없던 동시 /clock 기록**을 수집하도록 진단 코드를 바꾼 단 한 번의 Moving Goal이다.
+- **실제 Nav2 주행 step #16 PASS**: 공식 Waffle/Harmonic 단일 Goal CLEAR→SLOW→STOP/odom dwell, exact UUID cancel, Nav+Localization lifecycle ACK 및 managed CM exit0 검증. Private Instructor 정답 코드는 공개하지 않음.
+- 실제 최초 CM RMW source>120ms pair 추출 **FAIL**: **발행 source 최대 `0.11721s` (117.210ms)** — 해당 원본 Goal 창에서 최초 source>120ms breach **재현되지 않았다**. 관련 LTTng C05 단계 #17은 `FIRST_CM_RMW_SOURCE_PAIR_UNVERIFIED_HOLD`로 **명시적 fail**, 전체 workflow `completed/failure`. 그 밖의 post-Goal safety/Native provenance checker 다수는 PASS였지만 tracer-OFF CM120 release PASS **아님**.
+- 정확한 인수 로그:
+```text
+AXIA_G07_TASK01_CLOCK_SIDECAR_SCOPE_GOAL_OBSERVER_ONLY
+AXIA_G07_TASK01_MOVING_CLOCK_SIDECAR_ENDED_BEFORE_NATIVE_SHUTDOWN
+AXIA_G07_REAL_EXACT_NAV2_GOAL_CANCEL_ACK_BEFORE_LIFECYCLE_PASS
+AXIA_G07_REAL_POST_GOAL_OWNER_IDENTICAL_NAV2_SHUTDOWN_CM_EXIT0_PASS
+AXIA_G07_CI_REAL_HARMONIC_NAV2_MOVING_GOAL_CLEAR_SLOW_STOP_L2_PASS_OWNER_L3_NOT_RUN
+AXIA_G07_C05_FIRST_CM_CMD_CALLBACK_DIAGNOSTIC {..."status":"FIRST_CM_RMW_SOURCE_PAIR_UNVERIFIED_HOLD"...}
+AXIA_P4_G07_REAL_RMW_CM_SOURCE_MAX_GAP_SEC=0.11721
+AXIA_G07_FIELD_REAL_CM_BELOW_120MS_RELEASE_MARGIN_PASS
+AXIA_G07_TASK01_PUBLIC_TIMING_EVIDENCE_STATUS=FIRST_RMW_SOURCE_GAP_NOT_REPRODUCED
+AXIA_G07_TASK01_PUBLIC_TIMING_EVIDENCE_BYTES=751
+AXIA_G07_TASK01_PUBLIC_EVIDENCE_NOT_RELEASE_NOT_ESTOP
+```
+- 같은 Run의 공개 artifact [ID14317213107](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44059005075/artifacts/14317213107), ZIP SHA256 `e1d54411e9e3b30d67389cd7f1dc7847a6c1b701228fb44e9cec3fffb2a3e82f`; 정확히 `first_gap_sanitized.json`과 `SHA256SUMS.txt` 두 파일.
+- 실제 다운로드한 공개 허용목록 JSON bytes=751, SHA256 `03728855c60a0a8dd69ad8b48960db078980ea675f40936c14b991a1849f6b34`. JSON `run_id=44059005075`, `first_gap=null`, `status=FIRST_RMW_SOURCE_GAP_NOT_REPRODUCED`, `root_cause_proven=false`, `gate_c_authorized=false`, `cm120_release_pass=false`. 이 실행에서는 관찰 대상 첫 gap이 없어 `clock_progress`도 해당 gap에 대해 출력하지 않았다. 이 데이터는 이전 Run의 9회 TF sleep을 재판정하는 동일 원본이 아님.
+
+### 자동 반복 중지 / 다음 단계 판단
+
+원인 분리가 완료되지 않았다는 이유로 **동일 소스/장면/계측으로 Goal을 추가 반복하지 않는다**. 새로 확보한 원본으로 다음 사실만 인정한다.
+
+1. 기존 최초 source gap129.299ms에서 TF 함수9회의 실제 nanosleep 91.416ms는 진짜 계측이다([#44049067368](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44049067368)); 외부 Clock 수신 기록은 당시 없었다.
+2. 새로운 단일 Goal에서는 실제 source 최대117.210ms로 해당 최초 source gap이 **재현되지 않음**. 공식 Goal/CM/Shutdown 구동이 정상 범위였다는 관찰은 가능하지만 **불안정성이 영구 해결되었다는 증거는 아님**.
+3. 기존 NO_GOAL 다른-run `/clock` sim-to-wall0.985와 Moving 최초 TF sleep91.416ms를 같은 실행으로 결합해 TF Buffer timeout/ROS sim clock stall의 원인을 증명해서는 안 된다.
+4. Kernel `sched_schedstats=0`: runqueue latency는 `UNAVAILABLE`, 0이 아님. Sleep 요청 총90ms와 실제91.416ms 차이만으로 scheduler vs TF 가용성의 독립 인과를 증명할 수 없다.
+5. Task02에서 `base_shift_correction=false`/timeout/affinity/TTL을 추측해 변경하지 않는다. Task03 tracer-OFF 본 인수와 Task04 Owner WSL2를 승격할 수 없다.
+
+### 근거 기반 단일 후속 연구 제안(이번 Cycle에서는 **실행 안 함**)
+
+다시 실제 Moving Goal을 실행하려면 동일 첫 source gap이 생겼을 때 새 데이터를 얻는 **전혀 다른, 사전 검증된 관측 계약**이 필요하다. 현재 허용된 공개 축약 데이터로도 source SYS→callback MONO sender clock 정합 및 TF Buffer 내부 clock available/runqueue 큐잉 구분을 완전히 증명할 수 없다. 과도한 커널 tracing 도입·공식 Nav2 fork·동적 장애물 별도 시나리오 개발로 MVP를 확장하지 않는다.
+
+현 시점 **Task01: 분석 도구 완성 및 첫 gap 심층 수치계측 검증, ROOT_CAUSE 미입증**. Task02 원인 기반 최소 수정 차단, Task03 공개 tracer-OFF real L2 미실행, Task04 Owner WSL2 L3 미실행.
+
+```text
+AXIA_G07_TASK01_DIAGNOSTIC_GOAL_SINGLE_RUN=RUN_44059005075
+AXIA_G07_TASK01_DIAGNOSTIC_GOAL_REAL_RUNTIME=PASS_SCOPED_ONLY
+AXIA_G07_TASK01_CM_SOURCE_MAX_MS=117.210
+AXIA_G07_TASK01_FIRST_SOURCE_OVER_120_PAIR=NOT_REPRODUCED
+AXIA_G07_TASK01_PUBLIC_ARTIFACT=PASS_SHA256_SANITIZED_HOLD
+AXIA_G07_TASK01_CAUSE=UNPROVEN
+AXIA_G07_TASK02=BLOCKED_CAUSE_UNPROVEN
+AXIA_G07_TASK03_TRACER_OFF=NOT_RUN
+AXIA_G07_TASK04_OWNER_WSL2=NOT_RUN
+AXIA_G07_CM120_RELEASE=HOLD
+AXIA_MVP_DEMO_ACCEPTED=HOLD
+CERTIFIED_ESTOP=false
+MAIN_MERGED=false
+```
