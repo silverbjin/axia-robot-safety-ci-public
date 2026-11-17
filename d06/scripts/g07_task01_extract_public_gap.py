@@ -75,6 +75,11 @@ def extract(*, events, trace_dir, tf_file, anchors_dir,
             5<=len(run_id)<=15 and isinstance(public_sha,str) and
             len(public_sha)==40 and all(c in "0123456789abcdef" for c in public_sha)):
         raise ValueError("INVALID_PUBLIC_RUN_OR_SOURCE_SHA")
+    # A failed raw CTF join must not erase the independent first RMW
+    # publisher-source INTERVAL observed by Jazzy MessageInfo. Preserve
+    # ONLY two durations; no PID, raw topic, pose or SYSTEM absolute epoch.
+    observer=None
+    failure_stage="RAW_INPUT_METADATA"
     try:
         event_path=Path(events)
         trace_path=Path(trace_dir)
@@ -87,12 +92,15 @@ def extract(*, events, trace_dir, tf_file, anchors_dir,
         else:
             if event_path.stat().st_size > 12_000_000 or tf_path.stat().st_size > 3_000_000:
                 raise ValueError("PRIVATE_INPUT_OVERSIZE")
+            failure_stage="OBSERVER_RMW_JSONL_PARSE"
             observer=[json.loads(x) for x in event_path.read_text().splitlines()]
+            failure_stage="NATIVE_TF_DIAGNOSTIC_ROWS"
             tf_lines=tf_path.read_text().splitlines()
             anchors={
                 "start":json.loads((anchor_path/"start_anchor.json").read_text()),
                 "end":json.loads((anchor_path/"end_anchor.json").read_text()),
             }
+            failure_stage="NATIVE_LTTNG_CALLBACK_ROWS"
             trace=exact_trace_rows(trace_path)
             # Raw /clock MONOTONIC receive and ROS SIM clock stamps remain
             # in sealed runner only. Missing/incomplete probe => HOLD, not
@@ -105,12 +113,34 @@ def extract(*, events, trace_dir, tf_file, anchors_dir,
                                 cp.read_text().splitlines()]
                 else:
                     clock_rows=[]
+            failure_stage="EXACT_SOURCE_TF_ALLOWLIST_JOIN"
             data=export_sanitized(observer,trace,tf_lines,anchors,
                     run_id=run_id,public_sha=public_sha,
                     clock_rows=clock_rows)
     except (OSError,ValueError,KeyError,TypeError,ImportError,RuntimeError):
         data=_fallback("PUBLIC_EVIDENCE_EXTRACTION_UNVERIFIED_HOLD",
                        run_id,public_sha)
+        data["failure_stage"]=failure_stage  # fixed internal enum, no exception text
+        # In contrast with TF/Callback causality, this *independent* RMW
+        # source interval needs only MessageInfo sequence and receive rows.
+        # The original publisher clock domain remains UNVERIFIED.
+        try:
+            from d06.live.g07_cycle05_cm_callback_window import _first_pair
+            pair=_first_pair(observer)
+            if pair is not None:
+                a,b,_=pair
+                source=b["rmw_source_ns"]-a["rmw_source_ns"]
+                received=round((b["t"]-a["t"])*1_000_000_000)
+                if (type(source) is int and 120_000_000<=source<1_000_000_000
+                        and type(received) is int
+                        and 0<received<1_000_000_000):
+                    data["first_gap"]={
+                        "rmw_source_gap_ns":source,
+                        "observer_gap_ns":received}
+                    data["first_gap_provenance"]=(
+                        "OBSERVER_RMW_ONLY_EXACT_CM_CALLBACK_UNVERIFIED")
+        except (ValueError,KeyError,TypeError,IndexError,OverflowError):
+            pass
     p=write_allowlisted_json(data,out)
     return data["status"],p
 
