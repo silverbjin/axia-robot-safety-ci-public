@@ -10,5 +10,5 @@ add_library(axia_g07_cm120_tf_diag SHARED cm_tf_gettransform_preload.cpp)
 target_compile_features(axia_g07_cm120_tf_diag PRIVATE cxx_std_17)
 ament_target_dependencies(axia_g07_cm120_tf_diag
   nav2_util rclcpp tf2 tf2_ros)
-target_link_libraries(axia_g07_cm120_tf_diag PRIVATE dl)
+target_link_libraries(axia_g07_cm120_tf_diag dl)
 set_target_properties(axia_g07_cm120_tf_diag PROPERTIES PREFIX "lib")
