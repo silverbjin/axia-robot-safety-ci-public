@@ -16,7 +16,7 @@ class TestPrivateCustodyGate(unittest.TestCase):
             "GITHUB_ACTIONS",
             "AXIA_P0_SIM_ONLY",
             "AXIA_G07_TASK01_GOAL_ALLOWED",
-            "AXIA_CLOUD_CI",
+            "AXIA_G07_EVIDENCE_WRITE_TOKEN",
             "sha256sum",
             "git -C",
         ):
