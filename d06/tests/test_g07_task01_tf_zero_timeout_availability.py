@@ -111,5 +111,33 @@ class ZeroTimeoutReadiness(unittest.TestCase):
         self.assertEqual(got["status"], "FIRST_SOURCE_GAP_NOT_REPRODUCED_HOLD")
         self.assertFalse(got["root_cause_proven"])
 
+    def test_other_callback_availability_is_not_first_observer_pair(self):
+        # The public exporter accepts bounded nearby TF calls (±200ms)
+        # to preserve evidence. A DIFFERENT native CM callback in that
+        # neighborhood must not become first-pair TF readiness causality.
+        # Real source gap fixture: observer pair [12.000, 12.132].
+        from d06.tests.test_g07_cm120_tf_first_gap_join import cb
+        for t0, t1, p0, p1, q0, q1 in (
+            (11.864, 11.955, 11.862, 11.863, 11.956, 11.957),
+            (12.160, 12.240, 12.158, 12.159, 12.241, 12.242),
+        ):
+            with self.subTest(tf_start=t0):
+                other_callback = [
+                    cb("ros2:callback_start", t0 - .003),
+                    cb("ros2:callback_end", t1 + .003),
+                ]
+                doc = export_sanitized(
+                    observer(), trace() + other_callback,
+                    [READY, line(t0, t1, cpu=.0003),
+                     probe(p0=p0, p1=p1, q0=q0, q1=q1)],
+                    anchor(), run_id="44040000001", public_sha=SHA)
+                self.assertEqual(
+                    doc["tf_availability"]["status"],
+                    "TF_AVAILABILITY_READ_ONLY_RECORDED_HOLD")
+                self.assertEqual(
+                    classify(doc)["status"],
+                    "TF_AVAILABILITY_OUTSIDE_FIRST_OBSERVER_PAIR_HOLD")
+                self.assertFalse(classify(doc)["gate_c_authorized"])
+
 if __name__=="__main__":
     unittest.main()
