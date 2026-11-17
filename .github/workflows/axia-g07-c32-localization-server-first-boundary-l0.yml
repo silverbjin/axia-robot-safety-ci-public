@@ -15,14 +15,14 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: fe2081a0cd3013779ca82361756602fdac50a539
+          ref: 1241e323de2216186a931c81ff7b33bb1d1f8363
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Reduced actual first server boundary fixture
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git rev-parse HEAD)" = fe2081a0cd3013779ca82361756602fdac50a539
+          test "$(git rev-parse HEAD)" = 1241e323de2216186a931c81ff7b33bb1d1f8363
           python3 -m py_compile tools/p2_g07_lifecycle_service.py tools/p2_g07_localization_shutdown_trace.py
           python3 -m unittest discover -s tests/unit -p test_g07_c32_localization_server_boundary.py -v
           python3 -m unittest discover -s tests/unit -p test_g07_c31_native_shutdown_ack_trace.py -v
@@ -33,7 +33,8 @@ jobs:
           grep -Fq 'AXIA_G07_C32_QUIESCE_GOAL:-0' scripts/p2_no_goal_smoke_ci.sh
           grep -Fq 'AXIA_G07_C32_EXACT_GOAL_TERMINAL_VERIFIED_BEFORE_NAV2_SHUTDOWN' scripts/p2_no_goal_smoke_ci.sh
           python3 -m unittest discover -s tests/unit -p test_g07_c32_goal_terminal_before_lifecycle.py -v
-          echo AXIA_G07_C32_SERVER_PHASE_AND_GOAL_TERMINAL_L0_PASS
+          python3 -m unittest discover -s tests/unit -p test_g07_c32_owner_terminal_parity_scope.py -v
+          echo AXIA_G07_C32_OWNER_TERMINAL_PARITY_L0_PASS
       - name: Cleanup
         if: always()
         run: rm -rf -- tests tools scripts ros2_ws docs
