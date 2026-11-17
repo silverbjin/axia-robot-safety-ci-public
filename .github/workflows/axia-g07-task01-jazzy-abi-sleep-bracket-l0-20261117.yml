@@ -51,7 +51,8 @@ jobs:
                          'axia_g07_s2_sleep_interposition_selftest',
                          'axia_g07_task01_clock_get_now_abi_selftest',
                          'axia_g07_task01_real_rclcpp_clock_dispatch_selftest',
-                         'axia_g07_task01_cpp_clock_dispatch_selftest'):
+                         'axia_g07_task01_cpp_clock_dispatch_selftest',
+                         'axia_g07_task01_official_buffer_clock_dispatch_selftest'):
               fun=getattr(h,symbol)
               fun.restype=ctypes.c_int
               assert fun()==1,symbol
@@ -59,6 +60,7 @@ jobs:
           print('AXIA_G07_TASK01_GENUINE_RCL_CLOCK_GET_NOW_ABI_SELFTEST_PASS_NO_GOAL')
           print('AXIA_G07_TASK01_OFFICIAL_RCLCPP_CLOCK_DSO_DISPATCH_PASS_NO_GOAL')
           print('AXIA_G07_TASK01_CPP_CLOCK_SYMBOL_INTERPOSITION_PASS_NO_GOAL')
+          print('AXIA_G07_TASK01_OFFICIAL_TF2_BUFFER_CROSS_DSO_CLOCK_DISPATCH_PASS_NO_GOAL')
           PY
       - name: Remove diagnostic ELF, do not modify installed ROS
         if: always()
