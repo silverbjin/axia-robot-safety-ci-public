@@ -19,7 +19,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-ci-public
-          ref: d17c03cfb5806e89e77961400a43740f3e2d9bed
+          ref: 2035262ecfceb093787bca80873a02c6e15fd95d
           path: public-task01
           persist-credentials: false
       - name: Sealed Instructor evidence branch, not instructor runtime
@@ -41,7 +41,7 @@ jobs:
           AXIA_G07_TASK01_PRIVATE_CUSTODY_DIR: ${{ github.workspace }}/private-custody
         run: |
           set -Eeuo pipefail
-          test "$(git -C public-task01 rev-parse HEAD)" = 'd17c03cfb5806e89e77961400a43740f3e2d9bed'
+          test "$(git -C public-task01 rev-parse HEAD)" = '2035262ecfceb093787bca80873a02c6e15fd95d'
           bash -n public-task01/d06/scripts/g07_task01_private_custody_canary.sh
           bash public-task01/d06/scripts/g07_task01_private_custody_canary.sh
           echo AXIA_G07_TASK01_RELEASE_LANE_PRIVATE_CANARY_PASS_NO_ROS_NO_GOAL
