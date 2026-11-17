@@ -15,14 +15,14 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: eaf107476b9603d17aba50507c77939369e30991
+          ref: 88430e63f2a0c15eb05c53c86a6c6de51ddcfbd9
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: ROS-free exact Owner report schema and terminal fail-closed tests
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git rev-parse HEAD)" = eaf107476b9603d17aba50507c77939369e30991
+          test "$(git rev-parse HEAD)" = 88430e63f2a0c15eb05c53c86a6c6de51ddcfbd9
           python3 -m unittest discover -s tests/unit -p test_g07_c33_owner_terminal_evidence_wire.py -v
           python3 -m unittest discover -s tests/unit -p test_g07_c32_goal_terminal_before_lifecycle.py -v
           python3 -m unittest discover -s tests/unit -p test_g07_c32_owner_terminal_parity_scope.py -v
