@@ -83,6 +83,12 @@ def classify_publish_join(observer, trace, anchors, tf_calls):
          and e.get("name") in ("ros2:callback_start","ros2:callback_end")
          and e.get("vpid")==pid and e.get("procname") in CM_PROC
          and str(e.get("callback"))==callback_handle]
+    # Sanitized native TF spans have no TID. If more than one official
+    # cmd_vel callback worker exists, temporal overlap alone cannot prove
+    # the TF invocation belongs to the source-publishing worker.
+    tids={e.get("vtid") for e in cbs if type(e.get("vtid")) is int}
+    if len(tids)!=1:
+        return _hold("NATIVE_CM_TF_THREAD_OWNERSHIP_AMBIGUOUS_HOLD")
     offset=_anchor(cbs,anchors)
     if offset is None:
         return _hold("NATIVE_PUBLISH_CTF_CLOCK_DOMAIN_UNVERIFIED_HOLD")
