@@ -336,6 +336,22 @@ int axia_g07_task01_cpp_clock_dispatch_selftest() {
     tf_cpp_clock_samples.load(std::memory_order_relaxed)>before ? 1:0;
 }
 
+// Read-only genuine official tf2_ros::Buffer zero-timeout probe ABI.
+// Missing frames MUST return false promptly, without changing transforms.
+// No simulator or Goal. Run this ONLY in public Jazzy C++ L0.
+extern "C" __attribute__((visibility("default")))
+int axia_g07_task01_zero_timeout_tf_availability_abi_selftest() {
+  auto clock=std::make_shared<rclcpp::Clock>(RCL_ROS_TIME);
+  auto buffer=std::make_shared<tf2_ros::Buffer>(clock);
+  const rclcpp::Time t(0,0,RCL_ROS_TIME);
+  const auto begin=clock_ns(CLOCK_MONOTONIC);
+  const bool available=buffer->canTransform(
+    "task01_missing_target",t,"task01_missing_source",t,
+    "task01_missing_fixed",rclcpp::Duration::from_nanoseconds(0));
+  const auto elapsed=clock_ns(CLOCK_MONOTONIC)-begin;
+  return (!available && elapsed>=0 && elapsed<200000000LL) ? 1:0;
+}
+
 // Isolated NO_GOAL selftest of the exact std::this_thread::sleep_for()
 // path used by Jazzy tf2_ros::Buffer; never called by production Nav2.
 extern "C" __attribute__((visibility("default")))
@@ -368,6 +384,23 @@ bool getTransform(
   if(!original) std::abort();
   const int file=active_fd();
   const bool track=file>=0 && samples.fetch_add(1,std::memory_order_relaxed)<kMaxTfSamples;
+  // Optional CI-only diagnostic: read-only ZERO-TIMEOUT exact same request
+  // before official TF call. This probe is timed OUTSIDE original TF wall;
+  // no official Nav2 parameters or timeout are changed.
+  const char* flag=std::getenv("AXIA_G07_TASK01_TF_AVAIL_PROBE");
+  const bool probe=track && tf_buffer && flag && ::strcmp(flag,"1")==0;
+  bool pre_available=false, post_available=false, pre_valid=false, post_valid=false;
+  long long p0=-1,p1=-1,q0=-1,q1=-1;
+  if(probe) {
+    p0=clock_ns(CLOCK_MONOTONIC);
+    try {
+      pre_available=tf_buffer->canTransform(
+        target_frame_id,target_time,source_frame_id,source_time,
+        fixed_frame_id,rclcpp::Duration::from_nanoseconds(0));
+      pre_valid=true;
+    } catch (const std::exception &) {pre_valid=false;}
+    p1=clock_ns(CLOCK_MONOTONIC);
+  }
   long long m0=-1,c0=-1;
   SchedSample sc0{},sc1{};
   rusage u0{},u1{};
@@ -390,6 +423,26 @@ bool getTransform(
     tf_window_active=false;
     const long long c1=clock_ns(CLOCK_THREAD_CPUTIME_ID);
     const long long m1=clock_ns(CLOCK_MONOTONIC);
+    if(probe) {
+      q0=clock_ns(CLOCK_MONOTONIC);
+      try {
+        post_available=tf_buffer->canTransform(
+          target_frame_id,target_time,source_frame_id,source_time,
+          fixed_frame_id,rclcpp::Duration::from_nanoseconds(0));
+        post_valid=true;
+      } catch (const std::exception &) {post_valid=false;}
+      q1=clock_ns(CLOCK_MONOTONIC);
+      if(pre_valid && post_valid && p0>=0 && p1>=p0 &&
+          m0>=p1 && q0>=m1 && q1>=q0) {
+        char avline[320];
+        const int avn=std::snprintf(avline,sizeof(avline),
+          "TF_AVAIL pid=%ld tid=%ld mono_pre_ns=%lld mono_pre_end_ns=%lld mono_post_start_ns=%lld mono_post_end_ns=%lld pre_available=%d post_available=%d\n",
+          static_cast<long>(::getpid()),static_cast<long>(::syscall(SYS_gettid)),
+          p0,p1,q0,q1,pre_available?1:0,post_available?1:0);
+        if(avn>0 && avn<static_cast<int>(sizeof(avline)))
+          (void)::write(file,avline,static_cast<size_t>(avn));
+      }
+    }
     const bool u1_ok=(::getrusage(RUSAGE_THREAD,&u1)==0);
     const bool sc1_ok=sc0_ok && thread_schedstat(sc1);
     const bool rusage_valid=(u0_ok && u1_ok &&
