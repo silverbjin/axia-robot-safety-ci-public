@@ -1,0 +1,28 @@
+name: AXIA G07 CM120 Task01 TF exact first-source-gap overlap L0
+on:
+  push:
+    branches: [fix/g07-cm120-task01-first-gap-tf-overlap-20261117]
+    paths:
+      - '.github/workflows/axia-g07-cm120-task01-first-gap-overlap-l0.yml'
+      - 'd06/diagnostic/analyze_first_cm_tf.py'
+      - 'd06/tests/test_g07_cm120_task01_tf_first_source_gap_overlap.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  exact-first-gap-pure-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Task01 first CM source gap overlap RED GREEN
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          export PYTHONDONTWRITEBYTECODE=1
+          python3 -m unittest discover -s d06/tests -p 'test_g07_cm120_task01_tf_first_source_gap_overlap.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_g07_cm120_s2_exact_tf_offcpu_join.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_g07_cm120_s2_actual_sleep_provenance.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_g07_cm120_tf_first_gap_join.py' -v
+          python3 -m py_compile d06/diagnostic/analyze_first_cm_tf.py
+          echo AXIA_G07_CM120_TASK01_FIRST_GAP_TF_TEMPORAL_JOIN_L0_PASS_NO_ROS_NO_GOAL
