@@ -21,6 +21,7 @@ jobs:
           path: student
           persist-credentials: false
       - name: RED official simple TF is not yet present
+        shell: bash
         run: |
           set -Eeuo pipefail
           test "$(git -C student rev-parse HEAD)" = e2eaa152c44d5c6c788c8cb4115b199cb935631e
