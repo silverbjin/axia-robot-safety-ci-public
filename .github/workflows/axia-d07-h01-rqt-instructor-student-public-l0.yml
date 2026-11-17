@@ -22,7 +22,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 37a0f90c56a75bf0f5d314e6f5476cf20e5f3045
+          ref: 09008d5c813eefa528fcfe7f3509a39564018aa6
           path: student
           persist-credentials: false
       - name: Check exact Instructor guide and public student executable boundary
@@ -30,7 +30,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           test "$(git -C instructor rev-parse HEAD)" = "f538fd7afc4bcd1b3e607064fa24968a748be66c"
-          test "$(git -C student rev-parse HEAD)" = "37a0f90c56a75bf0f5d314e6f5476cf20e5f3045"
+          test "$(git -C student rev-parse HEAD)" = "09008d5c813eefa528fcfe7f3509a39564018aa6"
           (cd instructor && python3 -m unittest discover -s tests/unit -p test_d07_h01_rqt_instructor_guide.py -v)
           (cd student && python3 -m unittest discover -s block_B/tests -p test_d07_h01_rqt_continuous.py -v)
           bash -n student/block_B/day07/run_d07_h01_gazebo_rviz_student_once.sh
