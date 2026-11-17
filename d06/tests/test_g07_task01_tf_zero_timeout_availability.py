@@ -1,0 +1,96 @@
+"""Task01 zero-timeout TF readiness: native official TF Buffer, diagnostic only.
+
+Never interpret one query as direct proof of first RMW source gap causality.
+The pre/post calls are *outside* original getTransform timing and optional,
+and do not modify official Nav2/CM/Guard parameters.
+"""
+import json
+import unittest
+from pathlib import Path
+
+from d06.diagnostic.export_public_cm120_first_gap import export_sanitized
+from d06.diagnostic.classify_tf_availability import classify
+from d06.tests.test_g07_cm120_tf_first_gap_join import (
+    READY, observer, trace, anchor, line
+)
+from d06.tests.test_g07_cm120_task01_per_sleep_span_join import poll
+
+SHA="0123456789abcdef0123456789abcdef01234567"
+ACTUAL=Path(__file__).resolve().parents[1]/"evidence/g07_cm120_task01/run_44049067368_first_gap_sanitized.json"
+
+
+def probe(*, p=4242, tid=33, pre=0, post=1,
+          p0=12.012, p1=12.013, q0=12.106, q1=12.107):
+    return (f"TF_AVAIL pid={p} tid={tid} "
+            f"mono_pre_ns={round(p0*1e9)} mono_pre_end_ns={round(p1*1e9)} "
+            f"mono_post_start_ns={round(q0*1e9)} mono_post_end_ns={round(q1*1e9)} "
+            f"pre_available={pre} post_available={post}")
+
+
+def sample(*events):
+    return export_sanitized(observer(),trace(),[
+        READY,line(12.014,12.105,cpu=.0003),
+        poll(12.024,12.034),poll(12.044,12.054),*events
+    ],anchor(),run_id="44040000001",public_sha=SHA)
+
+
+class ZeroTimeoutReadiness(unittest.TestCase):
+    def test_actual_legacy_first_source_gap_is_still_unproven(self):
+        actual=json.loads(ACTUAL.read_text())
+        out=classify(actual)
+        self.assertEqual(out["status"],"TF_AVAILABILITY_PROBE_NOT_PRESENT_HOLD")
+        self.assertFalse(out["root_cause_proven"])
+        self.assertFalse(out["scheduler_wait_proven"])
+        self.assertFalse(out["gate_c_authorized"])
+
+    def test_pre_unavailable_post_available_is_only_candidate(self):
+        doc=sample(probe())
+        self.assertEqual(len(doc["tf_availability"]["spans"]),1)
+        data=doc["tf_availability"]["spans"][0]
+        self.assertEqual(set(data),{
+            "pre_available","post_available",
+            "pre_probe_wall_ns","post_probe_wall_ns",
+            "original_tf_call_wall_ns",
+            "pre_start_rel_observer_ns","post_end_rel_observer_ns"})
+        self.assertFalse(data["pre_available"])
+        self.assertTrue(data["post_available"])
+        self.assertEqual(data["pre_probe_wall_ns"],1_000_000)
+        self.assertEqual(data["original_tf_call_wall_ns"],91_000_000)
+        self.assertNotIn("pid",json.dumps(doc["tf_availability"]))
+        self.assertNotIn("tid",json.dumps(doc["tf_availability"]))
+        v=classify(doc)
+        self.assertEqual(v["status"],"TF_INITIAL_UNAVAILABLE_LATER_AVAILABLE_CANDIDATE_HOLD")
+        self.assertEqual(v["same_call_transition_count"],1)
+        self.assertFalse(v["tf_wait_root_cause_proven"])
+        self.assertFalse(v["source_publication_to_monotonic_alignment_proven"])
+        self.assertFalse(v["scheduler_wait_proven"])
+        self.assertFalse(v["cm120_release_pass"])
+
+    def test_unrelated_pid_and_tid_can_not_count_as_owned_tf(self):
+        doc=sample(probe(p=4243),probe(tid=34))
+        self.assertNotIn("tf_availability",doc)
+        self.assertEqual(classify(doc)["status"],"TF_AVAILABILITY_PROBE_NOT_PRESENT_HOLD")
+
+    def test_probe_crossing_original_call_does_not_credit(self):
+        doc=sample(probe(p1=12.016))
+        self.assertEqual(classify(doc)["status"],"TF_AVAILABILITY_BOUNDARY_UNVERIFIED_HOLD")
+
+    def test_multi_probe_per_same_call_does_not_credit(self):
+        doc=sample(probe(),probe())
+        self.assertEqual(classify(doc)["status"],"TF_AVAILABILITY_AMBIGUOUS_CALL_HOLD")
+
+    def test_pre_available_with_sleep_is_not_tf_wait_proof(self):
+        doc=sample(probe(pre=1,post=1))
+        self.assertEqual(classify(doc)["status"],"TF_AVAILABLE_AT_ENTRY_CAUSE_UNPROVEN_HOLD")
+        self.assertFalse(classify(doc)["root_cause_proven"])
+
+    def test_conservative_original_wall_not_probe_wall(self):
+        doc=sample(probe(p0=12.000,p1=12.014,q0=12.105,q1=12.118))
+        # Both optional checks may be expensive; existing original official
+        # TF wall must remain 91ms and cannot be inflated with probes.
+        self.assertEqual(doc["tf_availability"]["spans"][0]["original_tf_call_wall_ns"],91_000_000)
+        self.assertEqual(classify(doc)["status"],
+                         "TF_AVAILABILITY_PROBE_TOO_SLOW_HOLD")
+
+if __name__=="__main__":
+    unittest.main()
