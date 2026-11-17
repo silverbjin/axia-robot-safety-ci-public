@@ -11,18 +11,18 @@ jobs:
     timeout-minutes: 6
     environment: axia-instructor-sealed
     steps:
-      - name: Exact sealed Instructor RED candidate
+      - name: Exact sealed Instructor GREEN candidate
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: c17746dad0f91d64b982825d3ac29ba5255b55e0
+          ref: 49f38d7912bf8930a331577090522ccf52337fba
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Targeted CI native shutdown bypass regression
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = c17746dad0f91d64b982825d3ac29ba5255b55e0
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 49f38d7912bf8930a331577090522ccf52337fba
           python3 -m unittest discover -s tests/unit -p test_g07_c34_mandatory_terminal_before_native_ack.py -v
           python3 -m unittest discover -s tests/unit -p test_g07_c32_goal_terminal_before_lifecycle.py -v
           bash -n scripts/p2_no_goal_smoke_ci.sh
