@@ -56,6 +56,58 @@ def exact_trace_rows(trace_dir):
     return result["rows"]
 
 
+def _narrow_first_observer_window_tf(observer, tf_lines):
+    """Only the first source-gap-selected OBSERVER interval +/-200ms.
+
+    Original TF raw remains local. Discard unrelated same-session polls
+    before the native exporter applies its 20k line cap. This is NOT
+    source SYSTEM -> MONOTONIC sender alignment or causal proof.
+    """
+    from d06.live.g07_cycle05_cm_callback_window import _first_pair
+    from d06.diagnostic.analyze_first_cm_tf import (
+        TF_LINE, TF_SLEEP_LINE, TF_CLOCK_LINE, TF_AVAIL_LINE)
+    from d06.diagnostic.export_public_cm120_first_gap import READY
+    if not isinstance(tf_lines, list) or len(tf_lines) > 100000:
+        raise ValueError("PUBLIC_TF_RAW_LINE_LIMIT")
+    pair = _first_pair(observer)
+    # No actual source breach: never select a TF callback by proximity.
+    selected=[]
+    if pair is None:
+        return selected
+    a,b,_=pair
+    begin=round(a["t"]*1e9)-200_000_000
+    end=round(b["t"]*1e9)+200_000_000
+    for row in tf_lines:
+        if not isinstance(row,str) or len(row)>320:
+            raise ValueError("PUBLIC_TF_LINE_OVERSIZE")
+        line=row.strip()
+        if line==READY:
+            selected.append(line)
+            continue
+        m=TF_LINE.fullmatch(line)
+        if m:
+            start,stop=(int(m.group(3)),int(m.group(4)))
+        else:
+            m=TF_SLEEP_LINE.fullmatch(line)
+            if m:
+                start,stop=(int(m.group(3)),int(m.group(4)))
+            else:
+                m=TF_CLOCK_LINE.fullmatch(line)
+                if m:
+                    start=stop=int(m.group(3))
+                else:
+                    m=TF_AVAIL_LINE.fullmatch(line)
+                    if m:
+                        start,stop=(int(m.group(3)),int(m.group(6)))
+                    else:
+                        raise ValueError("PUBLIC_TF_RAW_LINE_UNEXPECTED")
+        if start<=end and stop>=begin:
+            selected.append(line)
+            if len(selected)>20000:
+                raise ValueError("PUBLIC_FIRST_GAP_TF_WINDOW_STILL_UNBOUNDED")
+    return selected
+
+
 def _fallback(status, run_id, public_sha):
     # Fixed strings and fixed SHA validated by caller; no raw exceptions leak.
     return {
@@ -96,6 +148,8 @@ def extract(*, events, trace_dir, tf_file, anchors_dir,
             observer=[json.loads(x) for x in event_path.read_text().splitlines()]
             failure_stage="NATIVE_TF_DIAGNOSTIC_ROWS"
             tf_lines=tf_path.read_text().splitlines()
+            failure_stage="NARROW_FIRST_OBSERVER_TF_WINDOW"
+            tf_lines=_narrow_first_observer_window_tf(observer,tf_lines)
             anchors={
                 "start":json.loads((anchor_path/"start_anchor.json").read_text()),
                 "end":json.loads((anchor_path/"end_anchor.json").read_text()),
