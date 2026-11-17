@@ -29,6 +29,16 @@ jobs:
           assert 'AXIA_G07_CM120' not in p
           print('AXIA_G07_CM120_GATE_B_OLD_CALLBACK_TRACE_TF_CAUSALITY_RED_CONFIRMED')
           PY
+      - name: RED exact C05 could not attribute TF and GREEN bounded join three cases
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
+             -s d06/tests -p 'test_g07_cm120_tf_first_gap_join.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
+             -s d06/tests -p 'test_g07_cycle05_cmd_callback_window.py' -v
+          python3 -m py_compile d06/diagnostic/analyze_first_cm_tf.py
+          echo AXIA_G07_CM120_FIRST_GAP_TF_INTERVAL_JOIN_GREEN3_AND_C05_REGRESSION_NO_ROS_NO_GOAL
       - name: Real installed Jazzy ABI compile and RTLD_NEXT linkage GREEN without ROS or Goal
         shell: bash
         run: |
