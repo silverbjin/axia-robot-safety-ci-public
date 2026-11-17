@@ -138,10 +138,23 @@ jobs:
           assert decision["linked_cmd_vel_callback_handles"]>=1
           assert decision["ready_for_moving_goal"] is False
           PY
+          if [[ "$RC" != 0 ]];then
+            echo AXIA_G07_C04_NO_GOAL_RUNTIME_FIRST_FAILURE_MARKERS
+            grep -Eo '(AXIA_|G07_|P2_)[A-Z0-9_]*(BLOCKED|HOLD|FAIL|ERROR|TIMEOUT|MISSING|SHUTDOWN)[A-Z0-9_]*' \
+               "$TRACE_DIR/nogoal.log" | tail -n 16 || true
+          fi
           python3 - "$RC" <<'PY'
           import json,sys
           from pathlib import Path
           root=Path("results/p4-g07-c04-cm-metadata-nogoal")
+          startup_path=root/"startup_verdict.json"
+          shutdown_path=root/"g07_ordered_shutdown.json"
+          verdict=json.loads(startup_path.read_text()) if startup_path.exists() else {}
+          print("AXIA_G07_C04_FIRST_NO_GOAL_LIFECYCLE_BOUNDARY "+
+                json.dumps({"runner_rc":int(sys.argv[1]),
+                            "startup_status":verdict.get("status"),
+                            "goal_sent":verdict.get("goal_sent"),
+                            "shutdown_ack_present":shutdown_path.exists()},sort_keys=True))
           x=json.loads((root/"startup_verdict.json").read_text())
           shutdown=json.loads((root/"g07_ordered_shutdown.json").read_text())
           assert x["status"]=="SMOKE_READY" and x["goal_sent"] is False
