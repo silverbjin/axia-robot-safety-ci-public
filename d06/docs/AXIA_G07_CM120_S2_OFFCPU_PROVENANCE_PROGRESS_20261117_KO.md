@@ -52,3 +52,38 @@ OWNER_WSL2_L3=NOT_RUN
 MAIN_MERGED=false
 CERTIFIED_ESTOP=false
 ```
+
+
+## S2-2 실제 공식 Jazzy/Harmonic/Nav2 NO_GOAL L2 결과 — GREEN
+
+**Public [Run #44013676608](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44013676608), completed SUCCESS**, original private SHA `966886c4627deb2bb3b37111fe336eeee6b9ebb4`, public S2 tested source pin `9bcdc5cb92ff4da61efb2eba1d2fd77c30dfff96`, actual one-off release trigger `65769ad477d61215e925005dc2d9fbf0ffd7d0a1`. NO_GOAL runner rc0; after completed, retired only one-off NO_GOAL workflow release commit `9947b8ab15b566ffb963029bc279e737c681da71`. No Goal or CM configuration change.
+```text
+AXIA_G07_S2_CM_PRELOAD_MAP_OBSERVED=1
+AXIA_G07_S2_REAL_NO_GOAL_CM_TF_READINESS {
+  "actual_tf_call_count":477,
+  "tf_nanosleep_calls_total":427,
+  "tf_actual_sleep_wall_ms_total":4399.656895,
+  "process_mapping_proven":true,
+  "tf_call_observed":true,
+  "startup_status":"SMOKE_READY",
+  "goal_sent":false,
+  "localization_shutdown_status":"NAV2_LIFECYCLE_SHUTDOWN_ACK",
+  "navigation_ack":true,
+  "localization_ack":true,
+  "runner_rc":0,
+  "root_cause_proven":false,
+  "release_pass":false,
+  "owner_accepted":false,
+  "certified_estop":false
+}
+AXIA_G07_S2_REAL_CM_LOADER_AND_LOCALIZATION_NO_GOAL_PASS
+AXIA_G07_S2_TF_FUNCTION_CALLED_NO_GOAL_DIAGNOSTIC_NOT_RELEASE
+AXIA_MVP_DEMO_ACCEPTED=HOLD
+```
+- **Proven**: official original CM process successfully loads diagnostic shim and intercepts actual libc sleep calls *while* Advanced TF wrapper active. 427 sleep intervals elapsed 4.399657 seconds **aggregated across 477 calls**.
+- This is **NOT** same S1 first CM gap (different Run, NO_GOAL), and **NOT** proof that all the elapsed time is transform availability waiting: libc sleep wall includes potential scheduling delay after timer expiry. Do not attribute or divide 4399ms as a first-gap number.
+- Existing original Navigation and Localization ACK both SUCCESS. NO_GOAL life-cycle pass does not prove post-Goal lifecycle stability.
+
+## S2-3 single new Moving Goal status
+- Because S2-2 real CM NO_GOAL loader/actual TF sleep hook was verified and S2 L0 unit+ABI passed, one source-pinned original diagnostic Moving Goal was registered [public Run #44014107942](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44014107942), release trigger SHA `fe57ee49edcde2b7a03080177b8148f917486cf2`. **PENDING at this note**; do not infer actual Goal or result before immutable logs.
+- Future output requires `AXIA_G07_S2_FIRST_CM_TF_OFFCPU_PROVENANCE`: SAME first failed CM RMW source gap→topic-specific official CM callback PID/TID→Advanced TF function→libc sleep intervals, plus Guard/Scan/Odom/Clock, Collision0, Stop/CANCEL/Shutdown, original14 topic. Even if TF sleeps dominate, `root_cause_proven=false`, `gate_c_authorized=false` until standalone causal attribution/safety fix.
