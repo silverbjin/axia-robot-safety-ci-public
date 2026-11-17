@@ -46,6 +46,8 @@ class OwnerGpuTrialContract(unittest.TestCase):
         self.assertNotIn("source ~/.bashrc",s)
         self.assertNotIn("wsl --shutdown",s)
 
+    @unittest.skipUnless((ROOT.parent/"instructor"/"tools").is_dir(),
+        "sealed Instructor tools absent: public CI runs only public-scope tests")
     def test_real_first_gui_failure_survives_missing_phase_evidence(self):
         # Owner mVW: empty watcher log + absent GUI stage files. A later
         # FileNotFoundError is NEVER the first failure if GUI failed first.
@@ -68,6 +70,8 @@ class OwnerGpuTrialContract(unittest.TestCase):
             self.assertEqual(verdict["reason"],first)
             self.assertFalse(verdict["owner_wsl2_gui_l3_accepted"])
 
+    @unittest.skipUnless((ROOT.parent/"instructor"/"tools").is_dir(),
+        "sealed Instructor tools absent: public CI runs only public-scope tests")
     def test_first_native_localization_failure_outweighs_watcher(self):
         # Owner gx74: watcher was never launched because LOCALIZATION_START
         # had already failed. Never mislabel the first failure.
