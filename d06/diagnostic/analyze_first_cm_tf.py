@@ -20,8 +20,8 @@ TF_LINE=re.compile(
 # Each event is a genuine nested-safe libc sleep bracket measured inside the
 # original official Advanced TF call; NEVER a publisher timestamp.
 TF_SLEEP_LINE=re.compile(
-    r"^TF_SLEEP pid=(\\d+) tid=(\\d+) mono_start_ns=(\\d+) "
-    r"mono_end_ns=(\\d+) req_ns=(\\d+) rc=(-?\\d+)$"
+    r"^TF_SLEEP pid=(\d+) tid=(\d+) mono_start_ns=(\d+) "
+    r"mono_end_ns=(\d+) req_ns=(\d+) rc=(-?\d+)$"
 )
 TOPIC="/cmd_vel_supervised"
 CM_PROCS={"collision_monitor","collision_monit"}
