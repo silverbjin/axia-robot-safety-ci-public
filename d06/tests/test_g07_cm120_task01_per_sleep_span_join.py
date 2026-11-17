@@ -41,6 +41,16 @@ class FirstGapSameTFCallSleepSpan(unittest.TestCase):
             READY,line(12.014,12.105,cpu=.0003),
             poll(12.024,12.040),poll(12.030,12.044)],anchor())
         self.assertEqual(v["status"],"TF_SLEEP_SPANS_OVERLAP_HOLD")
+    def test_partial_per_sleep_log_cannot_claim_complete_interval(self):
+        tf=(line(12.014,12.105,cpu=.0003)
+            +" schedstat_valid=0 runqueue_ns=0 sched_cpu_ns=0"
+             " voluntary_cs=2 involuntary_cs=0"
+             " sleep_ns=20000000 sleep_calls=2")
+        v=analyze(observer(),trace(),[
+            READY,tf,poll(12.024,12.034)],anchor())
+        self.assertEqual(v["status"],"TF_SLEEP_EVENT_COVERAGE_INCOMPLETE_HOLD")
+        self.assertFalse(v["gate_c_authorized"])
+
     def test_malformed_sleep_span_fails_closed(self):
         v=analyze(observer(),trace(),[
             READY,line(12.014,12.105,cpu=.0003),
