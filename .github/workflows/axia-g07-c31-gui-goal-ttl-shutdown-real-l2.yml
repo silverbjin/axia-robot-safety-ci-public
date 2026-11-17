@@ -85,6 +85,9 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
+          # The immutable ROS runtime has rviz2 under /opt/ros/jazzy/bin.
+          # Source BEFORE executable discovery, just as C30 GUI L2 did.
+          set +u; source /opt/ros/jazzy/setup.bash; set -u
           for p in d06-public/d06/rviz/d06_safety_bubble.rviz d06-public/d06/live/d06_readonly_monitor.py; do
             test -s "$p" || { echo AXIA_G07_C31_D06_PINNED_ASSET_MISSING; exit 2; }
           done
