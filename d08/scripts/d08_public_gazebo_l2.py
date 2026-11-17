@@ -475,13 +475,19 @@ def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=Fals
                 raise RuntimeError('D08_XACRO_OUTPUT_IS_NOT_SDF')
         # Task00: pin the generated *actual* world and CI source in this
         # run before starting Gazebo; not a claim of live ROS/CM/Nav2 proof.
+        # GitHub Docker root checkout may have host-owned files. Trust this root only.
         sha_cp=subprocess.run(
-            ['git','-C',str(ROOT),'rev-parse','HEAD'],
+            ['git','-c',f'safe.directory={ROOT}',
+             '-C',str(ROOT),'rev-parse','HEAD'],
             capture_output=True,text=True,timeout=8,check=False)
         if sha_cp.returncode!=0:
-            raise RuntimeError('D08_GIT_SOURCE_SHA_NOT_AVAILABLE')
+            raise RuntimeError('D08_GIT_SOURCE_SHA_NOT_AVAILABLE:'
+                               +sha_cp.stderr.strip()[-180:])
+        checkout_sha=sha_cp.stdout.strip()
+        if env.get('GITHUB_SHA') and checkout_sha!=env['GITHUB_SHA']:
+            raise RuntimeError('D08_GITHUB_EVENT_SHA_CHECKOUT_MISMATCH')
         result['runtime_provenance']=make_runtime_provenance(
-            gz_world,env,sha_cp.stdout.strip())
+            gz_world,env,checkout_sha)
         (out/'runtime_provenance.json').write_text(json.dumps(
             result['runtime_provenance'],indent=2,sort_keys=True)+'\n')
         sim=_start('gazebo_server',

@@ -46,3 +46,10 @@ def test_cross_domain_or_unpinned_sha_must_not_be_e2e(tmp_path):
         make_runtime_provenance(f,{**ENV,"GZ_PARTITION":""},SHA)
     with pytest.raises(ValueError, match="D08_SOURCE_SHA"):
         make_runtime_provenance(f,ENV,"main")
+
+def test_github_checkout_owner_mismatch_regression_is_scoped():
+    runner=(Path(__file__).resolve().parents[1] / 'scripts' / 'd08_public_gazebo_l2.py').read_text()
+    assert "f'safe.directory={ROOT}'" in runner
+    assert 'safe.directory=*' not in runner
+    assert 'D08_GITHUB_EVENT_SHA_CHECKOUT_MISMATCH' in runner
+    assert 'sha_cp.stderr.strip()' in runner
