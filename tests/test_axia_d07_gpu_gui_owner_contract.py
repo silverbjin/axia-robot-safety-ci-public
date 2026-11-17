@@ -6,13 +6,13 @@ import tempfile
 import unittest
 ROOT=Path(__file__).resolve().parents[1]
 SCRIPT=ROOT/"scripts/axia_d07_h01_gpu_gui_owner_wsl2_once.sh"
-PRIVATE_SHA="7306b27bc1d146d99d1657308549db45c9878407"
+PRIVATE_SHA="3a893c1875d2647979a608afaaa335a88158469f"
 
 class OwnerGpuTrialContract(unittest.TestCase):
     def test_owner_pins_real_shared_l2_and_does_not_enable_ci_xvfb(self):
         source=SCRIPT.read_text()
-        self.assertIn("7306b27bc1d146d99d1657308549db45c9878407",source)
-        self.assertIn("43997663084",source)
+        self.assertIn("3a893c1875d2647979a608afaaa335a88158469f",source)
+        self.assertIn("44002483668",source)
         self.assertIn("CI_SAME_SHA_GAZEBO_XVFB_L2",source)
         self.assertIn("WSLG_D3D12_GUI_NOT_VERIFIED",source)
         self.assertIn("unset AXIA_D07_H01_CI_SOFTWARE_GUI",source)
@@ -60,7 +60,7 @@ class OwnerGpuTrialContract(unittest.TestCase):
             first="D07_H01_GUI_WATCHER_SPAWN_ACK_ABSENT"
             (p/"owner_first_gui_boundary.txt").write_text(first+"\n")
             result=subprocess.run(["python3","-",str(private_tools),str(p),
-                 PRIVATE_SHA,"2","43997663084"],input=code[start:end],
+                 PRIVATE_SHA,"2","44002483668"],input=code[start:end],
                  text=True,capture_output=True,timeout=12)
             verdict=json.loads((p/"owner_l3_verdict.json").read_text())
             self.assertEqual(result.returncode,3,result.stderr)
@@ -83,7 +83,7 @@ class OwnerGpuTrialContract(unittest.TestCase):
             (p/"owner_first_gui_boundary.txt").write_text(
                 "D07_H01_GUI_WATCHER_SPAWN_ACK_ABSENT\n")
             result=subprocess.run(["python3","-",str(private_tools),str(p),
-                PRIVATE_SHA,"2","43997663084"],input=code[start:end],
+                PRIVATE_SHA,"2","44002483668"],input=code[start:end],
                 text=True,capture_output=True,timeout=12)
             verdict=json.loads((p/"owner_l3_verdict.json").read_text())
             self.assertEqual(result.returncode,3,result.stderr)
@@ -144,7 +144,7 @@ class OwnerGpuTrialContract(unittest.TestCase):
             (p/"owner_first_teardown_boundary.txt").write_text(
                 "D07_H01_CHILD_SHUTDOWN_BLOCKED:fault_injector_node\n")
             result=subprocess.run(
-                ["python3","-",str(tool),str(p),PRIVATE_SHA,"3","43997663084"],
+                ["python3","-",str(tool),str(p),PRIVATE_SHA,"3","44002483668"],
                 input=code,text=True,capture_output=True,timeout=12)
             self.assertEqual(result.returncode,3,result.stderr)
             v=json.loads((p/"owner_l3_verdict.json").read_text())
