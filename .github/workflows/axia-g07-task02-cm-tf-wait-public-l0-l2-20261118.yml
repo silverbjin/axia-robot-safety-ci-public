@@ -8,6 +8,9 @@ on:
       - '.github/workflows/axia-g07-task02-cm-tf-wait-public-l0-l2-20261118.yml'
 permissions:
   contents: read
+concurrency:
+  group: axia-g07-task02-one-candidate
+  cancel-in-progress: false
 jobs:
   task02-public-l0:
     runs-on: ubuntu-24.04
@@ -39,3 +42,140 @@ jobs:
         run: |
           set -Eeuo pipefail
           python3 -m unittest discover -s ci/d06/tests -p 'test_g07_task02_public_strict_gate.py' -v
+
+  task02-public-gazebo-candidate:
+    needs: task02-public-l0
+    runs-on: ubuntu-24.04
+    timeout-minutes: 38
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+      options: --dns 1.1.1.1 --dns 8.8.8.8
+    env:
+      ROS_DOMAIN_ID: '84'
+      ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+      GZ_PARTITION: axia_p2_task02_public_${{ github.run_id }}
+      AXIA_P0_SIM_ONLY: '1'
+      AXIA_G07_CI_SIM_GOAL_ALLOWED: '1'
+      AXIA_G07_TASK02_TF_WAIT_CANDIDATE: '1'
+      AXIA_P2_G07_PHYSICAL_PREFLIGHT: '1'
+      AXIA_G07_OWNER_STARTUP_PARITY: '1'
+      AXIA_G07_CI_OWNER_OBSERVER_PARITY: '1'
+      AXIA_G07_CI_OWNER_BAG_PARITY: '1'
+      AXIA_P2_G07_OWNER_PARITY_CHECK: '1'
+    steps:
+      - name: Checkout ONLY this public CI source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          path: ci
+          persist-credentials: false
+      - name: Checkout existing public student G07 runtime at exact immutable commit
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: 7292659a7ea92f25076f4ef605d0dc1e0d1f3c5a
+          path: runtime
+          persist-credentials: false
+      - name: Public-only static and exact student source/ROS diagnostic L0 NO_GOAL
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C runtime rev-parse HEAD)" = 7292659a7ea92f25076f4ef605d0dc1e0d1f3c5a
+          export PYTHONPATH="$GITHUB_WORKSPACE/ci${PYTHONPATH:+:$PYTHONPATH}"
+          test "$(git -C ci rev-parse HEAD)" = "${{ github.sha }}"
+          python3 -m unittest discover -s ci/d06/tests -p 'test_g07_task01_public_only_execution_contract.py' -v
+          python3 -m unittest discover -s ci/d06/tests -p 'test_g07_task01_tf_zero_timeout_availability.py' -v
+          python3 -m unittest discover -s ci/d06/tests -p 'test_g07_task01_public_evidence_adapter.py' -v
+          python3 -m unittest discover -s ci/d06/tests -p 'test_g07_task02_public_strict_gate.py' -v
+          bash -n runtime/block_B/day07/h01_runtime/scripts/p2_no_goal_smoke_ci.sh
+          python3 -m py_compile ci/d06/scripts/g07_task02_public_candidate_verdict.py
+          python3 -m unittest discover -s ci/d06/tests -p 'test_g07_task01_exact_rmw_native_pub_link.py' -v
+          echo AXIA_G07_TASK01_BOUNDED_FIRST_PAIR_TF_EXPORT_L0_GREEN_NO_GOAL
+          test -s runtime/block_B/day07/h01_runtime/scripts/p2_no_goal_smoke_ci.sh
+          test -s runtime/block_B/day07/h01_runtime/tools/p2_g07_ci_moving_goal.py
+          test -s runtime/block_B/day07/h01_runtime/tools/p2_g07_lifecycle_service.py
+          test -s runtime/block_B/day07/h01_runtime/ros2_ws/src/axia_safety_supervisor/axia_safety_supervisor/p2_supervisor_node.py
+          test -s runtime/block_B/day07/h01_runtime/ros2_ws/src/axia_safety_supervisor/axia_safety_supervisor/p2_base_guard_node.py
+          bash -n runtime/block_B/day07/h01_runtime/scripts/p2_no_goal_smoke_ci.sh
+          python3 -m py_compile runtime/block_B/day07/h01_runtime/tools/p2_g07_ci_moving_goal.py runtime/block_B/day07/h01_runtime/tools/p2_g07_lifecycle_service.py
+          test -f /opt/ros/jazzy/setup.bash
+          set +u; source /opt/ros/jazzy/setup.bash; set -u
+          for cmd in ros2 gz lttng cmake colcon; do command -v "$cmd"; done
+          if ! /usr/bin/python3 -c 'import bt2' >/dev/null 2>&1; then
+            timeout 120 apt-get update -qq
+            DEBIAN_FRONTEND=noninteractive timeout 120 apt-get install -y -qq --no-install-recommends python3-bt2
+          fi
+          cd runtime/block_B/day07/h01_runtime
+          mkdir -p "$GITHUB_WORKSPACE/public_evidence"
+          python3 tools/p2_g07_owner_env_parity.py --mode ci --output "$GITHUB_WORKSPACE/public_evidence/runtime_parity.json"
+          python3 - <<'PY'
+          import json,os
+          d=json.load(open(os.path.join(os.environ["GITHUB_WORKSPACE"],"public_evidence/runtime_parity.json")))
+          assert d.get("status")=="CORE_PARITY_PASS",d.get("status")
+          assert d.get("checked_packages")==25 and d.get("checked_official_files")==5
+          print("AXIA_G07_TASK01_PUBLIC_STUDENT_RUNTIME_25_5_PARITY_NO_GOAL_PASS")
+          PY
+          cd "$GITHUB_WORKSPACE"
+          cmake -S ci/d06/diagnostic -B /tmp/axia_task01_public_abi -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          cmake --build /tmp/axia_task01_public_abi --parallel 2
+          test -s /tmp/axia_task01_public_abi/libaxia_g07_cm120_tf_diag.so
+          echo AXIA_G07_TASK01_PUBLIC_ONLY_SOURCE_PIN_ABI_L0_GREEN_NO_GOAL
+      - name: Original public student ONE ROS2 Gazebo Goal and exact TF diagnostic
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          set +u; source /opt/ros/jazzy/setup.bash; set -u
+          export PYTHONPATH="$GITHUB_WORKSPACE/ci${PYTHONPATH:+:$PYTHONPATH}"
+          export AXIA_P2_SMOKE_RESULTS="$GITHUB_WORKSPACE/runtime/block_B/day07/h01_runtime/results/task01_public_only"
+          export AXIA_G07_TASK01_TF_AVAIL_PROBE=1
+          DIR=/tmp/axia_task01_raw
+          mkdir -p "$DIR" "$GITHUB_WORKSPACE/public_evidence"
+          SESSION="axia_t01_public_${{ github.run_id }}"
+          lttng create "$SESSION" --output="$DIR/trace" >/dev/null
+          lttng add-context --userspace -s "$SESSION" -t vpid -t vtid -t procname >/dev/null
+          for EVENT in ros2:rcl_subscription_init ros2:rclcpp_subscription_init ros2:rclcpp_subscription_callback_added ros2:rcl_publisher_init ros2:rmw_publish; do
+            lttng enable-event --userspace -s "$SESSION" "$EVENT" >/dev/null
+          done
+          CM_FILTER='$ctx.procname == "collision_monit" || $ctx.procname == "collision_monitor"'
+          lttng enable-event --userspace -s "$SESSION" ros2:callback_start --filter "$CM_FILTER" >/dev/null
+          lttng enable-event --userspace -s "$SESSION" ros2:callback_end --filter "$CM_FILTER" >/dev/null
+          lttng start "$SESSION" >/dev/null
+          python3 -c 'import json,time;print(json.dumps({"mono_ns":time.monotonic_ns(),"wall_ns":time.time_ns()}))' > "$DIR/start_anchor.json"
+          cd runtime/block_B/day07/h01_runtime
+          echo AXIA_G07_TASK01_ONE_PUBLIC_SOURCE_GOAL_DIAGNOSTIC_ARMED_STUDENT_SHA=7292659a7ea92f25076f4ef605d0dc1e0d1f3c5a
+          set +e
+          env LD_PRELOAD=/tmp/axia_task01_public_abi/libaxia_g07_cm120_tf_diag.so \
+            AXIA_G07_CM120_TF_DIAG_FILE="$DIR/tf_diag.log" \
+            timeout --signal=TERM --kill-after=10s 900s \
+            bash scripts/p2_no_goal_smoke_ci.sh
+          GOAL_RC=$?
+          set -e
+          cd "$GITHUB_WORKSPACE"
+          python3 -c 'import json,time;print(json.dumps({"mono_ns":time.monotonic_ns(),"wall_ns":time.time_ns()}))' > "$DIR/end_anchor.json"
+          lttng stop "$SESSION" >/dev/null || true
+          lttng destroy "$SESSION" >/dev/null || true
+          SRC_SHA="$(git -C ci rev-parse HEAD)"
+          python3 ci/d06/scripts/g07_task01_extract_public_gap.py \
+            --events "$AXIA_P2_SMOKE_RESULTS/g07_ci_moving/actual_ros_events.jsonl" \
+            --trace-dir "$DIR/trace" \
+            --tf-file "$DIR/tf_diag.log" \
+            --anchors-dir "$DIR" \
+            --out "$GITHUB_WORKSPACE/public_evidence/first_gap_sanitized.json" \
+            --run-id "${{ github.run_id }}" --public-sha "$SRC_SHA"
+          (cd public_evidence && sha256sum first_gap_sanitized.json > SHA256SUMS.txt)
+          python3 ci/d06/scripts/g07_task02_public_candidate_verdict.py \
+            --report "$AXIA_P2_SMOKE_RESULTS/g07_ci_moving/ci_moving_goal_result.json" \
+            --events "$AXIA_P2_SMOKE_RESULTS/g07_ci_moving/actual_ros_events.jsonl" \
+            --output "$GITHUB_WORKSPACE/public_evidence/task02_candidate_verdict.json" \
+            --runner-rc "$GOAL_RC"
+      - name: Upload numeric-only Task01 first-gap evidence; NEVER raw traces or bag
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: axia-task02-cm-tf20-candidate-${{ github.run_id }}
+          path: |
+            public_evidence/first_gap_sanitized.json
+            public_evidence/task02_candidate_verdict.json
+            public_evidence/SHA256SUMS.txt
+            public_evidence/runtime_parity.json
+          retention-days: 30
+          if-no-files-found: error
