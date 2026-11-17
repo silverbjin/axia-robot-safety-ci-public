@@ -14,7 +14,7 @@ from pathlib import Path
 
 from d06.live.g07_cycle05_cm_callback_window import _first_pair
 from d06.live.g07_cycle31_cm_topic_callback_identity import resolve_cm_cmdvel_handles
-from d06.diagnostic.analyze_first_cm_tf import TF_LINE, TF_SLEEP_LINE
+from d06.diagnostic.analyze_first_cm_tf import TF_LINE, TF_SLEEP_LINE, TF_CLOCK_LINE
 
 SCHEMA = "axia.g07.cm120.public_first_gap_v1"
 SHA = re.compile(r"[0-9a-f]{40}\Z")
@@ -132,7 +132,7 @@ def export_sanitized(observer, trace, tf_lines, anchors, *, run_id, public_sha, 
         out["status"]="CM_CALLBACK_THREAD_UNVERIFIED_HOLD"
         return out
 
-    tf_calls, sleeps=[],[]
+    tf_calls, sleeps, internal_clock=[],[],[]
     mapped=False
     for line in tf_lines:
         if line.strip()==READY:
@@ -149,6 +149,16 @@ def export_sanitized(observer, trace, tf_lines, anchors, *, run_id, public_sha, 
                 tf_calls.append((p,tid,t0,t1,
                     int(vals[12]) if vals[12] is not None else None,
                     int(vals[4])))
+            continue
+        # Instrumented clock calls belong to the *same native CM process*
+        # and exact Advanced TF callback thread. Public fields are numeric,
+        # original raw rows/absolute clock epoch must never leave runner.
+        match=TF_CLOCK_LINE.fullmatch(line.strip())
+        if match:
+            p,tid,mono_ns,ros_ns,clock_type,active=map(int,match.groups())
+            if p==pid and tid in tids and (
+                pair_start_ns-200_000_000<=mono_ns<=pair_end_ns+200_000_000):
+                internal_clock.append((p,tid,mono_ns,ros_ns,clock_type,active))
             continue
         match=TF_SLEEP_LINE.fullmatch(line.strip())
         if match:
@@ -220,6 +230,10 @@ def export_sanitized(observer, trace, tf_lines, anchors, *, run_id, public_sha, 
         count=len(spans),spans=spans,
         coverage_proven=(bool(call_spans)
                          and all(c["coverage_complete"] for c in call_spans)))
+    if internal_clock:
+        from d06.diagnostic.classify_internal_tf_clock import summarize_tf_clock
+        out["tf_internal_clock"]=summarize_tf_clock(
+            tf_calls,internal_clock,pair_start_ns,pair_end_ns)
     return out
 
 def write_allowlisted_json(out,path):
