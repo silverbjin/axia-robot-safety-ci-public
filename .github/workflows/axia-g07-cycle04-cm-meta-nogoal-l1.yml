@@ -1,0 +1,158 @@
+name: AXIA G07 C04 official CM subscription metadata NO_GOAL L1
+on:
+  push:
+    branches: ['release/p2-g06-cm-ttl-20261110']
+    paths: ['.github/workflows/axia-g07-cycle04-cm-meta-nogoal-l1.yml']
+permissions:
+  contents: read
+jobs:
+  configured-cm-topic-identity:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    environment: axia-instructor-sealed
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+      options: --dns 1.1.1.1 --dns 8.8.8.8
+    steps:
+      - name: Exact protected G07 Owner-shared no-Goal runtime
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 0682caeb413c9830107b1a0d297d36597896bed7
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Exact bounded public C04 metadata resolver
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-ci-public
+          ref: 8ac8513c16a3ea1c4de2767e5ff981d7d8718964
+          path: public
+          persist-credentials: false
+      - name: Immutable previous C03 public source for RED
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-ci-public
+          ref: 42817767a85be1022a3e11391e8e588bd3b8e814
+          path: baseline
+          persist-credentials: false
+      - name: RED old public missing bounded metadata adapter then GREEN three exact tests
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '0682caeb413c9830107b1a0d297d36597896bed7'
+          test "$(git -C public -c safe.directory="$PWD/public" rev-parse HEAD)" = '8ac8513c16a3ea1c4de2767e5ff981d7d8718964'
+          test "$(git -C baseline -c safe.directory="$PWD/baseline" rev-parse HEAD)" = '42817767a85be1022a3e11391e8e588bd3b8e814'
+          cp public/d06/tests/test_g07_cycle04_cm_metadata_audit.py baseline/d06/tests/
+          if (cd baseline && PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
+               -s d06/tests -p 'test_g07_cycle04_cm_metadata_audit.py' -v) \
+               > /tmp/axia_c04_red.log 2>&1;then
+            echo AXIA_G07_C04_OLD_BASELINE_UNEXPECTED_GREEN >&2
+            exit 3
+          fi
+          grep -Fq "No module named 'd06.live.g07_cycle04_cm_metadata_audit'" /tmp/axia_c04_red.log || {
+            cat /tmp/axia_c04_red.log
+            echo AXIA_G07_C04_RED_CAUSE_DRIFT >&2
+            exit 3
+          }
+          echo AXIA_G07_C04_RED_MISSING_REAL_CM_METADATA_AUDIT_CONFIRMED
+          (cd public && PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
+             -s d06/tests -p 'test_g07_cycle04_cm_metadata_audit.py' -v)
+          python3 -m py_compile public/d06/live/g07_cycle04_cm_metadata_audit.py \
+             public/d06/live/g07_cycle31_cm_topic_callback_identity.py
+          echo AXIA_G07_C04_GREEN_3_OF_3_NO_ROS_NO_GOAL
+      - name: Bounded official Nav2/Gazebo no-Goal startup with METADATA ONLY trace
+        shell: bash
+        env:
+          ROS_DOMAIN_ID: '88'
+          ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+          GZ_PARTITION: axia_p2_p4_shared_88
+          AXIA_P0_SIM_ONLY: '1'
+          AXIA_P2_G07_PHYSICAL_PREFLIGHT: '1'
+          AXIA_P2_G07_OWNER_PARITY_CHECK: '1'
+          AXIA_G07_OWNER_STARTUP_PARITY: '1'
+          AXIA_G07_CI_OWNER_BAG_PARITY: '1'
+          AXIA_G07_CI_SIM_GOAL_ALLOWED: '0'
+          AXIA_G07_SHUTDOWN_L2_ONLY: '1'
+          AXIA_P4_G07_SHARED_PREFLIGHT_ONLY: '1'
+          AXIA_P2_SMOKE_RESULTS: results/p4-g07-c04-cm-metadata-nogoal
+        run: |
+          set -Eeuo pipefail
+          set +u
+          source /opt/ros/jazzy/setup.bash
+          set -u
+          command -v lttng
+          if ! /usr/bin/python3 -c 'import bt2' >/dev/null 2>&1;then
+            export DEBIAN_FRONTEND=noninteractive
+            timeout 120 apt-get update -qq
+            timeout 120 apt-get install -y -qq --no-install-recommends python3-bt2
+          fi
+          SESSION=axia_g07_c04_meta_${{ github.run_id }}
+          TRACE_DIR="$(mktemp -d)"
+          trap 'lttng destroy "$SESSION" >/dev/null 2>&1 || true; rm -rf -- "$TRACE_DIR"' EXIT
+          lttng create "$SESSION" --output="$TRACE_DIR/trace" >/dev/null
+          lttng enable-event --userspace -s "$SESSION" 'ros2:rcl_subscription_init' >/dev/null
+          lttng enable-event --userspace -s "$SESSION" 'ros2:rclcpp_subscription_init' >/dev/null
+          lttng enable-event --userspace -s "$SESSION" 'ros2:rclcpp_subscription_callback_added' >/dev/null
+          lttng add-context --userspace -s "$SESSION" -t vpid -t procname >/dev/null
+          lttng start "$SESSION" >/dev/null
+          echo AXIA_G07_C04_ONLY_3_SUBSCRIPTION_TRACEPOINTS_NO_CALLBACK_START_END
+          set +e
+          timeout --signal=TERM --kill-after=10s 650s \
+            bash scripts/p2_no_goal_smoke_ci.sh >"$TRACE_DIR/nogoal.log" 2>&1
+          RC=$?
+          set -e
+          lttng stop "$SESSION" >/dev/null
+          lttng destroy "$SESSION" >/dev/null
+          /usr/bin/python3 - "$TRACE_DIR/trace" <<'PY'
+          import bt2,sys,json
+          from pathlib import Path
+          sys.path.insert(0,str(Path.cwd()/"public"))
+          from d06.live.g07_cycle04_cm_metadata_audit import classify
+          names={
+            "ros2:rcl_subscription_init",
+            "ros2:rclcpp_subscription_init",
+            "ros2:rclcpp_subscription_callback_added"}
+          events=[]
+          for message in bt2.TraceCollectionMessageIterator(sys.argv[1]):
+              if not isinstance(message,bt2._EventMessageConst):
+                  continue
+              event=message.event
+              if event.name not in names:
+                  continue
+              payload=event.payload_field
+              context=event.common_context_field
+              row={"name":event.name}
+              if context is not None:
+                  if "vpid" in context: row["vpid"]=int(context["vpid"])
+                  if "procname" in context:row["procname"]=str(context["procname"])
+              for key in ("subscription_handle","subscription","callback","topic_name"):
+                  if key in payload:row[key]=str(payload[key])
+              events.append(row)
+              if len(events)>20000:
+                  raise SystemExit("AXIA_G07_C04_METADATA_EVENT_LIMIT_HOLD")
+          decision=classify(events)
+          print("AXIA_G07_C04_REAL_CONFIGURED_CM_TOPIC_IDENTITY "+
+                json.dumps(decision,sort_keys=True))
+          assert decision["status"]=="CM_INPUT_CALLBACK_HANDLE_IDENTIFIED_NO_GOAL"
+          assert decision["owned_cm_process_count"]==1
+          assert decision["linked_cmd_vel_callback_handles"]>=1
+          assert decision["ready_for_moving_goal"] is False
+          PY
+          python3 - "$RC" <<'PY'
+          import json,sys
+          from pathlib import Path
+          root=Path("results/p4-g07-c04-cm-metadata-nogoal")
+          x=json.loads((root/"startup_verdict.json").read_text())
+          shutdown=json.loads((root/"g07_ordered_shutdown.json").read_text())
+          assert x["status"]=="SMOKE_READY" and x["goal_sent"] is False
+          assert shutdown["status"]=="NAV2_LIFECYCLE_SHUTDOWN_ACK"
+          assert int(sys.argv[1])==0
+          PY
+          echo AXIA_G07_C04_REAL_OFFICIAL_CM_CALLBACK_HANDLE_IDENTITY_L1_PASS_NO_GOAL
+          echo AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false
+      - name: Erase all private ROS, tracing and repository evidence
+        if: always()
+        shell: bash
+        run: |
+          rm -rf -- public baseline .git docs tools tests configs scripts ros2_ws results \
+            /tmp/axia_c04_red.log
