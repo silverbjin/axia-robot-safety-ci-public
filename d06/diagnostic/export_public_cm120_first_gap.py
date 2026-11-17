@@ -221,25 +221,6 @@ def export_sanitized(observer, trace, tf_lines, anchors, *, run_id, public_sha, 
         coverage_proven=(bool(call_spans)
                          and all(c["coverage_complete"] for c in call_spans)))
     return out
-        spans.append(dict(
-            start_rel_observer_ns=t0-pair_start_ns,
-            end_rel_observer_ns=t1-pair_start_ns,
-            request_ns=req, rc=rc))
-    spans.sort(key=lambda x:x["start_rel_observer_ns"])
-    if any(l["end_rel_observer_ns"]>r["start_rel_observer_ns"]
-           for l,r in zip(spans,spans[1:])):
-        out["status"]="TF_SLEEP_OVERLAP_UNVERIFIED_HOLD"
-        return out
-    out["tf_calls"]=dict(
-        count=len(tf_calls),
-        durations_ms=[round((b-a)/1e6,6) for _,_,a,b,_ in tf_calls])
-    out["tf_sleep"]=dict(
-        count=len(spans), spans=spans,
-        coverage_proven=(
-            bool(tf_calls) and all(sc is not None for _,_,_,_,sc in tf_calls)
-            and sum(sc for _,_,_,_,sc in tf_calls)==len(spans)))
-    return out
-
 
 def write_allowlisted_json(out,path):
     if not isinstance(out,dict) or out.get("schema")!=SCHEMA:
