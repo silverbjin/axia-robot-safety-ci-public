@@ -1,9 +1,9 @@
 name: AXIA G07 Task01 sealed private custody on previously approved release lane NO GOAL
+# Dispatch only AFTER the sealed environment receives the dedicated
+# narrowly scoped private Instructor Contents(write) secret. A credentials
+# change alone must never automatically run Goal or repeat failed CI.
 on:
-  push:
-    branches: ['release/p2-g06-cm-ttl-20261110']
-    paths:
-      - '.github/workflows/axia-g07-task01-private-custody-release-preflight-20261117.yml'
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:
