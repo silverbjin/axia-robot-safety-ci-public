@@ -150,3 +150,35 @@ OWNER_WSL2_L3=NOT_RUN
 CERTIFIED_ESTOP=false
 MAIN_MERGED=false
 ```
+
+## 7. 최종 REVIEW 문구 정합화 / 출고 게이트 보존
+
+리뷰 중 테스트 docstring 및 공개 workflow 이름에도 RMW publisher source interval과 host MONOTONIC Observer 수신창을 혼동할 수 있는 표현이 발견되어 **진단 의미를 보수적으로 정정**했다. 소스 발행 간격을 직접 TF 실행 구간으로 변환한다는 주장은 하지 않고, 오직 source gap으로 선택한 관찰자 메시지 **쌍의 receipt window**와 TF interval의 nominal overlap만 검사한다.
+
+- 정적 테스트 이름·docstring 정정: `d06/tests/test_g07_cm120_task01_tf_first_source_gap_overlap.py`, commit `e43756d26ef677f3f1ba0b4baae558d1214f9135`.
+- 공개 L0 workflow 이름 정정: `.github/workflows/axia-g07-cm120-task01-first-gap-overlap-l0.yml`, commit `4c9575403d06732a54235aada1abfdfa26be5716`. 새 ROS/Goal 호출이나 sensor/TF 설정 변경 없음.
+- **최종 공개 CI 코드/테스트 정합성:** [Run #44036795558](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44036795558), job `133881509747`, `completed/success`, test subject commit `4c9575403d06732a54235aada1abfdfa26be5716`. 원본 stdout:
+```text
+Ran 4 tests in 0.000s
+OK
+Ran 4 tests in 0.001s
+OK
+Ran 3 tests in 0.000s
+OK
+Ran 3 tests in 0.000s
+OK
+AXIA_G07_CM120_TASK01_FIRST_GAP_TF_TEMPORAL_JOIN_L0_PASS_NO_ROS_NO_GOAL
+```
+- **REVIEW 범위:** 공식 ROS2 Jazzy CM 바이너리/TF 조회·Safety Supervisor/Guard TTL·Goal·shutdown·WSL2 Owner 동작 불변. 변경 파일 네 개의 Draft PR 패치 및 소스-시간영역 판단을 점검.
+- 보고서가 첨부된 이후 Git HEAD SHA는 다시 달라질 수 있다. **실제 실행 SHA는 `4c957540...`이고, 문서 커밋이 ROS/Gazebo 실행 증거로 승격되는 것은 아니다.**
+
+```text
+TASK01_PUBLIC_FINAL_L0=PASS_14_NO_ROS_NO_GOAL
+TASK01_PUBLISHER_SOURCE_CLOCK_TO_OBSERVER_MONO=UNPROVEN
+TASK01_SLEEP_VS_SCHEDULER_SOURCE_GAP_CAUSALITY=UNPROVEN
+TASK01_TRACER_OFF_RELEASE=HOLD
+TASK01_ADD_DIAGNOSTIC_MOVING_GOAL=NOT_AUTHORIZED_NOT_RUN
+TASK02_CAUSAL_PERFORMANCE_CHANGE=BLOCKED
+TASK03_PUBLIC_MOVING_RELEASE=NOT_RUN
+OWNER_WSL2_L3=NOT_RUN
+```
