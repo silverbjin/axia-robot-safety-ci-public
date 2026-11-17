@@ -23,6 +23,7 @@ def synthetic_session(where,cycles=2,goal=False,teardown="P2_L2_GRACEFUL_TEARDOW
         "obstacle_restored_away":True,
         "goal_sent":goal,
         "robot_moved":False,
+        "motion_admitted":False,
         "certified_estop":False,
     }))
     with (geo/"teaching_cycle_evidence.jsonl").open("w") as file:
@@ -45,8 +46,8 @@ def synthetic_session(where,cycles=2,goal=False,teardown="P2_L2_GRACEFUL_TEARDOW
     (root/"native/evidence/teardown.txt").write_text(teardown+"\n")
     (root/"native/evidence/d07_h01_teaching_loop.log").write_text(
         "D07_H01_TEACHING_CTRL_C_STOP OPERATOR\n")
-    (root/"windows-triple.txt").write_text(
-        'Gazebo\nRViz\nrqt_graph\n')
+    (root/"windows-gazebo-rviz.txt").write_text(
+        'Gazebo\nRViz\n')
 
 
 def verify(path):
@@ -87,7 +88,7 @@ class D07H01InstructorL3Contract(unittest.TestCase):
                           "pkill -f","wsl --shutdown",
                           "AXIA_MVP_DEMO_ACCEPTED=PASS"):
             self.assertNotIn(forbidden,s)
-        self.assertIn("kill -INT -- \"-$RQT_PID\"",s)
+        self.assertNotIn("kill -INT -- \"-$RQT_PID\"",s)
         self.assertIn('tar --exclude=',s)
 
     def test_ros_environment_is_sourced_before_command_discovery(self):
