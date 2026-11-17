@@ -62,8 +62,8 @@ class TestPublicEvidenceAdapter(unittest.TestCase):
             (r/"trace").mkdir()
             (r/"anchors").mkdir()
             (r/"events").write_text("".join(
-                json.dumps(x)+"\\n" for x in observer()),encoding="utf-8")
-            (r/"tf").write_text(READY+"\\n",encoding="utf-8")
+                json.dumps(x)+"\n" for x in observer()),encoding="utf-8")
+            (r/"tf").write_text(READY+"\n",encoding="utf-8")
             (r/"anchors/start_anchor.json").write_text(
                 json.dumps(anchor()["start"]))
             (r/"anchors/end_anchor.json").write_text(
