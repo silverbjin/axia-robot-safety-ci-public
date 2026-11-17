@@ -398,7 +398,7 @@ jobs:
           age_path=root/'g07_c07_source_timeout_runtime.txt'
           assert age_path.is_file(),'AXIA_G07_C07_CM_SOURCE_TIMEOUT_READBACK_MISSING'
           import re
-          match=re.search(r"Double value(?: is)?:\\s*([0-9]+(?:\\.[0-9]+)?)",age_path.read_text(),re.I)
+          match=re.search(r"Double value(?: is)?:\s*([0-9]+(?:\.[0-9]+)?)",age_path.read_text(),re.I)
           assert match and .15<=float(match.group(1))<=.300001, \
             'AXIA_G07_C07_CM_SOURCE_TIMEOUT_EXCEEDS_300MS'
 
