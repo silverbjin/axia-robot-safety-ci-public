@@ -104,6 +104,7 @@ thread_local long long tf_sleep_wall_ns=0;
 thread_local unsigned tf_sleep_calls=0;
 thread_local int tf_sleep_depth=0;
 std::atomic<unsigned> tf_clock_samples{0};
+std::atomic<unsigned> tf_cpp_clock_samples{0};
 constexpr unsigned kMaxTfClockSamples=18000;
 std::atomic<unsigned> tf_poll_samples{0};
 constexpr unsigned kMaxTfPollSamples=15000;
@@ -254,6 +255,19 @@ int axia_g07_task01_real_rclcpp_clock_dispatch_selftest() {
   tf_window_active=false;
   return now.nanoseconds()>0 &&
     tf_clock_samples.load(std::memory_order_relaxed)>before ? 1:0;
+}
+
+// Strict external ABI proof: intercept rclcpp::Clock::now itself, not
+// just the C rcl_clock_get_now symbol called by our own test process.
+extern "C" __attribute__((visibility("default")))
+int axia_g07_task01_cpp_clock_dispatch_selftest() {
+  const auto before=tf_cpp_clock_samples.load(std::memory_order_relaxed);
+  rclcpp::Clock clock(RCL_ROS_TIME);
+  tf_window_active=true;
+  const auto now=clock.now();
+  tf_window_active=false;
+  return now.nanoseconds()>0 &&
+    tf_cpp_clock_samples.load(std::memory_order_relaxed)>before ? 1:0;
 }
 
 // Isolated NO_GOAL selftest of the exact std::this_thread::sleep_for()
