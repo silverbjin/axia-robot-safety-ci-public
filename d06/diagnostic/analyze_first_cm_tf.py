@@ -17,6 +17,12 @@ TF_LINE=re.compile(
     r" voluntary_cs=(\d+) involuntary_cs=(\d+)"
     r"(?: sleep_ns=(\d+) sleep_calls=(\d+))?)?$"
 )
+# Each event is a genuine nested-safe libc sleep bracket measured inside the
+# original official Advanced TF call; NEVER a publisher timestamp.
+TF_SLEEP_LINE=re.compile(
+    r"^TF_SLEEP pid=(\\d+) tid=(\\d+) mono_start_ns=(\\d+) "
+    r"mono_end_ns=(\\d+) req_ns=(\\d+) rc=(-?\\d+)$"
+)
 TOPIC="/cmd_vel_supervised"
 CM_PROCS={"collision_monitor","collision_monit"}
 
@@ -73,10 +79,18 @@ def analyze(observer,trace,tf_lines,anchors):
     if not callbacks:
         return hold("CM_FIRST_GAP_CALLBACK_MISSING")
     parsed=[]
+    sleep_spans=[]
     ready=False
     for line in tf_lines:
         if line.strip()=="AXIA_CM120_TF_DIAG_CM_LIBRARY_LOADED":
             ready=True
+            continue
+        poll=TF_SLEEP_LINE.fullmatch(line.strip())
+        if poll is not None:
+            sp,st,s0,s1,req,rc=map(int,poll.groups())
+            if sp<=1 or st<=1 or s1<s0 or req<0 or req>60_000_000_000:
+                return hold("TF_SLEEP_INTERVAL_INVALID_HOLD")
+            sleep_spans.append((sp,st,s0/1e9,s1/1e9,req/1e9,rc))
             continue
         m=TF_LINE.fullmatch(line.strip())
         if m is None:
@@ -112,6 +126,20 @@ def analyze(observer,trace,tf_lines,anchors):
         covered=sum(t[3]-t[2] for t in intervals)
         if covered>end-start+.006:return hold("TF_TIME_EXCEEDS_CALLBACK_CLOCK_ERROR")
         if intervals:
+            # A sleeper crossing this TF invocation boundary is invalid.
+            # Other TF invocations or sibling threads must never be merged.
+            thread_sleeps=[x for x in sleep_spans if x[0]==pid and x[1]==thread]
+            local_sleeps=[x for x in thread_sleeps if any(
+                min(x[3],t[3])>max(x[2],t[2]) for t in intervals)]
+            if any(not any(x[2]>=t[2] and x[3]<=t[3]
+                           for t in intervals) for x in local_sleeps):
+                return hold("TF_SLEEP_SPAN_CROSS_BOUNDARY_HOLD")
+            local_sleeps.sort(key=lambda x:x[2])
+            if any(right[2]<left[3] for left,right in
+                   zip(local_sleeps,local_sleeps[1:])):
+                return hold("TF_SLEEP_SPANS_OVERLAP_HOLD")
+            sleep_observer_overlap=sum(max(0.,min(x[3],b["t"])
+                                -max(x[2],a["t"])) for x in local_sleeps)
             # The first source-gap *pair* is identified from RMW SYSTEM
             # timestamps. Its a["t"], b["t"] window, however, contains
             # OBSERVER callback MONOTONIC timestamps, not publisher times.
@@ -132,6 +160,10 @@ def analyze(observer,trace,tf_lines,anchors):
                     # Even FULL_NOMINAL_OVERLAP here is observer-relative,
                     # never proof of sleep in RMW publisher source gap.
                     tf_sleep_in_source_gap_proven=False,
+                    tf_sleep_event_count=len(local_sleeps),
+                    tf_sleep_nominal_observer_overlap_ms=sleep_observer_overlap*1000,
+                    tf_sleep_event_wall_ms_total=sum(x[3]-x[2]
+                                                     for x in local_sleeps)*1000,
                     callback_ms=(end-start)*1000,
                     tf_function_wall_ms=covered*1000,
                     tf_thread_cpu_ms=sum(t[4] for t in intervals)*1000,
@@ -144,7 +176,9 @@ def analyze(observer,trace,tf_lines,anchors):
     if not matched:
         return hold("TF_NOT_LINKED_TO_FIRST_CM_GAP_CALLBACK_UNPROVEN",
                     first_source_gap_ms=round(source_ms,6))
-    selected=max(matched,key=lambda x:x["overlap_first_gap_ms"])
+    # Prefer the actual TF function intersection, not a callback with a
+    # longer unrelated overlap. Still never claim source-clock causality.
+    selected=max(matched,key=lambda x:x["tf_nominal_overlap_observer_pair_ms"])
     if selected["tf_observer_pair_temporal_relation"]=="NO_OVERLAP":
         return hold("TF_OUTSIDE_FIRST_CM_OBSERVER_PAIR_HOLD",
             first_cm_rmw_source_gap_ms=round(source_ms,6),
@@ -171,6 +205,11 @@ def analyze(observer,trace,tf_lines,anchors):
         tf_wall_fraction_of_callback=round(dominance,4),
         cpu_vs_wall_difference_ms=round(max(0,tf-cpu),6),
         matched_tf_calls=selected["matched_tf_calls"],
+        tf_sleep_event_count=selected["tf_sleep_event_count"],
+        tf_sleep_nominal_observer_overlap_ms=round(
+            selected["tf_sleep_nominal_observer_overlap_ms"],6),
+        tf_sleep_event_wall_ms_total=round(
+            selected["tf_sleep_event_wall_ms_total"],6),
         tf_observer_pair_temporal_relation=selected["tf_observer_pair_temporal_relation"],
         tf_nominal_overlap_observer_pair_ms=round(selected["tf_nominal_overlap_observer_pair_ms"],6),
         tf_sleep_in_source_gap_proven=False,
