@@ -65,3 +65,13 @@ AXIA_G07_C07_RUNTIME_PARAM_READBACK=NOT_RUN
 CM_120MS_RELEASE=HOLD
 AXIA_MVP_DEMO_ACCEPTED=HOLD
 CERTIFIED_ESTOP=false
+
+## 교차 검증: 기존 NO_GOAL 실제 CM source_timeout은 1.0초
+- 별도 public [Run #43999183495](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43999183495)에서는 원본 G07 NO_GOAL profile의 실제 /collision_monitor readback을 수행하여 source_timeout_sec=1.0, base_shift_correction=true, transform_tolerance_sec=0.02 를 확인. official installed Nav2 YAML SHA256 299f9002d6dcfbf661e532c99f32dda1766eab3afa3ab71a52378d80e7ef956f. 이 값은 소스 fallback2.0이 아니라 실제 런타임 값이라는 점을 분리한다.
+- 하지만 해당 별도 NO_GOAL run의 전체 lifecycle shutdown은 BLOCKED_LIFECYCLE_NAVIGATION_SERVICE_TIMEOUT(rc3) FAIL이므로 원래 G07 안정성의 전체 PASS가 아님. 다른 safety layer boundary가 확인되지 않음.
+- 이번 C07 moving candidate #43999412342가 clock topic existed but ROS callback0에서 중단된 원인에 대한 증거를 제공하지는 못한다. 서로 다른 CI Run의 max/stage를 한 run의 인과로 합성하지 않는다.
+
+## Cycle07 최종 교육용 판정
+- C07 official config 1.0 출처 및 strict source_timeout .3 + base_shift false 코드 L0 GREEN6 verified, actual moving Goal prestartup CLOCK_READY_FAIL, root cause of startup inconclusive.
+- C07 paired profile can only be evaluated after no-Goal Clock publisher/bridge/Observer and navigation shutdown boundary separately verified; no unpinned SHA/false CI pass.
+- NEXT Cycle08 scoped: **read-only CI failure-window clock transport and first launch ERROR capture**, no new Goal, no new safety/source modifications. CI original Clock TTL 300ms and 120ms release must not be relaxed.
