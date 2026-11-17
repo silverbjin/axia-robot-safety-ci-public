@@ -53,3 +53,23 @@ AXIA_G07_C04_REAL_CONFIGURED_CM_TOPIC_IDENTITY
 - L0: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s d06/tests -p 'test_g07_cycle04_cm_metadata_audit.py' -v` (공개 CI GREEN4). 실제 L1 GitHub Run은 위 두 Run.
 - 미검증: first CM source gap 당 cmd_vel callback start/end, TF lookup time, 120ms release margin, Guard internal 150ms, Owner WSL2.
 - main 미병합, SW 정지는 인증 E-Stop이 아님. `AXIA_MVP_DEMO_ACCEPTED=HOLD`.
+
+## Cycle04 최종 검증/종료 기록 — Run #43994237080
+- 이전 실패로 추적 대상은 C04 startup 이후 `g07_ordered_shutdown.json` 부재였다. 기능/runtime/safety 코드 변경 없이 공개 CI workflow에서 첫 실패 marker와 startup status, rc, shutdown presence만 출력하도록 커밋 `bda045da857bdd4ef5d896b7a9ef95b77fc292ba`.
+- 실제 [Run #43994237080](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43994237080) release SHA `c6d18648ca6ce0748163d9dd0b9238274f21346d`는 **completed SUCCESS**. Public L0 RED missing module 재현, GREEN 4/4 PASS. 같은 official CM+Waffle/Gazebo/Nav2 NO_GOAL runtime, metadata-only LTTng, lifecycle shutdown ALL PASS:
+```text
+AXIA_G07_C04_RED_MISSING_REAL_CM_METADATA_AUDIT_CONFIRMED
+Ran 4 tests in 0.001s
+OK
+AXIA_G07_C04_GREEN_4_OF_4_NO_ROS_NO_GOAL
+AXIA_G07_C04_ONLY_3_SUBSCRIPTION_TRACEPOINTS_NO_CALLBACK_START_END
+AXIA_G07_C04_REAL_CONFIGURED_CM_TOPIC_IDENTITY {"status": "CM_INPUT_CALLBACK_HANDLE_IDENTIFIED_NO_GOAL", "owned_cm_process_count": 1, "linked_cmd_vel_callback_handles": 1, "cm_callback_duration_proven": false, "goal_sent": false, "ready_for_moving_goal": false}
+AXIA_G07_C04_FIRST_NO_GOAL_LIFECYCLE_BOUNDARY {"goal_sent": false, "runner_rc": 0, "shutdown_ack_present": true, "startup_status": "SMOKE_READY"}
+AXIA_G07_C04_REAL_OFFICIAL_CM_CALLBACK_HANDLE_IDENTITY_L1_PASS_NO_GOAL
+AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false
+```
+- **첫 L1 실패와 두 번째 L1 성공의 차이는 코드 기능 수정이 아니라 실패 진단 가시성**이다. 이전 missing shutdown 파일 원인이 사라졌다고 증명된 것이 아니다. 같은 조건 2회 중 1회 종료 검증 실패를 이력으로 보존하고 확률적 안정성을 주장하지 않는다.
+- 메타데이터 전체 수집 count (195 rcl_subscription_init / 133 callback_added)는 **전체 trace의 수**이지 해당 CM 단독 수가 아님. 공개 결과에서 원본 PID/핸들은 숨기고, **한 프로세스 소유권과 콜백 핸들 1개**만 확정.
+- Cycle04 제한된 완료 정의: `OFFICIAL_CM_CALLBACK_TOPIC_IDENTITY=PROVEN_NO_GOAL`. Moving first-gap callback duration/TF wait/Guard150ms는 그대로 미검증.
+- 학습 주제: CI GREEN의 인과와 재현성 한계. 두 번째 성공만 선택해 첫 실패를 삭제하지 않는다.
+- **다음 Cycle05**: 이 exact `topic→callback` 매핑과 기존 Cycle30 bounded CM PID trace를 재사용해서 **Moving Goal 최초 CM source gap 하나의 callback start/end**를 시간축 맞춰 분리할 수 있는지 판단. 기존 표본/immutable trace를 우선하고 원본이 없을 경우에만 단일 짧은 공개 CI 시뮬레이션 진단 Goal을 허용. Tracing을 켠 실행은 별도 진단이며 120ms 운영 Release 통과 근거로 사용하지 않는다.
