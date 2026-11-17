@@ -55,7 +55,7 @@
 - 공개 코드 브랜치: `fix/g07-cm120-task01-public-evidence-20261117` (prior PR #159 tip `432b99819b287368604e29f90d4826afbc3fee5d`에서 분기).
 - 공개 CI 릴리스 경로에 새 단일 diagnostic Moving Goal workflow 추가:
   `.github/workflows/axia-g07-task01-public-evidence-one-goal-l2-20261117.yml`, 원본 S2 공식 Waffle/Nav2 single-run workflow 재사용, public branch의 exact allowlist SHA `5e6db932728085398fd1b6d9441847286d70c2be`를 pin.
-- 실제 새 공개 Actions Run: [#44049067368](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44049067368), workflow commit `1b017541d5908f267711108f667bc248f4dfe939`. **본 보고서 최초 작성 시 실행 중; PASS/FAIL은 최종 run 결론을 다시 조회하여 정정한다.**
+- 실제 새 공개 Actions Run: [#44049067368](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44049067368), workflow commit `1b017541d5908f267711108f667bc248f4dfe939`. **최종 재조회: completed/failure.** 단일 공식 Moving Goal이 실행되어 첫 source gap 129.299ms와 TF sleep 9회/91.416ms를 확보했으나 안전 배달 주기 위반 및 후속 CM exit -11로 전체 L2는 실패. <[실제 분석 Cycle02 보고서](https://github.com/silverbjin/axia-robot-safety-ci-public/blob/fix/g07-cm120-task01-public-evidence-20261117/d06/docs/AXIA_G07_TASK01_PUBLIC_CI_REAL_FIRST_GAP_DIAGNOSTIC_CYCLE02_20261117_KO.md)> 참고.
 - 실제 원본 증거 읽기/업로드 순서: (1) 공식 Waffle/Nav2 원래 read-only ROS/TF 진단, (2) `if:always()`로 allowlist JSON·SHA256 생성, (3) `if:always()`로 정확한 2파일 artifact 업로드, (4) `if:always()`로 비공개 checkout, LTTng, raw TF/ROS, JSON을 실행기에서 삭제.
 - 실제 script는 결과 JSON을 생성하더라도 `AXIA_G07_TASK01_PUBLIC_EVIDENCE_NOT_RELEASE_NOT_ESTOP`를 출력하며 CM120 release PASS는 주장하지 않음.
 - 기존 공개 release branch의 비공개 `Contents:Write` Secret을 요구하던 preflight workflow `.github/workflows/axia-g07-task01-private-custody-release-preflight-20261117.yml` **삭제**, commit `2256e190f4a1c57ad3df15b29b68d16de6c24f1c`.
@@ -91,7 +91,7 @@ python3 -m py_compile d06/diagnostic/export_public_cm120_first_gap.py d06/script
 AXIA_G07_PUBLIC_CI_EVIDENCE_POLICY=ADOPTED_NO_PRIVATE_WRITE_TOKEN
 AXIA_G07_PUBLIC_ALLOWLIST_L0=PASS_8
 AXIA_G07_PUBLIC_ARTIFACT_SYNTHETIC_CANARY=PASS
-AXIA_G07_PUBLIC_REAL_MOVING_DIAGNOSTIC=RUN_PENDING_AT_REPORT_CREATION
+AXIA_G07_PUBLIC_REAL_MOVING_DIAGNOSTIC=COMPLETED_FAIL_FIRST_CM_SOURCE_129_299071MS
 AXIA_G07_TASK01_SLEEP_VS_SCHEDULER_CAUSE=UNPROVEN
 AXIA_G07_TASK02=NOT_STARTED
 AXIA_G07_TASK03_TRACER_OFF_RELEASE=NOT_RUN
