@@ -146,8 +146,9 @@ def export_sanitized(observer, trace, tf_lines, anchors, *, run_id, public_sha, 
                 raise ValueError("PUBLIC_TF_INTERVAL_INVALID")
             if p==pid and tid in tids and t1>=pair_start_ns-200_000_000 and (
                     t0<=pair_end_ns+200_000_000):
-                tf_calls.append((p,tid,t0,t1,(
-                    int(vals[12]) if vals[12] is not None else None)))
+                tf_calls.append((p,tid,t0,t1,
+                    int(vals[12]) if vals[12] is not None else None,
+                    int(vals[4])))
             continue
         match=TF_SLEEP_LINE.fullmatch(line.strip())
         if match:
@@ -165,14 +166,61 @@ def export_sanitized(observer, trace, tf_lines, anchors, *, run_id, public_sha, 
     if len(tf_calls)>MAX_TFS or len(sleeps)>MAX_SLEEPS:
         raise ValueError("PUBLIC_TIMING_SPAN_LIMIT_EXCEEDED")
 
-    # Each sleep must fit inside one exact Advanced TF invocation on same PID
-    # and TID. Never present an unrelated wrapper call as CM TF evidence.
+    # Exact same invocation containment, by original CM PID+TID before
+    # projection to a numeric public time-relative artifact. Keep call
+    # start/end rather than the previous ambiguous list of durations only.
+    # No frame/pose, raw ROS, pointer, PID or TID leaves the sealed runner.
     spans=[]
+    per_call=[[] for _ in tf_calls]
     for p,tid,t0,t1,req,rc in sleeps:
-        if not any(tp==p and tt==tid and ta<=t0<=t1<=tb
-                   for tp,tt,ta,tb,_ in tf_calls):
+        owners=[i for i,(cp,ct,ta,tb,sc,cpu) in enumerate(tf_calls)
+                if cp==p and ct==tid and ta<=t0<=t1<=tb]
+        if len(owners)!=1:
             out["status"]="TF_SLEEP_SPAN_CALL_LINK_UNVERIFIED_HOLD"
             return out
+        per_call[owners[0]].append((t0,t1,req,rc))
+        spans.append(dict(
+            start_rel_observer_ns=t0-pair_start_ns,
+            end_rel_observer_ns=t1-pair_start_ns,
+            request_ns=req,rc=rc))
+    spans.sort(key=lambda x:x["start_rel_observer_ns"])
+    if any(l["end_rel_observer_ns"]>r["start_rel_observer_ns"]
+           for l,r in zip(spans,spans[1:])):
+        out["status"]="TF_SLEEP_OVERLAP_UNVERIFIED_HOLD"
+        return out
+    if any(l[3]>r[2] for l,r in
+           zip(sorted(tf_calls,key=lambda c:c[2]),
+               sorted(tf_calls,key=lambda c:c[2])[1:])):
+        out["status"]="TF_CALL_INTERVALS_OVERLAP_HOLD"
+        return out
+
+    call_spans=[]
+    for (p,tid,t0,t1,declared,cpu),inside in zip(tf_calls,per_call):
+        count=len(inside)
+        request=sum(x[2] for x in inside)
+        sleep_wall=sum(x[1]-x[0] for x in inside)
+        valid=(declared is not None and count==declared
+               and all(x[3]==0 and x[1]-x[0]>=x[2] for x in inside)
+               and sleep_wall<=t1-t0 and cpu>=0 and cpu<=t1-t0)
+        call_spans.append(dict(
+            start_rel_observer_ns=t0-pair_start_ns,
+            end_rel_observer_ns=t1-pair_start_ns,
+            thread_cpu_ns=cpu,
+            sleep_count_declared=declared,
+            sleep_count_observed=count,
+            sleep_request_ns=request,
+            sleep_wall_ns=sleep_wall,
+            coverage_complete=valid))
+
+    out["tf_calls"]=dict(
+        count=len(tf_calls),
+        durations_ms=[round((t[3]-t[2])/1e6,6) for t in tf_calls],
+        spans=call_spans)
+    out["tf_sleep"]=dict(
+        count=len(spans),spans=spans,
+        coverage_proven=(bool(call_spans)
+                         and all(c["coverage_complete"] for c in call_spans)))
+    return out
         spans.append(dict(
             start_rel_observer_ns=t0-pair_start_ns,
             end_rel_observer_ns=t1-pair_start_ns,
