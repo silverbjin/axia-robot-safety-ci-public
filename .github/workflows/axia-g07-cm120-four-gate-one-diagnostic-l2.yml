@@ -64,7 +64,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-ci-public
-          ref: 35abdbef803e08de14d0ffc955bf06ef478a56f0
+          ref: ec059007670c0a5c1c13b0fe7d06ad1107f2e1d6
           path: cm-diag-public
           persist-credentials: false
       - name: Public L0 GREEN, SHA fidelity, and no additional command publisher
@@ -236,7 +236,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C cm-diag-public rev-parse HEAD)" = 35abdbef803e08de14d0ffc955bf06ef478a56f0
+          test "$(git -C cm-diag-public rev-parse HEAD)" = ec059007670c0a5c1c13b0fe7d06ad1107f2e1d6
           # First CI RED #43995476156: nested checkout is NOT importable without
           # an explicit Python module root. Assert the exact real CI layout.
           PYTHONPATH="$PWD/cm-diag-public" python3 -c \
@@ -264,7 +264,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C cm-diag-public rev-parse HEAD)" = '35abdbef803e08de14d0ffc955bf06ef478a56f0'
+          test "$(git -C cm-diag-public rev-parse HEAD)" = 'ec059007670c0a5c1c13b0fe7d06ad1107f2e1d6'
           set +u
           source /opt/ros/jazzy/setup.bash
           set -u
@@ -510,26 +510,38 @@ jobs:
             "ros2:rcl_subscription_init","ros2:rclcpp_subscription_init",
             "ros2:rclcpp_subscription_callback_added",
             "ros2:callback_start","ros2:callback_end"}
-          rows=[]
-          for msg in bt2.TraceCollectionMessageIterator(str(root/"trace")):
-              if not isinstance(msg,bt2._EventMessageConst):continue
-              event=msg.event
-              if event.name not in names:continue
-              row={"name":event.name}
-              c=event.common_context_field
-              p=event.payload_field
-              for key in ("vpid","vtid"):
-                  if c is not None and key in c:row[key]=int(c[key])
-              if c is not None and "procname" in c:
-                  row["procname"]=str(c["procname"])
-              for key in ("subscription_handle","subscription","callback","topic_name"):
-                  if key in p:row[key]=str(p[key])
-              snap=msg.default_clock_snapshot
-              if snap is not None:row["timestamp_ns"]=snap.ns_from_origin
-              rows.append(row)
-              if len(rows)>100000:
-                  print("AXIA_G07_C05_FILTERED_CM_TRACE_UNBOUNDED_HOLD")
-                  raise SystemExit(3)
+          # RED #44007105539: unfiltered CM event count exceeded 100k.
+          # S0 GREEN #44009082369: only exact topic->callback rows retained.
+          from d06.diagnostic.s0_cm_diag_readiness import select_exact_cm_callbacks
+          def source_rows():
+              for msg in bt2.TraceCollectionMessageIterator(str(root/"trace")):
+                  if not isinstance(msg,bt2._EventMessageConst):
+                      continue
+                  event=msg.event
+                  if event.name not in names:
+                      continue
+                  row={"name":event.name}
+                  c=event.common_context_field
+                  p=event.payload_field
+                  for key in ("vpid","vtid"):
+                      if c is not None and key in c:row[key]=int(c[key])
+                  if c is not None and "procname" in c:
+                      row["procname"]=str(c["procname"])
+                  for key in ("subscription_handle","subscription","callback","topic_name"):
+                      if key in p:row[key]=str(p[key])
+                  snap=msg.default_clock_snapshot
+                  if snap is not None:row["timestamp_ns"]=snap.ns_from_origin
+                  yield row
+          selected=select_exact_cm_callbacks(source_rows())
+          print("AXIA_G07_S0_ACTUAL_CM_CALLBACK_FILTER_COUNTS "+
+                json.dumps({"status":selected["status"],
+                            **selected["stats"],
+                            "goal_authorized":False,
+                            "release_pass":False},sort_keys=True))
+          if selected["status"]!="EXACT_CM_CALLBACK_FILTER_READY":
+              print("AXIA_G07_S0_CM_CALLBACK_PROVENANCE_HOLD")
+              raise SystemExit(3)
+          rows=selected["rows"]
           result=classify(observer,rows,anchors)
           print("AXIA_G07_C05_FIRST_CM_CMD_CALLBACK_DIAGNOSTIC "+
                 json.dumps(result,sort_keys=True))
