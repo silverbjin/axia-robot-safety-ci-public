@@ -1,0 +1,51 @@
+name: AXIA G07 Task01 sealed private custody on previously approved release lane NO GOAL
+on:
+  push:
+    branches: ['release/p2-g06-cm-ttl-20261110']
+    paths:
+      - '.github/workflows/axia-g07-task01-private-custody-release-preflight-20261117.yml'
+permissions:
+  contents: read
+concurrency:
+  group: axia-g07-task01-private-custody-release-preflight
+  cancel-in-progress: false
+jobs:
+  release-approved-sealed-canary-nogoal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    environment: axia-instructor-sealed
+    steps:
+      - name: Exact reviewed public Task01 script, separate immutable source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-ci-public
+          ref: d17c03cfb5806e89e77961400a43740f3e2d9bed
+          path: public-task01
+          persist-credentials: false
+      - name: Sealed Instructor evidence branch, not instructor runtime
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: evidence/g07-cm120-task01-20261117
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          fetch-depth: 1
+          path: private-custody
+          persist-credentials: false
+      - name: Remote canary push and SHA256 readback (strict NO_GOAL)
+        shell: bash
+        env:
+          GITHUB_ACTIONS: 'true'
+          AXIA_P0_SIM_ONLY: '1'
+          AXIA_G07_TASK01_GOAL_ALLOWED: '0'
+          AXIA_CLOUD_CI: ${{ secrets.AXIA_CLOUD_CI }}
+          AXIA_G07_TASK01_PRIVATE_CUSTODY_DIR: ${{ github.workspace }}/private-custody
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C public-task01 rev-parse HEAD)" = 'd17c03cfb5806e89e77961400a43740f3e2d9bed'
+          bash -n public-task01/d06/scripts/g07_task01_private_custody_canary.sh
+          bash public-task01/d06/scripts/g07_task01_private_custody_canary.sh
+          echo AXIA_G07_TASK01_RELEASE_LANE_PRIVATE_CANARY_PASS_NO_ROS_NO_GOAL
+      - name: Always erase private checkout
+        if: always()
+        shell: bash
+        run: rm -rf -- private-custody public-task01
