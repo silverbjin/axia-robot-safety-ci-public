@@ -19,7 +19,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: f6faa72295a4b6b28577af3a44e693c057f254ec
+          ref: 0682caeb413c9830107b1a0d297d36597896bed7
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Immutable old private baseline for RED only
@@ -34,7 +34,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = f6faa72295a4b6b28577af3a44e693c057f254ec
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 0682caeb413c9830107b1a0d297d36597896bed7
           test "$(git -C baseline -c safe.directory="$PWD/baseline" rev-parse HEAD)" = 966886c4627deb2bb3b37111fe336eeee6b9ebb4
           cp tests/unit/test_g07_cm120_tf_clock_no_goal_audit.py baseline/tests/unit/
           if (cd baseline && PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
