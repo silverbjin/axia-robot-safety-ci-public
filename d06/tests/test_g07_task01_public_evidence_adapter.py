@@ -120,5 +120,51 @@ class TestPublicEvidenceAdapter(unittest.TestCase):
             self.assertFalse(doc["cm120_release_pass"])
             self.assertLess(p.stat().st_size,32768)
 
+    def test_exact_join_exception_yields_fixed_safe_code_and_rmw_gap(self):
+        # A genuine first publisher gap can be present even when the exact
+        # call/sleep exporter rejects too many spans or clock-anchor drift.
+        # The next experiment must distinguish these *fixed internal* errors,
+        # never leak exception text, filenames, PID, or original ROS events.
+        from unittest.mock import patch
+        from d06.tests.test_g07_cm120_tf_first_gap_join import (
+            observer, trace, anchor, line, READY)
+        with tempfile.TemporaryDirectory() as t:
+            root=Path(t)
+            (root/"trace").mkdir()
+            (root/"anchors").mkdir()
+            (root/"events").write_text("".join(json.dumps(x)+"\n" for x in observer()))
+            (root/"tf").write_text(READY+"\n"+line(12.014,12.105,cpu=.0003)+"\n")
+            for name, data in anchor().items():
+                (root/"anchors"/(name+"_anchor.json")).write_text(json.dumps(data))
+            cases=[
+                ("PUBLIC_TIMING_SPAN_LIMIT_EXCEEDED",
+                 "PUBLIC_TIMING_SPAN_LIMIT_EXCEEDED"),
+                ("PUBLIC_CLOCK_ANCHOR_DRIFT_INVALID",
+                 "PUBLIC_CLOCK_ANCHOR_DRIFT_INVALID"),
+                ("PRIVATE_SECRET=/tmp/raw_owner_pid_9999",
+                 "UNCLASSIFIED_PUBLIC_EXPORT_ERROR"),
+            ]
+            for i, (raised, safe_code) in enumerate(cases):
+                with self.subTest(safe_code=safe_code):
+                    with patch("d06.scripts.g07_task01_extract_public_gap.exact_trace_rows",
+                               return_value=trace()):
+                        with patch("d06.scripts.g07_task01_extract_public_gap.export_sanitized",
+                                   side_effect=ValueError(raised)):
+                            status,p=extract(events=root/"events",
+                                trace_dir=root/"trace",tf_file=root/"tf",
+                                anchors_dir=root/"anchors",
+                                out=root/"safe"/("result_"+str(i)+".json"),
+                                run_id="44040000001",public_sha=SHA)
+                    d=json.loads(p.read_text())
+                    self.assertEqual(status,"PUBLIC_EVIDENCE_EXTRACTION_UNVERIFIED_HOLD")
+                    self.assertEqual(d["failure_stage"],"EXACT_SOURCE_TF_ALLOWLIST_JOIN")
+                    self.assertEqual(d["failure_code"],safe_code)
+                    self.assertEqual(d["first_gap"]["rmw_source_gap_ns"],132000000)
+                    self.assertFalse(d["root_cause_proven"])
+                    self.assertFalse(d["cm120_release_pass"])
+                    self.assertNotIn("PRIVATE_SECRET",p.read_text())
+                    self.assertNotIn("raw_owner_pid",p.read_text())
+                    self.assertLess(p.stat().st_size,1024)
+
 if __name__=="__main__":
     unittest.main()
