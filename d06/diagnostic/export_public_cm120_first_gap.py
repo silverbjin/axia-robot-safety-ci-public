@@ -42,7 +42,7 @@ def _clock(anchors):
     return a, b
 
 
-def export_sanitized(observer, trace, tf_lines, anchors, *, run_id, public_sha):
+def export_sanitized(observer, trace, tf_lines, anchors, *, run_id, public_sha, clock_rows=None):
     if not isinstance(run_id, str) or not RUN.fullmatch(run_id):
         raise ValueError("PUBLIC_RUN_ID_INVALID")
     if not isinstance(public_sha, str) or not SHA.fullmatch(public_sha):
@@ -96,6 +96,15 @@ def export_sanitized(observer, trace, tf_lines, anchors, *, run_id, public_sha):
         observer_gap_ns=pair_end_ns-pair_start_ns,
         pairs=[normalized(a,0),normalized(b,1)])
     out["status"]="FIRST_RMW_SOURCE_GAP_SELECTED_CAUSE_UNPROVEN"
+
+    # Optional read-only /clock subscriber. Only bounded numeric relative
+    # samples may enter the public artifact. Existing raw-free v1 consumers
+    # remain byte-identical when clock_rows is omitted. This probe is NOT
+    # the official tf2 Buffer's internal clock or source SYSTEM epoch.
+    if clock_rows is not None:
+        from d06.diagnostic.firstgap_clock_progress import summarize
+        out["clock_progress"]=summarize(
+            clock_rows,pair_start_ns,pair_end_ns)
 
     pids={e.get("vpid") for e in trace if isinstance(e,dict)
           and e.get("name")=="ros2:rcl_subscription_init"
