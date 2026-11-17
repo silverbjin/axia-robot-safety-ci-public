@@ -14,17 +14,17 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 3db1003d882f2e68b44d1a133ce88e5f9f0d1ed2
+          ref: 7de5f39e8d9cf7c21998b5df7ea2dd5c0edd0b4c
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: Replay sanitized owner gz255 first failure and prohibit Gazebo before Xacro is ready
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git rev-parse HEAD)" = '3db1003d882f2e68b44d1a133ce88e5f9f0d1ed2'
+          test "$(git rev-parse HEAD)" = '7de5f39e8d9cf7c21998b5df7ea2dd5c0edd0b4c'
           python3 -m unittest discover -s tests/unit -p test_g07_c30_xacro_gz_startup_order.py -v
           python3 -m unittest discover -s tests/unit -p test_g07_c29_rmw_gap_first_cause.py -v
-          python3 -m py_compile ros2_ws/src/axia_safety_bringup/launch/axia_tb3_p2.launch.py
+          python3 -m py_compile ros2_ws/src/axia_safety_bringup/launch/axia_tb3_p2.launch.py tools/p2_g07_world_xacro_order.py
           echo AXIA_G07_C30_GAZEBO_XACRO_FIRST_STARTUP_L0_PASS_NO_ROS_NO_GOAL
       - name: Clean sealed Instructor source
         if: always()
