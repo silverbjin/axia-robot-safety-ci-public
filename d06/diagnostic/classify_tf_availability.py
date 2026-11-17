@@ -26,6 +26,16 @@ def classify(artifact):
         return _hold("TF_AVAILABILITY_EVIDENCE_INVALID_HOLD")
     if artifact.get("cm120_release_pass") is not False or             artifact.get("root_cause_proven") is not False:
         return _hold("TF_AVAILABILITY_RELEASE_FLAG_INVALID_HOLD")
+    # A pre/post nonblocking TF observation without the actual first
+    # publisher-source breach must NEVER be presented as same-gap evidence.
+    # In the real #44073078458 Moving Goal, max source=117.998ms and
+    # TF readiness exists, but the selected >120ms first pair is ABSENT.
+    # Keep the comparison strictly in the RMW source interval domain.
+    first = artifact.get("first_gap")
+    if (not isinstance(first, dict) or
+            type(first.get("rmw_source_gap_ns")) is not int or
+            first["rmw_source_gap_ns"] <= 120_000_000):
+        return _hold("FIRST_SOURCE_GAP_NOT_REPRODUCED_HOLD")
     raw = artifact.get("tf_availability")
     if raw is None:
         return _hold("TF_AVAILABILITY_PROBE_NOT_PRESENT_HOLD")
