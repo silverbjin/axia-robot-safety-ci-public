@@ -1,0 +1,25 @@
+name: AXIA G07 Task01 private custody pregoal contract L0
+on:
+  push:
+    branches: ['fix/g07-cm120-task01-autopilot-preacceptance-20261117']
+    paths:
+      - '.github/workflows/axia-g07-cm120-task01-private-custody-l0.yml'
+      - 'd06/scripts/g07_task01_private_custody_canary.sh'
+      - 'd06/tests/test_g07_cm120_task01_private_custody_gate.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  no-goal-private-custody-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: RED or GREEN private custody gate without ROS or Goal
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s d06/tests \
+            -p 'test_g07_cm120_task01_private_custody_gate.py' -v
+          bash -n d06/scripts/g07_task01_private_custody_canary.sh
+          echo AXIA_G07_TASK01_CUSTODY_STATIC_L0_PASS_NO_ROS_NO_GOAL

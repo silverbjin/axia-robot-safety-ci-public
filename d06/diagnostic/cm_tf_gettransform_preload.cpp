@@ -101,6 +101,25 @@ thread_local bool tf_window_active=false;
 thread_local long long tf_sleep_wall_ns=0;
 thread_local unsigned tf_sleep_calls=0;
 thread_local int tf_sleep_depth=0;
+std::atomic<unsigned> tf_poll_samples{0};
+constexpr unsigned kMaxTfPollSamples=15000;
+
+// Diagnostic ONLY. Emit bounded monotonic individual sleep spans from the
+// same original TF call. Never emit source frames, poses or raw ROS messages.
+void log_poll_sleep(long long t0,long long t1,long long req_ns,int rc) {
+  if(t0<0 || t1<t0 || tf_poll_samples.fetch_add(1,std::memory_order_relaxed)
+                     >=kMaxTfPollSamples) return;
+  const int file=active_fd();
+  if(file<0) return;
+  char line[256];
+  const int n=std::snprintf(line,sizeof(line),
+    "TF_SLEEP pid=%ld tid=%ld mono_start_ns=%lld mono_end_ns=%lld req_ns=%lld rc=%d\n",
+    static_cast<long>(::getpid()),static_cast<long>(::syscall(SYS_gettid)),
+    t0,t1,req_ns,rc);
+  if(n>0 && n<static_cast<int>(sizeof(line))) {
+    (void)::write(file,line,static_cast<size_t>(n));
+  }
+}
 
 TransformFn actual_transform() {
   auto self = static_cast<TransformFn>(&nav2_util::getTransform);
@@ -122,12 +141,17 @@ extern "C" int nanosleep(const timespec* req,timespec* rem) noexcept {
   ++tf_sleep_depth;
   const long long t0=count?clock_ns(CLOCK_MONOTONIC):-1;
   const int rc=next(req,rem);
+  const int saved_errno=errno;
   const long long t1=count?clock_ns(CLOCK_MONOTONIC):-1;
   --tf_sleep_depth;
   if(count && t1>=t0 && t0>=0) {
     tf_sleep_wall_ns+=t1-t0;
     ++tf_sleep_calls;
+    const long long request=req ?
+      static_cast<long long>(req->tv_sec)*1000000000LL+req->tv_nsec : 0;
+    log_poll_sleep(t0,t1,request,rc);
   }
+  errno=saved_errno;
   return rc;
 }
 extern "C" int clock_nanosleep(clockid_t id,int flags,
@@ -139,12 +163,17 @@ extern "C" int clock_nanosleep(clockid_t id,int flags,
   ++tf_sleep_depth;
   const long long t0=count?clock_ns(CLOCK_MONOTONIC):-1;
   const int rc=next(id,flags,req,rem);
+  const int saved_errno=errno;
   const long long t1=count?clock_ns(CLOCK_MONOTONIC):-1;
   --tf_sleep_depth;
   if(count && t1>=t0 && t0>=0) {
     tf_sleep_wall_ns+=t1-t0;
     ++tf_sleep_calls;
+    const long long request=(req && !(flags & TIMER_ABSTIME)) ?
+      static_cast<long long>(req->tv_sec)*1000000000LL+req->tv_nsec : 0;
+    log_poll_sleep(t0,t1,request,rc);
   }
+  errno=saved_errno;
   return rc;
 }
 

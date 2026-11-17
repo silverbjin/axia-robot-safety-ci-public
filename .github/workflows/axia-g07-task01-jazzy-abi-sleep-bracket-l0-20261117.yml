@@ -1,0 +1,59 @@
+name: AXIA G07 Task01 official Jazzy Advanced TF ABI and real C++ sleep L0 NO GOAL
+on:
+  push:
+    branches: ['fix/g07-cm120-task01-autopilot-preacceptance-20261117']
+    paths:
+      - '.github/workflows/axia-g07-task01-jazzy-abi-sleep-bracket-l0-20261117.yml'
+      - 'd06/diagnostic/cm_tf_gettransform_preload.cpp'
+      - 'd06/diagnostic/analyze_first_cm_tf.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  original-official-abi-nogoal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Strict existing S2 + new sleep interval Python L0
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s d06/tests \
+             -p 'test_g07_cm120_task01_per_sleep_span_join.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s d06/tests \
+             -p 'test_g07_cm120_s2_actual_sleep_provenance.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s d06/tests \
+             -p 'test_g07_cm120_s2_exact_tf_offcpu_join.py' -v
+      - name: Original Jazzy Nav2 ABI library build and libc sleep_for selftest
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          set +u
+          source /opt/ros/jazzy/setup.bash
+          set -u
+          cmake -S d06/diagnostic -B /tmp/axia_task01_sleep_abi \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          cmake --build /tmp/axia_task01_sleep_abi --parallel 2
+          SO=/tmp/axia_task01_sleep_abi/libaxia_g07_cm120_tf_diag.so
+          test -s "$SO"
+          nm -D -C "$SO" | grep -F 'nav2_util::getTransform(' | grep -F 'tf2::Transform&'
+          env LD_PRELOAD="$SO" AXIA_TASK01_ABI_SO="$SO" python3 - <<'PY'
+          import ctypes,glob,os
+          libs=[ctypes.CDLL(p,mode=ctypes.RTLD_GLOBAL)
+                for p in glob.glob('/opt/ros/jazzy/lib/libnav2_util*.so')]
+          assert libs, 'JAZZY_NAV2_UTIL_ABI_MISSING_NO_GOAL'
+          h=ctypes.CDLL(os.environ['AXIA_TASK01_ABI_SO'])
+          for symbol in ('axia_cm120_original_transform_linkage_selftest',
+                         'axia_g07_s2_sleep_interposition_selftest'):
+              fun=getattr(h,symbol)
+              fun.restype=ctypes.c_int
+              assert fun()==1,symbol
+          print('AXIA_G07_TASK01_ORIGINAL_JAZZY_ADVANCED_TF_ABI_AND_SLEEP_SELFTEST_PASS_NO_GOAL')
+          PY
+      - name: Remove diagnostic ELF, do not modify installed ROS
+        if: always()
+        shell: bash
+        run: rm -rf -- /tmp/axia_task01_sleep_abi
