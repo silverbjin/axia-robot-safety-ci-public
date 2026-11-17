@@ -7,9 +7,9 @@ set -Eeuo pipefail
 umask 077
 
 readonly PRIVATE_REPO='silverbjin/axia-robot-safety-instructor'
-readonly PRIVATE_SHA='a2ea5bbebf7c24137353773f88984dd4cf6d9383'
-readonly PUBLIC_REAL_GAZEBO_XVFB_L2_RUN='43994275942'
-readonly PUBLIC_NO_ROS_L0_RUN='43994125321'
+readonly PRIVATE_SHA='7306b27bc1d146d99d1657308549db45c9878407'
+readonly PUBLIC_REAL_GAZEBO_XVFB_L2_RUN='43997663084'
+readonly PUBLIC_NO_ROS_L0_RUN='43997532528'
 readonly CI_CONTAINER_DIGEST='sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e'
 
 # Bounded read-only WSLg GUI screenshot and resource capture. Never auto PASS.
