@@ -15,14 +15,14 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 54a62c43b0c1e0ba6ec9860e5a32439fc01677be
+          ref: b57029c92d2681e3eff658f1709e59421a5301e5
           token: ${{ secrets.AXIA_CLOUD_CI }}
           persist-credentials: false
       - name: First boundary fixture and unchanged real phase oracle
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git rev-parse HEAD)" = 54a62c43b0c1e0ba6ec9860e5a32439fc01677be
+          test "$(git rev-parse HEAD)" = b57029c92d2681e3eff658f1709e59421a5301e5
           python3 -m unittest discover -s tests/unit -p test_g07_c35_clear_first_boundary.py -v
           python3 -m unittest discover -s tests/unit -p test_g07_c32_goal_terminal_before_lifecycle.py -v
           python3 -m unittest discover -s tests/unit -p test_g07_c34_mandatory_terminal_before_native_ack.py -v
