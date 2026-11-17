@@ -1,0 +1,64 @@
+name: AXIA G07 C07 official CM source freshness <=300ms coupled simple TF SIM L0
+on:
+  push:
+    branches: ['release/p2-g06-cm-ttl-20261110']
+    paths: ['.github/workflows/axia-g07-cycle07-freshness-bounded-tf-l0.yml']
+permissions:
+  contents: read
+jobs:
+  exact-sealed-sim-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    environment: axia-instructor-sealed
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 682849f5dd85cba14fe091fd3317cb0be8a1619b
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 67664552d9283d24db25fadb329733f83dc27878
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          path: baseline
+          persist-credentials: false
+      - name: RED old source no official TF single param gate; GREEN four strict tests
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '682849f5dd85cba14fe091fd3317cb0be8a1619b'
+          test "$(git -C baseline -c safe.directory="$PWD/baseline" rev-parse HEAD)" = '67664552d9283d24db25fadb329733f83dc27878'
+          cp tests/unit/test_g07_cycle06_sim_simple_tf_option.py baseline/tests/unit/
+          if (cd baseline && PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
+              -s tests/unit -p 'test_g07_cycle06_sim_simple_tf_option.py' -v) \
+              >/tmp/g07_c06_red.log 2>&1;then
+            echo AXIA_G07_C06_BASELINE_UNEXPECTED_GREEN >&2;exit 3
+          fi
+          grep -Fq 'FAILED (errors=2)' /tmp/g07_c06_red.log || {
+            cat /tmp/g07_c06_red.log
+            echo AXIA_G07_C06_BASELINE_RED_NOT_SAME_CAUSE >&2;exit 3
+          }
+          echo AXIA_G07_C07_OLD_C06_UNBOUNDED_SOURCE_TIMEOUT_RED2
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
+             -s tests/unit -p 'test_g07_cycle06_sim_simple_tf_option.py' -v
+          python3 -m py_compile tools/p4_g07_cm_sim_simple_tf.py \
+             ros2_ws/src/axia_safety_bringup/launch/axia_p2_launch_policy.py
+          bash -n scripts/p2_no_goal_smoke_ci.sh
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('ros2_ws/src/axia_safety_bringup/launch/axia_p2_launch_policy.py').read_text()
+          assert s.count('apply_g07_sim_simple_tf(cm, os.environ)')==1
+          assert 'AXIA_G07_C06_OFFICIAL_CM_SIMPLE_TF_SIM_ONLY' in s
+          text=Path('scripts/p2_no_goal_smoke_ci.sh').read_text()
+          assert 'AXIA_G07_C06_OFFICIAL_CM_BASE_SHIFT_FALSE_RUNTIME_READBACK_PASS_SIM_ONLY' in text
+          assert 'AXIA_G07_C07_OFFICIAL_CM_SOURCE_TIMEOUT_LTE_300MS_RUNTIME_READBACK_PASS_SIM_ONLY' in text
+          print('AXIA_G07_C07_COUPLED_OFFICIAL_CM_SENSOR_FRESHNESS_STATIC_PASS')
+          PY
+          echo AXIA_G07_C07_RED2_GREEN5_PUBLIC_SEALED_L0_PASS_NO_GOAL
+          echo AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false
+      - name: Always purge both private source trees
+        if: always()
+        shell: bash
+        run: rm -rf -- baseline .git docs tools tests configs scripts ros2_ws /tmp/g07_c06_red.log
