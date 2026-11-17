@@ -1,0 +1,33 @@
+name: AXIA G07 Task01 exact real first-CM-gap TF polling vs scheduler L0
+on:
+  push:
+    branches: ['fix/g07-cm120-task01-clock-firstgap-causality-20261117']
+    paths:
+      - '.github/workflows/axia-g07-task01-real-firstgap-polling-bounds-l0-20261117.yml'
+      - 'd06/diagnostic/classify_first_cm_gap_polling.py'
+      - 'd06/tests/test_g07_task01_actual_first_gap_polling_bounds.py'
+      - 'd06/evidence/g07_cm120_task01/run_44049067368_first_gap_sanitized.json'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  real-pinned-artifact-pure-l0:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Validate exact actual sanitized JSON bytes before evaluation
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cd d06/evidence/g07_cm120_task01
+          sha256sum -c run_44049067368_SHA256SUMS.txt
+          echo AXIA_G07_TASK01_REAL_PUBLIC_FIRST_GAP_SHA256_VERIFIED
+      - name: RED or GREEN exact first observer-window polling sleep attribution
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
+            -s d06/tests -p 'test_g07_task01_actual_first_gap_polling_bounds.py' -v
+          python3 -m py_compile d06/diagnostic/classify_first_cm_gap_polling.py
+          echo AXIA_G07_TASK01_REAL_FIRST_GAP_POLLING_BOUNDS_L0_GREEN_RELEASE_HOLD
