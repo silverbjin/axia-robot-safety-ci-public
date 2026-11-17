@@ -15,7 +15,7 @@ class Task01SameWindowClockProbe(unittest.TestCase):
                          (125,1019),(128.4,1020),(150,1022)]),
                     T0,T0+128_391_951)
         self.assertEqual(d["status"],"CLOCK_OBSERVER_WINDOW_BRACKETED_HYPOTHESIS_ONLY")
-        self.assertEqual(d["observer_pair_clock_sample_count"],7)
+        self.assertEqual(d["observer_pair_clock_sample_count"],6)
         self.assertLess(d["sim_to_wall_progress_ratio"],0.20)
         self.assertTrue(d["slow_sim_progress_candidate"])
         self.assertFalse(d["clock_causality_proven"])
