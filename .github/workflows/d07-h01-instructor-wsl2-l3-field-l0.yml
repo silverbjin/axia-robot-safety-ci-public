@@ -1,0 +1,35 @@
+# Only public L0. Physical WSLg GPU pixels/Ctrl+C require the Owner host.
+name: AXIA D07 H01 instructor WSL2 L3 field one-shot L0
+on:
+  push:
+    branches: [feat/d07-h01-instructor-wsl2-l3-field-20261117]
+    paths:
+      - 'scripts/axia_d07_h01_instructor_l3_wsl2_once.sh'
+      - 'tests/test_d07_h01_instructor_l3_field.py'
+      - '.github/workflows/d07-h01-instructor-wsl2-l3-field-l0.yml'
+      - 'docs/reports/D07_H01_INSTRUCTOR_L3_FIELD_HANDOFF_20261117_KO.md'
+  pull_request:
+    paths:
+      - 'scripts/axia_d07_h01_instructor_l3_wsl2_once.sh'
+      - 'tests/test_d07_h01_instructor_l3_field.py'
+      - '.github/workflows/d07-h01-instructor-wsl2-l3-field-l0.yml'
+      - 'docs/reports/D07_H01_INSTRUCTOR_L3_FIELD_HANDOFF_20261117_KO.md'
+permissions:
+  contents: read
+jobs:
+  field-wrapper-l0-no-ros:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: RED GREEN fixture and field-script contract (no ROS/Gazebo)
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          bash -n scripts/axia_d07_h01_instructor_l3_wsl2_once.sh
+          python3 -m unittest discover -s tests \
+            -p test_d07_h01_instructor_l3_field.py -v
+          bash scripts/axia_d07_h01_instructor_l3_wsl2_once.sh --self-check
+          echo AXIA_D07_H01_INSTRUCTOR_L3_FIELD_L0_PASS_NO_ROS_NO_GAZEBO_NO_WSLG
