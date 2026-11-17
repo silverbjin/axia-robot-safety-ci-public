@@ -97,6 +97,40 @@ class D07H01InstructorL3Contract(unittest.TestCase):
         self.assertLess(s.index("source /opt/ros/jazzy/setup.bash"),
                         s.index("for bin in git ros2 gz rviz2"))
 
+    def test_rqt_graph_is_manual_separate_terminal_and_not_l3_child(self):
+        # Owner requested rqt_graph in another terminal, never auto-start.
+        s=SCRIPT.read_text()
+        self.assertIn("--rqt)",s)
+        self.assertIn('exec ros2 run rqt_graph rqt_graph',s)
+        self.assertIn("AXIA_D07_H01_L3_RQT_INDEPENDENT_TERMINAL",s)
+        self.assertNotIn('RQT_PID=',s)
+        self.assertNotIn('setsid bash -c',s)
+        self.assertNotIn("windows-triple.txt",s)
+        self.assertIn("windows-gazebo-rviz.txt",s)
+
+    def test_actual_owner_geometry_without_robot_moved_field_is_valid(self):
+        # Actual WSL2 uX8uxx0z geometry.json lacks robot_moved; it has
+        # motion_admitted=false. Each real teaching-cycle row has robot_moved=false.
+        with tempfile.TemporaryDirectory() as folder:
+            synthetic_session(folder)
+            p=Path(folder)/"native/evidence/d07_h01_geometry/d07_h01_geometry.json"
+            geo=json.loads(p.read_text())
+            del geo["robot_moved"]
+            geo["motion_admitted"]=False
+            p.write_text(json.dumps(geo))
+            r=verify(folder)
+            self.assertEqual(r.returncode,0,r.stdout+r.stderr)
+
+    def test_teaching_first_shutdown_error_blocks_acceptance(self):
+        with tempfile.TemporaryDirectory() as folder:
+            synthetic_session(folder)
+            p=Path(folder)/"native/evidence/d07_h01_teaching_loop.log"
+            p.write_text(p.read_text()+
+                "D07_H01_TEACHING_BLOCKED_FIRST_BOUNDARY RCLError:failed to shutdown: rcl_shutdown already called\n")
+            r=verify(folder)
+            self.assertEqual(r.returncode,3)
+            self.assertIn("FIRST_TEACHING_RUNTIME_FAILURE",r.stdout)
+
     def test_two_real_cycle_schema_fixture_ready_for_pixel_review(self):
         with tempfile.TemporaryDirectory() as folder:
             synthetic_session(folder)
