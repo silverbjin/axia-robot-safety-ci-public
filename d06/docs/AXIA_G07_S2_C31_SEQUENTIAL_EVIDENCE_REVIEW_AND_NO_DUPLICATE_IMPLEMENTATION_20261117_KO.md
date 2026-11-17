@@ -30,7 +30,7 @@
 
 **독립 최신 원본:** [C31 실제 Gazebo/Gazebo GUI+RViz2 one-Goal #44017286929](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44017286929), 정확한 Instructor 실행 SHA `77eb00993ab3884fe9641ad0f3668fdacf71bc1b`, 공개 워크플로 `a6a79d4ec9ecfa294d730aa0ce1e95862e7bd80f`, **overall FAILURE**.
 
-- 단일 Goal의 CLEAR→SLOW→STOP 및 odom 이동 **0.2241m**, STOP dwell **1.015814s**, CM 메시지 최대 **146.488266ms**(기존 Guard 150ms 기준 내), Scan 최대 **215.135697ms**(300ms 내). 주행 기능의 한정 증거이지 안전 통합 PASS가 아니다.
+- 단일 Goal의 CLEAR→SLOW→STOP 및 odom 이동 **0.2241m**, STOP dwell **1.015814s**, CM 관측 메시지 최대 **146.488266ms**(기존 Guard 150ms 미만이지만 **CM120ms 릴리스 목표 초과**), Scan 최대 **215.135697ms**(300ms 미만). 주행 기능의 한정 증거이지 **CM120 또는 전체 안전 통합 PASS가 아니다**.
 - Navigation `ManageLifecycleNodes` ACK 수신: `response_wait_sec=3.851545`. Localization 서비스 discovery `0.004453s`, request submitted `0.004543s`, **`response_wait_sec=12.997088s`** 후 `ack_response_received=false`. 결과 `BLOCKED_LIFECYCLE_LOCALIZATION_SERVICE_TIMEOUT`.
 - 실제 GitHub job log에는 `[lifecycle_manager_localization]: Running Nav2 LifecycleManager rcl preshutdown`, AMCL·map_server `rcl preshutdown`과 종료 후 `process has finished cleanly`가 남았음. 그러나 이 기록은 **SIGINT에 따른 Context 종료** 과정이며, 원래의 `manage_nodes(SHUTDOWN)` 서비스 응답을 받았다는 증거가 아니다.
 - 기존 C31 `tools/p2_g07_lifecycle_service.py`, `tools/p2_g07_ordered_shutdown.py`는 `request_sent`, `response_wait_sec`, `ack_response_received`, 최초 ACK 실패를 따로 보존하도록 이미 개발. [C31 RED #44015197396](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44015197396) → [GREEN #44015268905](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44015268905) / [#44015565478](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44015565478). 새 fake service 재구현은 중복.
