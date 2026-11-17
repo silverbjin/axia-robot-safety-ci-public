@@ -121,3 +121,33 @@ class OwnerGpuTrialContract(unittest.TestCase):
                         s.index("D07_H01_GUI_CHILD_TERMINATED_BEFORE_PHASE_COMPLETE"))
         self.assertLess(s.index("export AXIA_D07_H01_OWNER_GZ_SOFTWARE_ONLY=1"),
                         s.index('bash "$PRIVATE_RUNNER" --run'))
+
+
+    def test_owner_s75_finished_gui_rc0_never_first_error_and_fault_injector_audit_visible(self):
+        # Owner S75hTDrR: before/intrusion/restored 52/52/52 PASS,
+        # watcher RViz SIGINT exits 0, subsequent launch budget misses
+        # fault injector. This must NOT blame the successful GUI close.
+        s=SCRIPT.read_text()
+        self.assertIn("D07_H01_CHILD_SHUTDOWN_BLOCKED",s)
+        self.assertIn("owner_first_teardown_boundary.txt",s)
+        self.assertIn("WATCHER_EXIT rc=[1-9]",s)
+        self.assertNotIn("WATCHER_EXIT rc=)'",s)
+        code=s[s.rfind("<<'PY'\n")+len("<<'PY'\n"):s.index("\nPY\nVERDICT_RC=",s.rfind("<<'PY'\n"))]
+        with tempfile.TemporaryDirectory() as td:
+            p=Path(td)
+            tool=p/"tool"
+            tool.mkdir()
+            (tool/"d07_h01_path_visual.py").write_text(
+                "def assess_gui_stages(*a,**k): return {'ready':False}\n")
+            evidence=p/"real-l2"
+            evidence.mkdir()
+            (p/"owner_first_teardown_boundary.txt").write_text(
+                "D07_H01_CHILD_SHUTDOWN_BLOCKED:fault_injector_node\n")
+            result=subprocess.run(
+                ["python3","-",str(tool),str(p),PRIVATE_SHA,"3","43997663084"],
+                input=code,text=True,capture_output=True,timeout=12)
+            self.assertEqual(result.returncode,3,result.stderr)
+            v=json.loads((p/"owner_l3_verdict.json").read_text())
+            self.assertEqual(v["reason"],"D07_H01_CHILD_SHUTDOWN_BLOCKED:fault_injector_node")
+            self.assertIsNone(v["first_gui_boundary"])
+            self.assertFalse(v["owner_wsl2_gui_l3_accepted"])
