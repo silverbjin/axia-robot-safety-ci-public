@@ -123,3 +123,31 @@ AXIA_G07_TASK01_FIRST_MOVING_CLOCK_CAUSALITY=UNPROVEN
 AXIA_G07_CM120_RELEASE=HOLD
 AXIA_MVP_DEMO_ACCEPTED=HOLD
 ```
+
+## 9. 변경된 단일 가설: 장시간 외부 Clock 구독 vs 원본 Native ACK — 실제 GREEN
+
+- 독립 Gazebo/Goal 없는 로봇 시계계측 결과가 아니라 **실제 공식 Gazebo+Nav2 NO_GOAL** 환경에서 비교했다. 최초 [#44056741357](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44056741357)는 읽기 전용 Clock sidecar를 startup부터 native shutdown까지 ~120초 유지한 채 결과 `clock subscriber samples=36402`, `sim_to_wall_ratio=0.993921`, 그러나 private NO_GOAL runner `rc=3`, 최종 전체 `completed/failure`. 이는 진단 구독자의 생존 기간과 native 종료 실패의 상관관계이며, 구독자가 *유일한 원인*이라는 엄격한 단독 인과는 미증명이다.
+- 기존 private 원본 실제 CI 스크립트 `scripts/p2_no_goal_smoke_ci.sh`는 `AXIA_G07_CM120_BASE_SHIFT_CORRECTION_TRUE_READBACK_NO_GOAL` 출력 직후 **8초 TF/Clock audit**를 실행하고 **그 다음 Nav2 native Lifecycle 종료**를 시작한다. 안전 정책이나 노드를 수정하지 않고 새로운 Clock sidecar를 오직 이 8초 중 6초만 실행하는 단일 차이 가설을 수립했다.
+- 공개 release-lane 변경 `.github/workflows/axia-g07-task01-live-clock-no-goal-l2-20261117.yml`, commit `e2ad54d53b727e20a4616526d0997889ccf4659b`, 같은 원본 private Jazzy SHA, 동일 기존 8초 audit를 사용하고 sidecar가 native shutdown 전에 자동 종료되는지 검증.
+- **실제 [GREEN Run #44057915125](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44057915125)**, job `133951920938`, `completed/success`. 검증된 주요 stdout:
+```text
+AXIA_G07_TASK01_CLOCK_PROBE_ENDED_IN_TF_AUDIT_BEFORE_NATIVE_SHUTDOWN
+AXIA_G07_TASK01_REAL_NO_GOAL_CLOCK_PROBE {"samples":1952,"sim_to_wall_ratio":0.98513,"goal_sent":false,"cm120_release_pass":false,"tf_buffer_clock_proven":false}
+AXIA_G07_TASK01_REAL_NO_GOAL_CLOCK_PROBE_PASS_NOT_CM_CAUSALITY
+AXIA_G07_C03_NO_GOAL_REAL_TF_CLOCK_RESULT {"rc":0,"status":"OBSERVED_NO_GOAL_NOT_CM_CALLBACK_PROOF","tf_odom_count":524,"clock_tf_max_sim_age_s":0.003,"tf_max_wall_interarrival_s":0.015641,"odom_max_wall_interarrival_s":0.015374,"scan_max_wall_interarrival_s":0.141792}
+AXIA_G07_TASK01_FIRST_NO_GOAL_SHUTDOWN_BOUNDARY {"status":"NAV2_LIFECYCLE_SHUTDOWN_ACK","navigation_ack":true,"localization_ack":true,"navigation_elapsed_sec":2.084495,"localization_elapsed_sec":0.291072}
+AXIA_G07_C03_COMMON_GAP_REAL_GAZEBO_NAV2_OBSERVED_NO_GOAL_CAUSALITY_UNPROVEN
+```
+- **검증 범위:** 진단 Clock probe와 공식 NO_GOAL runtime/Native Shutdown의 조합으로 한정. 새로운 Moving Goal/첫 CM source gap 인과는 여전히 **NOT VERIFIED**. Tracer OFF release도 NOT RUN. 이 변경은 진단기 동작·수명 조절일 뿐 Safety Supervisor/Guard/Collision Monitor 설정·ROS/TF source/Goal ownership/인증 E-Stop 변경이 없다.
+- 추가 단일 Moving 진단을 수행한다면 **첫 source gap의 정확한 /clock 진행값을 새로 확보할 목적이 있는 단 한 번**으로 제한하고, 공식 source/observer/TF sleep 기록을 같은 run에 묶되 공개에는 수치형 허용목록 JSON+SHA256만 보존. NO_GOAL 통과를 Moving/L3 PASS로 승격하지 않는다.
+
+```text
+AXIA_G07_TASK01_NO_GOAL_NATIVE_SHUTDOWN_OBSERVER_ALIVE=FAIL_44056741357
+AXIA_G07_TASK01_NO_GOAL_NATIVE_SHUTDOWN_AUDIT_SCOPED=PASS_44057915125
+AXIA_G07_TASK01_NO_GOAL_NATIVE_NAV_ACK=true
+AXIA_G07_TASK01_NO_GOAL_NATIVE_LOC_ACK=true
+AXIA_G07_TASK01_MOVING_FIRST_GAP_CLOCK=NOT_YET_MEASURED
+AXIA_G07_TASK01_ROOT_CAUSE=UNPROVEN
+AXIA_G07_CM120_TRACER_OFF_RELEASE=HOLD
+AXIA_MVP_DEMO_ACCEPTED=HOLD
+```
