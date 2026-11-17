@@ -90,6 +90,13 @@ class D07H01InstructorL3Contract(unittest.TestCase):
         self.assertIn("kill -INT -- \"-$RQT_PID\"",s)
         self.assertIn('tar --exclude=',s)
 
+    def test_ros_environment_is_sourced_before_command_discovery(self):
+        # A fresh WSL2 shell need not pre-source /opt/ros/jazzy;
+        # the one-shot must not falsely reject ros2 before sourcing it.
+        s=SCRIPT.read_text()
+        self.assertLess(s.index("source /opt/ros/jazzy/setup.bash"),
+                        s.index("for bin in git ros2 gz rviz2"))
+
     def test_two_real_cycle_schema_fixture_ready_for_pixel_review(self):
         with tempfile.TemporaryDirectory() as folder:
             synthetic_session(folder)
