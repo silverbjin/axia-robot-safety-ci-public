@@ -301,6 +301,28 @@ int axia_g07_task01_real_rclcpp_clock_dispatch_selftest() {
      tf_cpp_clock_samples.load(std::memory_order_relaxed)>cpp_before) ? 1:0;
 }
 
+// Cross-DSO reality check: the *official tf2_ros::Buffer* invokes the clock
+// from a separate shared library. A direct Clock::now() in this shim did
+// NOT predict actual CM binding in #44064889546/#44066540314.
+// This is a pure official Jazzy ABI L0. NO Gazebo, ROS node or Goal.
+extern "C" __attribute__((visibility("default")))
+int axia_g07_task01_official_buffer_clock_dispatch_selftest() {
+  const auto c0=tf_clock_samples.load(std::memory_order_relaxed);
+  const auto cpp0=tf_cpp_clock_samples.load(std::memory_order_relaxed);
+  auto clock=std::make_shared<rclcpp::Clock>(RCL_ROS_TIME);
+  auto buffer=std::make_shared<tf2_ros::Buffer>(clock);
+  buffer->setUsingDedicatedThread(true);
+  std::string err;
+  tf_window_active=true;
+  (void)buffer->canTransform(
+    "task01_missing_target",tf2::TimePointZero,
+    "task01_missing_source",tf2::TimePointZero,
+    "task01_missing_fixed",tf2::durationFromSec(0.02),&err);
+  tf_window_active=false;
+  return (tf_clock_samples.load(std::memory_order_relaxed)>c0 ||
+          tf_cpp_clock_samples.load(std::memory_order_relaxed)>cpp0) ? 1:0;
+}
+
 // Strict external ABI proof: intercept rclcpp::Clock::now itself, not
 // just the C rcl_clock_get_now symbol called by our own test process.
 extern "C" __attribute__((visibility("default")))
