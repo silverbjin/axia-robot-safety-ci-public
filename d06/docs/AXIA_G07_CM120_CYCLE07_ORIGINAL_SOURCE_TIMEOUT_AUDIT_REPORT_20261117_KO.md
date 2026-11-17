@@ -29,10 +29,10 @@ Unit test: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests/unit
 - 근거 없는 stricter bound가 CI를 실패시킨 경우, 더 짧은 값을 강제로 배포하는 것이 진정한 문제 해결인가?
 - 왜 재현 실패의 최초 `source_timeout` 오류를 따라가야 하며 후속 `CLOCK_MISSING`을 일차 원인으로 보지 않는가?
 
-## 대기 중인 실제 검증 결과
+## 최초 계획 시점의 대기 기록 (이후 실제 검증 결과로 대체)
 ```text
-AXIA_G07_C07_PUBLIC_L0=PENDING
-AXIA_G07_C07_NO_GOAL_L2=PENDING
+AXIA_G07_C07_PUBLIC_L0=INITIALLY_PENDING_SUPERSEDED_BELOW
+AXIA_G07_C07_NO_GOAL_L2=INITIALLY_PENDING_SUPERSEDED_BELOW
 CM_120MS_RELEASE=HOLD
 OWNER_WSL2_MOVING_L3=NOT_RUN
 AXIA_MVP_DEMO_ACCEPTED=HOLD
@@ -88,3 +88,13 @@ MAIN_MERGED=false
 - 실제 파라미터 출처 증명 원본은 공개 Draft PR #149, 강사 전용 소스/테스트는 비공개 Draft PR #201에 독립 저장. 기존 성공한 Run #43991016109, #43994237080은 보존하며, 실패 Run #43999183495를 임의로 성공 처리하지 않는다.
 - 일회성 C07 NO_GOAL CI release workflow만 삭제: cleanup commit `5ae48c2607d96e695086b0cac2f7262ab30e7394`. C37/Unified 자동 Goal HOLD는 변경하지 않음.
 - 전체 시연 안정성은 아직 미검증: 최초 shutdown lifecycle manager service timeout, CM source120ms·Guard150ms·Scan300ms 각각 동일 Moving Goal에서 GREEN 아님. 실제 Owner WSL2 검수·`main` 병합 없음.
+
+## 최종 REVIEW 및 다음 최소 게이트
+
+**Cycle07 과제 종결:** 실제 설치 YAML SHA256과 런타임 `source_timeout=1.0`/advanced TF=true/tolerance=.02을 동일 공식 Jazzy+Gazebo NO_GOAL run에서 확인했다. 그러나 그 실행의 Nav2 lifecycle 종료가 timeout이므로 전체 L2 CI는 FAIL. 원래 비교 기준은 정확히 증명했으나 MVP 수락/주행 인수는 미완료다.
+
+**과도한 확장 방지 결정:** `base_shift_correction=false`의 움직이는 LaserScan motion compensation 미반영 위험을 평가하지 않고 새 실행을 허가하지 않는다. 원래 `source_timeout=1.0`을 0.3 또는 0.5로 묵시적으로 변경해 CI를 GREEN으로 만드는 것은 이번 '단일 공식 TF 옵션' 범위 밖이다. Guard의 300ms raw scan TTL과 CM의 1000ms source freshness는 계층이 다르며 동일하다고 간주하지 않는다. 기존 CM callback 81.973ms (Cycle05)와 원래 TF=true Moving Goal source128.644/133.659ms FAIL은 보존한다.
+
+**다음 최소 작업의 분기 기준:** CI에서 실제 ROS scan.header.stamp와 `/clock`, 첫 안전 상태 전이, CM cmd_vel callback start/end를 같은 Goal window에서 검증할 수 있고 original timeout은 유지될 때만 sim-only TF 간소화 비교. 그렇지 않으면 unsafe 후보를 퇴역하고 기존 공식 TF=true 경로에서 callback 자체의 지연 원인에 대해서만 최소 개선. 별도 실패인 NO_GOAL `BLOCKED_LIFECYCLE_NAVIGATION_SERVICE_TIMEOUT`은 최초 실패 로그를 공개 CI 회귀로 수집하되 성공한 Goal run을 반복하는 방식으로 덮지 않는다. `main` 병합 전 Owner 최종 승인 필요.
+
+**증거 보존:** Public Draft PR #149; Instructor Draft PR #201; [원본 CI 실패 Run #43999183495](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43999183495); 삭제된 임시 CI 워크플로는 PR branch에 계속 보존되고 release cleanup SHA `5ae48c2607d96e695086b0cac2f7262ab30e7394`. Owner WSL2 NOT_RUN, Certified E-Stop=false.
