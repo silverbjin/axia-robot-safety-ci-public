@@ -8,7 +8,7 @@
 - 인수 실행 파일: scripts/axia_d07_h01_instructor_l3_wsl2_once.sh
 - 검증 시험: tests/test_d07_h01_instructor_l3_field.py
 - 워크플로: .github/workflows/d07-h01-instructor-wsl2-l3-field-l0.yml
-- 입력 학생용 공개 main 고정 SHA: d1a453d42929bbdc423505adf1b9dd76ad7f5b2b
+- 입력 학생용 공개 main 고정 SHA: 6a3047b5aa219687f5fc918e467cea5115d3d482
 - 강사 가이드 main SHA: f46874470a814be8f6976b6adbcaa1e43a1fe681
 - 전체 AXIA 안전 MVP: AXIA_MVP_DEMO_ACCEPTED=HOLD
 
@@ -99,7 +99,7 @@
 - 기존 L3 판정기는 원본 `geometry.json`에 없는 `robot_moved` 키를 요구했다. 실제 원본의 `motion_admitted=false`와 각 반복 행의 `robot_moved=false`를 개별 검사하도록 수정. 최초 teaching shutdown 오류가 있으면 `READY_FOR_OWNER_PIXEL_REVIEW` 승격 금지.
 - 새 L3 실행기는 `--rqt` 모드를 **별도 터미널**에서만 사용한다. 터미널 A는 rqt PID를 생성/종료하지 않고, Gazebo·RViz 두 창만 계측한다. rqt_graph 미실행은 A의 Gazebo/Nav2 물리 시나리오 성공을 차단하지 않는다.
 - L3 데이터 판정이 HOLD면 원샷 종료 코드도 3으로 반환한다. Ctrl+C 및 깨끗한 네이티브 teardown만으로 데이터 인수를 성공으로 보고하지 않는다.
-- 학생 공개 런타임 최초 오류는 새 순수 L0 회귀 RED → `rclpy.ok()` guard GREEN으로 수정. 메인 `d1a453d42929bbdc423505adf1b9dd76ad7f5b2b` 재사용, 안전 TTL·주행 명령 변경 없음.
+- 학생 공개 런타임 최초 오류는 새 순수 L0 회귀 RED → `rclpy.ok()` guard GREEN으로 수정. 메인 `6a3047b5aa219687f5fc918e467cea5115d3d482` 재사용, 안전 TTL·주행 명령 변경 없음.
 
 ### 터미널 B — rqt_graph 독립 실행
 
@@ -123,3 +123,12 @@ ros2 run rqt_graph rqt_graph
 - 강사 WSLg 실제 리트라이 및 GUI 픽셀 변화·2회 반복·Ctrl+C 완전 종료는 **Owner WSL2 재인수 전 NOT_RUN**. 이전 실패 ZIP을 PASS로 격상하지 않는다.
 - 공개 Python 전체 계약에서 Instructor 비공개 유틸리티 파일을 요구하는 2개 테스트는 sealed 환경에서만 수행한다. 공개 CI는 명시적 SKIP (다른 테스트 실행을 지우지 않음). 공개 PASS는 private-only 테스트 PASS를 뜻하지 않는다.
 - AXIA 전체 MVP: `AXIA_MVP_DEMO_ACCEPTED=HOLD`. Hardware certified E-Stop, Scan→Supervisor→CM/Guard 안전 타이밍/TTL, 실제 움직이는 로봇 정지는 본 강의용 H01 검증 범위 밖이다.
+
+
+## 2026-11-17 공식 Nav2 월드 Xacro→Gazebo 시작 경쟁 조건 회귀 기록
+
+- 실패 증거: 학생 병합 main `d1a453d4` 실제 공개 Gazebo L2 [Run #44084070517](https://github.com/silverbjin/axia-robot-safety-student/actions/runs/44084070517), artifact #14328666838. 최초 원인은 Gazebo 서버의 `gz sim -s /tmp/nav2_ck_e2b1q.sdf` exit255(월드 파일 생성 이전 접근); 45초 뒤 `/clock CLOCK_MISSING`는 2차 증상. 이전 Ctrl+C 수정과 구분.
+- RED: 학생 PR #40 [#44085109816](https://github.com/silverbjin/axia-robot-safety-student/actions/runs/44085109816)에서 공식 World Xacro 완료 대기 계약이 없는 상태 실패. 중간 L0 assertion 위치 오류 1회는 시험 자체의 오류로 분리 후 수정.
+- GREEN: 학생 PR #40 [실제 L2 #44085392786](https://github.com/silverbjin/axia-robot-safety-student/actions/runs/44085392786) PASS. Artifact #14329581796 외부 63/63, 내부 61/61 SHA256 PASS. `launch.log`에서 `xacro-1 finished cleanly` 뒤 `gz-21 process started` 확인. Free→Intrusion→Lateral→Restored 실제 Path 52→52→49→52, `goal_sent=false`, `P2_L2_GRACEFUL_TEARDOWN`.
+- 학생 main 병합 PR #40 SHA `6a3047b5aa219687f5fc918e467cea5115d3d482`. 수정은 `AXIA_D07_H01_GUI_NO_GOAL=1`, 시뮬레이션, 이동 Goal 불허 경로에만 적용. 공식 Nav2·Safety TTL·Controller 명령은 변경하지 않음.
+- 새로운 **정확한** 학생 main source에 대한 실제 L2 재검은 별도 실행 결과로 판정하고, Owner WSL2/WSLg GUI L3 및 교육용 2회 Ctrl+C 현장 증거는 계속 NOT_RUN/HOLD로 둔다.
