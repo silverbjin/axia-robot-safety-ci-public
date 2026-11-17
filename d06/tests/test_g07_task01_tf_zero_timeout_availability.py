@@ -92,5 +92,24 @@ class ZeroTimeoutReadiness(unittest.TestCase):
         self.assertEqual(classify(doc)["status"],
                          "TF_AVAILABILITY_PROBE_TOO_SLOW_HOLD")
 
+    def test_no_first_source_gap_must_not_claim_same_gap_availability(self):
+        # Real moving #44073078458 had TF observations, but the original
+        # >120ms RMW source gap was NOT reproduced. A synthetic exporter
+        # must never turn a TF pre/post observation into first-gap evidence.
+        doc = sample(probe())
+        doc["first_gap"] = None
+        got = classify(doc)
+        self.assertEqual(got["status"], "FIRST_SOURCE_GAP_NOT_REPRODUCED_HOLD")
+        self.assertFalse(got["root_cause_proven"])
+        self.assertFalse(got["gate_c_authorized"])
+        self.assertFalse(got["cm120_release_pass"])
+
+    def test_subthreshold_source_interval_must_not_claim_same_gap_availability(self):
+        doc = sample(probe())
+        doc["first_gap"]["rmw_source_gap_ns"] = 117_998_000
+        got = classify(doc)
+        self.assertEqual(got["status"], "FIRST_SOURCE_GAP_NOT_REPRODUCED_HOLD")
+        self.assertFalse(got["root_cause_proven"])
+
 if __name__=="__main__":
     unittest.main()
