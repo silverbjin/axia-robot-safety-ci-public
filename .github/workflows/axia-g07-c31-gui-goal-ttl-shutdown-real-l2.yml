@@ -33,7 +33,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: c0aa393f49d421a7ebd2f9d93e692cbe6f3db569
+          ref: 9261c66b3d2f6ad3170f2219b2ed2b3679ddb7e6
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -48,7 +48,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 'c0aa393f49d421a7ebd2f9d93e692cbe6f3db569'
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = '9261c66b3d2f6ad3170f2219b2ed2b3679ddb7e6'
           test "$ROS_DISTRO" = jazzy
           cd instructor
           mkdir -p results/g07-c31-ci-integrated
@@ -77,6 +77,9 @@ jobs:
           python3 -m unittest discover -s tests/unit -p test_g07_one_goal_first_ttl_join.py -v
           python3 -m unittest discover -s tests/unit -p test_g07_c29_rmw_gap_first_cause.py -v
           python3 -m unittest discover -s tests/unit -p test_g07_c30_xacro_gz_startup_order.py -v
+          python3 -m unittest discover -s tests/unit -p test_g07_c31_native_shutdown_ack_trace.py -v
+          python3 -m unittest discover -s tests/unit -p test_g07_c31_gui_readonly_scope.py -v
+          python3 -m unittest discover -s tests/unit -p test_g07_c31_guard_small_reverse_first_latch.py -v
           python3 -m py_compile tools/p2_g07_world_xacro_order.py ros2_ws/src/axia_safety_bringup/launch/axia_tb3_p2.launch.py
           python3 -m py_compile tools/p2_g07_ci_moving_goal.py tools/p2_g07_ci_moving_goal_oracle.py tools/p2_g07_lifecycle_service.py tools/p2_staged_no_goal.py
           bash -n scripts/p2_no_goal_smoke_ci.sh
@@ -122,7 +125,7 @@ jobs:
         run: |
           set -euo pipefail
           cd instructor
-          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = 'c0aa393f49d421a7ebd2f9d93e692cbe6f3db569'
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '9261c66b3d2f6ad3170f2219b2ed2b3679ddb7e6'
           # One simulation session: launch the unchanged owner-parity moving
           # runner, wait for real Nav2 staged readiness, attach the PUBLIC D06
           # read-only monitor/RViz plus a Gazebo -g CLIENT (not a server).
@@ -275,7 +278,7 @@ jobs:
           for name in ('/clock','/scan','/odom','/cmd_vel_supervised','/cmd_vel_pre_guard','/axia/p2/base_guard'):
             assert counts.get(name,0)>0,(name,counts)
           print('AXIA_G07_PUBLIC_CI_WSL2_MATCHED_14_TOPIC_REAL_BAG_L2_PASS')
-          assert data.get('source_sha')=='c0aa393f49d421a7ebd2f9d93e692cbe6f3db569'
+          assert data.get('source_sha')=='9261c66b3d2f6ad3170f2219b2ed2b3679ddb7e6'
           assert data.get('first_timing_violation') is None
           for key, bound in (
               ('max_source_interval_sec',.15),('max_cm_interval_sec',.15),
