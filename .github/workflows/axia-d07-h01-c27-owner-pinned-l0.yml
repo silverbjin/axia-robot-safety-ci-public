@@ -31,6 +31,8 @@ jobs:
           if not r.wasSuccessful(): raise SystemExit(2)
           print('AXIA_D07_C27_OWNER_FIRST_NATIVE_GPU_SOFTWARE_L0_PASS')
           PY
+          test "$(git hash-object scripts/axia_d07_h01_gpu_gui_owner_wsl2_once.sh)" = b2874553a50fc784afc5c1bf49037bd46e6a7c3d
+          test "$(git hash-object tests/test_axia_d07_gpu_gui_owner_contract.py)" = e86e2d2b7a8fe818d6a9f1e67b8260a50e2683a9
           bash -n scripts/axia_d07_h01_gpu_gui_owner_wsl2_once.sh
           bash scripts/axia_d07_h01_gpu_gui_owner_wsl2_once.sh --self-check
           echo AXIA_D07_C27_OWNER_PUBLIC_L0_PASS_NO_ROS_NO_GAZEBO_NO_GOAL
