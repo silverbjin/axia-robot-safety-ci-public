@@ -1,0 +1,17 @@
+name: AXIA G07 Task01 PUBLIC ONLY one differentiated diagnostic L2
+on:
+  push:
+    branches: ['fix/g07-cm120-task01-clock-firstgap-causality-20261117']
+    paths:
+      - '.github/workflows/axia-g07-task01-public-only-one-diagnostic-l2-20261117.yml'
+      - 'd06/tests/test_g07_task01_public_only_execution_contract.py'
+permissions:
+  contents: read
+jobs:
+  public-only-contract-red:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: RED prove public-only owner-parity Goal runner still absent
+        run: python3 -m unittest discover -s d06/tests -p 'test_g07_task01_public_only_execution_contract.py' -v
