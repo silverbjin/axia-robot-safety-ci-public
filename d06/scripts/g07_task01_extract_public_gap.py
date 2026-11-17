@@ -70,7 +70,7 @@ def _fallback(status, run_id, public_sha):
 
 
 def extract(*, events, trace_dir, tf_file, anchors_dir,
-            out, run_id, public_sha):
+            out, run_id, public_sha, clock_file=None):
     if not (isinstance(run_id,str) and run_id.isdigit() and
             5<=len(run_id)<=15 and isinstance(public_sha,str) and
             len(public_sha)==40 and all(c in "0123456789abcdef" for c in public_sha)):
@@ -94,8 +94,20 @@ def extract(*, events, trace_dir, tf_file, anchors_dir,
                 "end":json.loads((anchor_path/"end_anchor.json").read_text()),
             }
             trace=exact_trace_rows(trace_path)
+            # Raw /clock MONOTONIC receive and ROS SIM clock stamps remain
+            # in sealed runner only. Missing/incomplete probe => HOLD, not
+            # a fabricated negative scheduler/TF-causality result.
+            clock_rows=None
+            if clock_file is not None:
+                cp=Path(clock_file)
+                if cp.is_file() and cp.stat().st_size<=2_500_000:
+                    clock_rows=[json.loads(v) for v in
+                                cp.read_text().splitlines()]
+                else:
+                    clock_rows=[]
             data=export_sanitized(observer,trace,tf_lines,anchors,
-                    run_id=run_id,public_sha=public_sha)
+                    run_id=run_id,public_sha=public_sha,
+                    clock_rows=clock_rows)
     except (OSError,ValueError,KeyError,TypeError,ImportError,RuntimeError):
         data=_fallback("PUBLIC_EVIDENCE_EXTRACTION_UNVERIFIED_HOLD",
                        run_id,public_sha)
@@ -112,10 +124,12 @@ def main():
     ap.add_argument("--out",required=True)
     ap.add_argument("--run-id",required=True)
     ap.add_argument("--public-sha",required=True)
+    ap.add_argument("--clock-file",default=None)
     v=ap.parse_args()
     status,p=extract(events=v.events, trace_dir=v.trace_dir,
         tf_file=v.tf_file, anchors_dir=v.anchors_dir, out=v.out,
-        run_id=v.run_id,public_sha=v.public_sha)
+        run_id=v.run_id,public_sha=v.public_sha,
+        clock_file=v.clock_file)
     # No exception contents, filenames, private source paths or raw ROS text.
     print("AXIA_G07_TASK01_PUBLIC_TIMING_EVIDENCE_STATUS="+status)
     print("AXIA_G07_TASK01_PUBLIC_TIMING_EVIDENCE_BYTES="+str(p.stat().st_size))
