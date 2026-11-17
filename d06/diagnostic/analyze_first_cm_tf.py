@@ -14,7 +14,8 @@ TF_LINE=re.compile(
     r"^TF_ADV pid=(\d+) tid=(\d+) mono_start_ns=(\d+) "
     r"mono_end_ns=(\d+) thread_cpu_ns=(-?\d+) ok=([01])"
     r"(?: schedstat_valid=([01]) runqueue_ns=(\d+) sched_cpu_ns=(\d+)"
-    r" voluntary_cs=(\d+) involuntary_cs=(\d+))?$"
+    r" voluntary_cs=(\d+) involuntary_cs=(\d+)"
+    r"(?: sleep_ns=(\d+) sleep_calls=(\d+))?)?$"
 )
 TOPIC="/cmd_vel_supervised"
 CM_PROCS={"collision_monitor","collision_monit"}
@@ -85,11 +86,15 @@ def analyze(observer,trace,tf_lines,anchors):
         sched=None
         if m.group(7) is not None:
             valid,wait_ns,run_ns,nvcsw,nivcsw=map(int,m.groups()[6:11])
+            extra=m.groups()[11:13]
+            kw={}
+            if extra[0] is not None:
+                kw={"sleep_ns":int(extra[0]),"sleep_calls":int(extra[1])}
             from d06.diagnostic.classify_tf_non_cpu import classify_tf_offcpu
             sched=classify_tf_offcpu(
                 wall_ns=s1-s0,cpu_ns=cpu,schedstat_available=bool(valid),
                 runqueue_ns=wait_ns,sched_cpu_ns=run_ns,
-                voluntary_cs=nvcsw,involuntary_cs=nivcsw)
+                voluntary_cs=nvcsw,involuntary_cs=nivcsw,**kw)
         parsed.append((ep,tid,s0/1e9,s1/1e9,cpu/1e9,bool(ok),sched))
     if not ready:return hold("CM_DIAG_LIBRARY_LOADING_UNVERIFIED")
     if not parsed:return hold("CM_ADVANCED_TF_SYMBOL_NOT_INTERPOSED")
