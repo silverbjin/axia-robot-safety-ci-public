@@ -17,7 +17,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 060373af8a401f3aee91eb68063f75a2ed2ad1bb
+          ref: 2995fce30d129e7a9066e79df0d3c8a2c1859935
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -25,7 +25,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor rev-parse HEAD)" = 060373af8a401f3aee91eb68063f75a2ed2ad1bb
+          test "$(git -C instructor rev-parse HEAD)" = 2995fce30d129e7a9066e79df0d3c8a2c1859935
           cd instructor
           python3 -m unittest discover -s tests/unit -p test_p4_g07_first_guard_cm_delivery_boundary.py -v
           # Existing pytest-style oracle is exercised through the new unittest fixture.
