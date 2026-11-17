@@ -140,6 +140,7 @@ jobs:
               "first_gap_status":d.get("status"),
               "first_gap_fallback_provenance":d.get("first_gap_provenance"),
               "evidence_failure_stage":d.get("failure_stage"),
+              "evidence_failure_code":d.get("failure_code"),
               "original_goal_runner_rc":rc,
               "root_cause_proven":False,"tracer_off_release":False,
               "owner_wsl2_accepted":False},sort_keys=True),flush=True)
