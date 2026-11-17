@@ -1,0 +1,28 @@
+# Official Nav2 Simple TF only for slow Gazebo teaching scenario; never hardware.
+name: AXIA G07 Task02 official simple TF public CI L0 L2
+on:
+  push:
+    branches: ['fix/g07-task02-simple-tf-public-ci-20261118']
+    paths:
+      - '.github/workflows/axia-g07-task02-simple-tf-public-l0-l2-20261118.yml'
+permissions:
+  contents: read
+jobs:
+  task02-simple-tf-safety-red:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: e2eaa152c44d5c6c788c8cb4115b199cb935631e
+          path: student
+          persist-credentials: false
+      - name: RED official simple TF is not yet present
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C student rev-parse HEAD)" = e2eaa152c44d5c6c788c8cb4115b199cb935631e
+          cd student/block_B/day07/h01_runtime
+          python3 -m unittest discover -s tools -p 'test_g07_task02_simple_tf.py' -v
