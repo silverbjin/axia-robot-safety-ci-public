@@ -1,0 +1,46 @@
+name: AXIA G07 C05 exact CM callback first source gap RED GREEN NO_GOAL L0
+on:
+  push:
+    branches: ['fix/g07-cm120-cycle05-first-callback-window-20261117']
+    paths:
+      - '.github/workflows/axia-g07-cycle05-callback-window-l0.yml'
+      - 'd06/live/g07_cycle05_cm_callback_window.py'
+      - 'd06/tests/test_g07_cycle05_cmd_callback_window.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  redgreen:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-ci-public
+          ref: 8797db589a8643709701592ed9ec98ce4203499d
+          path: baseline
+          persist-credentials: false
+      - name: Actual baseline RED and candidate GREEN no ROS no Goal
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C baseline rev-parse HEAD)" = 8797db589a8643709701592ed9ec98ce4203499d
+          cp d06/tests/test_g07_cycle05_cmd_callback_window.py baseline/d06/tests/
+          if (cd baseline && PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
+               -s d06/tests -p 'test_g07_cycle05_cmd_callback_window.py' -v) \
+               >/tmp/c05_red.log 2>&1;then
+            echo AXIA_G07_C05_BASELINE_UNEXPECTED_GREEN >&2;exit 3
+          fi
+          grep -Fq "No module named 'd06.live.g07_cycle05_cm_callback_window'" /tmp/c05_red.log || {
+            cat /tmp/c05_red.log
+            echo AXIA_G07_C05_RED_REASON_INVALID >&2;exit 3
+          }
+          echo AXIA_G07_C05_BASELINE_RED_MISSING_NEW_BOUNDARY_ANALYZER
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
+             -s d06/tests -p 'test_g07_cycle05_cmd_callback_window.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
+             -s d06/tests -p 'test_g07_cycle04_cm_metadata_audit.py' -v
+          python3 -m py_compile d06/live/g07_cycle05_cm_callback_window.py
+          echo AXIA_G07_C05_PUBLIC_L0_GREEN_3_PLUS_PREV4_NO_ROS_NO_GOAL
+          echo AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false
