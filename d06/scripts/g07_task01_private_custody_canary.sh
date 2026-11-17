@@ -5,7 +5,7 @@ set -Eeuo pipefail
 umask 077
 
 : "${AXIA_G07_TASK01_PRIVATE_CUSTODY_DIR:?private Instructor checkout required}"
-: "${AXIA_CLOUD_CI:?sealed CI token required}"
+: "${AXIA_G07_EVIDENCE_WRITE_TOKEN:?narrow private evidence write token required}"
 : "${GITHUB_RUN_ID:?GitHub run id required}"
 : "${GITHUB_SHA:?immutable public commit required}"
 
@@ -34,7 +34,7 @@ if [[ "$ORIGIN" != "https://github.com/$PRIVATE_REPO" &&
 fi
 
 # No bearer credential in source, repository config, or public log.
-AUTH="$(printf 'x-access-token:%s' "$AXIA_CLOUD_CI" | base64 -w0)"
+AUTH="$(printf 'x-access-token:%s' "$AXIA_G07_EVIDENCE_WRITE_TOKEN" | base64 -w0)"
 REL="diagnostic_evidence/g07_cm120_task01/canary_${GITHUB_RUN_ID}.txt"
 mkdir -p "$D/$(dirname "$REL")"
 printf 'AXIA_G07_TASK01_PREGOAL_PRIVATE_CANARY_V1\nrun_id=%s\nsource_sha=%s\ngoal_sent=false\n' \
