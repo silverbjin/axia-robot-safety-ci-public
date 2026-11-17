@@ -36,6 +36,12 @@ def classify(artifact):
             type(first.get("rmw_source_gap_ns")) is not int or
             first["rmw_source_gap_ns"] <= 120_000_000):
         return _hold("FIRST_SOURCE_GAP_NOT_REPRODUCED_HOLD")
+    # The exporter intentionally keeps nearby native CM calls for bounded
+    # evidence, including calls before/after the selected observer pair.
+    # Never attribute one of those unrelated calls to this FIRST gap.
+    obs_ns = first.get("observer_gap_ns")
+    if type(obs_ns) is not int or not 0 < obs_ns < 1_000_000_000:
+        return _hold("TF_AVAILABILITY_OBSERVER_PAIR_UNVERIFIED_HOLD")
     raw = artifact.get("tf_availability")
     if raw is None:
         return _hold("TF_AVAILABILITY_PROBE_NOT_PRESENT_HOLD")
@@ -63,9 +69,14 @@ def classify(artifact):
         )]
         if any(type(n) is not int for n in values):
             return _hold("TF_AVAILABILITY_EVIDENCE_INVALID_HOLD")
-        pre, post, call, _a, _b = values
-        if min(pre, post, call) < 0 or call <= 0:
+        pre, post, call, start_rel, end_rel = values
+        if min(pre, post, call) < 0 or call <= 0 or start_rel >= end_rel:
             return _hold("TF_AVAILABILITY_EVIDENCE_INVALID_HOLD")
+        # A bracket wholly before/after [0, observer_gap_ns] cannot contain
+        # this first-pair TF call. Intersecting brackets are only candidates:
+        # this does NOT prove an exact TF function/source publication join.
+        if end_rel <= 0 or start_rel >= obs_ns:
+            return _hold("TF_AVAILABILITY_OUTSIDE_FIRST_OBSERVER_PAIR_HOLD")
         if pre > 10_000_000 or post > 10_000_000:
             return _hold("TF_AVAILABILITY_PROBE_TOO_SLOW_HOLD")
         if s["pre_available"]:
