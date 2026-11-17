@@ -1,0 +1,39 @@
+# AXIA G07 MVP T01: ONLY the earliest Guard CM 150ms boundary and known-good Goal oracle.
+# Real Owner numerics sanitized, no WSL2 private bag, no ROS, no automatic Goal.
+name: AXIA G07 C29 first Guard TTL and original moving Goal L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-g07-c29-first-ttl-moving-source-l0.yml']
+permissions:
+  contents: read
+jobs:
+  goal-ttl-regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    environment: axia-instructor-sealed
+    steps:
+      - name: Exact private instructor source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 060373af8a401f3aee91eb68063f75a2ed2ad1bb
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          path: instructor
+          persist-credentials: false
+      - name: Pin, baseline invariant, and first Guard internal 150ms failure
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C instructor rev-parse HEAD)" = 060373af8a401f3aee91eb68063f75a2ed2ad1bb
+          cd instructor
+          python3 -m unittest discover -s tests/unit -p test_p4_g07_first_guard_cm_delivery_boundary.py -v
+          python3 -m unittest discover -s tests/unit -p test_p2_g07_ci_moving_goal_oracle.py -v
+          python3 -m unittest discover -s tests/unit -p test_g07_one_goal_first_ttl_join.py -v
+          python3 -m py_compile tools/p2_g07_ci_moving_goal.py tools/p2_g07_ci_moving_goal_oracle.py
+          bash -n scripts/p2_no_goal_smoke_ci.sh
+          echo AXIA_G07_C29_FIRST_CM_GUARD_BOUNDARY_L0_PASS_NO_ROS_NO_GOAL
+      - name: Purge private checkout
+        if: always()
+        shell: bash
+        run: rm -rf -- instructor
