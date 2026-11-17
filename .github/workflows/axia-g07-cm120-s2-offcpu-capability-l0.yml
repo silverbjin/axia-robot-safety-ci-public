@@ -1,0 +1,95 @@
+name: AXIA G07 S2 official TF per-thread offCPU provenance L0 NO GOAL
+on:
+  push:
+    branches: ['fix/g07-cm120-s2-offcpu-provenance-20261117']
+    paths:
+      - '.github/workflows/axia-g07-cm120-s2-offcpu-capability-l0.yml'
+      - 'd06/diagnostic/classify_tf_non_cpu.py'
+      - 'd06/diagnostic/cm_tf_gettransform_preload.cpp'
+      - 'd06/diagnostic/analyze_first_cm_tf.py'
+      - 'd06/tests/test_g07_cm120_s2*'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  existing-original-nav2-schedstats:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-ci-public
+          ref: eab2527f5016ff9433f88241c9ac6806ed1f02c0
+          path: s1-baseline
+          persist-credentials: false
+      - name: RED S1 TF_ADV measured only wall and thread CPU, no scheduling provenance
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C s1-baseline rev-parse HEAD)" = 'eab2527f5016ff9433f88241c9ac6806ed1f02c0'
+          ! grep -Fq 'schedstat_valid=' s1-baseline/d06/diagnostic/cm_tf_gettransform_preload.cpp
+          ! test -e s1-baseline/d06/diagnostic/classify_tf_non_cpu.py
+          echo AXIA_G07_S2_RED_ORIGINAL_S1_NONCPU_UNATTRIBUTED_CONFIRMED
+      - name: GREEN strict pure L0 and original S1 first callback regression
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          export PYTHONDONTWRITEBYTECODE=1
+          python3 -m unittest discover -s d06/tests -p 'test_g07_cm120_s2_offcpu_classification.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_g07_cm120_s2_exact_tf_offcpu_join.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_g07_cm120_tf_first_gap_join.py' -v
+          python3 -m py_compile d06/diagnostic/classify_tf_non_cpu.py d06/diagnostic/analyze_first_cm_tf.py
+          echo AXIA_G07_S2_OFFCPU_PURE_GREEN5_4_PLUS_S1_3_NO_ROS_NO_GOAL
+      - name: Official Jazzy ABI compile/link and existing kernel scheduler feature readback only
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          set +u
+          source /opt/ros/jazzy/setup.bash
+          set -u
+          cmake -S d06/diagnostic -B /tmp/axia_g07_s2_offcpu \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          cmake --build /tmp/axia_g07_s2_offcpu --parallel 2
+          SO=/tmp/axia_g07_s2_offcpu/libaxia_g07_cm120_tf_diag.so
+          test -s "$SO"
+          nm -D -C "$SO" | grep -F 'nav2_util::getTransform(' | grep -F 'tf2::Transform&'
+          env LD_PRELOAD="$SO" AXIA_G07_CM120_LIB="$SO" python3 - <<'PY'
+          import ctypes,glob,os
+          libs=[ctypes.CDLL(p,mode=ctypes.RTLD_GLOBAL) for p in glob.glob('/opt/ros/jazzy/lib/libnav2_util*.so')]
+          assert libs
+          shim=ctypes.CDLL(os.environ['AXIA_G07_CM120_LIB'])
+          shim.axia_cm120_original_transform_linkage_selftest.restype=ctypes.c_int
+          assert shim.axia_cm120_original_transform_linkage_selftest()==1
+          print('AXIA_G07_S2_OFFICIAL_ADVANCED_TF_ORIGINAL_ABI_L0_GREEN_NO_GOAL')
+          PY
+          python3 - <<'PY'
+          import json,resource,pathlib
+          src=pathlib.Path('/proc/sys/kernel/sched_schedstats')
+          value=src.read_text().strip() if src.exists() else 'UNAVAILABLE'
+          p=pathlib.Path('/proc/thread-self/schedstat')
+          raw=p.read_text().strip() if p.exists() else ''
+          fields=raw.split()
+          r=resource.getrusage(resource.RUSAGE_THREAD)
+          enabled=value=='1' and len(fields)==3 and all(x.isdecimal() for x in fields)
+          print('AXIA_G07_S2_ORIGINAL_CI_KERNEL_SCHEDULING_PROVENANCE '+
+           json.dumps({'kernel_sched_schedstats':value,
+                       'thread_schedstat_3_fields':len(fields)==3,
+                       'rusage_thread_nvcsw_nonnegative':r.ru_nvcsw>=0,
+                       'rusage_thread_nivcsw_nonnegative':r.ru_nivcsw>=0,
+                       'runqueue_delay_observable':enabled,
+                       'moving_goal_authorized':False,
+                       'release_pass':False,
+                       'root_cause_proven':False},sort_keys=True))
+          if not enabled:
+              print('AXIA_G07_S2_RUNQUEUE_NANOSECONDS_NOT_VERIFIABLE_NO_GOAL_HOLD')
+          else:
+              print('AXIA_G07_S2_RUNQUEUE_COUNTER_SOURCE_AVAILABLE_NO_GOAL')
+          PY
+          echo AXIA_G07_S2_ABI_L0_COMPLETED_CAUSE_UNPROVEN
+      - name: Remove diagnostic ELF, no installed ROS code modified
+        if: always()
+        shell: bash
+        run: rm -rf -- /tmp/axia_g07_s2_offcpu s1-baseline
