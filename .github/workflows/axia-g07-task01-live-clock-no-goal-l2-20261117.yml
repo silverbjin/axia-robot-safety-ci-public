@@ -34,14 +34,14 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-ci-public
-          ref: 05fbfeaf5cded7dabf991d7ecba045c8563d39c5
+          ref: 74b076cc4d92a49e26953452b1c722ffb5550df3
           path: public-clock
           persist-credentials: false
       - name: Verified published Task01 clock probe code only, NO Goal
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C public-clock rev-parse HEAD)" = '05fbfeaf5cded7dabf991d7ecba045c8563d39c5'
+          test "$(git -C public-clock rev-parse HEAD)" = '74b076cc4d92a49e26953452b1c722ffb5550df3'
           python3 public-clock/d06/diagnostic/g07_clock_probe_ros.py --help >/dev/null
           PYTHONPATH="$PWD/public-clock" PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s public-clock/d06/tests -p 'test_g07_task01_first_gap_clock_probe.py' -v
           PYTHONPATH="$PWD/public-clock" PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s public-clock/d06/tests -p 'test_g07_task01_clock_probe_public_export.py' -v
@@ -112,8 +112,13 @@ jobs:
             >"$RUNNER_TEMP/g07_cm120_tf_clock_no_goal.log" 2>&1
           rc=$?
           kill -TERM "$CLOCK_PID" 2>/dev/null || true
-          wait "$CLOCK_PID" 2>/dev/null || true
+          wait "$CLOCK_PID" 2>/dev/null
+          CLOCK_RC=$?
           set -e
+          if [[ "$CLOCK_RC" -ne 0 || ! -f "$PROBE" ]]; then
+            echo "AXIA_G07_TASK01_CLOCK_FILE_OR_CHILD_EXIT_HOLD clock_rc=$CLOCK_RC"
+            exit 3
+          fi
           python3 - "$PROBE" <<'PY'
           import json,sys
           from pathlib import Path
