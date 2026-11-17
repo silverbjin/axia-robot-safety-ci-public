@@ -83,3 +83,8 @@ AXIA_MVP_DEMO_ACCEPTED=HOLD
 CERTIFIED_ESTOP=false
 MAIN_MERGED=false
 ```
+
+## REVIEW·REFACTOR·COMMIT 종료
+- 실제 파라미터 출처 증명 원본은 공개 Draft PR #149, 강사 전용 소스/테스트는 비공개 Draft PR #201에 독립 저장. 기존 성공한 Run #43991016109, #43994237080은 보존하며, 실패 Run #43999183495를 임의로 성공 처리하지 않는다.
+- 일회성 C07 NO_GOAL CI release workflow만 삭제: cleanup commit `5ae48c2607d96e695086b0cac2f7262ab30e7394`. C37/Unified 자동 Goal HOLD는 변경하지 않음.
+- 전체 시연 안정성은 아직 미검증: 최초 shutdown lifecycle manager service timeout, CM source120ms·Guard150ms·Scan300ms 각각 동일 Moving Goal에서 GREEN 아님. 실제 Owner WSL2 검수·`main` 병합 없음.
