@@ -156,6 +156,13 @@ jobs:
           trap cleanup_c31 EXIT
           sleep 2
           set +u; source /opt/ros/jazzy/setup.bash; set -u
+          # STOP delivery violation in actual L2 #44025131410:
+          # CM 177.685ms > strict 150ms. Do NOT change TTL/QoS/Guard.
+          # Isolate non-owning Xvfb GUI readers from the original safety
+          # executor cores; same last allowed core is already reserved for
+          # low-priority evidence IO. No changes to Gazebo physics server.
+          C32_GUI_CPU="$(python3 -c 'import os; a=os.sched_getaffinity(0); assert len(a)>=2; print(max(a))')"
+          echo "AXIA_G07_C32_GUI_LOW_PRIORITY_ISOLATION_CORE=$C32_GUI_CPU"
           timeout --signal=TERM --kill-after=10s 900s             bash scripts/p2_no_goal_smoke_ci.sh > "$OUT/moving_stdout.log" 2>&1 &
           SMOKE_PID=$!
           READY="$OUT/real-l2/startup_verdict.json"
@@ -179,11 +186,11 @@ jobs:
             exit 3
           fi
           echo AXIA_G07_C31_GENUINE_NAV2_STAGED_STARTUP_BEFORE_D06_GUI
-          setsid gz sim -g -v 3 > "$OUT/sidecar/gazebo_gui.log" 2>&1 &
+          setsid nice -n 15 taskset -c "$C32_GUI_CPU" gz sim -g -v 3 > "$OUT/sidecar/gazebo_gui.log" 2>&1 &
           GZGUI_PID=$!
-          setsid rviz2 -d ../d06-public/d06/rviz/d06_safety_bubble.rviz             --ros-args -p use_sim_time:=true > "$OUT/sidecar/rviz.log" 2>&1 &
+          setsid nice -n 15 taskset -c "$C32_GUI_CPU" rviz2 -d ../d06-public/d06/rviz/d06_safety_bubble.rviz             --ros-args -p use_sim_time:=true > "$OUT/sidecar/rviz.log" 2>&1 &
           RVIZ_PID=$!
-          setsid nice -n 7 python3 -u ../d06-public/d06/live/d06_readonly_monitor.py             --out "$OUT/sidecar" > "$OUT/sidecar/readonly_monitor.log" 2>&1 &
+          setsid nice -n 15 taskset -c "$C32_GUI_CPU" python3 -u ../d06-public/d06/live/d06_readonly_monitor.py             --out "$OUT/sidecar" > "$OUT/sidecar/readonly_monitor.log" 2>&1 &
           MON_PID=$!
           sleep 3
           for pid in "$GZGUI_PID" "$RVIZ_PID" "$MON_PID"; do
