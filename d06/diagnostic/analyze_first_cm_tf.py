@@ -12,7 +12,9 @@ from d06.live.g07_cycle31_cm_topic_callback_identity import resolve_cm_cmdvel_ha
 
 TF_LINE=re.compile(
     r"^TF_ADV pid=(\d+) tid=(\d+) mono_start_ns=(\d+) "
-    r"mono_end_ns=(\d+) thread_cpu_ns=(-?\d+) ok=([01])$"
+    r"mono_end_ns=(\d+) thread_cpu_ns=(-?\d+) ok=([01])"
+    r"(?: schedstat_valid=([01]) runqueue_ns=(\d+) sched_cpu_ns=(\d+)"
+    r" voluntary_cs=(\d+) involuntary_cs=(\d+))?$"
 )
 TOPIC="/cmd_vel_supervised"
 CM_PROCS={"collision_monitor","collision_monit"}
@@ -77,10 +79,18 @@ def analyze(observer,trace,tf_lines,anchors):
         m=TF_LINE.fullmatch(line.strip())
         if m is None:
             return hold("TF_DIAG_LINE_UNRECOGNIZED")
-        ep,tid,s0,s1,cpu,ok=map(int,m.groups())
+        ep,tid,s0,s1,cpu,ok=map(int,m.groups()[:6])
         if s1<s0 or cpu<0 or cpu>s1-s0 or ep<=1 or tid<=1:
             return hold("TF_INTERVAL_INVALID")
-        parsed.append((ep,tid,s0/1e9,s1/1e9,cpu/1e9,bool(ok)))
+        sched=None
+        if m.group(7) is not None:
+            valid,wait_ns,run_ns,nvcsw,nivcsw=map(int,m.groups()[6:11])
+            from d06.diagnostic.classify_tf_non_cpu import classify_tf_offcpu
+            sched=classify_tf_offcpu(
+                wall_ns=s1-s0,cpu_ns=cpu,schedstat_available=bool(valid),
+                runqueue_ns=wait_ns,sched_cpu_ns=run_ns,
+                voluntary_cs=nvcsw,involuntary_cs=nivcsw)
+        parsed.append((ep,tid,s0/1e9,s1/1e9,cpu/1e9,bool(ok),sched))
     if not ready:return hold("CM_DIAG_LIBRARY_LOADING_UNVERIFIED")
     if not parsed:return hold("CM_ADVANCED_TF_SYMBOL_NOT_INTERPOSED")
     matched=[]
@@ -100,6 +110,10 @@ def analyze(observer,trace,tf_lines,anchors):
                     tf_function_wall_ms=covered*1000,
                     tf_thread_cpu_ms=sum(t[4] for t in intervals)*1000,
                     matched_tf_calls=len(intervals),
+                    offcpu_provenance=(intervals[0][6] if len(intervals)==1 else
+                        dict(status="MULTIPLE_TF_INTERVALS_OFFCPU_JOIN_UNVERIFIED",
+                             root_cause_proven=False,gate_c_authorized=False,
+                             release_pass=False)),
                     overlap_first_gap_ms=(min(end,b["t"])-max(start,a["t"]))*1000))
     if not matched:
         return hold("TF_NOT_LINKED_TO_FIRST_CM_GAP_CALLBACK_UNPROVEN",
@@ -124,4 +138,8 @@ def analyze(observer,trace,tf_lines,anchors):
         tf_wall_fraction_of_callback=round(dominance,4),
         cpu_vs_wall_difference_ms=round(max(0,tf-cpu),6),
         matched_tf_calls=selected["matched_tf_calls"],
-        actual_tf_function_interval_recorded=True)
+        actual_tf_function_interval_recorded=True,
+        s2_offcpu_provenance=(selected.get("offcpu_provenance") or
+                             dict(status="S2_SCHEDULER_METRICS_NOT_COLLECTED_HOLD",
+                                  root_cause_proven=False,
+                                  gate_c_authorized=False)))
