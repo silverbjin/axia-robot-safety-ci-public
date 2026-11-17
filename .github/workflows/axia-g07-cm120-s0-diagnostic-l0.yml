@@ -6,6 +6,8 @@ on:
       - '.github/workflows/axia-g07-cm120-s0-diagnostic-l0.yml'
       - 'd06/diagnostic/s0_cm_diag_readiness.py'
       - 'd06/tests/test_g07_cm120_s0_no_goal_diagnostic.py'
+      - 'd06/tests/test_g07_cm120_s0_diag_runner_contract.py'
+      - '.github/workflows/axia-g07-cm120-four-gate-one-diagnostic-l2.yml'
 permissions:
   contents: read
 jobs:
@@ -40,6 +42,9 @@ jobs:
              -s d06/tests -p 'test_g07_cm120_s0_no_goal_diagnostic.py' -v
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
              -s d06/tests -p 'test_g07_cm120_tf_first_gap_join.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
+             -s d06/tests -p 'test_g07_cm120_s0_diag_runner_contract.py' -v
           python3 -m py_compile d06/diagnostic/s0_cm_diag_readiness.py
+          echo AXIA_G07_S0_FUTURE_DIAG_RUNNER_STATIC_GREEN2_NO_GOAL
           echo AXIA_G07_S0_EXACT_CM_FILTER_GREEN4_AND_PREVIOUS_TF_JOIN_GREEN3
           echo AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false
