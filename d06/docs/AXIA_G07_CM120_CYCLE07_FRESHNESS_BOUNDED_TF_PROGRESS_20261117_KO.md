@@ -75,3 +75,10 @@ CERTIFIED_ESTOP=false
 - C07 official config 1.0 출처 및 strict source_timeout .3 + base_shift false 코드 L0 GREEN6 verified, actual moving Goal prestartup CLOCK_READY_FAIL, root cause of startup inconclusive.
 - C07 paired profile can only be evaluated after no-Goal Clock publisher/bridge/Observer and navigation shutdown boundary separately verified; no unpinned SHA/false CI pass.
 - NEXT Cycle08 scoped: **read-only CI failure-window clock transport and first launch ERROR capture**, no new Goal, no new safety/source modifications. CI original Clock TTL 300ms and 120ms release must not be relaxed.
+
+## Cycle07 RELEASE 정리 및 다음 통합 게이트
+- Run #43999412342 실패 후 한시적 공개 release Cycle07 Moving L2 workflow만 삭제, cleanup commit 0355765df2d7f32dedaf1f433a212997bdd36f8e. C07 L0 workflow도 완료 후 삭제 commit 0517ead6bc12eb85a195a315edbe42557788cf79.
+- Public Draft PR #148 / private Instructor Draft PR #200 remains unmerged, original C37/Unified Moving release HOLD workflows left unchanged. No new field/WSL2 goal or auto deployment.
+- STOP Rule: both C07 Moving attempts failed PRE-GOAL (#439986 source_timeout original mismatch; #439994 CLOCK topic present but no messages), so do NOT repeat candidate with same SHA. Next Cycle08 must first distinguish Gazebo Clock producer vs ROS gz bridge vs host ROS callback in public NO_GOAL and capture first launch error category; otherwise same error field retries are prohibited.
+- Official Nav2 installed source contract from separate #439991 no-Goal run: live source_timeout1.0, true base shift, TF .02, but Nav2 localization shutdown timeout remains unresolved there; full combined safety stability UNVERIFIED.
+- CM_120MS_RELEASE=HOLD; AXIA_MVP_DEMO_ACCEPTED=HOLD; OWNER_WSL2_L3=NOT_RUN; CERTIFIED_ESTOP=false; MAIN_MERGED=false.
