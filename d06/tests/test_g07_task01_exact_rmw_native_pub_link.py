@@ -15,10 +15,10 @@ from d06.tests.test_g07_cm120_tf_first_gap_join import (
 def fixture():
     obs=observer()
     native=metadata()+[
-      cb("ros2:callback_start",11.945),
-      cb("ros2:callback_end",11.995),
-      cb("ros2:callback_start",12.005),
-      cb("ros2:callback_end",12.123),
+      dict(cb("ros2:callback_start",11.945),procname="collision_monit"),
+      dict(cb("ros2:callback_end",11.995),procname="collision_monit"),
+      dict(cb("ros2:callback_start",12.005),procname="collision_monit"),
+      dict(cb("ros2:callback_end",12.123),procname="collision_monit"),
       dict(name="ros2:rcl_publisher_init",vpid=PID,
            procname="collision_monit",topic_name="/cmd_vel_pre_guard",
            rmw_publisher_handle="0xabc",publisher_handle="0xdef"),
