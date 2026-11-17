@@ -1,0 +1,43 @@
+name: AXIA D07-H01 rqt_graph Instructor + Student public classroom contract L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths:
+      - '.github/workflows/axia-d07-h01-rqt-instructor-student-public-l0.yml'
+permissions:
+  contents: read
+jobs:
+  instructor-and-public-student-rqt:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    environment: axia-instructor-sealed
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: f538fd7afc4bcd1b3e607064fa24968a748be66c
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          path: instructor
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: 37a0f90c56a75bf0f5d314e6f5476cf20e5f3045
+          path: student
+          persist-credentials: false
+      - name: Check exact Instructor guide and public student executable boundary
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C instructor rev-parse HEAD)" = "f538fd7afc4bcd1b3e607064fa24968a748be66c"
+          test "$(git -C student rev-parse HEAD)" = "37a0f90c56a75bf0f5d314e6f5476cf20e5f3045"
+          (cd instructor && python3 -m unittest discover -s tests/unit -p test_d07_h01_rqt_instructor_guide.py -v)
+          (cd student && python3 -m unittest discover -s block_B/tests -p test_d07_h01_rqt_continuous.py -v)
+          bash -n student/block_B/day07/run_d07_h01_gazebo_rviz_student_once.sh
+          bash -n student/block_B/day07/h01_runtime/scripts/p2_no_goal_smoke_ci.sh
+          # Code is not accepted by L0 alone. Student public real L2 must pass.
+          echo AXIA_D07_H01_INSTRUCTOR_STUDENT_RQT_PUBLIC_L0_PASS_NO_ROS_NO_GAZEBO_NO_GOAL
+      - name: Remove sealed Instructor checkout
+        if: always()
+        shell: bash
+        run: rm -rf -- instructor
