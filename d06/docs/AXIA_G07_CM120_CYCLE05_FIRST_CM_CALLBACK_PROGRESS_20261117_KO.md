@@ -43,3 +43,43 @@ AXIA_MVP_DEMO_ACCEPTED=HOLD
 CERTIFIED_ESTOP=false
 MAIN_MERGED=false
 ```
+
+## Cycle05 실제 진단 L2 종료 — 교육용 최초 실패 및 실제 인과 증거
+
+### 실제 공개 Run 2회 및 최초 실패 경계
+- 최초 진단 CI [#43995476156](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43995476156) FAILED PRE-GOAL. 최초 실제 오류: ModuleNotFoundError: No module named 'd06' (중첩 public checkout analyzer의 PYTHONPATH 누락). 후속 FIELD_NO_REAL_GOAL_CANNOT_RELEASE는 연쇄 오류이므로 CM root cause가 아니다. 공식 Goal은 전송되지 않았다.
+- 실제 중첩 public root import 및 사전검사를 추가한 공개 CI 코드 commit d35b8dbbbcc0b6d070e0ffbbe1b602b521bd5fe7; release commit f4ec8feb3f4a8047fe93bdd9ef53f82b8acb4efa. 임계값·Safety code 변경 0.
+- 재검 [#43995793080](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43995793080) completed FAILURE, BUT 실제 Harmonic/Nav2 Waffle ONE Goal이 실행되었으며 CLEAR→SLOW→STOP, native STOP ACK, ordered Shutdown/CM exit0, 14-topic original/first RMW provenance 검사 통과. 유일한 terminal FAIL은 Field 120ms release margin. 다른 safety PASS를 120ms RELEASE PASS로 승격하지 않았다.
+
+### 실제 동일 Goal에서 공식 CM callback 측정
+- AXIA_G07_C05_NESTED_PUBLIC_CHECKOUT_IMPORT_GREEN_BEFORE_GOAL
+- AXIA_G07_C05_LTTNG_ONLY_CM_PROCNAMES_FILTER_PREFLIGHT_PASS_NO_ROS_NO_GOAL
+- AXIA_G07_C05_OFFICIAL_CM_ONLY_CALLBACK_WINDOW_TRACE_ARMED_DIAGNOSTIC_NOT_RELEASE
+- AXIA_G07_C05_FIRST_CM_CMD_CALLBACK_DIAGNOSTIC status=CM_INPUT_CALLBACK_INTERVAL_OBSERVED_HYPOTHESIS_ONLY
+- first_cm_rmw_source_gap_ms=120.172578; first_cm_observer_wall_gap_ms=120.523837
+- matched_cm_cmd_callback_count=2; max_matched_cm_cmd_callback_duration_ms=81.972669; max_callback_overlap_first_gap_ms=81.972669
+- trace_clock_domain=LTTNG_WALL_EPOCH_MAPPED_MONOTONIC; official_cm_topic_to_callback_link_proven=true
+- tf_lookup_causality_proven=false; scheduler_causality_proven=false; cm120_release_pass=false
+- first gap 동안 Supervisor 원본 발행 2회, upstream 최대 source coverage 49.902254ms. 이전 scheduler sampled coverage51.29244ms 2개 표본만 있어 OS ready-queue 인과 미입증.
+- 원본 timing: clock105.197ms, odom107.032ms, scan205.252ms, guard74.362ms, supervisor103.508ms, upstream103.495ms, CM observer120.524ms. source120.173ms.
+- 실제 field safety gate terminal failure: AssertionError: FIELD_CI_L2_PASS_LOW_MARGIN_OWNER_NOT_READY. 실제 release HOLD 유지.
+
+### 교육용 분석: 무엇이 증명되고 무엇이 아닌가
+1. VERIFIED: 정확한 공식 /cmd_vel_supervised ROS C++ 콜백 핸들을 연결해 최초 120.173ms CM RMW 발행 공백과 동일 Observer monotonic 구간에 81.973ms의 완료된 입력 callback 실행을 직접 측정했다.
+2. UNVERIFIED: 그 81.973ms가 TF lookup, LaserScan point transformation, callback executor contention 중 어디에서 발생했는지는 아직 분해되지 않았다. 정확한 TF 내부 처리시간 자료가 없다.
+3. UNVERIFIED: RMW source SYSTEM 간격120.173ms와 callback MONOTONIC 실행81.973ms를 단순 차감해서 나머지가 scheduling 지연이라고 주장하면 두 clock의 provenance와 발행 종단을 혼동한다.
+4. TRACE OVERHEAD: LTTng가 활성화된 진단 Goal은 tracer-OFF release benchmark가 아니다. 본 Run이 120ms 미달한 것은 실제 fail이지만 원인 비가역적 의미나 safety 결론은 제한된다.
+5. 교육 질문: 최초 ModuleNotFoundError와 후속 FIELD_NO_REAL_GOAL 중 어떤 실패를 CI 회귀로 만들어야 하는가? Callback이 오래 실행돼도 왜 TF 원인을 단정하면 안 되는가? 이른바 callback wall duration과 scheduler wait은 왜 서로 다른가?
+
+### 다음 개발 게이트
+- Cycle06: 기존 Nav2 source::getTransform의 advanced mode 및 공식 base_shift_correction 옵션을 검토하되 G07 sim-only STOP polygon/scan age/속도 기반 위험 경계를 먼저 L0/NO_GOAL에서 검토. 현장 안전 설정을 증거 없이 false로 변경하지 않는다.
+- 그 후보의 실험 가능성이 검증된 경우에만 ONE scoped public CI A/B; 추적을 켠 이번 Run을 120ms release 기준 통과 증거로 사용하지 않는다. tracer-OFF 완전 원본 시연 시나리오에서 CM source/Observer <=120ms, Guard150ms, Scan/Odom/Clock300ms, Contact0, CancelGoal, shutdown ACK 동시 통과 시에만 Owner WSL2 단일 인수를 준비.
+- 사용자 WSL2 L3 NOT_RUN, main 미병합, certified E-Stop 아님. Actual C05 diagnosis report/PR remain public, private Instructor source strictly private.
+
+AXIA_G07_C05_L0=RED_GREEN_PASS_3_PLUS_PREV4
+AXIA_G07_C05_ACTUAL_CM_INPUT_CALLBACK_DURATION_MS=81.972669
+AXIA_G07_C05_REAL_DIAGNOSTIC_L2=FAIL_CM_SOURCE_120.172578MS
+CM_120MS_RELEASE=HOLD
+OWNER_WSL2_L3=NOT_RUN
+AXIA_MVP_DEMO_ACCEPTED=HOLD
+CERTIFIED_ESTOP=false
