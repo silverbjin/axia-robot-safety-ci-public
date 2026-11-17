@@ -92,6 +92,19 @@ class ExactNativePublisherJoin(unittest.TestCase):
         v=classify_publish_join(obs,rows,anchors,tf)
         self.assertNotEqual(v["status"],"CM_SOURCE_TF_POLLING_NATIVE_PUBLISH_JOIN_PROVEN_SCOPED")
 
+    def test_ambiguous_cm_input_callback_worker_threads_cannot_claim_tf_ownership(self):
+        # Public TF spans omit raw TID. Multiple CM subscription workers
+        # would make the claimed TF->second publisher same-thread ownership
+        # ambiguous even if their native timestamps happened to overlap.
+        obs,events,anchors,tf=fixture()
+        events.insert(4,dict(cb("ros2:callback_start",12.030,tid=44),
+                             procname="collision_monit"))
+        events.insert(5,dict(cb("ros2:callback_end",12.040,tid=44),
+                             procname="collision_monit"))
+        v=classify_publish_join(obs,events,anchors,tf)
+        self.assertFalse(v["publisher_source_causality_proven"])
+        self.assertFalse(v["cm120_release_pass"])
+
     def test_unobserved_first_source_breach_or_missing_tf_sleep_blocks(self):
         obs,events,anchors,tf=fixture()
         obs[-1]["rmw_source_ns"]=T0+110000000
