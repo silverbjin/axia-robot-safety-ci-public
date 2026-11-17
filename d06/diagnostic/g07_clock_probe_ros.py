@@ -20,6 +20,7 @@ MAX_ROWS=50_000
 def capture(output, *, duration_sec):
     # ROS imports belong inside runtime-only path; pure L0 has no ROS.
     import rclpy
+    from rclpy.signals import SignalHandlerOptions
     from rclpy.node import Node
     from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSDurabilityPolicy
     from rosgraph_msgs.msg import Clock
@@ -27,31 +28,33 @@ def capture(output, *, duration_sec):
     requested_stop=[False]
     def request_stop(signum, frame):
         requested_stop[0]=True
+    rows=[]
+    # Official Jazzy rclpy.init() installs its OWN SIGTERM handler by default.
+    # Explicit NO prevents it from replacing our bounded flush handler.
+    rclpy.init(signal_handler_options=SignalHandlerOptions.NO)
     signal.signal(signal.SIGTERM,request_stop)
     signal.signal(signal.SIGINT,request_stop)
-    rows=[]
-    rclpy.init()
-    node=Node("axia_g07_task01_public_ci_clock_probe")
-    qos=QoSProfile(depth=10,
-        reliability=QoSReliabilityPolicy.BEST_EFFORT,
-        durability=QoSDurabilityPolicy.VOLATILE)
-    def observe(msg):
-        recv_ns=time.monotonic_ns()
-        sec=int(msg.clock.sec)
-        nsec=int(msg.clock.nanosec)
-        if len(rows)<MAX_ROWS and sec>=0 and 0<=nsec<1_000_000_000:
-            rows.append({"mono_ns":recv_ns,
-                         "sim_ns":sec*1_000_000_000+nsec})
-    node.create_subscription(Clock,"/clock",observe,qos)
-    deadline=time.monotonic()+duration_sec
+    node=None
     try:
+        node=Node("axia_g07_task01_public_ci_clock_probe")
+        qos=QoSProfile(depth=10,
+            reliability=QoSReliabilityPolicy.BEST_EFFORT,
+            durability=QoSDurabilityPolicy.VOLATILE)
+        def observe(msg):
+            recv_ns=time.monotonic_ns()
+            sec=int(msg.clock.sec)
+            nsec=int(msg.clock.nanosec)
+            if len(rows)<MAX_ROWS and sec>=0 and 0<=nsec<1_000_000_000:
+                rows.append({"mono_ns":recv_ns,
+                             "sim_ns":sec*1_000_000_000+nsec})
+        node.create_subscription(Clock,"/clock",observe,qos)
+        deadline=time.monotonic()+duration_sec
         while (not requested_stop[0] and time.monotonic()<deadline
                 and rclpy.ok() and len(rows)<MAX_ROWS):
             rclpy.spin_once(node,timeout_sec=0.15)
     finally:
-        node.destroy_node()
-        rclpy.shutdown()
-        # All rows stay in the same original runner. Never print file content.
+        # Persist FIRST. Even a late ROS node destroy/context error may not
+        # erase the clock evidence of the first CM boundary.
         p=Path(output)
         p.parent.mkdir(parents=True,exist_ok=True)
         tmp=p.with_suffix(".partial")
@@ -61,6 +64,10 @@ def capture(output, *, duration_sec):
         tmp.replace(p)
         print("AXIA_G07_TASK01_CLOCK_PROBE_CALLBACKS="+str(len(rows)))
         print("AXIA_G07_TASK01_CLOCK_PROBE_DIAGNOSTIC_ONLY_NO_GOAL_NO_RELEASE")
+        if node is not None:
+            node.destroy_node()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 
 def main(argv=None):
