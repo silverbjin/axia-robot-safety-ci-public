@@ -191,6 +191,9 @@ finish() {
   if [[ "$RUN_RC" != 99 && "$RUN_RC" != 0 && "$RUN_RC" != 130 ]]; then
     exit "$RUN_RC"
   fi
+  if [[ "$check_rc" -ne 0 ]]; then
+    exit "$check_rc"
+  fi
   exit "$entry_rc"
 }
 trap 'finish "$?"' EXIT
