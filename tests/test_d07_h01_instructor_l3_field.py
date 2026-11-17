@@ -132,6 +132,13 @@ class D07H01InstructorL3Contract(unittest.TestCase):
             self.assertEqual(r.returncode,3)
             self.assertIn("FIRST_TEACHING_RUNTIME_FAILURE",r.stdout)
 
+    def test_main_runner_does_not_return_success_on_data_hold(self):
+        # Earlier uX8uxx0z archive had runner_rc=130, verifier_rc=3,
+        # but the outer one-shot returned 0. Preserve fail-closed shell status.
+        source=SCRIPT.read_text()
+        self.assertIn('if [[ "$check_rc" -ne 0 ]]; then',source)
+        self.assertIn('exit "$check_rc"',source)
+
     def test_two_real_cycle_schema_fixture_ready_for_pixel_review(self):
         with tempfile.TemporaryDirectory() as folder:
             synthetic_session(folder)
