@@ -1,0 +1,32 @@
+name: AXIA G07 C34 mandatory exact Goal terminal before native ACK L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-g07-c34-mandatory-goal-terminal-l0.yml']
+permissions:
+  contents: read
+jobs:
+  c34-native-shutdown-precondition:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    environment: axia-instructor-sealed
+    steps:
+      - name: Exact sealed Instructor RED candidate
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: c17746dad0f91d64b982825d3ac29ba5255b55e0
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Targeted CI native shutdown bypass regression
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = c17746dad0f91d64b982825d3ac29ba5255b55e0
+          python3 -m unittest discover -s tests/unit -p test_g07_c34_mandatory_terminal_before_native_ack.py -v
+          python3 -m unittest discover -s tests/unit -p test_g07_c32_goal_terminal_before_lifecycle.py -v
+          bash -n scripts/p2_no_goal_smoke_ci.sh
+          echo AXIA_G07_C34_MANDATORY_TERMINAL_AND_NATIVE_ACK_L0_PASS_NO_ROS_NO_GOAL
+      - name: Erase sealed code from public runner
+        if: always()
+        run: rm -rf -- scripts tools tests ros2_ws training docs
