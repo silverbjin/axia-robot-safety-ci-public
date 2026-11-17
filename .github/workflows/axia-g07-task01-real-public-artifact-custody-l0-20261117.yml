@@ -1,0 +1,55 @@
+name: AXIA G07 Task01 real first CM gap public artifact SHA and causal HOLD L0
+on:
+  push:
+    branches: ['fix/g07-cm120-task01-public-evidence-20261117']
+    paths:
+      - '.github/workflows/axia-g07-task01-real-public-artifact-custody-l0-20261117.yml'
+      - 'd06/evidence/g07_cm120_task01/run_44049067368_first_gap_sanitized.json'
+      - 'd06/evidence/g07_cm120_task01/run_44049067368_SHA256SUMS.txt'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  actual-artifact-public-only-sha256:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Exact actual source run artifact SHA256, allowed fields and no false safety PASS
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cd d06/evidence/g07_cm120_task01
+          sha256sum -c run_44049067368_SHA256SUMS.txt
+          python3 - <<'PY'
+          import json,hashlib
+          from pathlib import Path
+          p=Path('run_44049067368_first_gap_sanitized.json')
+          raw=p.read_bytes()
+          assert hashlib.sha256(raw).hexdigest()=='d242ea84b3b8cb3d133960998b62393bd34ad12ca1edef96e271695ac74977f9'
+          assert len(raw)==2592
+          a=json.loads(raw)
+          assert a['schema']=='axia.g07.cm120.public_first_gap_v1'
+          assert a['run_id']=='44049067368'
+          assert a['public_source_sha']=='5e6db932728085398fd1b6d9441847286d70c2be'
+          assert a['first_gap']['rmw_source_gap_ns']==129299071
+          assert a['first_gap']['observer_gap_ns']==128391951
+          assert a['tf_sleep']['coverage_proven'] is True
+          assert len(a['tf_sleep']['spans'])==14
+          g=a['first_gap']['observer_gap_ns']
+          spans=a['tf_sleep']['spans']
+          overlap=sum(max(0,min(x['end_rel_observer_ns'],g)
+                             -max(x['start_rel_observer_ns'],0)) for x in spans)
+          assert overlap==91416406
+          assert sum(max(0,min(x['end_rel_observer_ns'],g)
+                             -max(x['start_rel_observer_ns'],0))>0 for x in spans)==9
+          for key in ('root_cause_proven','cm120_release_pass','gate_c_authorized',
+                      'source_publication_to_monotonic_alignment_proven',
+                      'owner_wsl2_accepted','certified_estop'):
+              assert a[key] is False,key
+          assert not any(pat in raw.decode() for pat in (
+              '/cmd_vel_supervised','instructor','private','frame_id',
+              'pose','raw_file_path','0xa','0xb','0xc'))
+          print('AXIA_G07_TASK01_ACTUAL_FIRST_CM_GAP_129_299MS_TF_SLEEP_91_416MS_PUBLIC_SHA256_PASS')
+          print('AXIA_G07_TASK01_SOURCE_TO_MONO_CAUSE_AND_SCHEDULER_UNPROVEN_RELEASE_HOLD')
+          PY
