@@ -1,0 +1,206 @@
+name: AXIA G07 Task01 exact official TF zero-timeout availability NO GOAL L2
+on:
+  push:
+    branches: ['release/p2-g06-cm-ttl-20261110']
+    paths: ['.github/workflows/axia-g07-task01-tf-zero-timeout-nogoal-l2-20261117.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: axia-g07-task01-tf-availability-one-nogoal
+  cancel-in-progress: false
+jobs:
+  original-official-cm-no-goal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 19
+    environment: axia-instructor-sealed
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+      options: --dns 1.1.1.1 --dns 8.8.8.8
+    steps:
+      - name: Immutable private ORIGINAL official Jazzy/Nav2 noGoal source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 966886c4627deb2bb3b37111fe336eeee6b9ebb4
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: Exact public S2 filter and CM loader proof from reviewed SHA
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-ci-public
+          ref: 5a067af927a06be6d08d62994fcb578d8a571404
+          path: public-task01
+          persist-credentials: false
+      - name: Strict noGoal source + existing localization first-timeout regression
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '966886c4627deb2bb3b37111fe336eeee6b9ebb4'
+          test "$(git -C public-task01 -c safe.directory="$PWD/public-task01" rev-parse HEAD)" = '5a067af927a06be6d08d62994fcb578d8a571404'
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
+             -s tests/unit -p test_g07_cycle16_first_localization_shutdown_20261115.py -v
+          PYTHONPATH="$PWD/public-task01" PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
+             -s public-task01/d06/tests -p test_g07_cm120_s2_actual_sleep_provenance.py -v
+          PYTHONPATH="$PWD/public-task01" PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
+             -s public-task01/d06/tests -p test_g07_task01_tf_zero_timeout_availability.py -v
+          echo AXIA_G07_TASK01_TF_AVAILABILITY_L0_PREGOAL_GREEN_NO_GOAL
+          bash -n scripts/p2_no_goal_smoke_ci.sh
+          echo AXIA_G07_TASK01_OLD_LOCALIZATION_TIMEOUT_REGRESSION_GREEN_NO_GOAL
+      - name: Exact official CM NO_GOAL mapping plus original Nav2 localization shutdown
+        shell: bash
+        env:
+          ROS_DOMAIN_ID: '88'
+          ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+          GZ_PARTITION: axia_p2_s2_cm_sleep_88
+          AXIA_P0_SIM_ONLY: '1'
+          AXIA_P2_G07_PHYSICAL_PREFLIGHT: '1'
+          AXIA_P2_G07_OWNER_PARITY_CHECK: '1'
+          AXIA_G07_OWNER_STARTUP_PARITY: '1'
+          AXIA_G07_CI_OWNER_BAG_PARITY: '1'
+          AXIA_G07_CI_SIM_GOAL_ALLOWED: '0'
+          AXIA_G07_TASK01_TF_AVAIL_PROBE: '1'
+          AXIA_G07_SHUTDOWN_L2_ONLY: '1'
+          AXIA_P4_G07_SHARED_PREFLIGHT_ONLY: '1'
+          AXIA_P2_SMOKE_RESULTS: results/p4-g07-s2-no-goal-preload
+        run: |
+          set -Eeuo pipefail
+          set +u
+          source /opt/ros/jazzy/setup.bash
+          set -u
+          cmake -S public-task01/d06/diagnostic -B /tmp/axia_g07_s2_abi \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo >/tmp/axia_g07_s2_cmake.log
+          cmake --build /tmp/axia_g07_s2_abi --parallel 2 >>/tmp/axia_g07_s2_cmake.log
+          SO=/tmp/axia_g07_s2_abi/libaxia_g07_cm120_tf_diag.so
+          test -s "$SO"
+          TESTLOG="$RUNNER_TEMP/axia_g07_s2_nogoal.log"
+          TFLOG="$RUNNER_TEMP/axia_g07_s2_cm_tf.log"
+          rm -f -- "$TFLOG"
+          # Apply LD_PRELOAD to the actual original launched process tree,
+          # NOT to this shell or the earlier ABI-only Python selftest.
+          set +e
+          env LD_PRELOAD="$SO" AXIA_G07_CM120_TF_DIAG_FILE="$TFLOG" \
+             timeout --signal=TERM --kill-after=10s 650s \
+             bash scripts/p2_no_goal_smoke_ci.sh >"$TESTLOG" 2>&1 &
+          RUNNER_PID=$!
+          set -e
+          MAP_PIDS=""
+          FOUND=0
+          for _ in $(seq 1 330); do
+            for d in /proc/[0-9]*; do
+              [[ -r "$d/comm" && -r "$d/maps" ]] || continue
+              IFS= read -r name <"$d/comm" || continue
+              [[ "$name" == collision_monit || "$name" == collision_monitor ]] || continue
+              if grep -Fq "$SO" "$d/maps" 2>/dev/null; then
+                FOUND=1
+                MAP_PIDS="$MAP_PIDS ${d##*/}"
+              fi
+            done
+            [[ "$FOUND" == 1 ]] && break
+            kill -0 "$RUNNER_PID" 2>/dev/null || break
+            sleep 2
+          done
+          set +e
+          wait "$RUNNER_PID"
+          RUNNER_RC=$?
+          set -e
+          echo "AXIA_G07_S2_CM_PRELOAD_MAP_OBSERVED=$FOUND"
+          python3 - "$RUNNER_RC" "$FOUND" "$TFLOG" <<'PY'
+          import json,re,sys
+          from pathlib import Path
+          rc=int(sys.argv[1])
+          mapped=sys.argv[2]=="1"
+          tf=Path(sys.argv[3])
+          root=Path("results/p4-g07-s2-no-goal-preload")
+          start=json.loads((root/"startup_verdict.json").read_text()) if (root/"startup_verdict.json").is_file() else {}
+          shutdown=json.loads((root/"g07_ordered_shutdown.json").read_text()) if (root/"g07_ordered_shutdown.json").is_file() else {}
+          text=tf.read_text().splitlines() if tf.is_file() else []
+          pattern=re.compile(
+            r"TF_ADV pid=\d+ tid=\d+ mono_start_ns=\d+ mono_end_ns=\d+"
+            r" thread_cpu_ns=\d+ ok=[01] schedstat_valid=[01]"
+            r" runqueue_ns=\d+ sched_cpu_ns=\d+ voluntary_cs=\d+"
+            r" involuntary_cs=\d+ sleep_ns=(\d+) sleep_calls=(\d+)")
+          calls=[m for line in text if (m:=pattern.fullmatch(line))]
+          sleep_calls=sum(int(m.group(2)) for m in calls)
+          sleep_ms=round(sum(int(m.group(1)) for m in calls)/1e6,6)
+          # Original official CM exact source->target, same goal-free
+          # runtime, zero timeout before and after original Advanced TF.
+          # Only aggregate numerical values are printed, never private frames,
+          # absolute ROS timestamps, poses, PID/TID, or raw TF messages.
+          avail_pat=re.compile(
+            r"^TF_AVAIL pid=(\d+) tid=(\d+) mono_pre_ns=(\d+)"
+            r" mono_pre_end_ns=(\d+) mono_post_start_ns=(\d+)"
+            r" mono_post_end_ns=(\d+) pre_available=([01])"
+            r" post_available=([01])$")
+          tf_pat=re.compile(
+            r"^TF_ADV pid=(\d+) tid=(\d+) mono_start_ns=(\d+)"
+            r" mono_end_ns=(\d+) ")
+          avail=[tuple(map(int,m.groups())) for row in text
+                 if (m:=avail_pat.fullmatch(row))]
+          tf_calls=[tuple(map(int,m.groups())) for row in text
+                    if (m:=tf_pat.match(row))]
+          matched=[]
+          for p,tid,p0,p1,q0,q1,pre,post in avail:
+              owners=[(a,b) for tp,tt,a,b in tf_calls
+                      if tp==p and tt==tid and p0<=p1<=a<=b<=q0<=q1]
+              if len(owners)==1:
+                  matched.append((p1-p0,q1-q0,pre,post,
+                                  owners[0][1]-owners[0][0]))
+          max_probe=max((max(a,b) for a,b,_,_,_ in matched),default=-1)
+          transitions=sum(pre==0 and post==1 for _,_,pre,post,_ in matched)
+          print("AXIA_G07_TASK01_NO_GOAL_REAL_TF_AVAILABILITY "+json.dumps({
+              "official_tf_calls":len(tf_calls),
+              "exact_same_call_availability_rows":len(matched),
+              "total_availability_rows":len(avail),
+              "initial_unavailable_later_available_count":transitions,
+              "max_nonblocking_probe_elapsed_ms":round(max_probe/1e6,6),
+              "same_first_moving_source_gap":False,
+              "scheduler_runqueue_proven":False,
+              "root_cause_proven":False,
+              "release_pass":False,"goal_sent":False},sort_keys=True))
+          assert len(matched)>=2,"TASK01_NATIVE_TF_AVAILABILITY_ROWS_MISSING_HOLD"
+          assert len(avail)==len(matched),"TASK01_TF_AVAILABILITY_CALL_JOIN_AMBIGUOUS_HOLD"
+          assert max_probe<=20_000_000,"TASK01_TF_AVAILABILITY_PROBE_TOO_SLOW_HOLD"
+          print("AXIA_G07_TASK01_ORIGINAL_CM_TF_ZERO_TIMEOUT_READBACK_PASS_NO_GOAL")
+          print("AXIA_G07_S2_REAL_NO_GOAL_CM_TF_READINESS "+json.dumps({
+            "process_mapping_proven":mapped,
+            "actual_tf_call_count":len(calls),
+            "tf_call_observed":bool(calls),
+            "tf_nanosleep_calls_total":sleep_calls,
+            "tf_actual_sleep_wall_ms_total":sleep_ms,
+            "kernel_schedstats_not_enabled":True,
+            "startup_status":start.get("status"),
+            "goal_sent":start.get("goal_sent"),
+            "localization_shutdown_status":shutdown.get("status"),
+            "navigation_ack":shutdown.get("navigation_ack"),
+            "localization_ack":shutdown.get("localization_ack"),
+            "runner_rc":rc,
+            "root_cause_proven":False,
+            "release_pass":False,"owner_accepted":False,
+            "certified_estop":False},sort_keys=True))
+          # No real command is emitted in this experiment. TF calls may be
+          # absent without input; absence is NOT an attribution to TF delay.
+          assert calls, "S2_NO_GOAL_EXTENDED_TF_FIELDS_NOT_OBSERVED_HOLD"
+          # Unlike the unavailable Clock symbol hook, this reads official
+          # tf2_ros::Buffer::canTransform(..., timeout=0) before/after TF.
+          # No claim of same-first-gap causality; owner shutdown remains
+          # mandatory below.
+          assert mapped, "CM_PROCESS_LD_PRELOAD_MAPPING_UNVERIFIED_HOLD"
+          assert start.get("status")=="SMOKE_READY" and start.get("goal_sent") is False
+          assert shutdown.get("status")=="NAV2_LIFECYCLE_SHUTDOWN_ACK", "LOCALIZATION_SHUTDOWN_FIRST_ACK_HOLD"
+          assert shutdown.get("navigation_ack") is True and shutdown.get("localization_ack") is True
+          assert rc==0, "G07_S2_NO_GOAL_RUNNER_NONZERO_HOLD"
+          print("AXIA_G07_S2_REAL_CM_LOADER_AND_LOCALIZATION_NO_GOAL_PASS")
+          if not calls:
+            print("AXIA_G07_S2_TF_CALL_NOT_OBSERVED_NO_GOAL_GATE_B_HOLD")
+          else:
+            print("AXIA_G07_S2_TF_FUNCTION_CALLED_NO_GOAL_DIAGNOSTIC_NOT_RELEASE")
+          PY
+          echo AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false
+      - name: Always erase private sources and exact runtime processes and traces
+        if: always()
+        shell: bash
+        run: |
+          rm -rf -- public-task01 .git docs tools tests configs scripts ros2_ws results \
+            /tmp/axia_g07_s2_abi /tmp/axia_g07_s2_cmake.log \
+            "$RUNNER_TEMP/axia_g07_s2_nogoal.log" "$RUNNER_TEMP/axia_g07_s2_cm_tf.log"
