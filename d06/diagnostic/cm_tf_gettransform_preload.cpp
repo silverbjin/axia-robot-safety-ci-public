@@ -241,6 +241,21 @@ int axia_g07_task01_clock_get_now_abi_selftest() {
     tf_clock_samples.load(std::memory_order_relaxed)>before ? 1:0;
 }
 
+// This is the critical ABI regression. Direct calls to our own C shim
+// alone do not prove that the official rclcpp::Clock::now() DSO dispatches
+// through that shim. Exercise real Jazzy rclcpp::Clock::now() here, without
+// any ROS node, simulator, or Goal.
+extern "C" __attribute__((visibility("default")))
+int axia_g07_task01_real_rclcpp_clock_dispatch_selftest() {
+  const auto before=tf_clock_samples.load(std::memory_order_relaxed);
+  rclcpp::Clock test_clock(RCL_ROS_TIME);
+  tf_window_active=true;
+  const auto now=test_clock.now();
+  tf_window_active=false;
+  return now.nanoseconds()>0 &&
+    tf_clock_samples.load(std::memory_order_relaxed)>before ? 1:0;
+}
+
 // Isolated NO_GOAL selftest of the exact std::this_thread::sleep_for()
 // path used by Jazzy tf2_ros::Buffer; never called by production Nav2.
 extern "C" __attribute__((visibility("default")))
