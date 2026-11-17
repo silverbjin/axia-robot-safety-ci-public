@@ -112,6 +112,10 @@ grep -Eqi 'microsoft|wsl' /proc/sys/kernel/osrelease || {
 [[ -n "${DISPLAY:-}" ]] || {
   echo AXIA_D07_H01_L3_WSLG_DISPLAY_REQUIRED >&2; exit 3;
 }
+set +u
+source /opt/ros/jazzy/setup.bash
+set -u
+[[ "${ROS_DISTRO:-}" == jazzy ]] || exit 3
 for bin in git ros2 gz rviz2 python3 tar sha256sum setsid timeout; do
   command -v "$bin" >/dev/null || {
     echo "AXIA_D07_H01_L3_MISSING_TOOL=$bin" >&2; exit 3;
@@ -124,10 +128,6 @@ for unsafe in AXIA_G07_CI_SIM_GOAL_ALLOWED AXIA_P3_S01_CI_GOAL_ALLOWED \
     echo "AXIA_D07_H01_L3_MOVING_GOAL_FLAG_DENIED=$unsafe" >&2; exit 3;
   }
 done
-set +u
-source /opt/ros/jazzy/setup.bash
-set -u
-[[ "${ROS_DISTRO:-}" == jazzy ]] || exit 3
 PARENT="$HOME/axia_d07_h01_instructor_l3"
 mkdir -p "$PARENT"
 OUT="$(mktemp -d "$PARENT/session-$(date +%Y%m%d)-XXXXXXXX")"
