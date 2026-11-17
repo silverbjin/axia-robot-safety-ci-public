@@ -9,7 +9,7 @@ on:
 permissions:
   contents: read
 jobs:
-  task02-public-red:
+  task02-public-l0:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     container:
@@ -18,13 +18,13 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: c136ad525ba624ca0a8bfe3743dca2c18956d994
+          ref: ddb3524f4dd4ee88b14da2694c306db4f6ff6b33
           path: student
           persist-credentials: false
       - name: Task02 RED prove missing official CM bounded TF-timeout opt-in
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C student rev-parse HEAD)" = c136ad525ba624ca0a8bfe3743dca2c18956d994
+          test "$(git -C student rev-parse HEAD)" = ddb3524f4dd4ee88b14da2694c306db4f6ff6b33
           cd student/block_B/day07/h01_runtime
           python3 -m unittest discover -s tools -p 'test_g07_task02_cm_tf_wait.py' -v
