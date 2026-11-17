@@ -20,7 +20,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 09d39728692a3c0365088a49cdea76d022d516e3
+          ref: e2d0ef7f291799bf7dd3e9d09ee9e51d4df36546
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -30,10 +30,10 @@ jobs:
           python3 -m unittest discover -s d06/tests -p test_g07_c32_localization_native_server_boundary.py -v
           python3 -m py_compile d06/diagnostic/g07_c32_localization_stage.py
           echo AXIA_G07_C32_NATIVE_SERVER_STAGE_NO_FALSE_ACK_L0_PASS_NO_ROS_NO_GOAL
-      - name: Sealed native wall-clock client regression (RED before implementation)
+      - name: Sealed native wall-clock client regression (GREEN after implementation)
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = 09d39728692a3c0365088a49cdea76d022d516e3
+          test "$(git -C instructor -c safe.directory="$PWD/instructor" rev-parse HEAD)" = e2d0ef7f291799bf7dd3e9d09ee9e51d4df36546
           cd instructor
           python3 -m unittest discover -s tests/unit -p test_g07_c32_native_request_wall_boundaries.py -v
           python3 -m unittest discover -s tests/unit -p test_g07_c31_native_shutdown_ack_trace.py -v
