@@ -1,0 +1,29 @@
+name: AXIA G07 Task01 same CM Advanced TF per-sleep event L0
+on:
+  push:
+    branches: ['fix/g07-cm120-task01-autopilot-preacceptance-20261117']
+    paths:
+      - '.github/workflows/axia-g07-task01-per-sleep-exact-join-l0-20261117.yml'
+      - 'd06/diagnostic/analyze_first_cm_tf.py'
+      - 'd06/diagnostic/cm_tf_gettransform_preload.cpp'
+      - 'd06/tests/test_g07_cm120_task01_per_sleep_span_join.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  pure-l0:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: RED or GREEN exact same TF call sleep intervals and legacy regressions
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          export PYTHONDONTWRITEBYTECODE=1
+          for spec in test_g07_cm120_task01_per_sleep_span_join.py test_g07_cm120_tf_first_gap_join.py test_g07_cm120_task01_tf_first_source_gap_overlap.py test_g07_cm120_s2_actual_sleep_provenance.py test_g07_cm120_s2_exact_tf_offcpu_join.py; do
+            python3 -m unittest discover -s d06/tests -p "$spec" -v
+          done
+          python3 -m py_compile d06/diagnostic/analyze_first_cm_tf.py
+          grep -Fq '"TF_SLEEP pid=' d06/diagnostic/cm_tf_gettransform_preload.cpp
+          echo AXIA_G07_TASK01_EXACT_SAME_CM_TF_SLEEP_INTERVAL_L0_PASS_NO_ROS_NO_GOAL
