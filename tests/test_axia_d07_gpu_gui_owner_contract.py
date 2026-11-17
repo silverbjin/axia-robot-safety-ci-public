@@ -105,3 +105,19 @@ class OwnerGpuTrialContract(unittest.TestCase):
         self.assertNotIn("AXIA_MVP_DEMO_ACCEPTED=PASS",s)
         self.assertLess(s.index("AXIA_D07_GPU_PREFLIGHT_HOLD_NOT_D3D12_ACCELERATED"),
                         s.index('bash "$PRIVATE_RUNNER" --run'))
+
+    def test_owner_zokaxnwf_gazebo_software_and_first_sigsegv_precedes_watcher_entered(self):
+        # Real Owner zoKAxNwF: watcher entered, then gz GUI SIGSEGV 139,
+        # later no RViz subscriber and blocked teardown. Startup marker
+        # MUST NOT be reported as the first fault.
+        s=SCRIPT.read_text()
+        self.assertIn("export AXIA_D07_H01_OWNER_GZ_SOFTWARE_ONLY=1",s)
+        self.assertIn("D07_H01_OWNER_GZ_SOFTWARE_ONLY=1",s)
+        self.assertIn("D07_H01_GUI_FIRST_NATIVE_GZ_RENDER_SIGSEGV_139",s)
+        self.assertIn("'^D07_H01_GUI_FIRST_NATIVE_GZ_RENDER_SIGSEGV_139'",s)
+        self.assertIn("D07_H01_GUI_CHILD_TERMINATED_BEFORE_PHASE_COMPLETE",s)
+        self.assertNotIn("grep -m1 -E 'D07_H01_GUI_(CHILD_TERMINATED|WATCHER_",s)
+        self.assertLess(s.index("D07_H01_GUI_FIRST_NATIVE_GZ_RENDER_SIGSEGV_139"),
+                        s.index("D07_H01_GUI_CHILD_TERMINATED_BEFORE_PHASE_COMPLETE"))
+        self.assertLess(s.index("export AXIA_D07_H01_OWNER_GZ_SOFTWARE_ONLY=1"),
+                        s.index('bash "$PRIVATE_RUNNER" --run'))
