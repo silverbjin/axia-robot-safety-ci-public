@@ -132,3 +132,15 @@ ros2 run rqt_graph rqt_graph
 - GREEN: 학생 PR #40 [실제 L2 #44085392786](https://github.com/silverbjin/axia-robot-safety-student/actions/runs/44085392786) PASS. Artifact #14329581796 외부 63/63, 내부 61/61 SHA256 PASS. `launch.log`에서 `xacro-1 finished cleanly` 뒤 `gz-21 process started` 확인. Free→Intrusion→Lateral→Restored 실제 Path 52→52→49→52, `goal_sent=false`, `P2_L2_GRACEFUL_TEARDOWN`.
 - 학생 main 병합 PR #40 SHA `6a3047b5aa219687f5fc918e467cea5115d3d482`. 수정은 `AXIA_D07_H01_GUI_NO_GOAL=1`, 시뮬레이션, 이동 Goal 불허 경로에만 적용. 공식 Nav2·Safety TTL·Controller 명령은 변경하지 않음.
 - 새로운 **정확한** 학생 main source에 대한 실제 L2 재검은 별도 실행 결과로 판정하고, Owner WSL2/WSLg GUI L3 및 교육용 2회 Ctrl+C 현장 증거는 계속 NOT_RUN/HOLD로 둔다.
+
+
+## 최종 공개 Student main exact-SHA 실물 재검증 (2026-11-17)
+
+- 기준: 공개 학생 main `6a3047b5aa219687f5fc918e467cea5115d3d482`.
+- 병합 후 독립 실물 Gazebo Harmonic+Nav2+RViz2+rqt_graph L2: [GitHub Actions Run #44086340466](https://github.com/silverbjin/axia-robot-safety-student/actions/runs/44086340466) **PASS**.
+- 원본 업로드 Artifact #14329513093, ZIP SHA256 `c1b627839788bdc181d10d753ae0923bfcaead58b9e9724af220021f85507837`.
+- 압축 파일 자체를 독립 검사: 외부 `SHA256SUMS` **63/63**, 내부 `evidence/SHA256SUMS` **61/61** 일치. `source.txt`가 병합된 main SHA와 정확히 같음.
+- `launch.log`: Xacro 종료 행 59 뒤 Gazebo 서버 시작 행 60. 세계 생성 선행 조건 충족.
+- 실제 Gazebo native 4단계 ACK, 공식 `ComputePathToPose` Path 52→52→49→52, `goal_sent=false`, `P2_L2_GRACEFUL_TEARDOWN`. 학생 반복 1회(공개 CI 제한); 강사 WSL2 반복 2회+Ctrl+C의 대체 인수 아님.
+- 강사용 별도 터미널 rqt_graph 원샷 공개 L0: [#44086439903](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44086439903) **PASS**.
+- 최종 판정: **공개 CI 교육용 코드 범위 출고 가능**. 강사 WSLg 실제 화면 L3 재인수 NOT_RUN, 전체 안전 MVP `AXIA_MVP_DEMO_ACCEPTED=HOLD` 유지.
