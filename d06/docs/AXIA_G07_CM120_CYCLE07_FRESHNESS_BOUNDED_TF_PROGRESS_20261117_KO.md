@@ -44,3 +44,24 @@ CERTIFIED_ESTOP=false
 - 공개 sealed [Run #43999271004](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43999271004) completed SUCCESS, original C06 RED3 + previously rejected C07 real1.0 RED1 + current GREEN6. 실제 로그: AXIA_G07_C07_PREVIOUS_ACTUAL_JAZZY_ONE_SECOND_SOURCE_TIMEOUT_RED, Ran 6 tests, OK, AXIA_G07_C07_RED3_PLUS_REAL_1S_SOURCE_RED1_GREEN6_PUBLIC_SEALED_L0_PASS_NO_GOAL.
 - 새 sim-only 1개 real one-Goal release trigger commit ba31400e01ab98d893b5fc9e221b4cc5743ffcbb, [Run #43999412342](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43999412342) actual outcome pending. 이전 failed Run과 다른 SHA이며, 같은 오류 현장 재시도가 아니라 원본 official config에 대한 새로운 CI RED→GREEN 증거를 갖춘 실행이다.
 - 수업 핵심: '기본값(Default)'과 '실제 설정값(Effective configuration)'이 다를 수 있다. 정확한 source provenance를 확인하지 않고 CI 코드를 반복 조정하면 pregoal false negatives에 시간 소모가 크다. 따라서 G07 실제 source_timeout=1.0와 official fallback2.0을 별도로 기록한다.
+
+## Cycle07 실제 second L2 종료 — FIRST CLOCK_READY failure
+- 다음 candidate private SHA 3cdbb65ec6130ed74b28b1368246bb70f99ed423, public release SHA ba31400e01ab98d893b5fc9e221b4cc5743ffcbb, 실제 [Run #43999412342](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43999412342) completed FAILURE, NO GOAL.
+- 공개 sealed prior exact Jazzy original YAML 1.0s RED1, original C06 RED3, candidate GREEN6/6 [#43999271004](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43999271004) SUCCESS. 실제 C37 official runtime image+S02 preflight PASS, 이후 actual Gazebo/Nav2 startup stage failed at CLOCK_READY.
+- 최초 실제 필수 실패 메시지: P2_STAGED_NO_GOAL_BLOCKED: CLOCK_READY: CLOCK_MISSING. 같은 창의 read-only: AXIA_G07_CI_LAUNCH_PID_ALIVE=true, AXIA_G07_CI_CLOCK_TOPIC_PRESENT=true, actual /clock callback count0, timeout90s. 이전 C06 & C07 #439986에는 source_timeout validation exception이 먼저 나왔으나 이번 #439994에는 그 문구가 보고되지 않음.
+- 이번 실행의 공개 로그는 launch.log tail만 출력하므로 첫 시작 단계의 Gazebo/ROS exception/bridge log는 직접 연결되지 않았다. 따라서 Clock producer stopped, bridge no messages, DDS subscriber backlog, sim paused 등의 **원인 분류는 UNPROVEN**; source_timeout fix가 실제 런타임 두 파라미터를 반영했는지도 missing Goal preflight 때문에 **UNVERIFIED**.
+- 후속 G07_C06_NO_ACTUAL_ONE_GOAL_ODOM_RISK_EVIDENCE, FIELD_NO_REAL_GOAL_CANNOT_RELEASE 및 S02/MsgInfo/CM120 audit MISS는 CLOCK_READY 실패에 따른 cascade, 주행 실패를 입증한 원본이 아님.
+- 이 실행에서 실제 ROS Moving Goal 없음. CM source/Observer120ms 릴리스 수치는 새로 측정되지 않았고 이전 실제 실패 128.644ms/133.659ms와 진단 120.173ms만 보존.
+
+## 교육적 후속: Cycle08 최소 실패 경계
+- 현재 C07 SIM coupled profile을 안전 출고로 배포하지 않는다. release one-off full moving workflow를 삭제하고 immutable failed Run을 보존.
+- 동일 값을 재시도하지 않고 **NO_GOAL에서 clock producer(Gazebo)→bridge (/clock)→ROS subscriber** 최초 타이밍을 독립 관찰하며, launch.log 첫 error와 clock topic 노출 여부·message count를 함께 확보. 실시간 Deadline 90초를 무턱대고 늘리지 않는다.
+- Clock gate가 다시 성공하고 root cause를 좁힌 뒤에만 C07 Moving sim 후보를 다시 검토. 안전 속도·LaserScan header age/zone 정확도·120ms margin까지 검증하지 않은 상태라 OWNER WSL2 L3=BLOCKED.
+
+AXIA_G07_C07_PUBLIC_L0=RED3_PLUS_ORIGINAL_1S_RED1_GREEN6_PASS
+AXIA_G07_C07_REAL_L2=FAIL_CLOCK_READY_NO_GOAL
+AXIA_G07_C07_CLOCK_FIRST_BOUNDARY=TOPIC_PRESENT_ZERO_MESSAGES
+AXIA_G07_C07_RUNTIME_PARAM_READBACK=NOT_RUN
+CM_120MS_RELEASE=HOLD
+AXIA_MVP_DEMO_ACCEPTED=HOLD
+CERTIFIED_ESTOP=false
