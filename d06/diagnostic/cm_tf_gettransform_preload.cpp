@@ -212,7 +212,7 @@ extern "C" rcl_ret_t rcl_clock_get_now(
       const long long mono=clock_ns(CLOCK_MONOTONIC);
       char line[240];
       const int n=std::snprintf(line,sizeof(line),
-        "TF_CLOCK pid=%ld tid=%ld mono_ns=%lld ros_ns=%lld clock_type=%d override_active=%d\\n",
+        "TF_CLOCK pid=%ld tid=%ld mono_ns=%lld ros_ns=%lld clock_type=%d override_active=%d\n",
         static_cast<long>(::getpid()),static_cast<long>(::syscall(SYS_gettid)),
         mono,static_cast<long long>(*time_point_value),
         static_cast<int>(clock->type),active);
@@ -230,7 +230,7 @@ extern "C" __attribute__((visibility("default")))
 int axia_g07_task01_clock_get_now_abi_selftest() {
   const auto before=tf_clock_samples.load(std::memory_order_relaxed);
   rcl_clock_t c=rcl_get_zero_initialized_clock();
-  const auto alloc=rcutils_get_default_allocator();
+  auto alloc=rcutils_get_default_allocator();
   if(rcl_clock_init(RCL_STEADY_TIME,&c,&alloc)!=RCL_RET_OK) return 0;
   rcl_time_point_value_t t=0;
   tf_window_active=true;
