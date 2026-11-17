@@ -7,9 +7,9 @@ set -Eeuo pipefail
 umask 077
 
 readonly PRIVATE_REPO='silverbjin/axia-robot-safety-instructor'
-readonly PRIVATE_SHA='a2ea5bbebf7c24137353773f88984dd4cf6d9383'
-readonly PUBLIC_REAL_GAZEBO_XVFB_L2_RUN='43994275942'
-readonly PUBLIC_NO_ROS_L0_RUN='43994125321'
+readonly PRIVATE_SHA='7306b27bc1d146d99d1657308549db45c9878407'
+readonly PUBLIC_REAL_GAZEBO_XVFB_L2_RUN='43997663084'
+readonly PUBLIC_NO_ROS_L0_RUN='43997532528'
 readonly CI_CONTAINER_DIGEST='sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e'
 
 # Bounded read-only WSLg GUI screenshot and resource capture. Never auto PASS.
@@ -329,6 +329,11 @@ if [[ "$GPU_PROBE_RC" != 0 ]] ||
 fi
 export AXIA_D07_H01_GPU_GUI_TRIAL=1
 export AXIA_D07_H01_GPU_ADAPTER="${AXIA_D07_H01_GPU_ADAPTER:-NVIDIA}"
+# Owner zoKAxNwF: Gazebo OGRE-Next GL3Plus/Mesa D3D12 SIGSEGV 139.
+# Avoid the unstable GPU path ONLY for the Gazebo GUI. RViz remains D3D12;
+# the headless simulation server, official Nav2 and safety TTL are unchanged.
+export AXIA_D07_H01_OWNER_GZ_SOFTWARE_ONLY=1
+echo D07_H01_OWNER_GZ_SOFTWARE_ONLY_RENDERER_SELECTED_NO_GOAL RVIZ_D3D12_UNCHANGED
 echo "AXIA_D07_GUI_GPU_PREFLIGHT_D3D12_ACCELERATED adapter=$AXIA_D07_H01_GPU_ADAPTER"
 echo "AXIA_D07_GPU_GUI_TRIAL_PRIVATE_SOURCE=$PRIVATE_SHA"
 # Server, physics/sensors, Nav2 and safety nodes keep their baseline
@@ -392,7 +397,12 @@ PYFIRST
   fi
   FIRST_GUI_ERROR=''
   if [[ -z "$FIRST_STAGED_FAILURE" && -s "$GUI_L2/d07_gui_watcher.log" ]]; then
-    FIRST_GUI_ERROR="$(grep -m1 -E 'D07_H01_GUI_(CHILD_TERMINATED|WATCHER_|TRANSPORT_|GPU_TRIAL_SCOPE_DENIED|AFTER_FREE_BASELINE_MARKER_MISSING)' "$GUI_L2/d07_gui_watcher.log" || true)"
+    # Never misclassify WATCHER_PROCESS_ENTERED as a failure. Prefer the
+    # first fatal native GPU crash over downstream DDS/Path subscriber loss.
+    FIRST_GUI_ERROR="$(grep -m1 -E '^D07_H01_GUI_FIRST_NATIVE_GZ_RENDER_SIGSEGV_139' "$GUI_L2/d07_gui_watcher.log" || true)"
+    if [[ -z "$FIRST_GUI_ERROR" ]]; then
+      FIRST_GUI_ERROR="$(grep -m1 -E '^D07_H01_GUI_CHILD_TERMINATED_BEFORE_PHASE_COMPLETE|^D07_H01_GUI_(TRANSPORT_TOPIC_PROBE_FAILED|TRANSPORT_WORLD_TOPIC_GATE_FAILED|GPU_TRIAL_SCOPE_DENIED|AFTER_FREE_BASELINE_MARKER_MISSING_NO_GOAL|WATCHER_SPAWN_ACK_UNWRITABLE|WATCHER_EXIT rc=)' "$GUI_L2/d07_gui_watcher.log" || true)"
+    fi
   fi
   if [[ -z "$FIRST_STAGED_FAILURE" && -z "$FIRST_GUI_ERROR" && -s "$GUI_L2/d07_gui_watcher_exit.txt" ]]; then
     FIRST_GUI_ERROR="D07_H01_GUI_WATCHER_EXITED_BEFORE_DDS"

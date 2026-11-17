@@ -1,0 +1,38 @@
+# Public-only Owner contract regression, no private checkout, ROS or Gazebo.
+name: AXIA D07 Cycle27 Owner first native GUI failure and pinned launcher L0
+on:
+  push:
+    branches: [fix/d07-h01-owner-wslg-gz-software-c27-20261117]
+    paths: ['.github/workflows/axia-d07-h01-c27-owner-pinned-l0.yml']
+permissions:
+  contents: read
+jobs:
+  owner-first-native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Original zoKAxNwF first error and software-GL flag
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 - <<'PY'
+          import sys,unittest
+          sys.path.insert(0,'tests')
+          from test_axia_d07_gpu_gui_owner_contract import OwnerGpuTrialContract
+          targets=(
+             'test_owner_zokaxnwf_gazebo_software_and_first_sigsegv_precedes_watcher_entered',
+             'test_owner_scene_runtime_contract_precedes_visual_hold',
+             'test_bootstrap_l0_executes_without_gazebo',
+             'test_gui_gpu_backend_scoped_without_bashrc_global_exports',
+             'test_gpu_trial_failclosed_pre_ros_and_baseline_not_promoted',
+          )
+          r=unittest.TextTestRunner(verbosity=2).run(unittest.TestSuite(OwnerGpuTrialContract(t) for t in targets))
+          if not r.wasSuccessful(): raise SystemExit(2)
+          print('AXIA_D07_C27_OWNER_FIRST_NATIVE_GPU_SOFTWARE_L0_PASS')
+          PY
+          test "$(git hash-object scripts/axia_d07_h01_gpu_gui_owner_wsl2_once.sh)" = b360f5b99449e3220ec8370356ab83205756edb6
+          test "$(git hash-object tests/test_axia_d07_gpu_gui_owner_contract.py)" = e86e2d2b7a8fe818d6a9f1e67b8260a50e2683a9
+          bash -n scripts/axia_d07_h01_gpu_gui_owner_wsl2_once.sh
+          bash scripts/axia_d07_h01_gpu_gui_owner_wsl2_once.sh --self-check
+          echo AXIA_D07_C27_OWNER_PUBLIC_L0_PASS_NO_ROS_NO_GAZEBO_NO_GOAL
