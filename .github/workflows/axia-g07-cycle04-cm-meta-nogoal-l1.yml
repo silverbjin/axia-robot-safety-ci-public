@@ -25,7 +25,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-ci-public
-          ref: 8ac8513c16a3ea1c4de2767e5ff981d7d8718964
+          ref: ebe711ee06643bb654df8947da482f4bc0ff0514
           path: public
           persist-credentials: false
       - name: Immutable previous C03 public source for RED
@@ -35,12 +35,12 @@ jobs:
           ref: 42817767a85be1022a3e11391e8e588bd3b8e814
           path: baseline
           persist-credentials: false
-      - name: RED old public missing bounded metadata adapter then GREEN three exact tests
+      - name: RED old public missing bounded metadata adapter then GREEN four exact tests
         shell: bash
         run: |
           set -Eeuo pipefail
           test "$(git -c safe.directory="$PWD" rev-parse HEAD)" = '0682caeb413c9830107b1a0d297d36597896bed7'
-          test "$(git -C public -c safe.directory="$PWD/public" rev-parse HEAD)" = '8ac8513c16a3ea1c4de2767e5ff981d7d8718964'
+          test "$(git -C public -c safe.directory="$PWD/public" rev-parse HEAD)" = 'ebe711ee06643bb654df8947da482f4bc0ff0514'
           test "$(git -C baseline -c safe.directory="$PWD/baseline" rev-parse HEAD)" = '42817767a85be1022a3e11391e8e588bd3b8e814'
           cp public/d06/tests/test_g07_cycle04_cm_metadata_audit.py baseline/d06/tests/
           if (cd baseline && PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
@@ -59,7 +59,7 @@ jobs:
              -s d06/tests -p 'test_g07_cycle04_cm_metadata_audit.py' -v)
           python3 -m py_compile public/d06/live/g07_cycle04_cm_metadata_audit.py \
              public/d06/live/g07_cycle31_cm_topic_callback_identity.py
-          echo AXIA_G07_C04_GREEN_3_OF_3_NO_ROS_NO_GOAL
+          echo AXIA_G07_C04_GREEN_4_OF_4_NO_ROS_NO_GOAL
       - name: Bounded official Nav2/Gazebo no-Goal startup with METADATA ONLY trace
         shell: bash
         env:
