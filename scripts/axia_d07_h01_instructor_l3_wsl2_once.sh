@@ -4,7 +4,7 @@
 # new ROS node, moving Goal, cmd_vel, certified E-Stop, or safety-TTL change.
 set -Eeuo pipefail
 umask 077
-PIN="d1a453d42929bbdc423505adf1b9dd76ad7f5b2b"
+PIN="6a3047b5aa219687f5fc918e467cea5115d3d482"
 REPO="https://github.com/silverbjin/axia-robot-safety-student.git"
 MODE="${1:---run}"
 
