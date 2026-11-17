@@ -61,3 +61,32 @@ AXIA_MVP_DEMO_ACCEPTED=HOLD
 MAIN_MERGED=false
 CERTIFIED_ESTOP=false
 ```
+
+## 6. 실제 Gazebo L2 NO_GOAL verdict 및 단일 신규 Moving 진단
+
+- [공개 official Gazebo/Harmonic NO_GOAL L2 Run #44072394317](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44072394317): workflow SHA `ee0cdd74c32b71ca5de53c6b0b1d33313c479306`, public diagnostic source pin `5a067af927a06be6d08d62994fcb578d8a571404`, private original Instructor SHA `966886c4627deb2bb3b37111fe336eeee6b9ebb4`. **completed/success**.
+- 실제 stdout:
+
+```text
+AXIA_G07_TASK01_NO_GOAL_REAL_TF_AVAILABILITY {"exact_same_call_availability_rows":589,"goal_sent":false,"initial_unavailable_later_available_count":478,"max_nonblocking_probe_elapsed_ms":0.460882,"official_tf_calls":589,"release_pass":false,"root_cause_proven":false,"same_first_moving_source_gap":false,"scheduler_runqueue_proven":false,"total_availability_rows":589}
+AXIA_G07_TASK01_ORIGINAL_CM_TF_ZERO_TIMEOUT_READBACK_PASS_NO_GOAL
+AXIA_G07_S2_REAL_NO_GOAL_CM_TF_READINESS {"actual_tf_call_count":589,"goal_sent":false,"localization_shutdown_status":"NAV2_LIFECYCLE_SHUTDOWN_ACK","navigation_ack":true,"localization_ack":true,"runner_rc":0,"tf_nanosleep_calls_total":511,"tf_actual_sleep_wall_ms_total":5175.867731,"root_cause_proven":false,"release_pass":false}
+```
+
+- **검증된 사실:** 실제 공식 CM의 동일 source/target/time/fixed-frame TF 요청의 nonblocking 0ms 가용성이 589 호출에 대해 원본 Advanced TF 직전·직후에 검증됐으며, 그 중 478회에서 **처음 false→끝 true**. 추가 probe 최대 오버헤드 0.461ms. 기존 native shutdown ACK 및 NO_GOAL 준비 절차도 모두 통과했다.
+- **아직 미증명:** 최초 *Moving* publisher RMW source>120ms와 정확한 동일 TF 호출/비차단 가용성의 인과, TF Buffer 내부 Clock 진행량, kernel runnable latency, Guard/센서 타이밍의 다른 계층. NO_GOAL 성공으로 Task02 변경 권한을 부여할 수 없다.
+- **사용자 승인 범위 내 새로운 증거 목적의 딱 한 번 Moving 진단**: 공개 릴리스 lane `.github/workflows/axia-g07-task01-tf-availability-one-goal-l2-20261117.yml` commit `c3f50090350ac0084bced778d0df2d72c08e663c`의 [Run #44073078458](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44073078458). 기존 original one Goal / same private source / existing lifecycle·bag·contact·timing evidence를 재사용하며 **추가 옵션은 read-only `AXIA_G07_TASK01_TF_AVAIL_PROBE=1`**, 새로운 0ms TF 읽기만 한다. 첫 RMW source gap이 나타나면 동일 TF call 전후 availability와 TF sleep을 공개 sanitized JSON의 숫자만으로 연결하고 SHA256 보존. 원본 Instructor/raw trace를 공개하지 않음. 첫 gap이 미재현이면 그 자체를 HOLD로 보존; 동일 코드로 추가 Goal 반복 금지.
+- 본 보고서 작성 시 이 Moving 진단은 **PENDING**. PASS, 원인 제거, tracer-OFF release, Owner L3 인수로 승격하지 않음.
+
+```text
+AXIA_G07_TASK01_REAL_NO_GOAL_TF_AVAILABILITY=PASS_44072394317
+AXIA_G07_TASK01_NO_GOAL_TF_ENTRY_FALSE_EXIT_TRUE_COUNT=478
+AXIA_G07_TASK01_REAL_SINGLE_MOVING_FIRST_GAP=VERIFY_RUN_44073078458
+AXIA_G07_TASK01_ROOT_CAUSE=UNPROVEN
+AXIA_G07_TASK02=BLOCKED
+AXIA_G07_TASK03_TRACER_OFF=NOT_RUN
+AXIA_G07_TASK04_OWNER_WSL2=NOT_RUN
+AXIA_MVP_DEMO_ACCEPTED=HOLD
+MAIN_MERGED=false
+CERTIFIED_ESTOP=false
+```
