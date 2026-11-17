@@ -1,0 +1,33 @@
+name: AXIA G07 Task01 ROS clock progression in same first CM observer window L0
+on:
+  push:
+    branches: ['fix/g07-cm120-task01-clock-firstgap-causality-20261117']
+    paths:
+      - '.github/workflows/axia-g07-task01-ros-clock-firstgap-l0-20261117.yml'
+      - 'd06/diagnostic/firstgap_clock_progress.py'
+      - 'd06/tests/test_g07_task01_first_gap_clock_probe.py'
+      - 'd06/tests/test_g07_task01_clock_probe_public_export.py'
+      - 'd06/diagnostic/export_public_cm120_first_gap.py'
+      - 'd06/diagnostic/g07_clock_probe_ros.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  same-run-clock-sanitization:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Clock probe RED/GREEN, no ROS runtime or Goal
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s d06/tests \
+            -p 'test_g07_task01_first_gap_clock_probe.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s d06/tests \
+            -p 'test_g07_task01_clock_probe_public_export.py' -v
+          python3 -m py_compile d06/diagnostic/firstgap_clock_progress.py \
+            d06/diagnostic/export_public_cm120_first_gap.py \
+            d06/diagnostic/g07_clock_probe_ros.py
+          python3 d06/diagnostic/g07_clock_probe_ros.py --help >/dev/null
+          echo AXIA_G07_TASK01_SAME_OBSERVER_CLOCK_PROGRESS_L0_GREEN_NO_GOAL

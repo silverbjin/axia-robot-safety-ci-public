@@ -1,0 +1,60 @@
+{
+  "schema": "axia.g07.task01.public_native_firstgap_tf_budget_summary_v1",
+  "run_id": "44101521543",
+  "public_diagnostic_sha": "02ad6c63f3c16ee8e0526e6f176db92e5639d84a",
+  "public_student_runtime_sha": "6a3047b5aa219687f5fc918e467cea5115d3d482",
+  "original_public_artifact_id": 14335962966,
+  "original_sanitized_sha256": "b71afac1ad0a8615f4d407745956aca53089814eb338d755a32ddbecc75a2c36",
+  "original_sanitized_bytes": 8693,
+  "original_zip_sha256": "360c753b1c2655a98b7b39146afa4283e0fc32217423bdcd8a078d0b2a567518",
+  "same_observer_first_source_gap": {
+    "rmw_source_gap_ns": 132917326,
+    "observer_gap_ns": 131903275,
+    "source_sequence_consecutive_observed": true,
+    "rmw_to_received_latencies_ns": [
+      385532,
+      133433
+    ],
+    "received_to_observer_anchor_projected_ns": [
+      7328706,
+      6566754
+    ],
+    "wall_minus_monotonic_anchor_delta_ns": 30
+  },
+  "native_cm_tf_call_within_first_observer_pair": {
+    "total_nearby_same_native_thread_calls": 10,
+    "wholly_inside_first_observer_pair_count": 1,
+    "start_rel_observer_ns": 2371825,
+    "end_rel_observer_ns": 124985671,
+    "original_tf_wall_ns": 122613846,
+    "thread_cpu_ns": 961205,
+    "sleep_count": 12,
+    "sleep_request_ns": 120000000,
+    "sleep_wall_ns": 121830939,
+    "complete_sleep_coverage": true,
+    "tf_available_before_call": false,
+    "tf_available_after_call": true,
+    "nonrequested_wall_upper_bound_ns": 2613846,
+    "request_fraction_of_tf_wall": 0.978682,
+    "request_fraction_of_first_rmw_source_gap": 0.902817
+  },
+  "conditional_same_host_epoch_projection": {
+    "source_second_rel_first_observer_ns_if_same_host_realtime_mapping": 125203088,
+    "source_second_minus_tf_end_ns_if_same_host_realtime_mapping": 217417,
+    "clock_epoch_alignment_proven": false,
+    "rmw_sender_epoch_validated_against_local_mono": false
+  },
+  "verdict": {
+    "status": "NATIVE_TF_120MS_POLLING_IN_FIRST_CM_OBSERVER_PAIR_PROVEN_PUBLISHER_CAUSALITY_HOLD",
+    "same_native_cm_tf_call_and_sleep_coverage_proven": true,
+    "tf_transform_unavailable_at_entry_proven": true,
+    "tf_transform_available_at_exit_observed": true,
+    "scheduler_runqueue_wait_proven": false,
+    "tf_internal_clock_proven": false,
+    "publisher_source_causality_proven": false,
+    "root_cause_proven": false,
+    "cm120_tracer_off_release_pass": false,
+    "owner_wsl2_l3_accepted": false,
+    "certified_estop": false
+  }
+}

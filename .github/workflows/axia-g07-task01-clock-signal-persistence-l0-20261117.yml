@@ -1,0 +1,58 @@
+name: AXIA G07 Task01 real Jazzy rclpy clock subscriber SIGTERM file persistence L0
+on:
+  push:
+    branches: ['fix/g07-cm120-task01-clock-firstgap-causality-20261117']
+    paths:
+      - '.github/workflows/axia-g07-task01-clock-signal-persistence-l0-20261117.yml'
+      - 'd06/diagnostic/g07_clock_probe_ros.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  reproduce-no-goal-clock-file-missing:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Real Jazzy rclpy init SIGTERM create file (no Gazebo, no Goal)
+        shell: bash
+        env:
+          ROS_DOMAIN_ID: '96'
+          ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+        run: |
+          set -Eeuo pipefail
+          set +u; source /opt/ros/jazzy/setup.bash; set -u
+          OUTPUT=/tmp/axia_g07_task01_clock_termination.jsonl
+          LOG=/tmp/axia_g07_task01_clock_termination.log
+          rm -f -- "$OUTPUT" "$LOG"
+          python3 d06/diagnostic/g07_clock_probe_ros.py --out "$OUTPUT" \
+            --max-duration-sec 45 >"$LOG" 2>&1 &
+          PID=$!
+          sleep 3
+          if ! kill -0 "$PID" 2>/dev/null; then
+            echo AXIA_G07_TASK01_REAL_JAZZY_CLOCK_PROBE_DIED_BEFORE_TERM
+            grep -E '^ModuleNotFoundError:|^ImportError:|^rclpy\.|^Traceback' "$LOG" | head -n 5 || true
+            exit 3
+          fi
+          kill -TERM "$PID"
+          set +e; wait "$PID"; RC=$?; set -e
+          if [[ ! -f "$OUTPUT" ]]; then
+            echo "AXIA_G07_TASK01_REAL_JAZZY_CLOCK_SIGTERM_FILE_MISSING_RED child_rc=$RC"
+            grep -E '^ModuleNotFoundError:|^ImportError:|^rclpy\.|^Traceback' "$LOG" | head -n 5 || true
+            exit 3
+          fi
+          if [[ "$RC" -ne 0 ]]; then
+            echo "AXIA_G07_TASK01_REAL_JAZZY_CLOCK_SIGTERM_CHILD_EXIT_NONZERO_HOLD rc=$RC"
+            exit 3
+          fi
+          python3 - "$OUTPUT" <<'PY'
+          import json,sys
+          from pathlib import Path
+          rows=[json.loads(v) for v in Path(sys.argv[1]).read_text().splitlines()]
+          assert all(type(v.get('mono_ns')) is int and type(v.get('sim_ns')) is int
+                     and len(v)==2 for v in rows)
+          print('AXIA_G07_TASK01_CLOCK_JAZZY_SIGTERM_FILE_PERSISTENCE_L0_GREEN_NO_GOAL')
+          PY
+          rm -f -- "$OUTPUT" "$LOG"

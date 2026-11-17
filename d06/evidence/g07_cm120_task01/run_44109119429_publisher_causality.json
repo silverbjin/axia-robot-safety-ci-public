@@ -1,0 +1,55 @@
+{
+  "schema": "axia.g07.task01.real_publisher_causality_v1",
+  "run_id": "44109119429",
+  "original_artifact_id": 14339398674,
+  "original_sanitized_bytes": 9972,
+  "original_sanitized_sha256": "383ce756a50e136eaeb2eab83e8c10d174f280bbbe2c43f4075d754df380f3bd",
+  "original_public_zip_sha256": "f12edca803bcc3eb5377ff4b856afabf901cbbf588afd3c680b75b02f4e18c9f",
+  "source": {
+    "public_ci_diagnostic_sha": "28c5e41e3c13be3df7bd6bc83579a85a32a41927",
+    "public_student_runtime_sha": "6a3047b5aa219687f5fc918e467cea5115d3d482",
+    "configured_use_composition": false,
+    "official_cm_main": "ros-navigation/navigation2 jazzy nav2_collision_monitor/src/collision_monitor_main.cpp rclcpp::spin",
+    "official_rmw_stamp_contract": "ros2/rmw_fastrtps jazzy rmw_fastrtps_shared_cpp/src/rmw_publish.cpp Time_t::now then rmw_publish tracepoint stamp.to_ns then write_w_timestamp with same stamp",
+    "all_execution_public": true
+  },
+  "same_run_exact_publisher_tf_join": {
+    "status": "CM_SOURCE_TF_POLLING_NATIVE_PUBLISH_JOIN_PROVEN_SCOPED",
+    "rmw_publisher_source_timestamp_pair_exact": true,
+    "same_cm_input_callback_tf_publisher": true,
+    "source_clock_epoch_calibrated": true,
+    "source_gap_ns": 172590315,
+    "observer_gap_ns": 173162403,
+    "native_rmw_publish_gap_ns": 172591647,
+    "native_source_max_clock_error_ns": 3295,
+    "tf_call_wall_ns": 122282121,
+    "tf_sleep_requests_ns": 120000000,
+    "tf_sleep_count": 12,
+    "tf_sleep_wall_ns": 121275953,
+    "tf_thread_cpu_ns": 1145286,
+    "tf_call_sleep_coverage_complete": true,
+    "tf_available_before": false,
+    "tf_available_after": true,
+    "tf_end_to_second_native_publish_ns": 161663,
+    "tf_start_after_first_native_publish_ns": 50147863,
+    "tf_sleep_fraction_of_first_native_source_gap": 0.695288,
+    "rmw_source_and_native_pub_intervals_exact_match_within_ns": 1332
+  },
+  "first_guard_latch": {
+    "reason": "UPSTREAM_STALE_AFTER_MOTION",
+    "cm_age_ns": 156944056,
+    "hard_ttl_ns": 150000000,
+    "exact_pair_overlap_proven": false,
+    "observation": "same simulation run, Guard transitions to latched safety stop; exact source seq-to-Guard event time join not exported"
+  },
+  "verdict": {
+    "task01_selected_cm_publisher_gap_tf_polling_cause_proven": true,
+    "task01_remaining_source_gap_contributors_unknown": true,
+    "scheduler_runqueue_wait_proven": false,
+    "cm120_tracer_off_release_pass": false,
+    "owner_wsl2_l3_accepted": false,
+    "certified_estop": false,
+    "moving_goal_runner_rc": 2,
+    "main_merged": false
+  }
+}

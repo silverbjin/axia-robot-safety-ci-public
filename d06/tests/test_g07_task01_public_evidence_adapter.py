@@ -50,5 +50,121 @@ class TestPublicEvidenceAdapter(unittest.TestCase):
                     run_id="bogus",public_sha=SHA)
             self.assertFalse((root/"out.json").exists())
 
+    def test_trace_failure_preserves_only_numeric_first_source_gap(self):
+        # A genuine observer RMW source pair must not be discarded merely
+        # because a separate LTTng/bt2 owner link cannot be decoded.
+        # No PID, pose, raw ROS or TF line is allowed in the fallback.
+        from unittest.mock import patch
+        from d06.tests.test_g07_cm120_tf_first_gap_join import observer,anchor
+        from d06.diagnostic.export_public_cm120_first_gap import READY
+        with tempfile.TemporaryDirectory() as t:
+            r=Path(t)
+            (r/"trace").mkdir()
+            (r/"anchors").mkdir()
+            (r/"events").write_text("".join(
+                json.dumps(x)+"\n" for x in observer()),encoding="utf-8")
+            (r/"tf").write_text(READY+"\n",encoding="utf-8")
+            (r/"anchors/start_anchor.json").write_text(
+                json.dumps(anchor()["start"]))
+            (r/"anchors/end_anchor.json").write_text(
+                json.dumps(anchor()["end"]))
+            with patch("d06.scripts.g07_task01_extract_public_gap.exact_trace_rows",
+                       side_effect=ValueError("sensitive RAW event text")):
+                status,p=extract(events=r/"events",trace_dir=r/"trace",
+                    tf_file=r/"tf",anchors_dir=r/"anchors",
+                    out=r/"safe"/"first_gap_sanitized.json",
+                    run_id="44040000001",public_sha=SHA)
+            d=json.loads(p.read_text())
+            self.assertEqual(status,"PUBLIC_EVIDENCE_EXTRACTION_UNVERIFIED_HOLD")
+            self.assertEqual(d["failure_stage"],"NATIVE_LTTNG_CALLBACK_ROWS")
+            self.assertEqual(d["first_gap"]["rmw_source_gap_ns"],132000000)
+            self.assertEqual(d["first_gap"]["observer_gap_ns"],132000000)
+            self.assertFalse(d["source_publication_to_monotonic_alignment_proven"])
+            self.assertFalse(d["root_cause_proven"])
+            self.assertNotIn("sensitive RAW",p.read_text())
+            self.assertNotIn("pose",p.read_text().lower())
+            self.assertLess(p.stat().st_size,1024)
+
+    def test_bounded_exact_first_gap_filters_faraway_clock_rows_without_faking_cause(self):
+        # An entire 2-minute native TF diagnostics file can have >20k
+        # CLOCK rows while only a few calls match the FIRST CM pair.
+        # Preserve the exact first pair, keep PID/TID verification, and
+        # discard unrelated time spans BEFORE applying the 20k line budget.
+        from unittest.mock import patch
+        from d06.tests.test_g07_cm120_tf_first_gap_join import (
+            READY, observer, trace, anchor, line)
+        with tempfile.TemporaryDirectory() as t:
+            root=Path(t)
+            (root/"trace").mkdir()
+            (root/"anchors").mkdir()
+            (root/"events").write_text("".join(json.dumps(x)+"\n"
+                                      for x in observer()),encoding="utf-8")
+            far=("TF_CLOCK pid=4242 tid=33 mono_ns=10000000000 "
+                 "ros_ns=10000000000 clock_type=1 override_active=1\n")
+            (root/"tf").write_text(READY+"\n"+far*20001+
+                line(12.014,12.105,cpu=.0003)+"\n",encoding="utf-8")
+            (root/"anchors/start_anchor.json").write_text(json.dumps(anchor()["start"]))
+            (root/"anchors/end_anchor.json").write_text(json.dumps(anchor()["end"]))
+            with patch("d06.scripts.g07_task01_extract_public_gap.exact_trace_rows",
+                       return_value=trace()):
+                status,p=extract(events=root/"events",trace_dir=root/"trace",
+                                 tf_file=root/"tf",anchors_dir=root/"anchors",
+                                 out=root/"safe"/"first_gap_sanitized.json",
+                                 run_id="44040000001",public_sha=SHA)
+            doc=json.loads(p.read_text())
+            self.assertEqual(status,"FIRST_RMW_SOURCE_GAP_SELECTED_CAUSE_UNPROVEN")
+            self.assertEqual(doc["first_gap"]["rmw_source_gap_ns"],132000000)
+            self.assertEqual(doc["tf_calls"]["count"],1)
+            self.assertFalse(doc["root_cause_proven"])
+            self.assertFalse(doc["gate_c_authorized"])
+            self.assertFalse(doc["cm120_release_pass"])
+            self.assertLess(p.stat().st_size,32768)
+
+    def test_exact_join_exception_yields_fixed_safe_code_and_rmw_gap(self):
+        # A genuine first publisher gap can be present even when the exact
+        # call/sleep exporter rejects too many spans or clock-anchor drift.
+        # The next experiment must distinguish these *fixed internal* errors,
+        # never leak exception text, filenames, PID, or original ROS events.
+        from unittest.mock import patch
+        from d06.tests.test_g07_cm120_tf_first_gap_join import (
+            observer, trace, anchor, line, READY)
+        with tempfile.TemporaryDirectory() as t:
+            root=Path(t)
+            (root/"trace").mkdir()
+            (root/"anchors").mkdir()
+            (root/"events").write_text("".join(json.dumps(x)+"\n" for x in observer()))
+            (root/"tf").write_text(READY+"\n"+line(12.014,12.105,cpu=.0003)+"\n")
+            for name, data in anchor().items():
+                (root/"anchors"/(name+"_anchor.json")).write_text(json.dumps(data))
+            cases=[
+                ("PUBLIC_TIMING_SPAN_LIMIT_EXCEEDED",
+                 "PUBLIC_TIMING_SPAN_LIMIT_EXCEEDED"),
+                ("PUBLIC_CLOCK_ANCHOR_DRIFT_INVALID",
+                 "PUBLIC_CLOCK_ANCHOR_DRIFT_INVALID"),
+                ("PRIVATE_SECRET=/tmp/raw_owner_pid_9999",
+                 "UNCLASSIFIED_PUBLIC_EXPORT_ERROR"),
+            ]
+            for i, (raised, safe_code) in enumerate(cases):
+                with self.subTest(safe_code=safe_code):
+                    with patch("d06.scripts.g07_task01_extract_public_gap.exact_trace_rows",
+                               return_value=trace()):
+                        with patch("d06.scripts.g07_task01_extract_public_gap.export_sanitized",
+                                   side_effect=ValueError(raised)):
+                            status,p=extract(events=root/"events",
+                                trace_dir=root/"trace",tf_file=root/"tf",
+                                anchors_dir=root/"anchors",
+                                out=root/"safe"/("result_"+str(i)+".json"),
+                                run_id="44040000001",public_sha=SHA)
+                    d=json.loads(p.read_text())
+                    self.assertEqual(status,"PUBLIC_EVIDENCE_EXTRACTION_UNVERIFIED_HOLD")
+                    self.assertEqual(d["failure_stage"],"EXACT_SOURCE_TF_ALLOWLIST_JOIN")
+                    self.assertEqual(d["failure_code"],safe_code)
+                    self.assertEqual(d["first_gap"]["rmw_source_gap_ns"],132000000)
+                    self.assertFalse(d["root_cause_proven"])
+                    self.assertFalse(d["cm120_release_pass"])
+                    self.assertNotIn("PRIVATE_SECRET",p.read_text())
+                    self.assertNotIn("raw_owner_pid",p.read_text())
+                    self.assertLess(p.stat().st_size,1024)
+
 if __name__=="__main__":
     unittest.main()

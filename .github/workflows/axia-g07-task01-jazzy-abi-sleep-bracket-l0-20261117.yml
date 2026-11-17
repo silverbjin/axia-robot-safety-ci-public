@@ -1,7 +1,7 @@
 name: AXIA G07 Task01 official Jazzy Advanced TF ABI and real C++ sleep L0 NO GOAL
 on:
   push:
-    branches: ['fix/g07-cm120-task01-autopilot-preacceptance-20261117']
+    branches: ['fix/g07-cm120-task01-clock-firstgap-causality-20261117']
     paths:
       - '.github/workflows/axia-g07-task01-jazzy-abi-sleep-bracket-l0-20261117.yml'
       - 'd06/diagnostic/cm_tf_gettransform_preload.cpp'
@@ -40,6 +40,7 @@ jobs:
           SO=/tmp/axia_task01_sleep_abi/libaxia_g07_cm120_tf_diag.so
           test -s "$SO"
           nm -D -C "$SO" | grep -F 'nav2_util::getTransform(' | grep -F 'tf2::Transform&'
+          nm -D "$SO" | grep -F ' rcl_clock_get_now'
           env LD_PRELOAD="$SO" AXIA_TASK01_ABI_SO="$SO" python3 - <<'PY'
           import ctypes,glob,os
           libs=[ctypes.CDLL(p,mode=ctypes.RTLD_GLOBAL)
@@ -47,11 +48,21 @@ jobs:
           assert libs, 'JAZZY_NAV2_UTIL_ABI_MISSING_NO_GOAL'
           h=ctypes.CDLL(os.environ['AXIA_TASK01_ABI_SO'])
           for symbol in ('axia_cm120_original_transform_linkage_selftest',
-                         'axia_g07_s2_sleep_interposition_selftest'):
+                         'axia_g07_s2_sleep_interposition_selftest',
+                         'axia_g07_task01_clock_get_now_abi_selftest',
+                         'axia_g07_task01_real_rclcpp_clock_dispatch_selftest',
+                         'axia_g07_task01_cpp_clock_dispatch_selftest',
+                         'axia_g07_task01_official_buffer_clock_dispatch_selftest',
+                         'axia_g07_task01_zero_timeout_tf_availability_abi_selftest'):
               fun=getattr(h,symbol)
               fun.restype=ctypes.c_int
               assert fun()==1,symbol
           print('AXIA_G07_TASK01_ORIGINAL_JAZZY_ADVANCED_TF_ABI_AND_SLEEP_SELFTEST_PASS_NO_GOAL')
+          print('AXIA_G07_TASK01_GENUINE_RCL_CLOCK_GET_NOW_ABI_SELFTEST_PASS_NO_GOAL')
+          print('AXIA_G07_TASK01_OFFICIAL_RCLCPP_CLOCK_DSO_DISPATCH_PASS_NO_GOAL')
+          print('AXIA_G07_TASK01_CPP_CLOCK_SYMBOL_INTERPOSITION_PASS_NO_GOAL')
+          print('AXIA_G07_TASK01_OFFICIAL_TF2_BUFFER_CROSS_DSO_CLOCK_DISPATCH_PASS_NO_GOAL')
+          print('AXIA_G07_TASK01_OFFICIAL_TF2_BUFFER_ZERO_TIMEOUT_READINESS_ABI_PASS_NO_GOAL')
           PY
       - name: Remove diagnostic ELF, do not modify installed ROS
         if: always()
