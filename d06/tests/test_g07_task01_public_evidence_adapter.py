@@ -85,5 +85,40 @@ class TestPublicEvidenceAdapter(unittest.TestCase):
             self.assertNotIn("pose",p.read_text().lower())
             self.assertLess(p.stat().st_size,1024)
 
+    def test_bounded_exact_first_gap_filters_faraway_clock_rows_without_faking_cause(self):
+        # An entire 2-minute native TF diagnostics file can have >20k
+        # CLOCK rows while only a few calls match the FIRST CM pair.
+        # Preserve the exact first pair, keep PID/TID verification, and
+        # discard unrelated time spans BEFORE applying the 20k line budget.
+        from unittest.mock import patch
+        from d06.tests.test_g07_cm120_tf_first_gap_join import (
+            READY, observer, trace, anchor, line)
+        with tempfile.TemporaryDirectory() as t:
+            root=Path(t)
+            (root/"trace").mkdir()
+            (root/"anchors").mkdir()
+            (root/"events").write_text("".join(json.dumps(x)+"\\n"
+                                      for x in observer()),encoding="utf-8")
+            far=("TF_CLOCK pid=4242 tid=33 mono_ns=10000000000 "
+                 "ros_ns=10000000000 clock_type=1 override_active=1\\n")
+            (root/"tf").write_text(READY+"\\n"+far*20001+
+                line(12.014,12.105,cpu=.0003)+"\\n",encoding="utf-8")
+            (root/"anchors/start_anchor.json").write_text(json.dumps(anchor()["start"]))
+            (root/"anchors/end_anchor.json").write_text(json.dumps(anchor()["end"]))
+            with patch("d06.scripts.g07_task01_extract_public_gap.exact_trace_rows",
+                       return_value=trace()):
+                status,p=extract(events=root/"events",trace_dir=root/"trace",
+                                 tf_file=root/"tf",anchors_dir=root/"anchors",
+                                 out=root/"safe"/"first_gap_sanitized.json",
+                                 run_id="44040000001",public_sha=SHA)
+            doc=json.loads(p.read_text())
+            self.assertEqual(status,"FIRST_RMW_SOURCE_GAP_SELECTED_CAUSE_UNPROVEN")
+            self.assertEqual(doc["first_gap"]["rmw_source_gap_ns"],132000000)
+            self.assertEqual(doc["tf_calls"]["count"],1)
+            self.assertFalse(doc["root_cause_proven"])
+            self.assertFalse(doc["gate_c_authorized"])
+            self.assertFalse(doc["cm120_release_pass"])
+            self.assertLess(p.stat().st_size,32768)
+
 if __name__=="__main__":
     unittest.main()
