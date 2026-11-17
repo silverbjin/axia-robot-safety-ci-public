@@ -23,6 +23,7 @@ sys.path.insert(0,str(ROOT/'d08/harness'))
 from d04_waffle_pi_rgb_preflight import _start,_stop_all,sync_ros_discovery_environment
 from d08_live_world import build_overlay,RGB_TOPIC,DEPTH_TOPIC
 from d08_live_readonly_probe import select_pair
+from d08_runtime_provenance import make_runtime_provenance
 from p2_contact_discovery import resolve_g07_contact_topic
 from d08_contact_positive_contract import count_nonrobot_positive_contacts
 
@@ -472,6 +473,17 @@ def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=Fals
             parsed=ET.parse(dest)
             if parsed.getroot().tag!='sdf':
                 raise RuntimeError('D08_XACRO_OUTPUT_IS_NOT_SDF')
+        # Task00: pin the generated *actual* world and CI source in this
+        # run before starting Gazebo; not a claim of live ROS/CM/Nav2 proof.
+        sha_cp=subprocess.run(
+            ['git','-C',str(ROOT),'rev-parse','HEAD'],
+            capture_output=True,text=True,timeout=8,check=False)
+        if sha_cp.returncode!=0:
+            raise RuntimeError('D08_GIT_SOURCE_SHA_NOT_AVAILABLE')
+        result['runtime_provenance']=make_runtime_provenance(
+            gz_world,env,sha_cp.stdout.strip())
+        (out/'runtime_provenance.json').write_text(json.dumps(
+            result['runtime_provenance'],indent=2,sort_keys=True)+'\\n')
         sim=_start('gazebo_server',
           ['xvfb-run','-a','-s','-screen 0 1280x720x24',
            'gz','sim','-r','-s','-v3',str(gz_world)],
