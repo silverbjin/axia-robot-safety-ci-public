@@ -135,6 +135,14 @@ def analyze(observer,trace,tf_lines,anchors):
                            for t in intervals) for x in local_sleeps):
                 return hold("TF_SLEEP_SPAN_CROSS_BOUNDARY_HOLD")
             local_sleeps.sort(key=lambda x:x[2])
+            expected_sleep_calls=[t[6].get("tf_function_sleep_calls")
+                for t in intervals if isinstance(t[6],dict)
+                and "tf_function_sleep_calls" in t[6]]
+            expected_sleep_total=(sum(expected_sleep_calls)
+                if len(expected_sleep_calls)==len(intervals) else None)
+            if (sleep_spans and expected_sleep_total is not None
+                and len(local_sleeps)!=expected_sleep_total):
+                return hold("TF_SLEEP_EVENT_COVERAGE_INCOMPLETE_HOLD")
             if any(right[2]<left[3] for left,right in
                    zip(local_sleeps,local_sleeps[1:])):
                 return hold("TF_SLEEP_SPANS_OVERLAP_HOLD")
@@ -161,6 +169,9 @@ def analyze(observer,trace,tf_lines,anchors):
                     # never proof of sleep in RMW publisher source gap.
                     tf_sleep_in_source_gap_proven=False,
                     tf_sleep_event_count=len(local_sleeps),
+                    tf_sleep_event_coverage_complete=(
+                        bool(sleep_spans) and expected_sleep_total is not None
+                        and len(local_sleeps)==expected_sleep_total),
                     tf_sleep_nominal_observer_overlap_ms=sleep_observer_overlap*1000,
                     tf_sleep_event_wall_ms_total=sum(x[3]-x[2]
                                                      for x in local_sleeps)*1000,
@@ -206,6 +217,7 @@ def analyze(observer,trace,tf_lines,anchors):
         cpu_vs_wall_difference_ms=round(max(0,tf-cpu),6),
         matched_tf_calls=selected["matched_tf_calls"],
         tf_sleep_event_count=selected["tf_sleep_event_count"],
+        tf_sleep_event_coverage_complete=selected["tf_sleep_event_coverage_complete"],
         tf_sleep_nominal_observer_overlap_ms=round(
             selected["tf_sleep_nominal_observer_overlap_ms"],6),
         tf_sleep_event_wall_ms_total=round(
