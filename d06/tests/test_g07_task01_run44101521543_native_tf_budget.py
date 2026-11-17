@@ -68,7 +68,7 @@ class RealFirstGapNativeTfBudget(unittest.TestCase):
                          217417)
         self.assertIs(p["clock_epoch_alignment_proven"],False)
         self.assertIs(p["rmw_sender_epoch_validated_against_local_mono"],False)
-        self.assertIn("SOURCE_CLOCK_CAUSALITY_HOLD",v["verdict"]["status"])
+        self.assertIn("PUBLISHER_CAUSALITY_HOLD",v["verdict"]["status"])
 
 
 if __name__=="__main__":
