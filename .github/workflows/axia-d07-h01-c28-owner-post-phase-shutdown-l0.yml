@@ -1,0 +1,35 @@
+# Cycle28 real Owner S75hTDrR 3-phase PASS followed by GUI SIGINT and delayed child shutdown.
+# RED→GREEN: no ROS, no Gazebo, no moving Goal. Sealed source SHA exact.
+name: AXIA D07 Cycle28 Owner post-phase GUI and child shutdown L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-d07-h01-c28-owner-post-phase-shutdown-l0.yml']
+permissions:
+  contents: read
+jobs:
+  real-owner-fixture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    environment: axia-instructor-sealed
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: d00800e4bd4884ae5b8e4424da3266e178ec8efe
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          path: instructor
+          persist-credentials: false
+      - name: Verify exact owner fixture source and RED contract
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C instructor rev-parse HEAD)" = d00800e4bd4884ae5b8e4424da3266e178ec8efe
+          cd instructor
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_owner_s75_shutdown_regression.py -v
+          bash -n scripts/p2_no_goal_smoke_ci.sh
+          bash -n tools/d07_h01_gpu_gui_watcher.sh
+          echo AXIA_D07_C28_OWNER_POST_PHASE_CLEAN_SHUTDOWN_L0_PASS
+      - name: No private source persisted
+        if: always()
+        run: rm -rf instructor
