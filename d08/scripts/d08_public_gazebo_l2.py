@@ -483,7 +483,7 @@ def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=Fals
         result['runtime_provenance']=make_runtime_provenance(
             gz_world,env,sha_cp.stdout.strip())
         (out/'runtime_provenance.json').write_text(json.dumps(
-            result['runtime_provenance'],indent=2,sort_keys=True)+'\\n')
+            result['runtime_provenance'],indent=2,sort_keys=True)+'\n')
         sim=_start('gazebo_server',
           ['xvfb-run','-a','-s','-screen 0 1280x720x24',
            'gz','sim','-r','-s','-v3',str(gz_world)],
