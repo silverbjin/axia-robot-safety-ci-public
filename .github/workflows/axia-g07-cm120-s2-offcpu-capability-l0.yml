@@ -4,10 +4,7 @@ on:
     branches: ['fix/g07-cm120-s2-offcpu-provenance-20261117']
     paths:
       - '.github/workflows/axia-g07-cm120-s2-offcpu-capability-l0.yml'
-      - 'd06/diagnostic/classify_tf_non_cpu.py'
-      - 'd06/diagnostic/cm_tf_gettransform_preload.cpp'
-      - 'd06/diagnostic/analyze_first_cm_tf.py'
-      - 'd06/tests/test_g07_cm120_s2*'
+
   workflow_dispatch:
 permissions:
   contents: read
@@ -40,6 +37,7 @@ jobs:
           export PYTHONDONTWRITEBYTECODE=1
           python3 -m unittest discover -s d06/tests -p 'test_g07_cm120_s2_offcpu_classification.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_g07_cm120_s2_exact_tf_offcpu_join.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_g07_cm120_s2_actual_sleep_provenance.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_g07_cm120_tf_first_gap_join.py' -v
           python3 -m py_compile d06/diagnostic/classify_tf_non_cpu.py d06/diagnostic/analyze_first_cm_tf.py
           echo AXIA_G07_S2_OFFCPU_PURE_GREEN5_4_PLUS_S1_3_NO_ROS_NO_GOAL
@@ -63,6 +61,9 @@ jobs:
           shim=ctypes.CDLL(os.environ['AXIA_G07_CM120_LIB'])
           shim.axia_cm120_original_transform_linkage_selftest.restype=ctypes.c_int
           assert shim.axia_cm120_original_transform_linkage_selftest()==1
+          shim.axia_g07_s2_sleep_interposition_selftest.restype=ctypes.c_int
+          assert shim.axia_g07_s2_sleep_interposition_selftest()==1, 'S2_SLEEP_FOR_LIBC_INTERPOSITION_UNVERIFIED_NO_GOAL'
+          print('AXIA_G07_S2_REAL_CXX_SLEEP_FOR_INTERPOSITION_L0_GREEN_NO_GOAL')
           print('AXIA_G07_S2_OFFICIAL_ADVANCED_TF_ORIGINAL_ABI_L0_GREEN_NO_GOAL')
           PY
           python3 - <<'PY'
