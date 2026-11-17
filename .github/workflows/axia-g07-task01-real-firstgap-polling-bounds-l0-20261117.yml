@@ -7,6 +7,8 @@ on:
       - 'd06/diagnostic/classify_first_cm_gap_polling.py'
       - 'd06/tests/test_g07_task01_actual_first_gap_polling_bounds.py'
       - 'd06/evidence/g07_cm120_task01/run_44049067368_first_gap_sanitized.json'
+      - 'd06/tests/test_g07_task01_real_no_first_gap_custody.py'
+      - 'd06/evidence/g07_cm120_task01/run_44059005075_first_gap_sanitized.json'
   workflow_dispatch:
 permissions:
   contents: read
@@ -29,5 +31,7 @@ jobs:
           set -Eeuo pipefail
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
             -s d06/tests -p 'test_g07_task01_actual_first_gap_polling_bounds.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
+            -s d06/tests -p 'test_g07_task01_real_no_first_gap_custody.py' -v
           python3 -m py_compile d06/diagnostic/classify_first_cm_gap_polling.py
           echo AXIA_G07_TASK01_REAL_FIRST_GAP_POLLING_BOUNDS_L0_GREEN_RELEASE_HOLD
