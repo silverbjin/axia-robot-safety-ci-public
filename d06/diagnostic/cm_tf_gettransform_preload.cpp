@@ -4,6 +4,8 @@
 // In a dedicated simulation Goal, measure source->base TF-function elapsed
 // and per-thread CPU time; NOT an E-Stop or release benchmark.
 #include <nav2_util/robot_utils.hpp>
+#include <rcl/time.h>
+#include <rcutils/allocator.h>
 #include <dlfcn.h>
 #include <fcntl.h>
 #include <sys/syscall.h>
@@ -101,6 +103,8 @@ thread_local bool tf_window_active=false;
 thread_local long long tf_sleep_wall_ns=0;
 thread_local unsigned tf_sleep_calls=0;
 thread_local int tf_sleep_depth=0;
+std::atomic<unsigned> tf_clock_samples{0};
+constexpr unsigned kMaxTfClockSamples=18000;
 std::atomic<unsigned> tf_poll_samples{0};
 constexpr unsigned kMaxTfPollSamples=15000;
 
@@ -175,6 +179,66 @@ extern "C" int clock_nanosleep(clockid_t id,int flags,
   }
   errno=saved_errno;
   return rc;
+}
+
+// The official Jazzy tf2_ros::Buffer::canTransform() obtains timeout time
+// via rclcpp::Clock::now(), whose real implementation calls this C symbol.
+// Observe the EXACT native CM thread during Advanced getTransform ONLY.
+// No publishers, TF parameter changes, kernel scheduling or Nav2 fork.
+extern "C" rcl_ret_t rcl_clock_get_now(
+    rcl_clock_t* clock, rcl_time_point_value_t* time_point_value)
+{
+  using F=rcl_ret_t (*)(rcl_clock_t*,rcl_time_point_value_t*);
+  static F next=reinterpret_cast<F>(::dlsym(RTLD_NEXT,"rcl_clock_get_now"));
+  if(!next) std::abort();  // Fail closed when official ROS ABI absent.
+  const bool count=tf_window_active &&
+    tf_clock_samples.fetch_add(1,std::memory_order_relaxed)<kMaxTfClockSamples;
+  const rcl_ret_t rc=next(clock,time_point_value);
+  const int saved_errno=errno;
+  if(count && rc==RCL_RET_OK && clock && time_point_value &&
+      clock->type>=RCL_ROS_TIME && clock->type<=RCL_STEADY_TIME) {
+    const int file=active_fd();
+    if(file>=0) {
+      int active=0;
+      if(clock->type==RCL_ROS_TIME) {
+        bool enabled=false;
+        if(::rcl_is_enabled_ros_time_override(clock,&enabled)==RCL_RET_OK) {
+          active=enabled ? 1 : 0;
+        } else {
+          // Unknown override is not evidence of active simulation time.
+          active=0;
+        }
+      }
+      const long long mono=clock_ns(CLOCK_MONOTONIC);
+      char line[240];
+      const int n=std::snprintf(line,sizeof(line),
+        "TF_CLOCK pid=%ld tid=%ld mono_ns=%lld ros_ns=%lld clock_type=%d override_active=%d\\n",
+        static_cast<long>(::getpid()),static_cast<long>(::syscall(SYS_gettid)),
+        mono,static_cast<long long>(*time_point_value),
+        static_cast<int>(clock->type),active);
+      if(n>0 && n<static_cast<int>(sizeof(line)))
+        (void)::write(file,line,static_cast<size_t>(n));
+    }
+  }
+  errno=saved_errno;
+  return rc;
+}
+
+// True ABI selftest, no simulation/Goal: real official rcl_clock_get_now() is
+// delegated and the nested diagnostic hook sees a tick on this thread.
+extern "C" __attribute__((visibility("default")))
+int axia_g07_task01_clock_get_now_abi_selftest() {
+  const auto before=tf_clock_samples.load(std::memory_order_relaxed);
+  rcl_clock_t c=rcl_get_zero_initialized_clock();
+  const auto alloc=rcutils_get_default_allocator();
+  if(rcl_clock_init(RCL_STEADY_TIME,&c,&alloc)!=RCL_RET_OK) return 0;
+  rcl_time_point_value_t t=0;
+  tf_window_active=true;
+  const auto ret=rcl_clock_get_now(&c,&t);
+  tf_window_active=false;
+  (void)rcl_clock_fini(&c);
+  return ret==RCL_RET_OK && t>0 &&
+    tf_clock_samples.load(std::memory_order_relaxed)>before ? 1:0;
 }
 
 // Isolated NO_GOAL selftest of the exact std::this_thread::sleep_for()
