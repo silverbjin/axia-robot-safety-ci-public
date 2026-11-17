@@ -1,0 +1,34 @@
+name: AXIA G07 C33 Owner exact Goal terminal evidence wire L0
+on:
+  push:
+    branches: [release/p2-g06-cm-ttl-20261110]
+    paths: ['.github/workflows/axia-g07-c33-owner-terminal-evidence-wire-l0.yml']
+permissions:
+  contents: read
+jobs:
+  owner-terminal-evidence-wire-l0:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    environment: axia-instructor-sealed
+    steps:
+      - name: Checkout sealed exact C33 source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 1c7395ace2be101589659970d6a310a54ffa4caa
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+      - name: ROS-free exact Owner report schema and terminal fail-closed tests
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = 1c7395ace2be101589659970d6a310a54ffa4caa
+          python3 -m unittest discover -s tests/unit -p test_g07_c33_owner_terminal_evidence_wire.py -v
+          python3 -m unittest discover -s tests/unit -p test_g07_c32_goal_terminal_before_lifecycle.py -v
+          python3 -m unittest discover -s tests/unit -p test_g07_c32_owner_terminal_parity_scope.py -v
+          python3 -m py_compile tools/p2_g07_ci_goal_terminal.py tools/p2_g07_ci_moving_goal.py
+          bash -n scripts/p2_owner_l3_wsl2.sh
+          echo AXIA_G07_C33_OWNER_TERMINAL_EVIDENCE_WIRE_L0_PASS_NO_ROS_NO_GOAL
+      - name: Cleanup sealed source
+        if: always()
+        run: rm -rf -- tests tools scripts ros2_ws docs
