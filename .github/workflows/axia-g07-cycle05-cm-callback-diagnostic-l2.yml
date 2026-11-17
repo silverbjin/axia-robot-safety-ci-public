@@ -881,4 +881,4 @@ jobs:
       - name: Delete all Instructor source and raw ROS / Gazebo evidence
         if: always()
         shell: bash
-        run: rm -rf -- instructor ci-tools
+        run: rm -rf -- instructor ci-tools cm-diag-public unified-public visual "$RUNNER_TEMP/g07_c05_trace"
