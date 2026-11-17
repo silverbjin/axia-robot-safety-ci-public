@@ -9,6 +9,10 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 #include <time.h>
+#include <chrono>
+#include <thread>
+#include <sys/resource.h>
+#include <cstdint>
 #include <atomic>
 #include <cerrno>
 #include <cstdio>
@@ -66,6 +70,38 @@ int active_fd() {
   }
   return newfd;
 }
+// This is ONLY a diagnostic. A zero runqueue delta is meaningful only
+// when /proc/sys/kernel/sched_schedstats is explicitly enabled. Never
+// enable sysctls or change the CI kernel from inside this library.
+bool kernel_schedstats_enabled() {
+  const int f=::open("/proc/sys/kernel/sched_schedstats",O_RDONLY|O_CLOEXEC);
+  if(f<0) return false;
+  char val[8]{};
+  const ssize_t n=::read(f,val,sizeof(val)-1);
+  ::close(f);
+  return n>0 && val[0]=='1';
+}
+struct SchedSample {
+  unsigned long long runtime_ns=0,wait_ns=0,slices=0;
+};
+bool thread_schedstat(SchedSample &s) {
+  const int f=::open("/proc/thread-self/schedstat",O_RDONLY|O_CLOEXEC);
+  if(f<0) return false;
+  char val[128]{};
+  const ssize_t n=::read(f,val,sizeof(val)-1);
+  ::close(f);
+  if(n<=0) return false;
+  return ::sscanf(val,"%llu %llu %llu",&s.runtime_ns,
+                  &s.wait_ns,&s.slices)==3;
+}
+// S2 read-only sleep measurement within the current official Advanced TF
+// invocation. The Jazzy tf2 Buffer's 10ms poll uses sleep_for; count only
+// genuine intercepted libc sleeps, preserve errno, return and cancellation.
+thread_local bool tf_window_active=false;
+thread_local long long tf_sleep_wall_ns=0;
+thread_local unsigned tf_sleep_calls=0;
+thread_local int tf_sleep_depth=0;
+
 TransformFn actual_transform() {
   auto self = static_cast<TransformFn>(&nav2_util::getTransform);
   Dl_info info{};
@@ -75,6 +111,55 @@ TransformFn actual_transform() {
   return reinterpret_cast<TransformFn>(p);
 }
 }  // namespace
+
+// Other nodes/threads can preload this library but will not be measured.
+// Nested libc nanosleep->clock_nanosleep wrappers count only the outer call.
+extern "C" int nanosleep(const timespec* req,timespec* rem) noexcept {
+  using F=int (*)(const timespec*,timespec*);
+  static F next=reinterpret_cast<F>(::dlsym(RTLD_NEXT,"nanosleep"));
+  if(!next) std::abort();
+  const bool count=tf_window_active && tf_sleep_depth==0;
+  ++tf_sleep_depth;
+  const long long t0=count?clock_ns(CLOCK_MONOTONIC):-1;
+  const int rc=next(req,rem);
+  const long long t1=count?clock_ns(CLOCK_MONOTONIC):-1;
+  --tf_sleep_depth;
+  if(count && t1>=t0 && t0>=0) {
+    tf_sleep_wall_ns+=t1-t0;
+    ++tf_sleep_calls;
+  }
+  return rc;
+}
+extern "C" int clock_nanosleep(clockid_t id,int flags,
+                                const timespec* req,timespec* rem) noexcept {
+  using F=int (*)(clockid_t,int,const timespec*,timespec*);
+  static F next=reinterpret_cast<F>(::dlsym(RTLD_NEXT,"clock_nanosleep"));
+  if(!next) std::abort();
+  const bool count=tf_window_active && tf_sleep_depth==0;
+  ++tf_sleep_depth;
+  const long long t0=count?clock_ns(CLOCK_MONOTONIC):-1;
+  const int rc=next(id,flags,req,rem);
+  const long long t1=count?clock_ns(CLOCK_MONOTONIC):-1;
+  --tf_sleep_depth;
+  if(count && t1>=t0 && t0>=0) {
+    tf_sleep_wall_ns+=t1-t0;
+    ++tf_sleep_calls;
+  }
+  return rc;
+}
+
+// Isolated NO_GOAL selftest of the exact std::this_thread::sleep_for()
+// path used by Jazzy tf2_ros::Buffer; never called by production Nav2.
+extern "C" __attribute__((visibility("default")))
+int axia_g07_s2_sleep_interposition_selftest() {
+  tf_sleep_wall_ns=0;
+  tf_sleep_calls=0;
+  tf_sleep_depth=0;
+  tf_window_active=true;
+  std::this_thread::sleep_for(std::chrono::milliseconds(3));
+  tf_window_active=false;
+  return tf_sleep_calls>0 && tf_sleep_wall_ns>=1000000LL ? 1 : 0;
+}
 
 extern "C" __attribute__((visibility("default")))
 int axia_cm120_original_transform_linkage_selftest() {
@@ -96,21 +181,44 @@ bool getTransform(
   const int file=active_fd();
   const bool track=file>=0 && samples.fetch_add(1,std::memory_order_relaxed)<kMaxTfSamples;
   long long m0=-1,c0=-1;
+  SchedSample sc0{},sc1{};
+  rusage u0{},u1{};
+  bool sc0_ok=false;
+  bool u0_ok=false;
   if(track) {
+    sc0_ok=kernel_schedstats_enabled() && thread_schedstat(sc0);
+    u0_ok=(::getrusage(RUSAGE_THREAD,&u0)==0);
     m0=clock_ns(CLOCK_MONOTONIC);
     c0=clock_ns(CLOCK_THREAD_CPUTIME_ID);
+    tf_sleep_wall_ns=0;
+    tf_sleep_calls=0;
+    tf_window_active=true;
   }
+  // The original official advanced transform is delegated unchanged.
   const bool ok=original(source_frame_id,source_time,target_frame_id,
                           target_time,fixed_frame_id,transform_tolerance,
                           tf_buffer,result);
   if(track) {
+    tf_window_active=false;
     const long long c1=clock_ns(CLOCK_THREAD_CPUTIME_ID);
     const long long m1=clock_ns(CLOCK_MONOTONIC);
-    char line[256];
+    const bool u1_ok=(::getrusage(RUSAGE_THREAD,&u1)==0);
+    const bool sc1_ok=sc0_ok && thread_schedstat(sc1);
+    const bool rusage_valid=(u0_ok && u1_ok &&
+      u1.ru_nvcsw>=u0.ru_nvcsw && u1.ru_nivcsw>=u0.ru_nivcsw);
+    const bool sched_valid=(sc1_ok &&
+      sc1.runtime_ns>=sc0.runtime_ns &&
+      sc1.wait_ns>=sc0.wait_ns && sc1.slices>=sc0.slices);
+    const auto run_ns=sched_valid?sc1.runtime_ns-sc0.runtime_ns:0ULL;
+    const auto delay_ns=sched_valid?sc1.wait_ns-sc0.wait_ns:0ULL;
+    const long v=rusage_valid?u1.ru_nvcsw-u0.ru_nvcsw:0;
+    const long iv=rusage_valid?u1.ru_nivcsw-u0.ru_nivcsw:0;
+    char line[512];
     const int count=std::snprintf(line,sizeof(line),
-      "TF_ADV pid=%ld tid=%ld mono_start_ns=%lld mono_end_ns=%lld thread_cpu_ns=%lld ok=%d\n",
+      "TF_ADV pid=%ld tid=%ld mono_start_ns=%lld mono_end_ns=%lld thread_cpu_ns=%lld ok=%d schedstat_valid=%d runqueue_ns=%llu sched_cpu_ns=%llu voluntary_cs=%ld involuntary_cs=%ld sleep_ns=%lld sleep_calls=%u\n",
       static_cast<long>(::getpid()),static_cast<long>(::syscall(SYS_gettid)),
-      m0,m1,c1-c0,ok?1:0);
+      m0,m1,c1-c0,ok?1:0,sched_valid?1:0,delay_ns,run_ns,v,iv,
+      tf_sleep_wall_ns,tf_sleep_calls);
     if(count>0 && count<static_cast<int>(sizeof(line))) {
       (void)::write(file,line,static_cast<size_t>(count));
     }
