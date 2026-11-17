@@ -54,3 +54,8 @@ OWNER_WSL2_GOAL=BLOCKED_NOT_RUN
 AXIA_MVP_DEMO_ACCEPTED=HOLD
 CERTIFIED_ESTOP=false
 MAIN_MERGED=false
+
+## REVIEW/REFACTOR 최종 종료
+- 실제 public Run #43991016109 SUCCESS를 확인한 뒤, release 브랜치에 잠시 추가했던 **이 Cycle02 NO_GOAL workflow 1개만** 삭제: release cleanup commit `d250f7682b5633557051f575cb197087622a336d`. 변경된 private instructor 코드와 공개 workflow 원본은 각각 private Draft PR #195/public Draft PR #141 및 immutable CI Run SHA에 보존.
+- 기존 G07 Cycle37/Unified moving Goal workflow의 `HOLD` 상태·자동 Goal 차단은 유지하며 변경하지 않았음. 
+- 삭제 이후 별도 실제 Gazebo/WSL2 주행은 수행하지 않음. Owner 승인 없는 main 병합은 금지.
