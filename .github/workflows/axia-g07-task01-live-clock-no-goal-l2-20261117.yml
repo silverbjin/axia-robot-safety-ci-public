@@ -98,27 +98,48 @@ jobs:
           set +e
           # READ ONLY: independent subscriber /clock host-monotonic receive.
           # Not the official TF Buffer's internal clock; no cmd_vel / Goal.
+          # Task01 noGoal RED #44056741357: a 120s external /clock
+          # subscriber overlapped Navigation/Localization native shutdown
+          # and did not allow a clean original runner completion (rc=3).
+          # Single-cause hypothesis: confine this READ-ONLY sidecar to
+          # the runner's existing 8s TF/clock audit, then stop it before
+          # any native lifecycle shutdown or launch cleanup. No Goal.
           PROBE="$RUNNER_TEMP/g07_task01_clock_probe.jsonl"
-          python3 public-clock/d06/diagnostic/g07_clock_probe_ros.py \
-             --out "$PROBE" --max-duration-sec 700 \
-             >"$RUNNER_TEMP/g07_task01_clock_probe.log" 2>&1 &
-          CLOCK_PID=$!
-          sleep 1
-          kill -0 "$CLOCK_PID" || {
-            echo AXIA_G07_TASK01_CLOCK_PROBE_FAILED_BEFORE_NO_GOAL >&2
-            exit 3
-          }
+          SMOKE_LOG="$RUNNER_TEMP/g07_cm120_tf_clock_no_goal.log"
+          WATCH_LOG="$RUNNER_TEMP/g07_task01_clock_probe.log"
+          (
+            seen=0
+            for n in $(seq 1 600); do
+              if [[ -f "$SMOKE_LOG" ]] && grep -Fq \
+                  'AXIA_G07_CM120_BASE_SHIFT_CORRECTION_TRUE_READBACK_NO_GOAL' "$SMOKE_LOG"; then
+                seen=1
+                break
+              fi
+              sleep 0.2
+            done
+            if [[ "$seen" -ne 1 ]]; then
+              echo AXIA_G07_TASK01_NO_GOAL_CLOCK_AUDIT_MARKER_NOT_OBSERVED_HOLD
+              exit 3
+            fi
+            # Original TF/Clock audit runs 8s; self-terminate after 6s
+            # and save bounded JSONL via the verified Jazzy SIGTERM fix.
+            python3 public-clock/d06/diagnostic/g07_clock_probe_ros.py \
+              --out "$PROBE" --max-duration-sec 6
+          ) >"$WATCH_LOG" 2>&1 &
+          WATCH_PID=$!
           timeout --signal=TERM --kill-after=10s 650s bash scripts/p2_no_goal_smoke_ci.sh \
-            >"$RUNNER_TEMP/g07_cm120_tf_clock_no_goal.log" 2>&1
+            >"$SMOKE_LOG" 2>&1
           rc=$?
-          kill -TERM "$CLOCK_PID" 2>/dev/null || true
-          wait "$CLOCK_PID" 2>/dev/null
+          wait "$WATCH_PID" 2>/dev/null
           CLOCK_RC=$?
           set -e
           if [[ "$CLOCK_RC" -ne 0 || ! -f "$PROBE" ]]; then
-            echo "AXIA_G07_TASK01_CLOCK_FILE_OR_CHILD_EXIT_HOLD clock_rc=$CLOCK_RC"
+            echo "AXIA_G07_TASK01_AUDIT_WINDOW_CLOCK_FILE_OR_CHILD_HOLD clock_rc=$CLOCK_RC"
+            # Only known deterministic nonprivate markers; no raw stderr.
+            grep -E '^AXIA_G07_TASK01_' "$WATCH_LOG" | tail -n 4 || true
             exit 3
           fi
+          echo AXIA_G07_TASK01_CLOCK_PROBE_ENDED_IN_TF_AUDIT_BEFORE_NATIVE_SHUTDOWN
           python3 - "$PROBE" <<'PY'
           import json,sys
           from pathlib import Path
@@ -176,6 +197,12 @@ jobs:
           assert audit.get("coincident_gap_causality_proven") is False
           assert audit.get("goal_sent") is False and audit.get("formal_owner_accepted") is False
           sd=json.loads((root/"g07_ordered_shutdown.json").read_text())
+          print("AXIA_G07_TASK01_FIRST_NO_GOAL_SHUTDOWN_BOUNDARY "+json.dumps({
+             k:sd.get(k) for k in (
+                 "status","navigation_ack","localization_ack",
+                 "navigation_request_sent","localization_request_sent",
+                 "navigation_elapsed_sec","localization_elapsed_sec")
+          },sort_keys=True))
           assert sd.get("status") == "NAV2_LIFECYCLE_SHUTDOWN_ACK" and rc==0
           PY
           grep -F 'AXIA_G07_CM120_BASE_SHIFT_CORRECTION_TRUE_READBACK_NO_GOAL' "$RUNNER_TEMP/g07_cm120_tf_clock_no_goal.log"
