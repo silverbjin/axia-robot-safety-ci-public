@@ -1,0 +1,30 @@
+# RED/GREEN L0 for historical P4 ordered teardown reused by D07 no-goal.
+name: AXIA D07 Cycle26 shutdown lifecycle and child exit L0
+on:
+  push:
+    branches: [fix/d07-h01-p4-shutdown-c26-ci-20261117]
+    paths: ['.github/workflows/axia-d07-h01-c26-shutdown-l0.yml']
+permissions:
+  contents: read
+jobs:
+  no-ros-static-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    environment: axia-instructor-sealed
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: f17b4f2245ccce6177dfc4b08a2477842aea0894
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          path: instructor
+          persist-credentials: false
+      - name: Exact private RED source and Cycle26 teardown truth unit regression
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C instructor rev-parse HEAD)" = 'f17b4f2245ccce6177dfc4b08a2477842aea0894'
+          cd instructor
+          python3 -m unittest discover -s tests/unit -p test_d07_h01_clean_teardown.py -v
+          bash -n scripts/p2_no_goal_smoke_ci.sh
+          echo AXIA_D07_C26_SHUTDOWN_NO_ROS_L0_PASS
