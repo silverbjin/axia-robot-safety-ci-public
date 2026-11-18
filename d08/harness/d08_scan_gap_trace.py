@@ -368,3 +368,83 @@ def compare_isolated_ros_first_gap(first_boundary, isolated_events, native_event
     else:
         answer["candidate"]="LOCAL_ROS_PROCESS_DISPATCH_OR_GIL"
     return answer
+
+
+def compare_worst_scan_pair_receivers(pair, native, isolated_ros,
+                                     same_python_ros):
+    """Compare EXACT source-stamp pair across all Scan receive layers.
+
+    This diagnostic also accepts a <500ms near-boundary sample, but never
+    treats it as an actual safety violation. Same Linux host monotonic clock.
+    No internal publisher or DDS send timestamps are measured.
+    """
+    verdict={
+        "cause":"UNDETERMINED",
+        "candidate":"SOURCE_PAIR_INCOMPLETE",
+        "source_pair_matched":False,
+        "first_500ms_violation":False,
+        "observer_gap_sec":None,
+        "native_gap_sec":None,
+        "isolated_ros_gap_sec":None,
+        "same_python_gap_sec":None,
+        "publisher_rmw_gap_measured":False,
+    }
+    if not isinstance(pair,dict):
+        return verdict
+    try:
+        old_ns=int(pair["previous_ros_stamp_ns"])
+        new_ns=int(pair["current_ros_stamp_ns"])
+        old_parent=float(pair["previous_host_monotonic_sec"])
+        new_parent=float(pair["current_host_monotonic_sec"])
+        parent_gap=float(pair["receive_gap_sec"])
+    except (KeyError,ValueError,TypeError,OverflowError):
+        return verdict
+    if new_ns<=old_ns or new_parent<=old_parent or parent_gap<=0:
+        return verdict
+    verdict["observer_gap_sec"]=round(parent_gap,6)
+    verdict["first_500ms_violation"]=parent_gap>.5
+
+    def matched_gap(rows):
+        if not isinstance(rows,(list,tuple)):
+            return None
+        by_stamp={}
+        for row in rows:
+            if not isinstance(row,dict) or row.get("topic","scan")!="scan":
+                continue
+            try:
+                ns=int(row["source_stamp_ns"])
+                at=float(row["host_monotonic_sec"])
+            except (KeyError,ValueError,TypeError,OverflowError):
+                continue
+            if ns in (old_ns,new_ns) and at==at and abs(at)<1e12:
+                by_stamp.setdefault(ns,[]).append(at)
+        if old_ns not in by_stamp or new_ns not in by_stamp:
+            return None
+        for a in sorted(by_stamp[old_ns]):
+            for b in sorted(by_stamp[new_ns]):
+                if (b>a and abs(a-old_parent)<=.5 and
+                    abs(b-new_parent)<=.5):
+                    return round(b-a,6)
+        return None
+
+    values=[matched_gap(x) for x in (native,isolated_ros,same_python_ros)]
+    if any(x is None for x in values):
+        return verdict
+    n,iso,same=values
+    verdict.update({
+        "source_pair_matched":True,
+        "native_gap_sec":n,
+        "isolated_ros_gap_sec":iso,
+        "same_python_gap_sec":same,
+    })
+    if parent_gap-n<.12:
+        verdict["candidate"]="NO_LARGE_RELATIVE_RX_DELAY"
+    elif same>=parent_gap-.08 and iso<=n+.08:
+        verdict["candidate"]="SAME_PYTHON_PROCESS_DELAY_CANDIDATE"
+    elif iso>=parent_gap-.08 and same>=parent_gap-.08:
+        verdict["candidate"]="ROS_BRIDGE_DDS_OR_SHARED_HOST_DELAY_CANDIDATE"
+    elif iso<=n+.08 and same<=n+.08:
+        verdict["candidate"]="PARENT_OBSERVER_ONLY_DELAY_CANDIDATE"
+    else:
+        verdict["candidate"]="MIXED_RECEIVER_TIMING_UNDETERMINED"
+    return verdict
