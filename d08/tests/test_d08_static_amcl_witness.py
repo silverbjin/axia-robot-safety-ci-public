@@ -50,4 +50,7 @@ def test_amcl_real_runtime_never_sends_second_pose_or_mutates_ttls():
     assert "spin_thread=False" in s
     assert "now-latest[\"scan\"][1]>.5" in s
     assert "now-latest[\"odom\"][1]>.5" in s
-    assert "cmd_vel" not in s
+    # Source docstring may mention cmd_vel as a prohibited command; it must
+    # not instantiate a publisher or construct a control message.
+    assert "create_publisher(" not in s
+    assert "Twist()" not in s

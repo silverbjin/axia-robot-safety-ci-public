@@ -18,6 +18,10 @@ def test_amcl_scan_odom_and_safety_ttls_unmodified():
     s=SOURCE.read_text()
     assert "now-latest[\"scan\"][1]>.5" in s
     assert "now-latest[\"odom\"][1]>.5" in s
-    assert 'time.monotonic()-latest["amcl_pose"][1]>1.0' in s
+    # Official Jazzy AMCL stationary Pose can be one-shot; use source age
+    # at its first post-service callback, not a forever-repeat threshold.
+    assert 'first_source_age_sec' in s
+    assert 'first_post_request_amcl' in s
+    assert 'time.monotonic()-latest["amcl_pose"][1]>1.0' not in s
     assert "lookup_transform" in s
     assert "TransformBroadcaster" not in s
