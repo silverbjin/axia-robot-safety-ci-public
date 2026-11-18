@@ -29,6 +29,14 @@ class OwnerMovingBootstrap(unittest.TestCase):
         self.assertNotIn("killall",s)
         self.assertNotIn("wsl --shutdown",s)
 
+    def test_foreground_timeout_cannot_background_manual_tty_reader(self):
+        # GNU timeout without --foreground creates a different process group.
+        # The Owner's actual /dev/tty consent must NOT be sent SIGTTIN.
+        s=SCRIPT.read_text()
+        self.assertIn("timeout --foreground --signal=TERM",s)
+        self.assertIn("OWNER_CONTROLLING_TTY_REQUIRED",s)
+        self.assertNotIn("setsid timeout",s)
+
     def test_pinned_source_and_private_evidence_archive(self):
         s=SCRIPT.read_text()
         self.assertIn(SHA,s)
