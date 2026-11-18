@@ -26,10 +26,10 @@ def test_every_workflow_inline_python_heredoc_is_syntax_valid():
         text=textwrap.dedent("\n".join(lines))+"\n"
         compile(text,f"<d08 workflow python block {i+1}>","exec")
 
-def test_second_official_nav2_simulation_is_outside_prior_python_inline_verdict():
+def test_independent_official_nav2_job_is_outside_python_inline_verdict():
     s=WF.read_text().splitlines()
     nav=next(i for i,line in enumerate(s) if '--official-nav2' in line)
     before=[i for i,line in enumerate(s[:nav]) if line.strip()=="PY"]
     next_cmd=[i for i,line in enumerate(s[nav+1:],start=nav+1) if line.strip()=="python3 - <<'PY'"]
     assert before and next_cmd and before[-1]<nav<next_cmd[0]
-    assert "D08_OFFICIAL_NAV2_SAME_WORLD_BEFORE_PATH_L2_PASS_NO_GOAL" in "\n".join(s)
+    assert "D08_OFFICIAL_NAV2_SAME_WORLD_FIRST_PATH_L2_PASS_NO_GOAL" in "\n".join(s)
