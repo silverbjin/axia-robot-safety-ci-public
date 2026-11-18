@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Official Nav2 Jazzy's OWN one-world Waffle launch args; never a second Gazebo.
+"""Reuse official Nav2 Jazzy Waffle spawn/bringup against one D08-owned Gazebo server.
 
 This module does not implement Planner/Controller, issue a navigation Goal,
 publish velocity, change CM/Guard timeouts or infer L2 from L0 evidence.
@@ -58,6 +58,10 @@ def make_official_nav2_command(world_sdf: Path, robot_sdf: Path, *, owner_gui=Fa
             raise ValueError("D08_OWNER_RVIZ_READONLY_CONFIG_REQUIRED")
     return [
         "ros2", "launch", "nav2_bringup", "tb3_simulation_launch.py",
+        # D08 owns the already-validated Gazebo server. Official Nav2 still
+        # owns robot spawning, localization, costmaps and RViz; it MUST NOT
+        # start an independent server on a racing /tmp/nav2_*.sdf.
+        'use_simulator:=False',
         "headless:=False" if owner_gui else "headless:=True",
         "use_rviz:=True" if owner_gui else "use_rviz:=False",
         "use_composition:=False", "use_respawn:=False",
