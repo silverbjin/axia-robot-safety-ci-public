@@ -24,7 +24,7 @@ class WslgABOneShotSafety(unittest.TestCase):
         s=SCRIPT.read_text()
         self.assertIn("e4c2007064bec2103bb743bd27cdbdf0955961b7",s)
         self.assertIn("3ec8925d13e9357ffeb45e3d75e5f862b54e931a",s)
-        self.assertIn("9314fd4c8f5354d82cbcb43ad43fcbc371197f61",s)
+        self.assertIn("171aad7ce8abe97c93a42f19787042619c06b65e",s)
         self.assertIn('git hash-object "$TMP/owner.sh"',s)
         self.assertIn('git hash-object "$TMP/compare.py"',s)
         o=OWNER.read_text()
