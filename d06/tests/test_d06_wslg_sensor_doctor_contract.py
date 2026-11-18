@@ -30,9 +30,9 @@ class WslgDoctorSafety(unittest.TestCase):
 
     def test_exact_student_commit_and_runtime_file_pins(self):
         t=SCRIPT.read_text()
-        self.assertIn('feffb37219abc3649530a8439c3ba0a1f3fdca88',t)
+        self.assertIn('9862353e7116bc4a14a5bb365ae356642e83ef0e',t)
         for blob in ('f795f9b6456df75546ab22988b53c953c53345a5',
-                     'b50d77eb6c8a3d56a52e903fe6b29875c5396318',
+                     '48203661d92b92517f5ea44f4a0b14cc26b24630',
                      'b2886cdf509d99ea62528cd013669258764b05e0'):
             self.assertIn(blob,t)
         self.assertIn('git -C "$GIT_ROOT/student" rev-parse HEAD',t)
