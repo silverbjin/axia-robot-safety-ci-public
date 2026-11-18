@@ -12,12 +12,13 @@ readonly TASK04_GUI_L2_RUN='44238643061'
 readonly TASK04_GUI_L2_HEAD='5bb0cd72086f2f1a057f382649b773fff106f1f9'
 readonly TASK04_GUI_SCRIPT='scripts/axia_g07_task04_public_owner_wsl2_pregate_once.sh'
 readonly TASK04_GUI_SCRIPT_BLOB='a15cf37e1a1d2a0253029c0a1dd8e2530e307c25'
-readonly TASK04_MOVING_L2_RUN='44249348860'
-readonly TASK04_MOVING_L2_HEAD='6b98a18fa7abc80401a129f715ace7703ab54286'
-readonly TASK04_MOVING_STUDENT_SHA='1129cd8804954fd6481d1b6b4ebf0e0b98c68c3c'
+readonly TASK04_MOVING_L2_RUN='44263904176'
+readonly TASK04_MOVING_L2_HEAD='7487dde355543f2a92e412ab79788f4a39a34abb'
+readonly TASK04_MOVING_STUDENT_SHA='e9adb73d658859a53976d9848aa75bd5be710def'
 readonly TASK04_MOVING_RUNTIME_SCRIPT_BLOB='daa04c5c6555a1cb9e851db8a31a57699821782a'
 readonly TASK04_MOVING_GOAL_ENGINE_BLOB='33664dacebb0a36818d13870c27176ac0923ae4c'
 readonly TASK04_MOVING_SHUTDOWN_BLOB='ff81c749b0441fee11745a29bf6fe3f7d242720c'
+readonly TASK04_MOVING_OWNER_ECM_WORLD_BLOB='e6bc7d2b167f2839a6a48f0e10bc91aa25091b0b'
 
 hold() {
   echo "D06_G07_CLASSROOM_HOLD=$1" >&2
@@ -46,7 +47,8 @@ self_check() {
      "$TASK04_MOVING_L2_HEAD" =~ ^[0-9a-f]{40}$ &&
      "$TASK04_MOVING_RUNTIME_SCRIPT_BLOB" =~ ^[0-9a-f]{40}$ &&
      "$TASK04_MOVING_GOAL_ENGINE_BLOB" =~ ^[0-9a-f]{40}$ &&
-     "$TASK04_MOVING_SHUTDOWN_BLOB" =~ ^[0-9a-f]{40}$ ]] || hold INVALID_OWNER_PIN
+     "$TASK04_MOVING_SHUTDOWN_BLOB" =~ ^[0-9a-f]{40}$ &&
+     "$TASK04_MOVING_OWNER_ECM_WORLD_BLOB" =~ ^[0-9a-f]{40}$ ]] || hold INVALID_OWNER_PIN
   [[ "$TASK03_GAZEBO_L2_RUN" =~ ^[0-9]+$ &&
      "$TASK04_GUI_L2_RUN" =~ ^[0-9]+$ &&
      "$TASK04_MOVING_L2_RUN" =~ ^[0-9]+$ ]] || hold INVALID_RUN_PIN
@@ -171,7 +173,8 @@ run_verified_owner() {
   runtime="$src/block_B/day07/h01_runtime"
   [[ "$(git hash-object "$runtime/scripts/p2_no_goal_smoke_ci.sh")" == "$TASK04_MOVING_RUNTIME_SCRIPT_BLOB" &&
      "$(git hash-object "$runtime/tools/p2_g07_ci_moving_goal.py")" == "$TASK04_MOVING_GOAL_ENGINE_BLOB" &&
-     "$(git hash-object "$runtime/tools/p2_g07_ordered_shutdown.py")" == "$TASK04_MOVING_SHUTDOWN_BLOB" ]] ||
+     "$(git hash-object "$runtime/tools/p2_g07_ordered_shutdown.py")" == "$TASK04_MOVING_SHUTDOWN_BLOB" &&
+     "$(git hash-object "$runtime/tools/p2_l3_world_overlay.py")" == "$TASK04_MOVING_OWNER_ECM_WORLD_BLOB" ]] ||
     hold G07_OWNER_RUNTIME_BLOB_MISMATCH
   bash -n "$runtime/scripts/p2_no_goal_smoke_ci.sh" ||
     hold G07_OWNER_RUNTIME_SYNTAX_NO_GOAL
@@ -192,7 +195,12 @@ run_verified_owner() {
   export AXIA_G07_TASK03_WITNESS_REPORT="$out/native/s02_ecm_witness.json"
   export AXIA_P0_SIM_ONLY=1 AXIA_P2_G07_PHYSICAL_PREFLIGHT=1
   export AXIA_G07_OWNER_STARTUP_PARITY=1 AXIA_G07_CI_OWNER_BAG_PARITY=1
-  export AXIA_P2_G07_OWNER_PARITY_CHECK=1
+  # The pinned Student script interprets this historical flag as CI-only:
+  # it calls p2_g07_owner_env_parity.py --mode ci and explicitly rejects
+  # microsoft-standard-WSL2. The Owner path checks --mode owner below,
+  # including ALL SAME 25 packages and 5 official file hashes.
+  # No ROS, CM, Guard, TF or safety TTL checks are skipped.
+  export AXIA_P2_G07_OWNER_PARITY_CHECK=0
   export AXIA_G07_TASK02_SIMPLE_TF_CANDIDATE=1
   export AXIA_G07_TASK03_ECM_WITNESS=1
   export AXIA_G07_TASK04_OWNER_MOVING_L3=1
@@ -214,6 +222,22 @@ run_verified_owner() {
   python3 "$runtime/tools/p2_g07_owner_env_parity.py" --mode owner \
     --output "$out/owner_parity.json" > "$out/owner_parity.log" 2>&1 ||
     hold D06_G07_OWNER_25_5_PARITY_FAILED_NO_GOAL
+  # Preserve kernel distinction: PASS here does NOT mean WSL2 scheduler or
+  # WSLg GPU timing is equivalent to the native public Linux CI machine.
+  # Complete the failure branch BEFORE heredoc content: otherwise Bash
+  # sends the next shell "hold" line into Python, producing IndentationError,
+  # and can continue to the Goal path without a valid parity admission.
+  python3 - "$out/owner_parity.json" <<'PY' || { hold D06_G07_OWNER_CORE_PARITY_REPORT_INVALID_NO_GOAL; }
+import json,sys
+from pathlib import Path
+r=json.loads(Path(sys.argv[1]).read_text())
+assert (r.get("status")=="CORE_PARITY_PASS" and r.get("mode")=="owner"
+        and r.get("wsl_detected") is True
+        and r.get("checked_packages")==25
+        and r.get("checked_official_files")==5
+        and r.get("mismatch")=={})
+print("D06_G07_OWNER_CORE_PARITY_PASS_PACKAGES25_FILES5_WSL2")
+PY
   echo "D06_G07_OWNER_PIN_VERIFIED=$TASK04_MOVING_STUDENT_SHA"
   echo 'D06_G07_OWNER_REAL_GAZEBO_RVIZ_MOVING_CANDIDATE_START'
   echo 'D06_G07_OWNER_CONSENT_IS_MANUAL_TTY_ONLY=YES-P2-G07-GOAL'
