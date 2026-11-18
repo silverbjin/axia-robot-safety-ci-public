@@ -294,8 +294,6 @@ jobs:
 
   gazebo-official-nav2-oneworld:
     needs: l0-human-proxy-red-green
-    env:
-      AXIA_D08_CI_REAL_SUBSCRIBER_PAUSE_SEC: "0.65"
     # Owner 2026-11-18 raw first /scan 819ms /odom 752ms gap: previously
     # skipped Nav2/AMCL here even while the overall public workflow was GREEN.
     # On this exact PR, one real official Nav2 same-world job is REQUIRED.
@@ -308,6 +306,7 @@ jobs:
     env:
       DEBIAN_FRONTEND: noninteractive
       MAKEFLAGS: -j2
+      AXIA_D08_CI_REAL_SUBSCRIBER_PAUSE_SEC: "0.65"
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
