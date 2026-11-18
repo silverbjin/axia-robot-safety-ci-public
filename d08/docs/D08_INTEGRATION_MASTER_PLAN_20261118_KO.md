@@ -93,3 +93,20 @@
 - **CI 개선:** 이미 성공한 Gazebo 독립 센서/physical Proxy + YOLO replay L1 작업은 보존하고, 새로운 AMCL/Nav2 first-Path 후보는 **별도 L2 job**으로 분리하여 해당 실패가 기존 독립 센서/YOLO regression을 SKIP시키지 않게 한다. 서로 다른 두 job의 센서/Yolo/Path 데이터를 단일 인과적 E2E로 붙여 PASS라고 보고할 수 없다. 완전 결합은 추후 하나의 Nav2+CM+YOLO sensor runtime에서 별도 확인.
 - RED: Action STATUS_ABORTED(6), AMCL 미초기화, map 좌표 위험 셀, map→base_link 미검증, GitHub YAML heredoc 재발; GREEN: 공식 map/AMCL/TF 수신 원본 + 해당 RUN의 valid official Path 원본. 실제 이동 Goal 금지.
 - 현재 C++ pinned upstream `yolo_ros` 자체는 Run #44206496600에서 빌드 성공했으나, `DetectionArray` 0개라 ROS 런타임 출처 로그 진단 중. 이 오류는 공식 Nav2 AMCL 오류와 별개다.
+
+## 10. v1.3 — D08 실제 한 World 공식 Path L2 성공, 다음 3상 장애물 계획 재사용
+
+- 공개 CI [Run #44210297492](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44210297492), PR HEAD `ffff73105abb05290d618d6f912ac4fb7af8a404`, 실제 체크아웃 provenance SHA `098dba8081371adfa80d349454849c343d19b308`, World default, ROS_DOMAIN_ID=69, GZ_PARTITION=`axia_d08_ci_9968`: 실제 registered RGBD + 물리 사람형 Proxy + 원본 /scan, 공식 AMCL P0 service ACK, /map 자유 셀 16개, 실제 `map→base_link` TF, 공식 `ComputePathToPose` 14 Pose, 0.400m에서 단일 before Path **actual L2 PASS**. 사용자 Goal/명령 발행 없음. 다른 독립 CI job과 영상·값을 이어 붙이지 않는다.
+- 최신 D07-H01 학생 공개 CI [Run #44051183220](https://github.com/silverbjin/axia-robot-safety-student/actions/runs/44051183220) **실제** 기하 기준(reference, 이번 D08 L2 아님): 같은 TB3 sandbox, Waffle spawn (-2.0,-0.5), 공식 map goal (-1.7,0.7), 물리 Proxy `axia_p2_g07_obstacle`를 far (-0.58,-0.5) → 같은 기존 공식 Path 내부 좌표 (-1.979118934,0.171291396) → far 복귀. 해당 RUN의 공식 before/intrusion/restored Path 52 Pose, 실제 global costmap lethal 0→92→0, D07 별도 L2. 전체 D07-H01 알고리즘 복사 금지, **검증된 세 좌표와 표준 Nav2 action/source schema만 최소 재사용**.
+- 다음 Task02 최소 통합 목표: **한 새로운 D08 실제 Gazebo 실행 내부에서** 같은 물리 Proxy native set_pose 3상, 각 구간 실제 /scan header·host monotonic 첫 gap 및 공식 global costmap 원본 timestamp가 진행한 뒤, 공식 `ComputePathToPose` Path before/intrusion/restored를 읽는다. Goal map (-1.7,0.7)은 단위 후보, 실제 장애물이 경로 밖/invalid map이면 원본 evidence와 HOLD; 정적 순서대로 set_pose 한 것은 새 경로 증거가 아님.
+- **카메라 시야 중요:** D07 경로 침입 위치는 로봇 전방에서 거의 측면(각 ~1.54rad)이고 D08 RGBD HFOV 2.20rad 범위 밖일 수 있다. 따라서 전방 Depth person VALID 단계와 측면 Path 동적 변화 단계는 **동일 World/동일 Proxy/동일 RUN의 순차 상태**로 명확히 설명한다. 영상 person이 계속 추적됐거나 직접 CM에 제어 신호를 줬다고 주장하지 않는다. 측면 YOLO UNKNOWN이면 CLEAR/이동허가는 아님.
+- 공식 Nav2 launch에는 `collision_monitor`와 global `obstacle_layer.scan`이 포함됨이 native 로그에서 관찰됨. 그러나 실제 수신 QoS/주기·첫 gap·state를 아직 증명하지 않았으므로 별도 read-only ROS graph probe 필요. 기존 synthetic CM isolated L1을 실제 /scan CM PASS로 승격 금지.
+- RED: 서로 다른 World/Proxy, 잘못된 D07 좌표를 SDF 입력값으로만 PASS 처리, 오래된 scan/costmap/TF, native Action result ABORTED, 단계별 경로 원본 분실. GREEN: 실제 ROS source stamps + callback monotonic gap + costmap epoch + before/near/restore 원본 Path + 동일 SHA/World + NO_GOAL.
+- 이 확장은 교육용 세 경로 관찰에 한정하며 복잡한 범용 경로 탐색기/새 Planner/상용 안전 타이밍 개발은 하지 않는다.
+
+## 11. v1.4 — 실제 YOLO ELF loader 실패 해소만 허용
+
+- Public Run #44210297492, source HEAD ffff73105abb05290d618d6f912ac4fb7af8a404의 원본 C++ YOLO native log: `yolo_node: error while loading shared libraries: libonnxruntime.so.1: cannot open shared object file`, **실제 node exit 127**. 외부 NuGet 패키지 SHA·C++ pinned upstream build는 PASS, DetectionArray 발행 0은 loader 단계 실패의 후속 결과.
+- 최소 가설: 공식 Microsoft NuGet 1.20.0 Linux x64 라이브러리에는 `libonnxruntime.so` 파일이 존재하지만, ELF NEEDED/SONAME인 `libonnxruntime.so.1` 경로가 upstream vendor install layout에 없었다. 바이너리를 변경하거나 다른 버전을 받지 않고 **같은 SHA 검증된 실제 바이너리 파일의 soname symlink만 설치**.
+- RED: 원본 exit127 log / `ldd ... libonnxruntime.so.1 not found` / package missing symlink. GREEN: 오리지널 C++ YOLO executable loader exit127 소멸, 실제 ROS DetectionArray (person >=1)와 원본 Gazebo RGB replay L1 SUCCESS. ELF `readelf -d` SONAME을 검증하지 못하면 BLOCKED, 임의 symlink명 추가 불가.
+- 검증 계층 추가 금지: 기존 L0 symlink contract, 기존 공용 C++ YOLO Build/Replay L1과 실제 same-world Nav2/Gazebo L2를 사용한다. 이 YOLO replay는 **라이브 RGBD+YOLO 동시** 증거가 아니라 다음 Task01 선행 준비일 뿐.
