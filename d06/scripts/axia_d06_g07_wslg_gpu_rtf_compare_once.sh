@@ -4,7 +4,14 @@ set -Eeuo pipefail
 umask 077
 MODE=--compare
 if [[ $# -gt 0 ]]; then MODE="$1";fi
-[[ $# -le 1 && ( "$MODE" == --compare || "$MODE" == --self-check ) ]] || exit 2
+[[ $# -le 1 && ( "$MODE" == --compare || "$MODE" == --nvidia-only || "$MODE" == --self-check ) ]] || exit 2
+# Reuse the D08 Owner-proven NVIDIA WSLg profile as one isolated
+# NO_GOAL diagnostic; do not repeat the historically failed Intel run.
+adapters=(NVIDIA Intel)
+if [[ "$MODE" == --nvidia-only ]];then
+  adapters=(NVIDIA)
+  echo 'D06_GPU_RTF_NVIDIA_ONLY_NO_GOAL OWNER_L3_NOT_ACCEPTED'
+fi
 readonly OWNER_SHA='b711562c4c7f4c229b6a4079f74c3a912ca8b5e7'
 readonly OWNER_BLOB='3ec8925d13e9357ffeb45e3d75e5f862b54e931a'
 readonly ANALYZER_SHA='615bcd81b8f74a478daa2baeaf9f27ca02c94f11'
@@ -30,7 +37,7 @@ RUN_DIR="$(mktemp -d -p "$ROOT" ab-no-goal-XXXXXXXX)"
 TMP="$(mktemp -d)"
 trap 'rm -rf -- "$TMP"' EXIT
 # Preflight *actual* GPU selection before ever launching a robot.
-for gpu in NVIDIA Intel;do
+for gpu in "${adapters[@]}";do
   MESA_D3D12_DEFAULT_ADAPTER_NAME="$gpu" glxinfo -B > "$RUN_DIR/$gpu.preflight.txt"
   grep -Ei "OpenGL renderer string:.*D3D12.*$gpu" "$RUN_DIR/$gpu.preflight.txt" >/dev/null || {
     echo "D06_GPU_RTF_D3D12_$gpu_UNAVAILABLE_NO_GOAL" >&2;exit 3;
@@ -44,7 +51,7 @@ curl -fLsS --retry 3 --max-time 90 "$URL/$ANALYZER_SHA/d06/tools/axia_d06_lidar_
 }
 bash -n "$TMP/owner.sh"
 # New NVIDIA first; the historically unsafe Intel is the last session.
-for gpu in NVIDIA Intel;do
+for gpu in "${adapters[@]}";do
   if [[ "$gpu" == NVIDIA ]];then lc=nvidia; domain=86;else lc=intel;domain=87;fi
   echo "D06_GPU_RTF_AB_CASE_START=$gpu DOMAIN=$domain GOAL_NOT_SENT"
   rc=0
@@ -81,10 +88,43 @@ PY
   fi
   echo "D06_GPU_RTF_AB_CASE_FINISHED=$gpu SENSOR_EXIT=$rc NO_GOAL"
   # A fatal shutdown after NVIDIA must not be followed by another session.
-  if [[ "$gpu" == NVIDIA ]] && grep -Eiq 'exit code -11|SIGSEGV|Segmentation fault|Traceback' "$RUN_DIR/nvidia.launch.log";then
-    echo D06_GPU_RTF_NVIDIA_SHUTDOWN_CRASH_ABORT_SECOND_RUN >&2;exit 3
+  if grep -Eiq 'exit code -11|SIGSEGV|Segmentation fault|Traceback' "$RUN_DIR/$lc.launch.log";then
+    echo "D06_GPU_RTF_NATIVE_SHUTDOWN_SEGV_HOLD=$gpu" >&2
+    if [[ "$gpu" == NVIDIA ]];then
+      echo D06_GPU_RTF_NVIDIA_SHUTDOWN_CRASH_ABORT_SECOND_RUN >&2
+    fi
+    exit 3
   fi
 done
+# A single NVIDIA session tests only the D08-proven adapter choice.
+# It does NOT prove Intel-vs-NVIDIA causality, CM120/Guard150 or Moving L3.
+if [[ "$MODE" == --nvidia-only ]];then
+  python3 - "$RUN_DIR/nvidia.g07_wslg_sensor_truth.json" <<'PY'
+import json,sys
+r=json.load(open(sys.argv[1],encoding='utf-8'))
+m=r.get('metrics',{})
+raw=m.get('raw',{})
+safety=m.get('safety',{})
+rtf=r.get('rtf_diagnostics',{})
+checks={
+ 'no_goal':r.get('goal_sent') is False and r.get('fixture_moved') is False,
+ 'source_clock_rtf_measured':isinstance(rtf.get('ros_clock_rtf'),(float,int)) and rtf['ros_clock_rtf']>0,
+ 'raw_300ms':0 < raw.get('max_receipt_gap_sec',999) <= .3,
+ 'safety_300ms':0 < safety.get('max_receipt_gap_sec',999) <= .3,
+ 'front_clear':safety.get('front_median_m',0)>.75,
+ 'side_clear':safety.get('side_median_m',0)>1.20,
+ 'every_safety_scan_clear':safety.get('count',0)>=20 and safety.get('count')==safety.get('clear_count'),
+ 'native_report_candidate':r.get('status')=='NO_GOAL_SENSOR_WINDOW_CLEAR_CANDIDATE',
+}
+print('D06_GPU_RTF_NVIDIA_ONLY_FIRST_BLOCK='+next((k for k,v in checks.items() if not v),'NONE'))
+print('D06_GPU_RTF_NVIDIA_ONLY_NO_GOAL_CHECKS='+json.dumps(checks,sort_keys=True))
+print('D06_GPU_RTF_NVIDIA_SENSOR_CANDIDATE_NOT_ACCEPTED')
+if not all(checks.values()):raise SystemExit(3)
+PY
+  echo "D06_GPU_RTF_NVIDIA_NO_GOAL_EVIDENCE=$RUN_DIR"
+  echo 'D06_GAZEBO_LIVE_RELEASE=HOLD CERTIFIED_ESTOP=false'
+  exit 0
+fi
 for stem in g07_world.sdf.xacro g07_demo_waffle.sdf.xacro;do
   cmp -s "$RUN_DIR/intel.$stem" "$RUN_DIR/nvidia.$stem" || {
     echo "D06_GPU_RTF_WORLD_OR_WAFFLE_NOT_IDENTICAL=$stem" >&2;exit 3;
