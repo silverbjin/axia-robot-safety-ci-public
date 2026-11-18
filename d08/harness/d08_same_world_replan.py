@@ -139,6 +139,15 @@ def assess_official_cm_native_scan(state_id:int, state_label:str,
             "moving_goal_sent":False}
 
 
+INDEPENDENT_RX_HISTORY_LIMIT = 4096
+
+
+def new_independent_rx_buffers():
+    """Keep a ~9s 250Hz clock window without unbounded trace growth."""
+    return {k:deque(maxlen=INDEPENDENT_RX_HISTORY_LIMIT)
+            for k in ("scan","odom","clock","tf")}
+
+
 def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
     import rclpy
     from rclpy.action import ActionClient
@@ -242,8 +251,7 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
     independent_executor=SingleThreadedExecutor()
     independent_executor.add_node(independent_node)
     independent_lock=threading.Lock()
-    independent_events={k:deque(maxlen=512)
-                        for k in ("scan","odom","clock","tf")}
+    independent_events=new_independent_rx_buffers()
 
     def independent_cb(topic,msg):
         received=time.monotonic()
@@ -512,6 +520,7 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
             report={"callback_count":len(events),
                     "max_host_receive_gap_sec":round(max(host_gaps),6)
                     if host_gaps else None,
+                    "history_complete":len(events)<INDEPENDENT_RX_HISTORY_LIMIT,
                     "publisher_rmw_gap_measured":False}
             if first:
                 start=first["previous_host_monotonic_sec"]-.15
