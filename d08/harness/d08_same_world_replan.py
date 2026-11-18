@@ -110,6 +110,11 @@ def evaluate_three_phases(rows: list[dict], scan_receive_gaps: list[float]) -> d
             "actual_cm_safety_ttl_proven":False}
 
 
+def cm_state_is_active(state_id:int, state_label:str)->bool:
+    """Native lifecycle state is sufficient only on the exact active tuple."""
+    return state_id==3 and state_label=="active"
+
+
 def assess_official_cm_native_scan(state_id:int, state_label:str,
                                    observation_sources:list, scan_topic:str)->dict:
     """Scoped proof from *real official* CM lifecycle/get_parameters services.
@@ -118,7 +123,7 @@ def assess_official_cm_native_scan(state_id:int, state_label:str,
     fabricate collision_monitor internal callback gaps or STOP/SLOW actions
     when the stationary Waffle has no cmd_vel inputs.
     """
-    if state_id!=3 or state_label!="active":
+    if not cm_state_is_active(state_id,state_label):
         raise ValueError("D08_OFFICIAL_CM_NOT_ACTIVE")
     if ("scan" not in observation_sources):
         raise ValueError("D08_OFFICIAL_CM_SCAN_SOURCE_MISSING")
@@ -250,12 +255,27 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
             raise RuntimeError("D08_OFFICIAL_CM_NATIVE_STATE_SCAN_NOT_VERIFIED:GET_STATE_ABSENT")
         if not param_cli.wait_for_service(timeout_sec=8):
             raise RuntimeError("D08_OFFICIAL_CM_NATIVE_STATE_SCAN_NOT_VERIFIED:GET_PARAMETERS_ABSENT")
-        state_future=state_cli.call_async(GetState.Request())
-        until(lambda:state_future.done(),
-              "OFFICIAL_CM_NATIVE_STATE_SCAN_NOT_VERIFIED:STATE_REPLY_TIMEOUT",8)
-        state=state_future.result()
-        if state is None:
-            raise RuntimeError("D08_OFFICIAL_CM_NATIVE_STATE_SCAN_NOT_VERIFIED:EMPTY_STATE")
+        # Native lifecycle service can exist while activation is still
+        # transitioning. Read ONLY real service responses until ACTIVE,
+        # bounded to 12 seconds; inactive/finalized never yields a PASS.
+        state_deadline=time.monotonic()+12.0
+        state=None
+        states_seen=[]
+        while time.monotonic()<state_deadline:
+            state_future=state_cli.call_async(GetState.Request())
+            until(lambda:state_future.done(),
+                  "OFFICIAL_CM_NATIVE_STATE_SCAN_NOT_VERIFIED:STATE_REPLY_TIMEOUT",4)
+            state=state_future.result()
+            if state is None:
+                raise RuntimeError("D08_OFFICIAL_CM_NATIVE_STATE_SCAN_NOT_VERIFIED:EMPTY_STATE")
+            observed=(int(state.current_state.id),str(state.current_state.label))
+            states_seen.append(observed)
+            if cm_state_is_active(*observed):
+                break
+            time.sleep(.2)
+        if state is None or not cm_state_is_active(
+                int(state.current_state.id),str(state.current_state.label)):
+            raise RuntimeError("D08_OFFICIAL_CM_ACTIVATION_NOT_READY:"+str(states_seen[-5:]))
         req=GetParameters.Request()
         req.names=["observation_sources","scan.topic"]
         param_future=param_cli.call_async(req)
@@ -273,6 +293,7 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
         except ValueError as exc:
             raise RuntimeError(
                 "D08_OFFICIAL_CM_NATIVE_STATE_SCAN_NOT_VERIFIED:"+str(exc)) from exc
+        witness["cm_native_state_observed_transitions"]=[list(x) for x in states_seen]
         witness["cm_native_state_service"]="/collision_monitor/get_state"
         witness["cm_native_param_service"]="/collision_monitor/get_parameters"
         witness["cm_native_observation_sources"]=sources
