@@ -221,8 +221,10 @@ run_verified_owner() {
     hold D06_G07_OWNER_25_5_PARITY_FAILED_NO_GOAL
   # Preserve kernel distinction: PASS here does NOT mean WSL2 scheduler or
   # WSLg GPU timing is equivalent to the native public Linux CI machine.
-  python3 - "$out/owner_parity.json" <<'PY' ||
-    hold D06_G07_OWNER_CORE_PARITY_REPORT_INVALID_NO_GOAL
+  # Complete the failure branch BEFORE heredoc content: otherwise Bash
+  # sends the next shell "hold" line into Python, producing IndentationError,
+  # and can continue to the Goal path without a valid parity admission.
+  python3 - "$out/owner_parity.json" <<'PY' || { hold D06_G07_OWNER_CORE_PARITY_REPORT_INVALID_NO_GOAL; }
 import json,sys
 from pathlib import Path
 r=json.loads(Path(sys.argv[1]).read_text())
