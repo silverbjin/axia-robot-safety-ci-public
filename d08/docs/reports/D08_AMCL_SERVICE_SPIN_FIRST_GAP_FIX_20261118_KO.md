@@ -28,3 +28,35 @@
 - GREEN 실제 CI Run/출력: **PENDING (작성 시점, 성공 주장 금지)**.
 - 실제 검증 수준: 0→CI 실행 후 기록. 미검증 Owner WSLg/NVIDIA/OpenGL 렌더링, 공식 CM 내부 RMW-source/Guard TTL, 실제 moving Goal.
 - Branch: `feat/d08-unified-sensor-cm-path-20261118`; main 병합 **NO**. 결과 SHA/Run URL은 RED/GREEN 뒤 같은 보고서에 남김.
+
+## 2026-11-18 실행 완료 결과 — 정확한 RED / GREEN / REFACTOR / REVIEW / COMMIT
+
+- **RED 소스 SHA** `32ffd740f3d26c8f85f616b24c99002bf3615a10`, [Public CI #44305843798](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44305843798): `ImportError: cannot import name 'spin_until_initial_pose_service_ready' from d08_amcl_initial_pose`; 새 테스트 수집 실패, 나머지 실제 Gazebo job SKIPPED. 원본 Owner Scan 2.065084s/Odom 1.952984s gap 진단은 보존.
+- **GREEN 코드 SHA** `62d7e94abe2828792be32231e5ab79cdc6620f5f`, [Public CI #44306208316](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44306208316): 전체 워크플로 **SUCCESS**, L0 `123 passed in 0.53s`, Gazebo 센서/Waffle L2 PASS, **실제 Gazebo+공식 AMCL/TF/Path+8-cycle NO_GOAL L2 PASS**, 같은 World 원본 C++ YOLO/실제 Depth 2 VALID+UNKNOWN 통합 job SUCCESS. 4개 jobs 모두 success.
+- 실제 ROS service readiness 판정만 CI에서 **2.0초 holdoff**(native server가 2초 unavailable이었다는 주장이 아님). 같은 관측 노드에서 `rclpy.spin_once` 반복 처리:
+```text
+D08_AMCL_SERVICE_DISCOVERY_RX_SPIN {
+  "ready": true,
+  "service_wait_wall_sec": 2.003438,
+  "ci_holdoff_sec": 2.0,
+  "spin_calls": 1433,
+  "callback_samples_during_wait": {"scan": 19, "odom": 55, "clock": 91},
+  "max_host_callback_gap_during_service_wait_sec": {
+    "scan": 0.139834, "odom": 0.044505, "clock": 0.027300
+  },
+  "first_receive_gaps_during_wait": {"scan": null, "odom": null},
+  "publisher_rmw_gap_measured": false
+}
+D08_REAL_AMCL_SERVICE_DISCOVERY_SPIN_SCAN_ODOM_CLOCK_L2_PASS
+D08_REAL_SCAN_ODOM_CLOCK_HOST_VS_SIM_STAMP_TIMING_L2_PASS
+D08_CI_REAL_GUI_EIGHT_REPEAT_PATHS_L2_PASS
+D08_OFFICIAL_SAME_WORLD_THREE_PHASE_PATHS_L2_PASS_NO_GOAL
+```
+- 실제 Localization/TF `D08_AMCL_REAL_FIRST_POSE_PLUS_LIVE_TF_READY`: AMCL source stamp **11.202s**, map→base_link TF source stamp **12.888s**, Scan 최신 host receive age **0.000078s**, Odom **0.019720s**. 기존 ROS header stamp delta 최대값은 `amcl_receive_timing.json`의 `scan/odom/clock.max_source_stamp_delta_sec`로 실제 원본 보존되며, 진단값을 Gazebo publisher나 CM RMW 내부 간격이라고 오인하지 않음.
+- 같은 L2 공식 Path의 before/intrusion/restored 변화 확인, 그 중 최초 주기 Costmap lethal **0→66→0** 및 실제 Scan 최소거리 **1.8810→0.5672→1.8878m**. 이 Path는 주행 명령 아님.
+- **실제 공개 아티팩트**: `d08-official-nav2-oneworld-l2-evidence` #14429360127, `d08-main-real-no-goal-evidence` #14427693244, `d08-same-world-live-person-range-cm-nav2-evidence` #14427584985, `d08-ui9-public-yolo-ros-replay-l1` #14428542454 (GitHub Actions 보관 7일).
+- **검증 범위 REVIEW**: `d08_amcl_initial_pose.py` 1개 실제 실행 파일만 수정. 서비스 준비 `client.service_is_ready()`와 `rclpy.spin_once(node,timeout_sec<=.05)` 사용, `SetInitialPose` 1회·기존 첫 gap 및 500ms Scan/Odom age 기준 유지. L2의 테스트용 0.65s 일시적 subscriber pause와 NO_GOAL 실측 회복 로직은 기존대로 유지하며 새로운 fake 안전 성공을 표시하지 않음. 새 `max_source_stamp_delta_sec`는 계측용; `publisher_rmw_cadence_measured=false` 유지.
+- 실제 Owner WSL2/WSLg Intel D3D12에서 원래 2.065초 공백이 재현되지 않는다는 증거는 **없음**. CPU/GPU/WSLg에서 생기는 독립적인 publisher/TF/DDS 지연 원인은 미검증. 기존 G07 CM 내부 주기·Guard TTL·주행 감속·정지 역시 별도 HOLD. **전체 L3 안정성 PASS 아님**.
+- **COMMIT**: `32ffd740f3d26c8f85f616b24c99002bf3615a10`(RED), `62d7e94abe2828792be32231e5ab79cdc6620f5f`(GREEN), 본 보고서 후속 커밋은 문서 전용이며 실증 소스 SHA는 `62d7e94abe2828792be32231e5ab79cdc6620f5f`.
+- CI 실행 명령: `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -q d08/tests/test_d08_amcl_service_discovery_starvation.py d08/tests/test_d08_owner_first_scan_odom_gap_regression.py d08/tests/test_d08_static_amcl_witness.py`. 실제 Gazebo L2는 `.github/workflows/d08-main-no-goal-real-gazebo-l2.yml`의 고정 official Nav2 job 사용.
+- **RELEASE 판정**: `D08_AMCL_SERVICE_DISCOVERY_CALLBACK_L2=PASS`, `D08_OWNER_WSLG_FIRST_GAP_RETEST=NOT_RUN`, `D08_LIVE_NO_GOAL_ACCEPTED=HOLD_OWNER_L3`, `D08_MOVING_E2E_ACCEPTED=HOLD`, 모든 main 병합 NO. 사용자 요청 범위 외 기존 성공 시험·모델/World/Renderer 재설계 없음.
