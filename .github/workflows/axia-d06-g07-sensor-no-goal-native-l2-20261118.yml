@@ -43,14 +43,14 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: feffb37219abc3649530a8439c3ba0a1f3fdca88
+          ref: 9862353e7116bc4a14a5bb365ae356642e83ef0e
           path: student
           persist-credentials: false
       - name: Actual frozen source and sensor admission contracts
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C student rev-parse HEAD)" = feffb37219abc3649530a8439c3ba0a1f3fdca88
+          test "$(git -C student rev-parse HEAD)" = 9862353e7116bc4a14a5bb365ae356642e83ef0e
           test "$(git -C ci rev-parse HEAD)" = "$GITHUB_SHA"
           cd student/block_B/day07/h01_runtime
           set +u;source /opt/ros/jazzy/setup.bash;set -u
