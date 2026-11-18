@@ -58,6 +58,61 @@ PY
     if [[ -s "$OUT.tar.gz" ]];then
       sha256sum "$OUT.tar.gz" > "$OUT.tar.gz.sha256"
     fi
+    # Separate SMALL diagnostic bundle; original 14-topic SQLite/raw tar is retained
+    # unchanged and private on the Owner WSL2 host. No source/build/bag in ZIP.
+    python3 - "$OUT" "$OUT.diagnostics.zip" <<'PY_DIAGNOSTICS' || echo 'AXIA_G07_TASK04_DIAGNOSTIC_ZIP_BUILD_FAILED'
+import hashlib
+import sys
+import zipfile
+from pathlib import Path
+
+root=Path(sys.argv[1])
+dest=Path(sys.argv[2])
+names=[
+    'first_failure.txt','manifest.txt','gui_windows.txt',
+    'task04_owner_verdict.json','task04_owner_numeric_review.json',
+    'owner_numeric_review.log','owner_parity.json',
+    'native/runtime.txt','native/clock_diagnostics.json',
+    'native/g07_ci_pregoal/pregoal_baseline.json',
+    'native/g07_ci_pregoal/owner_pregoal_l2.json',
+    'native/g07_ci_pregoal.log',
+    'native/g07_active_cm_native_parameters.json',
+    'native/g07_ci_moving/ci_moving_goal_result.json',
+    'native/g07_ordered_shutdown.json','native/g07_shutdown_audit.json',
+    'native/staged_startup.log','native/g07_ordered_shutdown.log',
+]
+names.extend(str(p.relative_to(root)) for p in
+             (root/'native/g07_ci_pregoal').glob('gz_pose_*.log')
+             if p.is_file() and not p.is_symlink())
+hashes=[]
+with zipfile.ZipFile(dest,'w',compression=zipfile.ZIP_DEFLATED,
+                     compresslevel=6) as zf:
+    for rel in sorted(set(names)):
+        if not rel or '..' in Path(rel).parts:
+            continue
+        path=root/rel
+        if not path.is_file() or path.is_symlink():
+            continue
+        with path.open('rb') as stream:
+            total=path.stat().st_size
+            if total>65536 and path.suffix=='.log':
+                head=stream.read(12000)
+                stream.seek(max(0,total-32000))
+                payload=head+b'\\n[LOG_SNIPPET_MIDDLE_OMITTED]\\n'+stream.read()
+            elif total<=262144:
+                payload=stream.read()
+            else:
+                continue
+        zf.writestr(rel,payload)
+        hashes.append(hashlib.sha256(payload).hexdigest()+'  '+rel)
+    zf.writestr('SHA256SUMS','\\n'.join(hashes)+'\\n')
+print('AXIA_G07_TASK04_DIAGNOSTIC_BUNDLE_WRITTEN',flush=True)
+PY_DIAGNOSTICS
+    if [[ -s "$OUT.diagnostics.zip" ]];then
+      sha256sum "$OUT.diagnostics.zip" > "$OUT.diagnostics.zip.sha256"
+      echo "AXIA_G07_TASK04_DIAGNOSTIC_ZIP=$OUT.diagnostics.zip"
+      echo "AXIA_G07_TASK04_DIAGNOSTIC_SHA256=$OUT.diagnostics.zip.sha256"
+    fi
     echo "AXIA_G07_TASK04_ARCHIVE=$OUT.tar.gz"
     echo "AXIA_G07_TASK04_SHA256=$OUT.tar.gz.sha256"
     echo "AXIA_G07_TASK04_LOCAL_EVIDENCE=$OUT"
