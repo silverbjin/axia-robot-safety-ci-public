@@ -39,7 +39,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: d34088fb0e6ecc101ea93da045cce943cab9ef15
+          ref: 8d1fb87df3eb9f0661700b8e1f03fc57bcce7454
           path: student
           persist-credentials: false
       - name: NO GOAL Task03 6 + cleanup 7 + post-STOP lifecycle 3 + Simple TF 5 + CM120 5 + numeric artifacts 3 L0 contracts
@@ -47,7 +47,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           test "$(git -C ci rev-parse HEAD)" = "${{ github.sha }}"
-          test "$(git -C student rev-parse HEAD)" = 'd34088fb0e6ecc101ea93da045cce943cab9ef15'
+          test "$(git -C student rev-parse HEAD)" = '8d1fb87df3eb9f0661700b8e1f03fc57bcce7454'
           export PYTHONPATH="$GITHUB_WORKSPACE/ci${PYTHONPATH:+:$PYTHONPATH}"
           cd student/block_B/day07/h01_runtime
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task03_formal_evidence.py' -v
@@ -197,7 +197,7 @@ jobs:
             > "$GITHUB_WORKSPACE/d06_visual/rviz.log" 2>&1 &
           rviz_pid=$!
           cd student/block_B/day07/h01_runtime
-          echo D06_G07_REAL_SAME_SESSION_BEGIN STUDENT_SHA=d34088fb0e6ecc101ea93da045cce943cab9ef15
+          echo D06_G07_REAL_SAME_SESSION_BEGIN STUDENT_SHA=8d1fb87df3eb9f0661700b8e1f03fc57bcce7454
           env -u LD_PRELOAD -u AXIA_G07_TASK01_TF_AVAIL_PROBE timeout --signal=TERM --kill-after=10s 900s \
             bash scripts/p2_no_goal_smoke_ci.sh > "$GITHUB_WORKSPACE/d06_visual/moving_and_gui.log" 2>&1 &
           runner_pid=$!
