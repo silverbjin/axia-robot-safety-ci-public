@@ -8,7 +8,7 @@ D07-H01 L2 world/map coordinates are *candidates*, not evidence for D08.
 from __future__ import annotations
 
 from collections import deque
-from d08_scan_gap_trace import first_scan_receive_gap
+from d08_scan_gap_trace import first_scan_receive_gap, diagnose_first_receive_boundary
 import json
 import math
 from pathlib import Path
@@ -139,10 +139,19 @@ def assess_official_cm_native_scan(state_id:int, state_label:str,
             "moving_goal_sent":False}
 
 
+INDEPENDENT_RX_HISTORY_LIMIT = 4096
+
+
+def new_independent_rx_buffers():
+    """Keep a ~9s 250Hz clock window without unbounded trace growth."""
+    return {k:deque(maxlen=INDEPENDENT_RX_HISTORY_LIMIT)
+            for k in ("scan","odom","clock","tf")}
+
+
 def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
     import rclpy
     from rclpy.action import ActionClient
-    from rclpy.executors import MultiThreadedExecutor
+    from rclpy.executors import MultiThreadedExecutor, SingleThreadedExecutor
     from rclpy.node import Node
     from rclpy.parameter import Parameter
     from rclpy.qos import (qos_profile_sensor_data, QoSProfile,
@@ -150,6 +159,8 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
     from rclpy.time import Time
     from nav_msgs.msg import OccupancyGrid, Odometry, Path as NavPath
     from sensor_msgs.msg import LaserScan
+    from rosgraph_msgs.msg import Clock
+    from tf2_msgs.msg import TFMessage
     from nav2_msgs.action import ComputePathToPose
     from lifecycle_msgs.srv import GetState
     from rcl_interfaces.srv import GetParameters
@@ -191,6 +202,7 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
     moved=False
 
     def on_scan(msg):
+        entry_at=time.monotonic()  # callback entry, before per-range CPU work
         if _stamp(msg)<=0:return
         bearing=math.atan2(CANDIDATE_MAP[1]-START_MAP[1],
                            CANDIDATE_MAP[0]-START_MAP[0])
@@ -199,7 +211,8 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
                and abs(math.atan2(math.sin(msg.angle_min+i*msg.angle_increment-bearing),
                                   math.cos(msg.angle_min+i*msg.angle_increment-bearing)))<.09]
         with callbacks_lock:
-            scan_rows.append({"at":time.monotonic(),"stamp":_stamp(msg),
+            scan_rows.append({"at":time.monotonic(),"entry_at":entry_at,
+                  "stamp":_stamp(msg),
                  "sector_min_m":min(valid) if valid else None,
                  "frame":msg.header.frame_id})
 
@@ -231,6 +244,49 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
     listener=TransformListener(tfbuf,node,spin_thread=False)
     thread=threading.Thread(target=exe.spin,daemon=True)
     thread.start()
+
+    # Read-only, independent ROS callback witness. Different executor thread
+    # still shares the host/GIL, so it cannot prove native publisher/RMW gaps.
+    independent_node=Node("axia_d08_independent_rx_no_goal")
+    independent_executor=SingleThreadedExecutor()
+    independent_executor.add_node(independent_node)
+    independent_lock=threading.Lock()
+    independent_events=new_independent_rx_buffers()
+
+    def independent_cb(topic,msg):
+        received=time.monotonic()
+        try:
+            stamp=(msg.clock if topic=="clock" else
+                   msg.transforms[-1].header.stamp if topic=="tf" and msg.transforms
+                   else msg.header.stamp)
+            source_ns=int(stamp.sec)*1_000_000_000+int(stamp.nanosec)
+        except (AttributeError,IndexError):
+            source_ns=None
+        with independent_lock:
+            independent_events[topic].append(
+                {"at":received,"stamp_ns":source_ns})
+
+    independent_subs=[
+        independent_node.create_subscription(
+            LaserScan,"/scan",lambda m:independent_cb("scan",m),
+            qos_profile_sensor_data),
+        independent_node.create_subscription(
+            Odometry,"/odom",lambda m:independent_cb("odom",m),
+            qos_profile_sensor_data),
+        independent_node.create_subscription(
+            Clock,"/clock",lambda m:independent_cb("clock",m),
+            qos_profile_sensor_data),
+        independent_node.create_subscription(
+            TFMessage,"/tf",lambda m:independent_cb("tf",m),
+            qos_profile_sensor_data),
+    ]
+    independent_thread=threading.Thread(
+        target=independent_executor.spin,daemon=True)
+    independent_thread.start()
+
+    def independent_snapshot():
+        with independent_lock:
+            return {k:list(v) for k,v in independent_events.items()}
 
     def snapshot():
         with callbacks_lock:
@@ -446,6 +502,39 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
         result["first_scan_timing_boundary"]=first_scan_receive_gap(
             [(sample["at"],int(round(sample["stamp"]*1e9))) for sample in scans],
             limit_s=.5)
+        independent=independent_snapshot()
+        first=result["first_scan_timing_boundary"]
+        entry_pair=None
+        if first:
+            i=first["sample_index"]
+            entry_pair={"previous_entry_sec":scans[i-1]["entry_at"],
+                        "current_entry_sec":scans[i]["entry_at"]}
+        candidate=diagnose_first_receive_boundary(
+            first, {k:[x["at"] for x in samples]
+                    for k,samples in independent.items()},
+            observer_first_callback=entry_pair)
+        result["first_scan_causality"]=candidate
+        result["independent_ros_rx_timing"]={}
+        for topic,events in independent.items():
+            host_gaps=[b["at"]-a["at"] for a,b in zip(events,events[1:])]
+            report={"callback_count":len(events),
+                    "max_host_receive_gap_sec":round(max(host_gaps),6)
+                    if host_gaps else None,
+                    "history_complete":len(events)<INDEPENDENT_RX_HISTORY_LIMIT,
+                    "publisher_rmw_gap_measured":False}
+            if first:
+                start=first["previous_host_monotonic_sec"]-.15
+                end=first["current_host_monotonic_sec"]+.15
+                report["near_first_boundary"]=[
+                    {"at":round(x["at"],6),"stamp_ns":x["stamp_ns"]}
+                    for x in events if start<=x["at"]<=end][:32]
+            result["independent_ros_rx_timing"][topic]=report
+        result["scan_observer_callback_processing_max_sec"]=round(
+            max((x["at"]-x["entry_at"]) for x in scans),6) if scans else None
+        result["scan_observer_first_gap_entry_pair"]=entry_pair
+        result["same_monotonic_clock_domain"]=True
+        result["native_gazebo_scan_publisher_cadence_measured"]=False
+        result["bridge_dds_send_cadence_measured"]=False
         result["three_phases"]=rows
         result.update(evaluate_three_phases(rows,gaps))
     except Exception as exc:
@@ -461,6 +550,9 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
         result.setdefault("three_phases",rows)
         # No synthetic /scan or arbitrary ROS cmd_vel publisher is created here.
         (out/"verdict.json").write_text(json.dumps(result,indent=2,sort_keys=True)+"\n")
+        independent_executor.shutdown(timeout_sec=2)
+        independent_node.destroy_node()
+        independent_thread.join(timeout=2)
         exe.shutdown(timeout_sec=3)
         node.destroy_node()
         rclpy.shutdown()
