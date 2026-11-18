@@ -342,6 +342,31 @@ jobs:
             'https://fuel.gazebosim.org/1.0/Mingfei/models/actor/tip/files/meshes/walk.dae' \
             -o /tmp/axia-d08-nav2-assets/walk.dae
           echo '49af0df3a319d1cb8ca2cebf02dbd00f625e5d5bec820bc5e109925b18b65c6e  /tmp/axia-d08-nav2-assets/walk.dae' | sha256sum -c -
+      - name: RED reproduce actual Gazebo 255 on not-yet-generated Nav2 temp SDF
+        shell: bash
+        run: |
+          set -euo pipefail
+          source /opt/ros/jazzy/setup.bash
+          python3 - <<'PY'
+          import json,os,subprocess,tempfile
+          from pathlib import Path
+          root=Path('results/d08-startup-red');root.mkdir(parents=True,exist_ok=True)
+          with tempfile.TemporaryDirectory(prefix='d08_nav2_red_') as d:
+              missing=Path(d)/'nav2_xacro_not_written_yet.sdf'
+              assert not missing.exists()
+              env=os.environ.copy();env['GZ_PARTITION']='axia_d08_red_'+str(os.getpid())
+              cp=subprocess.run(['gz','sim','-r','-s',str(missing)],capture_output=True,
+                  text=True,env=env,timeout=15,check=False)
+              output=cp.stdout+'\n'+cp.stderr
+              (root/'actual_gz_stderr_excerpt.txt').write_text(output[:16000])
+              verdict={'actual_gazebo_cli':True,'first_boundary':'TEMP_SDF_NOT_YET_CREATED',
+                       'first_gz_exit_code':cp.returncode,'world_existed_at_start':False,
+                       'expected_exit_code':255,'safety_acceptance':False}
+              (root/'verdict.json').write_text(json.dumps(verdict,indent=2)+'\n')
+              assert cp.returncode==255,verdict
+              assert 'Unable to find or download file' in output,output[-1000:]
+          print('D08_REAL_GAZEBO_TEMPFILE_RED_REPRODUCED exit=255 NOT_SAFETY_PASS')
+          PY
       - name: Real ONE Gazebo World + Waffle RGBD and official AMCL/ComputePathToPose
         shell: bash
         run: |
@@ -359,6 +384,12 @@ jobs:
           from pathlib import Path
           v=json.loads(Path('results/d08-official-nav2-sameworld/verdict.json').read_text())
           assert v['status']=='D08_REAL_GAZEBO_WAFFLE_RGBD_NO_GOAL_PASS',v
+          assert v['gazebo_server_started_before_nav2'] is True
+          assert v['startup_world']['native_world_service_verified'] is True
+          assert v['startup_world']['status']=='READY'
+          assert v['startup_world']['temp_nav2_sdf_used_by_server'] is False
+          assert v['generated_world_preflight']['sha256']==v['startup_world']['sha256']
+          print('D08_GAZEBO_WORLD_READY_BEFORE_NAV2_L2_PASS')
           assert v['official_nav2_same_world_requested'] is True
           assert v['rendered_world_scene']['scene_broadcaster_count']==1
           assert v['native_scene']['native_scene_service_verified'] is True
@@ -419,7 +450,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: d08-official-nav2-oneworld-l2-evidence
-          path: results/d08-official-nav2-sameworld/
+          path: |
+            results/d08-official-nav2-sameworld/
+            results/d08-startup-red/
           retention-days: 7
           if-no-files-found: warn
 
