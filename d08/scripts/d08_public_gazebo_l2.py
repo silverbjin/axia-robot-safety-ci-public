@@ -556,7 +556,12 @@ def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=Fals
             # NOT NavigateToPose, FollowPath, or a robot command.
             from d08_nav2_path_preflight import run as path_preflight
             proof=out/'official_nav2_before_path.json'
-            path_rc=path_preflight(proof,timeout_s=25)
+            # Reuse already pinned *actual native Waffle spawn* coordinates.
+            # Map occupied/unknown cells or missing real AMCL TF fail closed.
+            spawn=result['overlay_manifest']['robot_world_spawn']
+            path_rc=path_preflight(
+                proof,timeout_s=25,initialize_amcl=True,
+                spawn_xy=(spawn['x'],spawn['y']))
             result['official_nav2_before_path']=json.loads(proof.read_text())
             if path_rc!=0:
                 raise RuntimeError('D08_OFFICIAL_NAV2_BEFORE_PATH_FIRST_BOUNDARY:'
