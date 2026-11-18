@@ -7,8 +7,8 @@ if [[ $# -gt 0 ]]; then MODE="$1";fi
 [[ $# -le 1 && ( "$MODE" == --compare || "$MODE" == --self-check ) ]] || exit 2
 readonly OWNER_SHA='b711562c4c7f4c229b6a4079f74c3a912ca8b5e7'
 readonly OWNER_BLOB='3ec8925d13e9357ffeb45e3d75e5f862b54e931a'
-readonly ANALYZER_SHA='8875a02d53dee1e4346e20680b77b252e24d9ee7'
-readonly ANALYZER_BLOB='9314fd4c8f5354d82cbcb43ad43fcbc371197f61'
+readonly ANALYZER_SHA='615bcd81b8f74a478daa2baeaf9f27ca02c94f11'
+readonly ANALYZER_BLOB='171aad7ce8abe97c93a42f19787042619c06b65e'
 readonly STUDENT_SHA='e4c2007064bec2103bb743bd27cdbdf0955961b7'
 echo "AXIA_D06_GPU_RTF_PINNED_STUDENT=$STUDENT_SHA NO_GOAL_ONLY"
 if [[ "$MODE" == --self-check ]];then
