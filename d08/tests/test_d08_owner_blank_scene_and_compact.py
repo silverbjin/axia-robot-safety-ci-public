@@ -65,3 +65,22 @@ def test_compact_original_failure_keep_and_no_large_dependency(tmp_path):
         assert not any(x.startswith(('assets/','src/','yolo_ws/')) for x in paths)
         assert all(len(z.read(x))<256*1024 for x in paths)
     assert target.stat().st_size<10000
+
+
+def test_owner_eight_cycle_real_gui_regression_and_first_scan_source_gap():
+    """Owner's 8th cycle failed at a true 546.644ms receive gap."""
+    source=(ROOT/'d08/scripts/d08_public_gazebo_l2.py').read_text()
+    workflow=(ROOT/'.github/workflows/d08-main-no-goal-real-gazebo-l2.yml').read_text()
+    observer=(ROOT/'d08/harness/d08_same_world_replan.py').read_text()
+    assert '--ci-owner-repro' in source
+    assert 'D08_CI_REAL_GUI_EIGHT_REPEAT_PATHS_L2_PASS' in source
+    assert 'D08_CI_REAL_GUI_EIGHT_REPEAT_PATHS_L2_PASS' in workflow
+    assert 'ci_owner_replan_cycles' in workflow
+    assert 'first_scan_receive_gap(' in observer
+    assert 'first_scan_timing_boundary' in observer
+    from d08_scan_gap_trace import first_scan_receive_gap
+    v=first_scan_receive_gap([(5.0,100_000_000),
+                              (5.546644,200_000_000)])
+    assert v['receive_gap_sec']==.546644
+    assert v['header_sim_gap_sec']==.1
+    assert v['publisher_rmw_gap_measured'] is False
