@@ -181,7 +181,11 @@ for adapter in NVIDIA Intel;do
   fi
 done
 [[ -n "$GPU" ]] || hold WSLG_D3D12_ADAPTER_NOT_VERIFIED
-export GALLIUM_DRIVER=d3d12 MESA_D3D12_DEFAULT_ADAPTER_NAME="$GPU"
+# Publish only the already-GLX-verified GUI adapter. Do NOT set D3D12
+# process-globally: Gazebo server and ROS safety/sensor children keep
+# their original runtime environment.
+export AXIA_G07_TASK04_GUI_D3D12_ADAPTER="$GPU"
+unset GALLIUM_DRIVER MESA_D3D12_DEFAULT_ADAPTER_NAME || true
 echo "AXIA_G07_TASK04_WSLG_D3D12_GPU_SELECTED=$GPU"
 
 # Read-only native Gazebo8 contact witness, identical source and build path to CI.
