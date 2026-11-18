@@ -43,7 +43,9 @@ def test_missing_one_exact_source_stamp_is_not_evidence():
     assert x["cause"]=="UNDETERMINED"
 
 def test_healthy_under_500ms_pair_must_not_be_called_safety_failure():
-    x=compare_worst_scan_pair_receivers(P,samples(.236),
+    healthy={**P,"current_host_monotonic_sec":1550.25,
+             "receive_gap_sec":.25}
+    x=compare_worst_scan_pair_receivers(healthy,samples(.236),
                                          samples(.237),samples(.24))
     assert x["candidate"]=="NO_LARGE_RELATIVE_RX_DELAY"
     assert x["first_500ms_violation"] is False
