@@ -1,0 +1,32 @@
+# Task03 formal 14-topic/Goal UUID/Guard CM age/S02 ECM evidence gates.
+name: AXIA G07 Task03 formal public tracer OFF L0 L2
+on:
+  push:
+    branches: ['fix/g07-task03-formal-public-l2-20261118']
+    paths:
+      - '.github/workflows/axia-g07-task03-formal-public-l0-l2-20261118.yml'
+permissions:
+  contents: read
+concurrency:
+  group: axia-g07-task03-formal-public
+  cancel-in-progress: false
+jobs:
+  public-contract-l0:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: 6b06c4c873adcde93eae22171879b6489c2ce5c0
+          path: student
+          persist-credentials: false
+      - name: Task03 RED genuine missing raw evidence contract
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C student rev-parse HEAD)" = 6b06c4c873adcde93eae22171879b6489c2ce5c0
+          cd student/block_B/day07/h01_runtime
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task03_formal_evidence.py' -v
