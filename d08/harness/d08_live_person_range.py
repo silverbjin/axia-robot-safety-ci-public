@@ -7,14 +7,60 @@ No private instructor solution, fake Image, robot Goal or cmd_vel publisher.
 """
 from __future__ import annotations
 from collections import Counter, deque
+import hashlib
 import json
+import math
 from pathlib import Path
 import time
 
 from d08_live_readonly_probe import (
     RGB_TOPIC, DEPTH_TOPIC, DETECTIONS_TOPIC,
-    bbox_from_real_detection, stamp)
+    bbox_from_real_detection, decode_real_depth_roi, stamp)
 from d08_public_person_range import assess_public_person_range
+
+
+
+def capture_actual_roi_source(rgb_msg, depth_msg, bbox:dict, ppm_path:Path)->dict:
+    """Keep same real registered ROS frame and actual 16 Depth pixels.
+
+    Pure byte serialization: runtime validation must separately prove this is
+    a real Gazebo RGB-D + real YOLO sample, not merely valid image metadata.
+    """
+    w,h=int(rgb_msg.width),int(rgb_msg.height)
+    step=int(rgb_msg.step)
+    if (w<=0 or h<=0 or step<w*3 or
+        rgb_msg.encoding not in ("rgb8","bgr8") or
+        len(rgb_msg.data)<step*h):
+        raise ValueError("D08_ACTUAL_RGB_FRAME_BYTES_INVALID")
+    raw=bytes(rgb_msg.data)
+    pixels=b"".join(raw[y*step:y*step+w*3] for y in range(h))
+    if rgb_msg.encoding=="bgr8":
+        swap=bytearray(pixels)
+        swap[0::3],swap[2::3]=swap[2::3],swap[0::3]
+        pixels=bytes(swap)
+    vals=[float(v) for row in decode_real_depth_roi(depth_msg,bbox) for v in row]
+    if len(vals)!=16:
+        raise ValueError("D08_ROI_SOURCE_NOT_16_ACTUAL_DEPTH_PIXELS")
+    ppm_path=Path(ppm_path)
+    if ppm_path.exists():
+        raise ValueError("D08_REAL_RGB_FRAME_EVIDENCE_EXISTS")
+    ppm_path.parent.mkdir(parents=True,exist_ok=True)
+    ppm_path.write_bytes(f"P6\n{w} {h}\n255\n".encode()+pixels)
+    return {
+      "actual_rgb_frame_sha256":hashlib.sha256(raw).hexdigest(),
+      "actual_depth_image_sha256":hashlib.sha256(
+          bytes(depth_msg.data)).hexdigest(),
+      "rgb_stamp_ns":stamp(rgb_msg),
+      "depth_stamp_ns":stamp(depth_msg),
+      "bbox_xyxy":[int(bbox[k]) for k in ("x1","y1","x2","y2")],
+      "bbox_height_px":int(bbox["y2"]-bbox["y1"]),
+      "bbox_width_px":int(bbox["x2"]-bbox["x1"]),
+      "original_rgb_frame_path":ppm_path.name,
+      "roi_depth_m":[round(v,6) if math.isfinite(v) else None
+                     for v in vals],
+      "roi_valid_count":sum(math.isfinite(v) and .15<=v<=8 for v in vals),
+      "source_is_real_ros_only_if_runtime_proves":True,
+    }
 
 
 def stage_contract(verdict, expected):
@@ -160,6 +206,9 @@ def run(out:Path, *, registration_sha:str, expected:str,
                             verdict["actual_yolo_person"]=True
                             verdict["bbox"]=best
                             verdict["detection_score"]=best["confidence"]
+                            verdict["actual_roi_source"]=capture_actual_roi_source(
+                                rp,dp,best,out.with_name(
+                                    out.stem+"_actual_rgb.ppm"))
                             break
                         reasons[measure["reason"]]+=1
                     if verdict["status"]=="VALID":break

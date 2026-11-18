@@ -17,7 +17,7 @@ from d08_live_person_range import capture_actual_roi_source
 
 def stages():
     return [
-        {"stage":"slow","native_ack":True,"roi_status":"VALID",
+        {"stage":"farther","native_ack":True,"roi_status":"VALID",
          "distance_m":.30,"registration_confirmed":True},
         {"stage":"stop","native_ack":True,"roi_status":"VALID",
          "distance_m":.54,"registration_confirmed":True},

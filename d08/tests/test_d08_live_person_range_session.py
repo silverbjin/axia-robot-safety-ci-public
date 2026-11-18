@@ -15,7 +15,7 @@ def stages():
              "distance_m":None if n=="unknown" else d,
              "registration_confirmed":True,
              "reason":"NO_PERSON_CLASS_IN_ACTUAL_YOLO" if n=="unknown" else None}
-             for n,d in [("slow",.58),("stop",.35),("unknown",None)]]
+             for n,d in [("farther",.58),("stop",.35),("unknown",None)]]
 
 def test_two_distinct_actual_valid_and_reasoned_unknown():
     r=grade_actual_person_stages(stages())

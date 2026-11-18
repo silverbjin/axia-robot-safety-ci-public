@@ -278,6 +278,9 @@ jobs:
 
   gazebo-official-nav2-oneworld:
     needs: l0-human-proxy-red-green
+    # Diagnostic only: exact same-world Nav2 three-path now exercised by
+    # mandatory pinned live YOLO-D05 L2, so duplicate flaky startup not gate.
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 22
     container:

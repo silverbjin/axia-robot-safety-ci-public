@@ -15,7 +15,7 @@ import xml.etree.ElementTree as ET
 from d08_live_person_range import run as measure_live
 
 STAGES=(
-    ("slow",(-1.43,-.5,.24),"valid"),
+    ("farther",(-1.20,-.5,.24),"valid"),
     ("stop",(-1.63,-.5,.24),"valid"),
     ("unknown",(-1.9791189342778877,.17129139623634398,.24),"unknown"),
 )
@@ -23,7 +23,7 @@ RESTORE=(-.58,-.5,.24)
 
 
 def grade_actual_person_stages(rows):
-    if [x.get("stage") for x in rows] != ["slow","stop","unknown"]:
+    if [x.get("stage") for x in rows] != ["farther","stop","unknown"]:
         raise ValueError("D08_LIVE_TWO_VALID_ONE_UNKNOWN_STAGES_MISSING")
     a,b,u=rows
     if any(x.get("native_ack") is not True for x in rows):
@@ -34,14 +34,19 @@ def grade_actual_person_stages(rows):
     if any(x.get("registration_confirmed") is not True for x in rows):
         raise ValueError("D08_RGBD_REGISTRATION_PROOF_MISSING")
     v1,v2=a.get("distance_m"),b.get("distance_m")
-    if not (type(v1) in (float,int) and type(v2) in (float,int) and
-            abs(v1-v2)>=.12):
+    if not (type(v1) in (float,int) and type(v2) in (float,int)):
+        raise ValueError("D08_TWO_ACTUAL_PERSON_DISTANCES_NOT_DISTINCT")
+    # Physical person is closer during Stop; an inverted ROI trend must
+    # never pass merely because its absolute difference is large.
+    if v1<=v2:
+        raise ValueError("D08_PERSON_DISTANCE_DIRECTION_INCONSISTENT")
+    if v1-v2<.12:
         raise ValueError("D08_TWO_ACTUAL_PERSON_DISTANCES_NOT_DISTINCT")
     if u.get("reason")!="NO_PERSON_CLASS_IN_ACTUAL_YOLO":
         raise ValueError("D08_UNKNOWN_NOT_ACTUAL_NO_PERSON")
     return {"status":"D08_REAL_LIVE_PERSON_RANGE_2VALID_UNKNOWN_L2_PASS_NO_GOAL",
-            "valid_distance_slow_m":v1,"valid_distance_stop_m":v2,
-            "valid_distance_delta_m":round(abs(v1-v2),5),
+            "valid_distance_far_m":v1,"valid_distance_stop_m":v2,
+            "valid_distance_delta_m":round(v1-v2,5),
             "unknown_reason":u["reason"],
             "robot_goal_sent":False,"cmd_vel_published":False}
 
@@ -101,7 +106,7 @@ def run_session(out:Path, env:dict, source_sha:str, robot_sdf:Path, scan_probe):
                     raise RuntimeError("D08_PERSON_"+stage.upper()+
                                        "_ACTUAL_SCAN_CADENCE_NOT_VERIFIED")
                 front=scan["front_m"]
-                band=(.4,.75) if stage=="slow" else (.14,.4)
+                band=(.70,.90) if stage=="farther" else (.14,.4)
                 if not band[0] <= front < band[1]:
                     raise RuntimeError("D08_PERSON_"+stage.upper()+
                                        "_NATIVE_SCAN_FRONT_GEOMETRY_MISMATCH")
@@ -117,6 +122,10 @@ def run_session(out:Path, env:dict, source_sha:str, robot_sdf:Path, scan_probe):
                 "roi_status":measured["status"],
                 "distance_m":measured.get("distance_m"),
                 "reason":measured.get("reason"),
+                "actual_roi_bbox_height_px":(
+                    measured.get("actual_roi_source") or {}).get("bbox_height_px"),
+                "actual_roi_frame_sha256":(
+                    measured.get("actual_roi_source") or {}).get("actual_rgb_frame_sha256"),
                 "registration_confirmed":measured.get(
                     "registered_rgbd_from_actual_sensor") is True,
                 "actual_yolo_detection_arrays":measured.get(
@@ -135,7 +144,7 @@ def run_session(out:Path, env:dict, source_sha:str, robot_sdf:Path, scan_probe):
                                        measured.get("reason"))))
         v.update(grade_actual_person_stages(v["stages"]))
         print("D08_LIVE_D05_TWO_VALID_ONE_UNKNOWN_L2_PASS "+
-              json.dumps({"distance_slow":v["valid_distance_slow_m"],
+              json.dumps({"distance_far":v["valid_distance_far_m"],
                 "distance_stop":v["valid_distance_stop_m"],
                 "delta":v["valid_distance_delta_m"],
                 "unknown":v["unknown_reason"]}),flush=True)
