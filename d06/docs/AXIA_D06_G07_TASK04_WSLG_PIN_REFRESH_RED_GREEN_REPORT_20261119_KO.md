@@ -1,5 +1,21 @@
 # AXIA D06/G07 — 최신 G07 Task04 Owner 소스 정합성 회귀 및 WSLg GUI 경계 보고서
 
+> **2026-11-19 최신 출고 보정: MOVING HOLD** — 아래의 L0 GREEN·과거 G07 native L2 성공은 그대로 유효하지만, 더 최신 현장 WSLg Safety Scan 주기 위반과 공개 native L2 Nav2 종료 실패가 확인되었습니다. D06 `--live`는 CI-검증된 안전 게이트에서 Goal 이전에 즉시 차단합니다. NO_GOAL 검수만 허용합니다.
+
+## 0. 최신 필드 안전 경계 → 두 번째 RED/GREEN
+
+- Owner WSLg 원본: `/safety/scan` 337건에서 CLEAR 0건, front 0.526377m / side 0.629360m (기존 전방>0.75m/측면>1.20m), Safety Scan 콜백 최대 **819.175ms > 300ms**. 최초 `OWNER_PREGOAL_NOT_CLEAR_BEFORE_FIXTURE`는 올바른 NO_GOAL 안전 차단이었습니다. GPU/RTF가 근본 원인이라는 증거는 아직 없습니다.
+- 공개 실제 NO_GOAL Gazebo+RViz [#44325953833](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44325953833): Raw 124.051ms·RTF 0.982318이 정상이어도 **첫 Safety Scan 전달 356.136ms >300ms** → FAIL.
+- 공개 실제 Moving [#44325984617](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44325984617): CLEAR/SLOW/STOP, Goal UUID 취소 및 정지 dwell1.024s 뒤 **`SERVICE_MISSING:/lifecycle_manager_navigation/get_parameters`**, Nav/Loc ACK·CM exit0 미검증 → FAIL. 이전 녹색 한 건이 최신 실패를 지우지 못합니다.
+- 원인별 ROS/RTF 분리 진단은 공개 [PR #177](https://github.com/silverbjin/axia-robot-safety-ci-public/pull/177), [CI L0 #44327138409](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44327138409) **20/20 PASS**에서 이미 진행되었습니다. 실패를 다시 분석하는 새 물리 시뮬레이션 반복은 이번 D06 wrapper 수정 범위에 넣지 않았습니다.
+- 새 **RED**: [commit `223628afa87f3b8ae6dc04656a6d30cdd1f9ec3b`](https://github.com/silverbjin/axia-robot-safety-ci-public/commit/223628afa87f3b8ae6dc04656a6d30cdd1f9ec3b), [CI #44339301216](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44339301216) → 새 RELEASE HOLD 계약 2개 FAIL.
+- 새 **GREEN**: [commit `cd9eaa166b4f42248236e08366bb8890ce7dbe56`](https://github.com/silverbjin/axia-robot-safety-ci-public/commit/cd9eaa166b4f42248236e08366bb8890ce7dbe56), `--live`는 네트워크/소스 다운로드/ROS/Goal 전에 `D06_G07_OWNER_MOVING_RELEASE_HOLD_SCAN300_NAV2_SHUTDOWN`로 fail-closed. 구 Owner 엔진은 삭제하지 않고 미래 재인수까지 도달 불가능하게 유지. `--self-check`/ `--ci-status`는 역사적 SHA 검증 전용으로 계속 작동합니다.
+- REFACTOR/REVIEW: CI 테스트 수령 문구 16개로 정합, [commit `db3987c5d36d7e1f5d0146a15cac70b602fc6bd4`](https://github.com/silverbjin/axia-robot-safety-ci-public/commit/db3987c5d36d7e1f5d0146a15cac70b602fc6bd4), 공개 [CI #44339529674](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44339529674) `Ran 16 tests in 0.021s / OK`, ROS/Gazebo/Goal **NOT_RUN**.
+- 승인된 NO_GOAL 계측 실행기만 별도 배포: [공개 스크립트 `e0c7502bb7acd3bd1f59e8a712bb3f4ed9bcdff8`](https://github.com/silverbjin/axia-robot-safety-ci-public/blob/e0c7502bb7acd3bd1f59e8a712bb3f4ed9bcdff8/d06/scripts/axia_d06_g07_wslg_sensor_no_goal_once.sh), blob `7e89f0e8b95085218839d4f664ddbe91055c43e3`. 이미 [L0 #44299487519](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44299487519) GREEN이며 WSLg Intel/NVIDIA A/B·실제 안전 CLEAR는 **NOT_RUN**.
+- 인수 판정: **D06`--live` BLOCKED / NO_GOAL ONLY**, L0 PASS, 최신 NO_GOAL/Moving physical L2 **FAIL**, Owner WSLg의 실측 안전 CLEAR **FAIL**, 최종 `AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false`. `main` 미병합.
+
+---
+
 - 작성: 2026-11-19 KST
 - 대상: 공개 PR #170, 브랜치 `feat/d06-g07-classroom-reuse-20261118`
 - 작업 범위: **기존 L2 성공 재사용 + D06 Owner 실행기 SHA/WSLg GPU 어댑터 계약 최소 갱신**
