@@ -85,3 +85,11 @@
 - 우선 실제 공식 Nav2 launch의 named Waffle spawn, /scan·/clock·TF·/odom, lifecycle, `ComputePathToPose` read-only 경계 **최초 실패 1개**만 L0→ROS L1→Gazebo L2로 평가. 준비되지 않은 경로에서는 GOAL/속도 발행 및 통합 PASS를 금지한다.
 - D06 실제 CM /scan input은 격리 output/read-only로만 구독 관찰하며, 기존 isolated synthetic CM L1 결과를 승격하지 않는다.
 - G07 Moving strict 및 Owner WSLg 진입 게이트 변경 없음.
+
+## 9. v1.2 — 실제 Nav2 공식 AMCL 초기위치 실패 경계 / CI 격리 (2026-11-18 KST)
+
+- 최신 실제 RED: Public PR #166 HEAD `94b5cc892041116192f50c63b279c3ddf234062c`, [Run #44208629430](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44208629430). 기존 Gazebo Human/RGB-D/Scan + isolated CM 실제 L2 구간 PASS, 별도 **같은 D08 world**의 공식 Nav2 `/compute_path_to_pose` Action은 `STATUS_ABORTED(6)`. 원본 native launch에서 최초 원인 `AMCL cannot publish a pose ... Please set the initial pose`, `map frame does not exist`, `Unable to get start pose`. 종료 후 planner SIGABRT/exit -6는 최초 원인이 아닌 후속 teardown 결과로 구분한다.
+- **최소 수정 한계:** D07-H01의 공식 AMCL P0 실습 계약 재사용: `/map` OccupancyGrid 실제 셀 검사, 유효 /clock, 기존 실제 Waffle spawn map 좌표 `(-2.0,-0.5,0)`, `/set_initial_pose` 공식 `nav2_msgs/srv/SetInitialPose` 단 한 번, `/amcl_pose`와 `map→base_link` 실제 TF 확인 뒤 읽기 전용 `ComputePathToPose` 요청. `/initialpose`는 localization 초기화일 뿐 NavigateToPose/FollowPath/속도명령이 아니다. 서비스 ACK만으로 AMCL/TF 성공이라고 주장하지 않는다. map free-cell 및 TF를 검증할 수 없으면 즉시 HOLD; 임의 TF/fake pose 주입·타임아웃 완화 금지.
+- **CI 개선:** 이미 성공한 Gazebo 독립 센서/physical Proxy + YOLO replay L1 작업은 보존하고, 새로운 AMCL/Nav2 first-Path 후보는 **별도 L2 job**으로 분리하여 해당 실패가 기존 독립 센서/YOLO regression을 SKIP시키지 않게 한다. 서로 다른 두 job의 센서/Yolo/Path 데이터를 단일 인과적 E2E로 붙여 PASS라고 보고할 수 없다. 완전 결합은 추후 하나의 Nav2+CM+YOLO sensor runtime에서 별도 확인.
+- RED: Action STATUS_ABORTED(6), AMCL 미초기화, map 좌표 위험 셀, map→base_link 미검증, GitHub YAML heredoc 재발; GREEN: 공식 map/AMCL/TF 수신 원본 + 해당 RUN의 valid official Path 원본. 실제 이동 Goal 금지.
+- 현재 C++ pinned upstream `yolo_ros` 자체는 Run #44206496600에서 빌드 성공했으나, `DetectionArray` 0개라 ROS 런타임 출처 로그 진단 중. 이 오류는 공식 Nav2 AMCL 오류와 별개다.
