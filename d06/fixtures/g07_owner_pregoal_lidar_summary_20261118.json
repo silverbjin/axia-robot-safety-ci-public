@@ -1,0 +1,56 @@
+{
+  "schema": "axia.d06.owner_field_scan_summary_v1",
+  "original_archive_sha256": "02b2054c12bcf446733dc8b194c24bb9cc4f5562fa565ab6ca93dd4f0997b932",
+  "internal_primary_sha256_pass": 52,
+  "internal_native_sha256_pass": 44,
+  "measured": {
+    "scan_topic": "/safety/scan",
+    "scans": 337,
+    "beams_per_scan": 360,
+    "front_m": {
+      "min": 0.5038702487945557,
+      "median": 0.5263773798942566,
+      "max": 0.5486570596694946
+    },
+    "side_m": {
+      "min": 0.6005429029464722,
+      "median": 0.6293595433235168,
+      "max": 0.6476276516914368
+    },
+    "near_0p40_to_0p85_fraction": {
+      "min": 1,
+      "median": 1,
+      "max": 1
+    },
+    "original_clear_samples": 0,
+    "scan_callback_max_gap_sec": 0.819175,
+    "clock_messages": 11299,
+    "odom_messages": 941,
+    "real_goal_count": 0
+  },
+  "original_gate": {
+    "front_strict_greater_than_m": 0.75,
+    "side_strict_greater_than_m": 1.2,
+    "scan_ttl_sec": 0.3,
+    "guard_ttl_sec": 0.15,
+    "cm_source_delivery_limit_sec": 0.12
+  },
+  "first_failure": "OWNER_PREGOAL_NOT_CLEAR_BEFORE_FIXTURE",
+  "safety": {
+    "early_collision_monitor_stop_front_polygon": true,
+    "guard_latched": false,
+    "owner_goal_sent": false
+  },
+  "renderer": {
+    "vendor": "Microsoft Corporation",
+    "backend": "D3D12",
+    "gpu": "Intel Iris Xe",
+    "confirmed_sensor_causality": false
+  },
+  "limitations": [
+    "Raw bag withheld from public repository",
+    "WSLg sensor GPU origin unproven",
+    "CI Linux/Xvfb not equivalent to Owner WSLg",
+    "No Owner Goal run was started"
+  ]
+}
