@@ -19,7 +19,7 @@ LIVE_FILES=[
  'official_path_phases/verdict.json','official_path_phases/path_phases.jsonl',
  'live_person_range/verdict.json']
 ERROR_PATTERN=re.compile(
- r'(ERROR|FATAL|Exception|Traceback|BLOCKED|TIMEOUT|GAP|first_boundary|process has died|not found|SceneBroadcaster)',re.I)
+ r'(ERROR|FATAL|Exception|Traceback|BLOCKED|TIMEOUT|GAP|first_boundary|process has died|not found|Unable to find or download file|SceneBroadcaster)',re.I)
 
 def _bounded_log(raw:bytes)->tuple[bytes,bytes]:
     lines=raw.decode('utf-8','replace').splitlines(keepends=True)
