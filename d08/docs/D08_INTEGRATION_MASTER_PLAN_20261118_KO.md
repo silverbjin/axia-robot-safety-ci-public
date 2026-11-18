@@ -119,3 +119,11 @@
 - 성공은 동일 ROS_DOMAIN_ID/GZ_PARTITION·source SHA/World와 각 단계를 연결한 live ROS 원본 증거에서 before↔intrusion 경로 변동 `>=0.15m`, restored↔before `<=0.12m`, /scan Costmap stamp 진행·/odom 정지·TF freshness; 최초 gap/타이밍 위반과 공식 CM 실제 /scan subscription discovery를 별도 기록한다. 실제 scan→CM 수신 주기 미계측 시 CM end-to-end PASS 금지.
 - 최소 L0: ① before/near/restore 공식 Path 원본을 요구하는 판정기, ② 실제 source stamps 및 monotonic first gap 누락·stale 방지, ③ NO_GOAL/중복 publisher 금지. L2는 기존 공식 Nav2 job 한 번만 재검증; 다른 성공 job은 SHA 변화 영향 범위만 확인한다.
 - 3상 기본 geometry 불일치나 CPU 부하로 clock/Scan gap이 최초 발생하면 CI 원본 evidence 보존, 최초 실패 경계만 수정한다. 안전 TTL 연장/Planner 교체/새 프레임워크 금지.
+
+## 13. v1.6 — 동일 World 3상 L2 최초 진입 실패: AMCL→TF 구독 준비 순서
+
+- 실제 RED: Run [#44226367924](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44226367924), HEAD `339f92df043f0b5e22212812428555ec8ee682ba`. **L0 57 passed (0.28s)**, 독립 물리 Gazebo 센서 L2 및 공식 `yolo_ros` 고정 RGB replay L1는 성공. 그러나 추가 3상 코드를 실행하기 전 공식 Nav2의 첫 Path P0 경계가 `D08_AMCL_REAL_MAP_BASE_TF_NOT_READY:AMCL_POSE_STALE`로 HOLD. 원본 증거 `d08-official-nav2-oneworld-l2-evidence` artifact #14393167386, `official_nav2_before_path.json`, native `d08_official_nav2_one_world.log`.
+- 원인 **가설, 미확정:** 현재 `d08_amcl_initial_pose.py`가 `/set_initial_pose` 서비스 완료 **이후** `tf2_ros.TransformListener`를 생성한다. 정지 로봇의 공식 AMCL은 TF를 초기화/필터 처리 시 발행하므로 수신 구독 준비 순서에 따라 최초 `map→odom` 변환을 놓칠 수 있다. 참고 공식 Jazzy AMCL 원본 `https://api.nav2.org/nav2-jazzy/html/amcl__node_8cpp_source.html`, 설정 `https://ros-navigation.github.io/mkdocs.nav2.org/jazzy/configuration_and_development/configuration_guide/others/configuring_amcl/`.
+- TDD: 구조적 RED는 TransformListener 생성이 `SetInitialPose.call_async`보다 뒤라는 소스 순서 회귀. GREEN 최소 변경은 동일 ROS 노드의 TF listener를 `/map`/Scan 대기 이전부터 만들고 **그 후** 공식 SetInitialPose를 1회 발행. **AMCL 1s host age, /scan·/odom 0.5s age, CM 0.15s/120ms 안전 TTL, Planner 또는 TF 값을 변경하지 않는다.**
+- 실제 CI에서 다른 운영 부하나 DDS discovery 영향도 가능하므로 원인 확정은 exact-SHA 새 Run의 최초 진입 로그와 단계별 stamp/TF 증거를 보고 결정한다. 같거나 새로운 최초 경계가 발생하면 증거를 보존하고 그 부분만 수정하며 무작정 재시도하거나 AMCL·안전 TTL을 늘리지 않는다.
+- 3상 L2 및 Task01 실제 YOLO+Depth 2 VALID/UNKNOWN, native CM /scan 수신/상태는 기존 HOLD 유지. 성공한 한 World 첫 Path SHA의 별도 증거는 보존한다.
