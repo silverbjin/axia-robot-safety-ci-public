@@ -65,12 +65,20 @@ class D06ClassroomReuse(unittest.TestCase):
     def test_last_green_task04_pinned_with_all_native_l2_gates(self):
         src = RUNNER.read_text()
         for exact in (
-            '44249348860',
-            '6b98a18fa7abc80401a129f715ace7703ab54286',
-            '1129cd8804954fd6481d1b6b4ebf0e0b98c68c3c',
+            '44268914763',
+            '08fef7f78459c915a29f15fe07a4a60b213b46d7',
+            'd7ffec1ce73f0c4e672ea0fc51a1678139dc5a6f',
         ):
             self.assertIn(exact, src)
         self.assertIn('TASK04_MOVING', src)
+
+    def test_wslg_d3d12_owner_adapter_is_explicit_and_gui_children_only(self):
+        src = RUNNER.read_text()
+        self.assertIn('AXIA_G07_TASK04_GUI_D3D12_ADAPTER', src)
+        self.assertIn('D3D12 (NVIDIA', src)
+        self.assertIn('D3D12 (Intel', src)
+        self.assertIn('unset GALLIUM_DRIVER MESA_D3D12_DEFAULT_ADAPTER_NAME', src)
+        self.assertIn('WSLG_D3D12_ADAPTER_UNVERIFIED_NO_GOAL', src)
 
     def test_owner_live_reuses_proven_g07_manual_runner(self):
         src = RUNNER.read_text()
@@ -95,7 +103,7 @@ class D06ClassroomReuse(unittest.TestCase):
 case "$2" in
   */44223320904) echo '6bc8b0711ab056e63e100f3eede2c5f06cdf3856 completed success' ;;
   */44238643061) echo '5bb0cd72086f2f1a057f382649b773fff106f1f9 completed success' ;;
-  */44249348860) echo '6b98a18fa7abc80401a129f715ace7703ab54286 completed success' ;;
+  */44268914763) echo '08fef7f78459c915a29f15fe07a4a60b213b46d7 completed success' ;;
   *) exit 2 ;;
 esac
 """)
@@ -105,7 +113,7 @@ esac
             r = subprocess.run(["bash",str(RUNNER),"--ci-status"],env=env,
                                text=True,capture_output=True,timeout=7)
             self.assertEqual(r.returncode,0,r.stderr)
-            self.assertIn('TASK04_MOVING_HISTORICAL_CI_PASS run=44249348860',r.stdout)
+            self.assertIn('TASK04_MOVING_HISTORICAL_CI_PASS run=44268914763',r.stdout)
             self.assertIn('VERIFICATION_ONLY_NO_GAZEBO_NO_RVIZ',r.stdout)
             self.assertIn('OWNER_MOVING_L3=NOT_RUN',r.stdout)
 
@@ -116,7 +124,7 @@ esac
 case "$2" in
   */44223320904) echo '6bc8b0711ab056e63e100f3eede2c5f06cdf3856 completed success' ;;
   */44238643061) echo '5bb0cd72086f2f1a057f382649b773fff106f1f9 completed success' ;;
-  */44249348860) echo '09b2c7cf54ff1074ff4439008a3cb1a6fb1355de completed failure' ;;
+  */44268914763) echo '09b2c7cf54ff1074ff4439008a3cb1a6fb1355de completed failure' ;;
   *) exit 2 ;;
 esac
 """)
