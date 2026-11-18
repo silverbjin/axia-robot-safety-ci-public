@@ -427,8 +427,10 @@ def positive_contact_once(out:Path,env:dict,contact_topic:str)->dict:
     return verdict
 
 
-def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=False,cm_cadence_l1:bool=False,official_nav2:bool=False):
+def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=False,cm_cadence_l1:bool=False,official_nav2:bool=False,official_path_phases:bool=False):
     out=Path(out).resolve()
+    if official_path_phases and not official_nav2:
+        raise ValueError('D08_PATH_PHASES_REQUIRE_SAME_WORLD_OFFICIAL_NAV2')
     if out.exists():raise ValueError('D08_EVIDENCE_EXISTS')
     out.mkdir(parents=True)
     result={'gate':'D08_ONE_WORLD_GAZEBO_RGBD_NO_GOAL',
@@ -568,6 +570,22 @@ def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=Fals
                                    +str(result['official_nav2_before_path'].get('blocker','not_succeeded')))
             print('D08_OFFICIAL_NAV2_SAME_WORLD_BEFORE_PATH_L2_CANDIDATE',
                   flush=True)
+            if official_path_phases:
+                # D07-H01 public coordinate CANDIDATE only; all ROS scan,
+                # Costmap, Path and native Gazebo ACK remeasured in this run.
+                # This process never issues a navigation or movement Goal.
+                from d08_same_world_replan import run as run_physical_replan
+                phase_dir=out/'official_path_phases'
+                phase_rc=run_physical_replan(phase_dir,env,checkout_sha)
+                result['official_path_phases']=json.loads(
+                    (phase_dir/'verdict.json').read_text())
+                if phase_rc!=0:
+                    raise RuntimeError(
+                        'D08_OFFICIAL_THREE_PHASE_SAME_WORLD_FIRST_BOUNDARY:'+
+                        str(result['official_path_phases'].get('first_boundary',
+                             'PHASE_CONTRACT_FAILED')))
+                print('D08_OFFICIAL_SAME_WORLD_THREE_PHASE_PATHS_L2_PASS_NO_GOAL',
+                      flush=True)
         # The calibration happens ONCE, only on the actual no-Goal L2 CI
         # path after real RGBD and the native Contact topic were verified.
         if lidar_pre_goal:
@@ -662,9 +680,12 @@ if __name__=='__main__':
                    help='Isolated official CM synthetic command test during real GPU Gazebo')
     p.add_argument('--official-nav2',action='store_true',
         help='Opt-in official Nav2 owns the same world/Waffle, no driving Goal')
+    p.add_argument('--official-path-phases',action='store_true',
+        help='Opt-in same-run actual far/intrusion/restore 3 official Paths, NO GOAL')
     p.add_argument('--positive-contact-once',action='store_true',
         help='Single non-robot Gazebo Contact positive calibration, no Nav2 Goal')
     a=p.parse_args()
     raise SystemExit(run(a.out,a.actor,positive_contact=a.positive_contact_once,
                              lidar_pre_goal=a.lidar_pre_goal,cm_cadence_l1=a.cm_cadence_l1,
-                             official_nav2=a.official_nav2))
+                             official_nav2=a.official_nav2,
+                             official_path_phases=a.official_path_phases))

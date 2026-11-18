@@ -315,7 +315,7 @@ jobs:
           python3 -u d08/scripts/d08_public_gazebo_l2.py \
             --actor /tmp/axia-d08-nav2-assets/walk.dae \
             --out results/d08-official-nav2-sameworld \
-            --official-nav2
+            --official-nav2 --official-path-phases
           python3 - <<'PY'
           import json
           from pathlib import Path
@@ -330,6 +330,10 @@ jobs:
           assert a['odom_stamp_ns']>0
           assert v['goal_sent'] is False and v['cmd_vel_published'] is False
           assert v['actual_rgbd']['matched'] is True
+          assert v['official_path_phases']['status']=='D08_REAL_THREE_OFFICIAL_NAV2_PATH_PHASES_L2_PASS_NO_GOAL', v['official_path_phases']
+          assert len(v['official_path_phases']['three_phases'])==3
+          assert v['official_path_phases']['cmd_vel_published'] is False
+          print('D08_OFFICIAL_SAME_WORLD_THREE_PHASE_PATHS_L2_PASS_NO_GOAL')
           print('D08_OFFICIAL_NAV2_SAME_WORLD_FIRST_PATH_L2_PASS_NO_GOAL')
           PY
       - name: Upload unaltered real Nav2 World/AMCL/Path and first failure evidence
