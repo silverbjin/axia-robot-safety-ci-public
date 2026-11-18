@@ -6,6 +6,7 @@ import sys
 import pytest
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/"d08/harness"))
+sys.path.insert(0,str(ROOT/"d08/tests"))
 from d08_amcl_initial_pose import summarize_actual_receive_history
 from d08_same_world_replan import cm_state_is_active
 
@@ -54,3 +55,32 @@ def test_same_source_real_nav2_ci_must_exercise_recovered_gap():
     src=(ROOT/'d08/harness/d08_same_world_replan.py').read_text()
     assert 'D08_OFFICIAL_CM_ACTIVATION_NOT_READY' in src
     assert 'cm_state_is_active(' in src
+
+
+def test_real_runtime_deque_not_rejected_as_insufficient_scan_callbacks():
+    from collections import deque
+    from test_d08_owner_first_scan_odom_gap_regression import recovered
+    from d08_amcl_initial_pose import assess_pre_goal_receive_recovery
+    actual_buffers={k:deque(v,maxlen=200) for k,v in recovered().items()}
+    assert len(actual_buffers['scan'])>=6
+    report=assess_pre_goal_receive_recovery(
+        actual_buffers,started_at=28430.,now=28433.49)
+    assert report['status']=='D08_NO_GOAL_REAL_RX_RECOVERED'
+    assert report['historical_first_gaps']['scan']['gap_sec']==.819491
+
+
+def test_clock_callback_sampling_preserves_one_second_recovery_window_and_gap():
+    from collections import deque
+    from d08_amcl_initial_pose import append_clock_sample
+    samples=deque(maxlen=200)
+    # Actual public ROS L2 clock: 200 records span only ~0.6s at 3ms cadence.
+    for i in range(600):
+        append_clock_sample(samples,now=i*.003,stamp_ns=1_000_000_000+i*3_000_000)
+    assert len(samples)<=100
+    assert len(samples)>=50
+    assert samples[-1][0]-samples[0][0]>=1.5
+    # Do not hide a fresh 650ms callback pause by decimating /clock.
+    before=samples[-1][0]
+    assert append_clock_sample(samples,now=before+.65,
+        stamp_ns=samples[-1][1]+650_000_000) is True
+    assert samples[-1][0]-samples[-2][0]>=.5
