@@ -4,6 +4,8 @@ on:
     branches: ['fix/g07-task04-owner-wsl2-public-pregate-20261118']
     paths:
       - '.github/workflows/axia-g07-task04-owner-wsl2-pregate-public-l0-20261118.yml'
+      - 'scripts/axia_g07_task04_public_owner_wsl2_pregate_once.sh'
+      - 'tests/test_g07_task04_owner_public_wsl2_pregate.py'
 permissions:
   contents: read
 jobs:
@@ -14,7 +16,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
-      - name: Task04 RED owner public GUI stage must never impersonate CI Goal
+      - name: Task04 GREEN source pinned Owner WSL2 GUI pre-gate 4 contracts; real WSLg L3 NOT RUN
         shell: bash
         run: |
           set -Eeuo pipefail
