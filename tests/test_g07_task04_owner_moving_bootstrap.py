@@ -4,8 +4,8 @@ import subprocess
 import unittest
 
 SCRIPT=Path(__file__).resolve().parents[1]/"scripts/axia_g07_task04_owner_moving_l3_once.sh"
-SHA="b274d7c075a570c649697ed5fe55166f2296f8f6"
-RUN=44259558479
+SHA="486ec02e8e0762e9abefd3063b5d25b2ff5f1fb8"
+RUN=44264236859
 
 class OwnerMovingBootstrap(unittest.TestCase):
     def test_static_self_check_instant_no_ros(self):
@@ -40,7 +40,7 @@ class OwnerMovingBootstrap(unittest.TestCase):
     def test_pinned_source_and_private_evidence_archive(self):
         s=SCRIPT.read_text()
         self.assertIn(SHA,s)
-        self.assertIn("44259558479",s)
+        self.assertIn("44264236859",s)
         self.assertIn("p2_g07_task04_moving_review.py",s)
         self.assertIn("AXIA_G07_TASK04_ARCHIVE=",s)
         self.assertIn("AXIA_G07_TASK04_SHA256=",s)
