@@ -64,3 +64,27 @@ bash d06/scripts/axia_d06_g07_classroom_once.sh --gui-only
 - 공개 Draft [PR #170](https://github.com/silverbjin/axia-robot-safety-ci-public/pull/170) 기반 브랜치 `feat/d06-g07-classroom-reuse-20261118`. 개인 RAW, private Instructor, 학생 정답 업로드 없음. main 병합 미승인.
 
 **본 최종 CI는 Python/Bash L0입니다.** G07 Task03 Moving L2 #44223320904와 Task04 Owner GUI PASS는 별도 원본 증거로 **재사용**했지만, 신규 D06 동일 세션 Moving+GUI L2나 WSL2 Moving L3는 수행하지 않았습니다.
+
+## 2026-11-18 추가 개발 — 실제 **같은 세션** Gazebo+RViz+Goal CI RED/부분 성공, 최종 출고 HOLD
+
+### 실패 원본과 원인별 RED→GREEN 기록
+
+1. [#44252599540](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44252599540) **FAIL/RED L0**: 새 Student 테스트가 원래 스크립트의 *주석* `GITHUB_ACTIONS=true`까지 권한 위장으로 오인. 원래 코드·ROS 미수정, 테스트를 실제 `export GITHUB_ACTIONS=true` 금지로 좁힘. Student commit `8d1fb87df3eb9f0661700b8e1f03fc57bcce7454`.
+2. [#44252849158](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44252849158) **RED after native NO_GOAL positive Contact witness**: apt Xvfb·rviz2 설치 정상, 단독 셸이 `/opt/ros/jazzy/setup.bash` 소싱 전 `command -v rviz2`를 확인해 `exit 1`. 환경 소싱만 추가한 public CI commit `3009d7ed86a24c9e64e7690a680ca3420b957971`.
+3. [#44253212332](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44253212332) **신규 실물 CI 검증/FAIL(종료 게이트)**: Student `8d1fb87df3eb9f0661700b8e1f03fc57bcce7454`, public workflow `3009d7ed86a24c9e64e7690a680ca3420b957971`. Native NO_GOAL Contact positive calibration, 실제 `D06_G07_CI_GAZEBO_RVIZ_X11_READY_BEFORE_REAL_GOAL`, `D06_G07_REAL_GAZEBO_AND_RVIZ_WINDOWS_VISIBLE_DURING_ACTUAL_GOAL` 성공. 한 개의 실제 Nav2 Goal UUID `4a90420572dd4e08a67d750b54ee3a46`로 CLEAR→SLOW→STOP, native STOP pose ACK(1.528788s), 실제 이동 **0.2193m**, odom ZERO dwell **1.046229s**, exact Goal CANCEL ACK/status5는 성공.
+   - 같은 세션 실제 ROS Observer inter-node max: clock 97.351306ms, CM 87.708626ms, Guard 110.082238ms, odom 132.649514ms, Scan 248.196120ms, Supervisor 87.738993ms, source 85.481123ms. 기존 Guard 150ms/Scan 300ms **관찰 주기** 안에 있음. Guard 내부 `cm_age` 정식 사후 리뷰는 CI failure 전에 미실행 → **미검증**이며 CM RMW source 120ms 마진도 이 실행의 정식 checker output 미확보 → **미검증** (observer max를 RMW proof라고 보고하지 않음).
+   - **최초 실제 차단:** `G07_MOVING_GOAL_ORDERED_SHUTDOWN_BLOCKED`; `g07_ordered_shutdown.json` status `BLOCKED_LIFECYCLE_NAVIGATION_SERVICE_TIMEOUT`, `navigation_ack=false`, `localization_ack=false`, `cm_clean_process_exit_verified=false`. 이 실패 때문에 runner rc3/Actions failure. 로봇이 정지했다고 정상 종료된 것이 아니다. `D06_G07_REAL_GOAL_RUNNER_FAILED_RC=3`, 인수/출고 HOLD 유지.
+   - 이번 Run에서 GUI 창·Goal·정지까지 실제 성공했지만 **그렇다고 강사 Owner WSL2 라이브 주행 PASS는 아님**. Xvfb ≠ WSLg, Guard 내부 age/CM RMW 정식 증거·정상 Nav2 종료 누락.
+
+### 중복 개발 중단 및 G07 인계
+
+- G07 Task04에는 이미 자체 `AXIA_G07_TASK04_CI_GUI_MOVING` 및 `AXIA_G07_TASK04_OWNER_MOVING_L3` 보호 경로가 존재함을 뒤늦게 확인. 따라서 D06 신규 Student PR [#51](https://github.com/silverbjin/axia-robot-safety-student/pull/51)은 **진단용/NO MERGE**, Owner Goal 경로로 사용하지 않는다.
+- 최초 Navigation Lifecycle manager 서비스 타임아웃과 동일 Run UI/RViz 종료 부하의 인과는 **미확정**. 기존 G07 Task04 issue/CI에 첫 경계 회귀·read-only 로그 계측을 이관; D06에서 재시작/TTL 완화, 공식 Nav2 lifecycle 포크, 반복 현장 재시도 없음.
+- D06 공개 실행기의 `--self-check`와 `--ci-status`는 원래부터 **ROS/Gazebo를 시작하지 않는 검증 전용**. 수정 branch에서는 `D06_G07_CLASSROOM_VERIFICATION_ONLY_NO_GAZEBO_NO_RVIZ`를 명시적으로 출력함 (public L0 [#44253023036](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44253023036) PASS). **과거 SHA `e9ccdfab...`는 실제 GUI/Goal 실행용 릴리스 아님**.
+- 이 단계 결과: `D06_SAME_SESSION_MOVING_CI=HOLD_SHUTDOWN`, `D06_OWNER_MOVING_WSL2=NOT_RUN`, `AXIA_MVP_DEMO_ACCEPTED=HOLD`, `CERTIFIED_ESTOP=false`. **출고 승인 전 실제 Moving Goal 명령 배포 금지.** 모든 개발 브랜치 Draft, main 미병합.
+
+### 다시 시도할 경우 필요한 최소 회귀 계약(G07 소유)
+
+- ROS-free L0에서 `Navigation` 서비스가 사라짐/응답 지연(기존 60s 전체 예산)을 **최초 실패로 판정**하고 종료 ACK=false 시 PASS로 승격하지 않는 테스트. 기존 `p2_g07_ordered_shutdown.py` 계약을 우선 재사용.
+- 같은 실제 L2에서 `Goal UUID CANCELED` 후 GUI client lifecycle과 Navigation/Localization service health를 **읽기 전용**으로 먼저 기록, 확정된 단일 간섭 경계만 수정.
+- L0 GREEN 뒤 **한 번** 실제 Gazebo+RViz+Goal/CM120/Guard150/S02 Contact0/SQLite14/Cancel+두 Lifecycle ACK/CM clean exit가 모두 통과하면 D06 얇은 wrapper가 해당 G07 승인 Owner release를 연결. 본 CI와 다른 SHA의 옛 PASS를 합산 금지.
