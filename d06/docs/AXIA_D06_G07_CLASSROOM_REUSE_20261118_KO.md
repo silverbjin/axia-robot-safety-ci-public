@@ -1,3 +1,56 @@
+# 2026-11-18 D06 최신 인계 — G07 Task04 실제 통합 CI GREEN 재발견 및 Owner 후보 연결
+
+> 이 섹션은 아래 과거 D06 실험/출고 HOLD 기록보다 최신입니다. **G07 Task04의 실제 성공한 소스를 찾아 D06에 연결했지만, 강사 WSL2 Goal L3는 아직 실행되지 않았습니다.** ROS-free L0와 과거 동일 SHA 실제 L2 근거를 혼합하지 않습니다.
+
+## 1. 실증한 G07 GREEN — 이미 성공한 작업을 다시 만들지 않음
+
+- **정확히 한 세션의 네이티브 L2:** [공개 GitHub Actions #44249348860](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44249348860), workflow HEAD `6b98a18fa7abc80401a129f715ace7703ab54286`, 공개 Student SHA `1129cd8804954fd6481d1b6b4ebf0e0b98c68c3c`, job `134615932217`, 녹색 `success`, 실제 결과 `TASK04_REAL_GAZEBO_MOVING_GUI_L2_SCOPED_PASS`, `first_failure=NONE`, 실제 Gazebo 및 RViz X11 창 2개. 원본 allowlisted CI numeric artifact ID `14403685546`.
+- 해당 SHA의 **실제 검증기**는 `block_B/day07/h01_runtime/tools/p2_g07_task04_moving_review.py`에 있으며, 단일 Goal/동일 UUID 취소, SQLite14, **실제 CM RMW source/observer 120ms**, **Guard 내부 CM age 150ms**, Native S02 Contact0, Guard latch 없음, 최초 타이밍 위반 없음, 실제 이동·odom zero dwell, CM/Guard/Scan/Odom/Clock 주기, **Navigation + Localization lifecycle ACK**, CM child exit0, GUI 창 2개, 정확한 소스 SHA 등 **21개 불변 조건**을 검사하고 모두 통과해야만 결과 PASS를 출력합니다. CI Xvfb가 Owner WSLg GUI 픽셀 인수와 같다는 뜻은 아닙니다.
+- 이 GREEN의 핵심 실행 구성: **공식 Gazebo 물리 서버는 headless 유지**, 기존 Student G07 런타임에서 공식 Nav2 준비 후 `gz sim -g` 및 RViz 클라이언트만 별도로 붙임. D06 진단 후보의 `headless:=False` 변경을 공식 릴리스 경로로 **병합하지 않음**.
+- 차후 최신 다른 Student SHA `09b2c7cf54ff1074ff4439008a3cb1a6fb1355de`를 사용한 [#44250223189](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44250223189)는 pre-Goal AssertionError로 실패. 그러나 1129/09b의 Goal 엔진, ordered shutdown 및 공통 smoke 스크립트 Git blob은 서로 동일하므로 단정적인 소스 회귀 원인은 미확정. **최신/HEAD 사용 금지, 정확한 이전 GREEN SHA 고정**.
+- D06 실험 [#44253212332](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44253212332)은 별도 headless=False 후보에서 GUI+Goal·CLEAR/SLOW/STOP·취소까지 실제 성공했지만 `BLOCKED_LIFECYCLE_NAVIGATION_SERVICE_TIMEOUT`로 CI FAIL. 이 실패 원본 보존, 일회성 "shutdown_timeout 상향"이나 Nav2/CM/Guard 포크 대신 성공한 G07 Task04 통합 구조를 재사용.
+- 검증 결론: **당시 Navigation/Localization 및 CM 정상 종료를 통과한 G07 소스/세션은 확인됨**. 실패를 확률적으로 영구 제거했다는 증거는 아니므로 한 번의 Owner L3 원본이 필요합니다.
+
+## 2. 최소 연결 구현 — 공개 D06 Owner 실행기
+
+- 파일 `d06/scripts/axia_d06_g07_classroom_once.sh`: 기존 `--self-check`, `--ci-status`, `--doctor`, `--gui-only` 보존, `--live`를 **G07 Task04가 이미 구현한 Student 공용 Owner Goal 엔진**으로 연결. G07 소스 Git commit `1129cd...`과 핵심 3개 Git blob을 재검사한 뒤에만 실행.
+- **기존 Owner 진입점 재사용:** `block_B/day07/h01_runtime/scripts/p2_no_goal_smoke_ci.sh` 자체의 `AXIA_G07_TASK04_OWNER_MOVING_L3=1`과 `AXIA_G07_TASK04_EXPECTED_STUDENT_SHA`. 원본 Bash에서 controlling TTY로 `YES-P2-G07-GOAL`을 직접 읽고, 공식 Supervisor·Collision Monitor·Guard 소유 3 PID/ROS partition/출처 SHA를 다시 검증한 후 원래 Python 단일 Goal 실행기 `tools/p2_g07_ci_moving_goal.py`만 호출합니다. D06은 새로운 Goal/Twist publisher, 자동 동의, CI Actions 환경 위조를 생성하지 않습니다.
+- **Goal 전에 원샷 사전점검:** 공개 Task03 L2·Task04 GUI L2·Task04 Moving 통합 L2의 정확한 workflow SHA/Run/Success, WSL2 Ubuntu24.04, ROS2 Jazzy + official packages, WSLg GLX D3D12, 실제 TTY, 네이티브 S02 C++ witness 빌드, 서로 다른 DDS/GZ 파티션, 셸 문법/immutable blob. 실패 시 **NO_GOAL**, 정확한 첫 실패 출력 및 원본 보존.
+- 원본 G07 실행기에 already implemented: 실제 /scan/Nav2·CM/Guard, CLEAR→SLOW→STOP, strict Guard TTL150ms/CM120ms/Scan300ms, 실제 odom ≥1s, exact CancelGoal UUID5, 공식 Navigation/Localization shutdown ACK 및 CM clean exit, 14-topic SQLite. S02 네이티브 witness도 같은 binary build 방법 재사용.
+- Goal 후에는 작은 read-only **Owner 후보 사후 게이트**: `NUMERICAL_CANDIDATE`, Owner PID/TTY authorized, Guard latch 없음, 최초 시간 위반 없음, 이동/정지, Goal exact cancel, 실제 S02 Contact0, native Nav2 두 ACK, CM exit0, SQLite14, Observer 주기를 검사합니다. **Owner 내부 RMW source provenance/WSLg 픽셀/독립 원본 리뷰는 추가 확인 필요**이므로 결과가 수치적으로 정상이어도 `OWNER_L3=RAW_REVIEW_REQUIRED_NOT_ACCEPTED`.
+- 작업 결과는 항상 강사 WSL2의 `~/axia_d06_g07_owner_evidence/d06-moving-XXXXXXXX.tar.gz` 및 `.sha256`로 보존. 코드와 데이터의 repo/custody 경계 분리. SW stop ≠ 인증된 E-Stop.
+
+## 3. RED → GREEN → REFACTOR → REVIEW → COMMIT
+
+- D06 과거 실패 #44253212332 원본 보존. 새 연결 TDD RED: [공개 #44256060251](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44256060251), **9개 테스트 중 2개 FAIL**, 원인 `44249348860` 소스 고정 및 `run_verified_owner` 실행기 연결 미구현.
+- 최소 구현: 성공 SHA 핀 + 원래 G07 공용 Owner 수동 TTY 경로 호출. CI 권한 spoofing/안전 TTL 변경 0. 중간 GREEN [#44256819327](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44256819327) **12/12 PASS** (정확 Run 영수증 모의, stale SHA/HOLD, TTY 거부, 원본 아카이브 EXIT trap 포함).
+- REFACTOR: 비동기(EXIT) 아카이브 trap이 함수 지역 변수 해제 후 경로를 잃는 것을 수정하고 전역 `D06_OWNER_OUT`/BASE에 안전하게 보존. 자동 GH CI L0, 실제 G07 native L2 소스는 불변. 새로운 Moving Goal 실전 CI는 되풀이하지 않음(정확 SHA의 #44249348860 이미 완료).
+- REVIEW: 최초 실패/첫 타이밍 위반, official Nav2/CM/Guard 수정 0, Goal 권한 원래 Bash 수동 approval 그대로, 학생 정답/private 데이터 노출 없음, main 병합 금지, 모든 PASS의 L0/L2/L3 범위 별도 표기.
+- **최종 공개 D06 L0 확인**은 이 문서 및 marker 커밋으로 발생한 뒤 Run ID/HEAD/status를 아래에 확정한다. 강사 WSL2 실행은 GitHub 공개 CI 성공 후 사용자 한 번 수행. 실제 로봇+WSLg 라이브 주행을 이 문서에서 미리 PASS로 표시하지 않는다.
+
+## 4. 실행 방법과 기대 로그
+
+실행기 `--self-check`는 NO_ROS/NO_GOAL, `--ci-status`는 기존 세 GitHub Run의 정확한 SHA/성공과 `VERIFICATION_ONLY_NO_GAZEBO_NO_RVIZ`를 확인하는 **검증 전용**입니다. **실제 시연은 다운로드한 파일에 `--live` 인수를 붙여 실행해야 합니다.** 실행기 공개 변경 SHA를 고정한 단일 명령을 최종 답변에 제공합니다.
+
+사전 요구 사항: Ubuntu24.04 WSL2/WSLg, ROS2 Jazzy, 공식 Nav2/TB3, `gh` 인증, `glxinfo`, `xwininfo`, `cmake`, C++ compiler, `libgz-sim8-dev` headers. 필요한 패키지가 없을 때 자동으로 임의 설치하거나 수동 승인 없이 Goal을 내지 않고, 정확한 첫 진단으로 HOLD합니다.
+
+```text
+D06_G07_CLASSROOM_TASK04_MOVING_HISTORICAL_CI_PASS run=44249348860 ...
+D06_G07_OWNER_PIN_VERIFIED=1129cd8804954fd6481d1b6b4ebf0e0b98c68c3c
+D06_G07_OWNER_REAL_GAZEBO_RVIZ_MOVING_CANDIDATE_START
+D06_G07_OWNER_CONSENT_IS_MANUAL_TTY_ONLY=YES-P2-G07-GOAL
+# Original Student shell: 강사가 실제 제어 터미널에 YES-P2-G07-GOAL을 직접 입력해야만 한 Goal 전송
+D06_G07_OWNER_READONLY_FIRST_FAILURE=NONE
+D06_G07_OWNER_READONLY_STATUS=OWNER_NUMERICAL_CANDIDATE_REVIEW_REQUIRED
+D06_G07_OWNER_RAW_ARCHIVE=/home/.../d06-moving-XXXXXXXX.tar.gz
+D06_G07_OWNER_L3=RAW_REVIEW_REQUIRED_NOT_ACCEPTED
+AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false
+```
+
+**기대 출력은 실제 WSL2 시험 출력이 아닙니다.** 영상/화면, 내부 CM RMW source 간격, 최종 원본 증거를 리뷰하기 전 공식 인수 승격 금지. 중간 실패가 발생하면 Field에서 재실행하지 않고 해당 최초 경계를 공개 CI 회귀로 편입합니다.
+
+---
+
 # AXIA D06 — G07 Task03/Task04 성공 재사용 강사용 Live Demo 개발 보고서
 
 작성 2026-11-18 KST · **현재 범위: 신규 D06 실행기 L0 및 실제 G07 GUI 연결(Goal 없음)**
