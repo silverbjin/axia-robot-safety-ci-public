@@ -138,19 +138,18 @@ jobs:
           # True same-session PRE-GOAL baseline. Do not fake it with Linux
           # CI source or mark Owner WSLg sensor parity as verified.
           python3 - "$GITHUB_WORKSPACE/native/g07_ci_pregoal/owner_pregoal_baseline.json" <<'PY'
-import json,sys
-from pathlib import Path
-p=Path(sys.argv[1])
-e=json.loads(p.read_text())
-assert e["schema"]=="axia_g07_owner_pregoal_baseline_truth_v1"
-assert e["status"]=="BASELINE_CLEAR_NO_GOAL"
-assert e["safe_to_reposition_fixture"] is True
-assert e["front_m"]>.75 and e["side_m"]>1.20
-assert e["goal_sent"] is False
-assert e["gpu_causation_proven"] is False
-print("AXIA_G07_NATIVE_PREG0AL_TRUE_SCAN_CLEAR_L2_PASS",e["front_m"],e["side_m"])
-PY
-          sha256sum "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"             > "$GITHUB_WORKSPACE/public_evidence/task04_moving_verdict.sha256"
+          import json,sys
+          from pathlib import Path
+          p=Path(sys.argv[1])
+          e=json.loads(p.read_text())
+          assert e["schema"]=="axia_g07_owner_pregoal_baseline_truth_v1"
+          assert e["status"]=="BASELINE_CLEAR_NO_GOAL"
+          assert e["safe_to_reposition_fixture"] is True
+          assert e["front_m"]>.75 and e["side_m"]>1.20
+          assert e["goal_sent"] is False
+          assert e["gpu_causation_proven"] is False
+          print("AXIA_G07_NATIVE_PREG0AL_TRUE_SCAN_CLEAR_L2_PASS",e["front_m"],e["side_m"])
+          PY          sha256sum "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"             > "$GITHUB_WORKSPACE/public_evidence/task04_moving_verdict.sha256"
           echo 'AXIA_D06_G07_CLOCK_WORLD_REPAIRED_NATIVE_GUI_MOVING_L2_PASS_OWNER_NOT_RUN'
           echo 'AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false'
       - name: Upload allowlisted numeric verdict only no original raw bag
