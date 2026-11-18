@@ -18,16 +18,16 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: ec58a1d10572421db33ed570f2f4b6f31070a5ab
+          ref: e5df639d6f983e7494d2d240bc3394d166ea186b
           path: student
           persist-credentials: false
       - name: Real exact source lint and no motion authority negative
         run: |
           set -Eeuo pipefail
           R=student/block_B/day07/h01_runtime
-          test "$(git -C student rev-parse HEAD)" = ec58a1d10572421db33ed570f2f4b6f31070a5ab
+          test "$(git -C student rev-parse HEAD)" = e5df639d6f983e7494d2d240bc3394d166ea186b
           test "$(git hash-object "$R/tools/g07_wslg_no_goal_sensor_probe.py")" = f795f9b6456df75546ab22988b53c953c53345a5
-          test "$(git hash-object "$R/scripts/p2_no_goal_smoke_ci.sh")" = c84726fd4f66b1b434ce05164fc2ba3b51374824
+          test "$(git hash-object "$R/scripts/p2_no_goal_smoke_ci.sh")" = 28b3b156cd99019180b37000aa0b2706c0dc38d7
           test "$(git hash-object "$R/ros2_ws/src/axia_safety_bringup/launch/axia_tb3_p2.launch.py")" = b2886cdf509d99ea62528cd013669258764b05e0
           bash -n d06/scripts/axia_d06_g07_wslg_sensor_no_goal_once.sh
           bash -n "$R/scripts/p2_no_goal_smoke_ci.sh"
