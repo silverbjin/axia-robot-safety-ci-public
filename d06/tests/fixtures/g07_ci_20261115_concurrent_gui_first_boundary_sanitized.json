@@ -1,0 +1,51 @@
+{
+  "schema": "axia.d06.public_ci_concurrent_gui_delivery_first_boundary_v1",
+  "origin": {
+    "public_actions_run_id": 43664497257,
+    "ci_workflow_commit": "c017907570922e1d19e6c4901b38f6bd395b51cc",
+    "private_source_not_copied": true
+  },
+  "environment": {
+    "display": "Xvfb",
+    "rviz2_concurrent": true,
+    "readonly_marker_monitor_concurrent": true,
+    "owner_wslg_verified": false,
+    "runtime_base_digest": "sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e",
+    "official_rviz_xvfb_overlay_added": true,
+    "base_runtime_exact_digest_alone": false
+  },
+  "first_observer": {
+    "channel": "odom",
+    "callback_gap_ms": 365.941227,
+    "rmw_receive_gap_ms": 365.700878,
+    "rmw_source_gap_ms": 215.409871,
+    "classification": "INTERMEDIATE_PUBLICATIONS_UNOBSERVED"
+  },
+  "observer_scan": {
+    "callback_gap_ms": 428.090958,
+    "native_supervisor_scan_callback_gap_delta_since_goal": 0,
+    "sensor_source_stall_proven": false
+  },
+  "cm_rmw_first_consecutive_receive_gap": {
+    "observer_callback_gap_ms": 397.164783,
+    "rmw_receive_gap_ms": 393.57951,
+    "rmw_source_gap_ms": 69.596117,
+    "publication_sequence_gap": 1,
+    "cm_rmw_source_max_ms_across_goal": 139.491,
+    "classification": "RMW_RECEIVE_DELAY_CANDIDATE",
+    "cm_callback_processing_delay_proven": false
+  },
+  "native_guard": {
+    "guard_latch_observed": false,
+    "native_cm_goal_scoped_gap_count": 0,
+    "cm_source_gap_over_150ms_proven": false
+  },
+  "result": {
+    "original_goal_observed": true,
+    "headless_prior_3of3_pass_historical": true,
+    "actual_gui_load_l2_pass": false,
+    "owner_l3_accepted": false,
+    "normal_nav2_shutdown_verified": false,
+    "certified_estop": false
+  }
+}
