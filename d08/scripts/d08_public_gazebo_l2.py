@@ -24,6 +24,7 @@ from d04_waffle_pi_rgb_preflight import _start,_stop_all,sync_ros_discovery_envi
 from d08_live_world import build_overlay,RGB_TOPIC,DEPTH_TOPIC
 from d08_live_readonly_probe import select_pair
 from d08_runtime_provenance import make_runtime_provenance
+from d08_one_world_official_nav2_launch import make_official_nav2_command
 from d08_scan_gap_trace import first_scan_receive_gap
 from p2_contact_discovery import resolve_g07_contact_topic
 from d08_contact_positive_contract import count_nonrobot_positive_contacts
@@ -426,7 +427,7 @@ def positive_contact_once(out:Path,env:dict,contact_topic:str)->dict:
     return verdict
 
 
-def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=False,cm_cadence_l1:bool=False):
+def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=False,cm_cadence_l1:bool=False,official_nav2:bool=False):
     out=Path(out).resolve()
     if out.exists():raise ValueError('D08_EVIDENCE_EXISTS')
     out.mkdir(parents=True)
@@ -493,28 +494,39 @@ def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=Fals
             gz_world,env,checkout_sha)
         (out/'runtime_provenance.json').write_text(json.dumps(
             result['runtime_provenance'],indent=2,sort_keys=True)+'\n')
-        sim=_start('gazebo_server',
-          ['xvfb-run','-a','-s','-screen 0 1280x720x24',
-           'gz','sim','-r','-s','-v3',str(gz_world)],
-          env,out,processes)
-        # Native UserCommands create ACK must be true, not just the service URI.
-        service='/world/default/create'
-        until=time.monotonic()+35
-        while time.monotonic()<until:
-            if sim.poll() is not None:raise RuntimeError('GAZEBO_PROCESS_EXITED')
-            probe=_run(['gz','service','-is',service],env,timeout=8,check=False)
-            if 'gz.msgs.EntityFactory' in (probe.stdout+probe.stderr):
-                break
-            time.sleep(1)
-        else:raise RuntimeError('GAZEBO_USER_COMMANDS_NOT_READY')
-        request=('sdf_filename: "'+str(gz_robot)+
-          '", name: "axia_d08_ci_waffle", pose: { position: { x: -2.0, y: -0.5, z: 0.02 }, orientation: { w: 1.0 } }')
-        create=_run(['gz','service','-s',service,'--reqtype','gz.msgs.EntityFactory',
-                  '--reptype','gz.msgs.Boolean','--timeout','6000','--req',request],
-                  env,timeout=15)
-        (out/'native_create_ack.txt').write_text(create.stdout+create.stderr)
-        if 'data: true' not in create.stdout:
-            raise RuntimeError('D08_WAFFLE_SPAWN_NOT_ACKNOWLEDGED')
+        if official_nav2:
+            # Official Nav2 launch OWNS the only Gazebo server AND Waffle spawn.
+            # Do not also call the native create service or start another gz sim.
+            command = make_official_nav2_command(gz_world,gz_robot)
+            sim=_start('d08_official_nav2_one_world',
+                ['xvfb-run','-a','-s','-screen 0 1280x720x24']+command,
+                env,out,processes)
+            result['official_nav2_same_world_requested']=True
+            (out/'native_create_ack.txt').write_text(
+                'OFFICIAL_NAV2_SPAWN_OWNS_CREATE; MANUAL_CREATE_NOT_REQUESTED\n')
+        else:
+            sim=_start('gazebo_server',
+              ['xvfb-run','-a','-s','-screen 0 1280x720x24',
+               'gz','sim','-r','-s','-v3',str(gz_world)],
+              env,out,processes)
+            # Native UserCommands create ACK must be true, not just the service URI.
+            service='/world/default/create'
+            until=time.monotonic()+35
+            while time.monotonic()<until:
+                if sim.poll() is not None:raise RuntimeError('GAZEBO_PROCESS_EXITED')
+                probe=_run(['gz','service','-is',service],env,timeout=8,check=False)
+                if 'gz.msgs.EntityFactory' in (probe.stdout+probe.stderr):
+                    break
+                time.sleep(1)
+            else:raise RuntimeError('GAZEBO_USER_COMMANDS_NOT_READY')
+            request=('sdf_filename: "'+str(gz_robot)+
+              '", name: "axia_d08_ci_waffle", pose: { position: { x: -2.0, y: -0.5, z: 0.02 }, orientation: { w: 1.0 } }')
+            create=_run(['gz','service','-s',service,'--reqtype','gz.msgs.EntityFactory',
+                      '--reptype','gz.msgs.Boolean','--timeout','6000','--req',request],
+                      env,timeout=15)
+            (out/'native_create_ack.txt').write_text(create.stdout+create.stderr)
+            if 'data: true' not in create.stdout:
+                raise RuntimeError('D08_WAFFLE_SPAWN_NOT_ACKNOWLEDGED')
         # Mirror the Owner's one-process image bridge on real Gazebo L2.
         _start('rgbd_bridge',['ros2','run','ros_gz_image','image_bridge',
               RGB_TOPIC,DEPTH_TOPIC],env,out,processes)
@@ -539,6 +551,18 @@ def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=Fals
             raise RuntimeError('D08_NO_MATCHED_REAL_REGISTERED_RGBD')
         if not all(t in topics.stdout for t in (RGB_TOPIC,DEPTH_TOPIC)):
             raise RuntimeError('D08_GAZEBO_RGBD_TOPICS_NOT_ADVERTISED')
+        if official_nav2:
+            # This is an official read-only ComputePathToPose ACTION only,
+            # NOT NavigateToPose, FollowPath, or a robot command.
+            from d08_nav2_path_preflight import run as path_preflight
+            proof=out/'official_nav2_before_path.json'
+            path_rc=path_preflight(proof,timeout_s=25)
+            result['official_nav2_before_path']=json.loads(proof.read_text())
+            if path_rc!=0:
+                raise RuntimeError('D08_OFFICIAL_NAV2_BEFORE_PATH_FIRST_BOUNDARY:'
+                                   +str(result['official_nav2_before_path'].get('blocker','not_succeeded')))
+            print('D08_OFFICIAL_NAV2_SAME_WORLD_BEFORE_PATH_L2_CANDIDATE',
+                  flush=True)
         # The calibration happens ONCE, only on the actual no-Goal L2 CI
         # path after real RGBD and the native Contact topic were verified.
         if lidar_pre_goal:
@@ -631,8 +655,11 @@ if __name__=='__main__':
         help='Real /scan before and after G07 set_pose, no Nav2 Goal')
     p.add_argument('--cm-cadence-l1',action='store_true',
                    help='Isolated official CM synthetic command test during real GPU Gazebo')
+    p.add_argument('--official-nav2',action='store_true',
+        help='Opt-in official Nav2 owns the same world/Waffle, no driving Goal')
     p.add_argument('--positive-contact-once',action='store_true',
         help='Single non-robot Gazebo Contact positive calibration, no Nav2 Goal')
     a=p.parse_args()
     raise SystemExit(run(a.out,a.actor,positive_contact=a.positive_contact_once,
-                             lidar_pre_goal=a.lidar_pre_goal,cm_cadence_l1=a.cm_cadence_l1))
+                             lidar_pre_goal=a.lidar_pre_goal,cm_cadence_l1=a.cm_cadence_l1,
+                             official_nav2=a.official_nav2))

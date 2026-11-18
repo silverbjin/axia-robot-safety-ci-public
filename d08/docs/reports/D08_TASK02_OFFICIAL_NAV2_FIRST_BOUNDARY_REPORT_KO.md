@@ -1,0 +1,9 @@
+# AXIA D08 Task02 — Official Nav2 same-world first boundary (candidate, HOLD)
+
+- Public CI branch: feat/d08-unified-sensor-cm-path-20261118; base main SHA 62e366b51c64da25ad0216328fe1e019b78e0bef; PR #166.
+- Previous D08 sensor L2 had actual Waffle RGBD and a single physical person Proxy, but **no official Nav2 Action in that World**. Previous separate D07-H01 Task has official Path but different World/source and cannot count as D08 E2E.
+- First bound hypothesis: official Jazzy nav2_bringup/tb3_simulation_launch.py accepts world:= and robot_sdf:=. Pass the existing D08-generated actual SDF files to the unmodified official launcher; **do not start a second Gazebo** or create a second Waffle. Invoke existing d08_nav2_path_preflight.py read-only ComputePathToPose after real RGBD and same-world Contact topic admission.
+- New public L0 regression: d08/tests/test_d08_one_world_official_nav2_launch.py verifies exactly one official launcher, one World, physical collision Proxy, single RGBD optical sensor, native GPU LaserScan source; rejects two World or visual-only Actor. GREEN candidate helper: d08/harness/d08_one_world_official_nav2_launch.py. Opt-in --official-nav2 only; preserved old D08 sensor L2 unchanged.
+- Actual PUBLIC CI calls a *second independent* real Gazebo job segment with --official-nav2 and own results folder; do not combine two runs' data into E2E. New exact-SHA L0/L2 outcome pending.
+- New goal is **one official before Path**, not premature before/near/restore or CM real /scan PASS. If official TF/AMCL/path not available, record first boundary and HOLD rather than guessing. No moving Goal, no Twist command, no ttl timeout edits.
+- Task01 actual two VALID+UNKNOWN, Task02 actual Costmap/CM subscription and before/near/restore Path, Owner WSLg L3 and G07 moving strict remain HOLD. No main merge.
