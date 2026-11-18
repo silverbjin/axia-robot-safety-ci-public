@@ -6,9 +6,9 @@ MODE="${1:---run}"
 [[ $# -le 1 && ( "$MODE" == --run || "$MODE" == --self-check ) ]] || {
   echo 'D06_WSLG_SENSOR_USAGE=--self-check|--run' >&2;exit 2;
 }
-readonly STUDENT_SHA='244d524f935ea6a59d05c4390ba407fc3a0d0a2c'
+readonly STUDENT_SHA='feffb37219abc3649530a8439c3ba0a1f3fdca88'
 readonly PROBE_BLOB='f795f9b6456df75546ab22988b53c953c53345a5'
-readonly SMOKE_BLOB='28b3b156cd99019180b37000aa0b2706c0dc38d7'
+readonly SMOKE_BLOB='b50d77eb6c8a3d56a52e903fe6b29875c5396318'
 readonly LAUNCH_BLOB='b2886cdf509d99ea62528cd013669258764b05e0'
 readonly REPO='https://github.com/silverbjin/axia-robot-safety-student.git'
 readonly REL='block_B/day07/h01_runtime'
@@ -35,7 +35,7 @@ for flag in AXIA_G07_CI_SIM_GOAL_ALLOWED AXIA_G07_TASK04_OWNER_MOVING_L3 \
     echo "D06_WSLG_NO_GOAL_MOTION_AUTHORITY_DENIED=$flag" >&2;exit 3;
   }
 done
-for exe in git bash python3 ros2 gz glxinfo colcon sha256sum tar timeout;do
+for exe in git bash python3 ros2 gz glxinfo xwininfo rviz2 colcon sha256sum tar timeout;do
   command -v "$exe" >/dev/null || {
     echo "D06_WSLG_MISSING_EXECUTABLE=$exe" >&2;exit 3;
   }
