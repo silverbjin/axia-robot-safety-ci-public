@@ -39,15 +39,15 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: b53a5128cd7165f6465f2916b4c4554f9663798d
+          ref: 46358819f8e8096d0f456fbc9e16c7272fad3b5d
           path: student
           persist-credentials: false
-      - name: NO GOAL 6 Guard contract plus 5 CM gate plus 5 simple TF immutable runtime L0
+      - name: NO GOAL Task03 6 + cleanup 4 + official Simple TF 5 + CM120 strict 5 L0 safety contracts
         shell: bash
         run: |
           set -Eeuo pipefail
           test "$(git -C ci rev-parse HEAD)" = "${{ github.sha }}"
-          test "$(git -C student rev-parse HEAD)" = 'b53a5128cd7165f6465f2916b4c4554f9663798d'
+          test "$(git -C student rev-parse HEAD)" = '46358819f8e8096d0f456fbc9e16c7272fad3b5d'
           export PYTHONPATH="$GITHUB_WORKSPACE/ci${PYTHONPATH:+:$PYTHONPATH}"
           cd student/block_B/day07/h01_runtime
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task03_formal_evidence.py' -v
@@ -158,7 +158,7 @@ jobs:
           export ROS_DOMAIN_ID='86'
           export GZ_PARTITION="axia_p2_t03_moving_${{ github.run_id }}"
           cd student/block_B/day07/h01_runtime
-          echo AXIA_G07_TASK03_REAL_ONE_GOAL_SOURCE_SHA=b53a5128cd7165f6465f2916b4c4554f9663798d
+          echo AXIA_G07_TASK03_REAL_ONE_GOAL_SOURCE_SHA=46358819f8e8096d0f456fbc9e16c7272fad3b5d
           env -u LD_PRELOAD -u AXIA_G07_TASK01_TF_AVAIL_PROBE timeout --signal=TERM --kill-after=10s 900s bash scripts/p2_no_goal_smoke_ci.sh
           echo AXIA_G07_TASK03_REAL_ONE_GOAL_ORIGINAL_RUNNER_RC0
       - name: Formal original S02 ECM, sqlite14, exact UUID terminal, Guard150 and CM120 post-Goal review
