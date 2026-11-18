@@ -9,7 +9,7 @@ OWNER=ROOT/"d06/scripts/axia_d06_g07_wslg_sensor_no_goal_once.sh"
 class WslgABOneShotSafety(unittest.TestCase):
     def test_true_no_goal_only_and_last_case_intel(self):
         s=SCRIPT.read_text()
-        self.assertIn("for gpu in NVIDIA Intel;do",s)
+        self.assertIn('adapters=(NVIDIA Intel)',s)
         self.assertIn('MESA_D3D12_DEFAULT_ADAPTER_NAME="$gpu"',s)
         self.assertIn('glxinfo -B',s)
         self.assertIn('D06_GPU_RTF_ACTUAL_RENDERER_MISMATCH',s)
