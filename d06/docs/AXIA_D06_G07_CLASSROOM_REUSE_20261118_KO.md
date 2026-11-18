@@ -17,16 +17,16 @@
 - **기존 Owner 진입점 재사용:** `block_B/day07/h01_runtime/scripts/p2_no_goal_smoke_ci.sh` 자체의 `AXIA_G07_TASK04_OWNER_MOVING_L3=1`과 `AXIA_G07_TASK04_EXPECTED_STUDENT_SHA`. 원본 Bash에서 controlling TTY로 `YES-P2-G07-GOAL`을 직접 읽고, 공식 Supervisor·Collision Monitor·Guard 소유 3 PID/ROS partition/출처 SHA를 다시 검증한 후 원래 Python 단일 Goal 실행기 `tools/p2_g07_ci_moving_goal.py`만 호출합니다. D06은 새로운 Goal/Twist publisher, 자동 동의, CI Actions 환경 위조를 생성하지 않습니다.
 - **Goal 전에 원샷 사전점검:** 공개 Task03 L2·Task04 GUI L2·Task04 Moving 통합 L2의 정확한 workflow SHA/Run/Success, WSL2 Ubuntu24.04, ROS2 Jazzy + official packages, WSLg GLX D3D12, 실제 TTY, 네이티브 S02 C++ witness 빌드, 서로 다른 DDS/GZ 파티션, 셸 문법/immutable blob. 실패 시 **NO_GOAL**, 정확한 첫 실패 출력 및 원본 보존.
 - 원본 G07 실행기에 already implemented: 실제 /scan/Nav2·CM/Guard, CLEAR→SLOW→STOP, strict Guard TTL150ms/CM120ms/Scan300ms, 실제 odom ≥1s, exact CancelGoal UUID5, 공식 Navigation/Localization shutdown ACK 및 CM clean exit, 14-topic SQLite. S02 네이티브 witness도 같은 binary build 방법 재사용.
-- Goal 후에는 작은 read-only **Owner 후보 사후 게이트**: `NUMERICAL_CANDIDATE`, Owner PID/TTY authorized, Guard latch 없음, 최초 시간 위반 없음, 이동/정지, Goal exact cancel, 실제 S02 Contact0, native Nav2 두 ACK, CM exit0, SQLite14, Observer 주기를 검사합니다. **Owner 내부 RMW source provenance/WSLg 픽셀/독립 원본 리뷰는 추가 확인 필요**이므로 결과가 수치적으로 정상이어도 `OWNER_L3=RAW_REVIEW_REQUIRED_NOT_ACCEPTED`.
+- Goal 후에는 작은 read-only **Owner 후보 사후 게이트**: 기존 `audit_guard_internal_cm_age` (최초 실제 이동 이후 Guard 내부 CM age 150ms) 및 S02 witness 완결성/누락 0프레임을 포함하고, `NUMERICAL_CANDIDATE`, Owner PID/TTY authorized, Guard latch 없음, 최초 시간 위반 없음, 이동/정지, Goal exact cancel, 실제 S02 Contact0, native Nav2 두 ACK, CM exit0, SQLite14, Observer 주기를 검사합니다. **Owner 내부 RMW source provenance/WSLg 픽셀/독립 원본 리뷰는 추가 확인 필요**이므로 결과가 수치적으로 정상이어도 `OWNER_L3=RAW_REVIEW_REQUIRED_NOT_ACCEPTED`.
 - 작업 결과는 항상 강사 WSL2의 `~/axia_d06_g07_owner_evidence/d06-moving-XXXXXXXX.tar.gz` 및 `.sha256`로 보존. 코드와 데이터의 repo/custody 경계 분리. SW stop ≠ 인증된 E-Stop.
 
 ## 3. RED → GREEN → REFACTOR → REVIEW → COMMIT
 
 - D06 과거 실패 #44253212332 원본 보존. 새 연결 TDD RED: [공개 #44256060251](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44256060251), **9개 테스트 중 2개 FAIL**, 원인 `44249348860` 소스 고정 및 `run_verified_owner` 실행기 연결 미구현.
-- 최소 구현: 성공 SHA 핀 + 원래 G07 공용 Owner 수동 TTY 경로 호출. CI 권한 spoofing/안전 TTL 변경 0. 중간 GREEN [#44256819327](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44256819327) **12/12 PASS** (정확 Run 영수증 모의, stale SHA/HOLD, TTY 거부, 원본 아카이브 EXIT trap 포함).
+- 최소 구현: 성공 SHA 핀 + 원래 G07 공용 Owner 수동 TTY 경로 호출. CI 권한 spoofing/안전 TTL 변경 0. 중간 GREEN [#44256819327](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44256819327) **13/13 PASS** (정확 Run 영수증 모의, stale SHA/HOLD, TTY 거부, 원본 아카이브 EXIT trap, Owner 내부 Guard age 후검증 Python 문법 검증 포함).
 - REFACTOR: 비동기(EXIT) 아카이브 trap이 함수 지역 변수 해제 후 경로를 잃는 것을 수정하고 전역 `D06_OWNER_OUT`/BASE에 안전하게 보존. 자동 GH CI L0, 실제 G07 native L2 소스는 불변. 새로운 Moving Goal 실전 CI는 되풀이하지 않음(정확 SHA의 #44249348860 이미 완료).
 - REVIEW: 최초 실패/첫 타이밍 위반, official Nav2/CM/Guard 수정 0, Goal 권한 원래 Bash 수동 approval 그대로, 학생 정답/private 데이터 노출 없음, main 병합 금지, 모든 PASS의 L0/L2/L3 범위 별도 표기.
-- **최종 공개 D06 L0 확인**은 이 문서 및 marker 커밋으로 발생한 뒤 Run ID/HEAD/status를 아래에 확정한다. 강사 WSL2 실행은 GitHub 공개 CI 성공 후 사용자 한 번 수행. 실제 로봇+WSLg 라이브 주행을 이 문서에서 미리 PASS로 표시하지 않는다.
+- **공개 D06 L0 GREEN:** [#44257489273](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44257489273), 정확 SHA `06a9b9225f2de3c78cc3cb1973357261334179fb`, 실제 `Ran 13 tests in 0.019s`, `OK`. 이후 본 문서/CI marker만 바뀌면 같은 L0 재검증하며 Go/No-Go는 실제 최신 HEAD Run 기준으로 최종 응답에 표시합니다. 강사 WSL2 실행은 GitHub 공개 CI 성공 후 사용자 한 번 수행. 실제 로봇+WSLg 라이브 주행을 이 문서에서 미리 PASS로 표시하지 않는다.
 
 ## 4. 실행 방법과 기대 로그
 
