@@ -11,7 +11,8 @@ from collections import deque
 from d08_scan_gap_trace import (first_scan_receive_gap, diagnose_first_receive_boundary,
                                 compare_native_scan_first_gap,
                                 diagnose_native_clock_during_first_gap,
-                                compare_isolated_ros_first_gap)
+                                compare_isolated_ros_first_gap,
+                                compare_worst_scan_pair_receivers)
 import json
 import math
 from pathlib import Path
@@ -689,6 +690,53 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
                 "bridge_dds_internal_send_measured":False,
                 "root_resource_cause":"UNDETERMINED",
             }
+            # Compare the WORST original Scan callback gap whose exact two
+            # source stamps were seen at all three receiver layers. Even a
+            # 493ms near-boundary matters; this is diagnosis, NOT a 500ms
+            # safety violation unless the original gap exceeded the limit.
+            original_scans=snapshot()[0]
+            same_ros=independent_snapshot()["scan"]
+            same_rows=[
+                {"source_stamp_ns":x["stamp_ns"],
+                 "host_monotonic_sec":x["at"]}
+                for x in same_ros if x["stamp_ns"] is not None]
+            stamp_sets=[
+                {x["source_stamp_ns"] for x in rows}
+                for rows in (native_events,iso_events,same_rows)]
+            available=set.intersection(*stamp_sets) if stamp_sets else set()
+            pairs=[]
+            for before,after in zip(original_scans,original_scans[1:]):
+                n1=int(round(before["stamp"]*1e9))
+                n2=int(round(after["stamp"]*1e9))
+                if n1 in available and n2 in available:
+                    pairs.append((after["at"]-before["at"],before,after,n1,n2))
+            if pairs:
+                biggest,before,after,n1,n2=max(pairs,key=lambda x:x[0])
+                pair={"previous_ros_stamp_ns":n1,
+                      "current_ros_stamp_ns":n2,
+                      "previous_host_monotonic_sec":round(before["at"],6),
+                      "current_host_monotonic_sec":round(after["at"],6),
+                      "receive_gap_sec":round(biggest,6)}
+                cmp=compare_worst_scan_pair_receivers(
+                    pair,native_events,iso_events,same_rows)
+                cmp["parent_callback_entry_gap_sec"]=round(
+                    after["entry_at"]-before["entry_at"],6)
+                result["worst_scan_causal_pair"]=cmp
+                result["worst_scan_pair_source_stamps"]=pair
+                print("D08_REAL_WORST_SCAN_SOURCE_PAIR "
+                      +json.dumps({k:cmp[k] for k in
+                        ("observer_gap_sec","native_gap_sec",
+                         "isolated_ros_gap_sec","same_python_gap_sec",
+                         "candidate","source_pair_matched")},sort_keys=True),
+                      flush=True)
+            else:
+                result["worst_scan_causal_pair"]={
+                    "cause":"UNDETERMINED",
+                    "candidate":"NO_COMMON_SOURCE_PAIR",
+                    "source_pair_matched":False}
+                result["status"]="HOLD"
+                result.setdefault("first_boundary",
+                    "D08_NO_MATCHED_SCAN_SOURCE_PAIR_ACROSS_RECEIVERS")
             if len(iso_events)<8 or len(iso_events)>=1024:
                 result["status"]="HOLD"
                 result.setdefault("first_boundary","D08_ISOLATED_ROS_RX_EVIDENCE_INCOMPLETE")
