@@ -90,3 +90,48 @@ AXIA_MVP_DEMO_ACCEPTED=HOLD
 CERTIFIED_ESTOP=false
 MAIN_MERGED=false
 ```
+
+
+## 7. 중단 지점 재개 — 기존 Moving Goal + GUI를 그대로 재사용한 실제 L2 GREEN
+
+- Runner/Workflow 소스 SHA: `ff0455d8fc11e3a4eee26f82f4ccd59d57420002`
+- **Student 소스 SHA 동일**: `ef6ffe58ddacb89ed37b225279f8e86453cf82b7`
+- 실제 Gazebo + Nav2 + Waffle + RViz Xvfb 단일 세션: [Run #44344038055](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44344038055), job `134941479694`, `completed/success`
+- 공개 수치 artifact: [ID 14443974379](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44344038055/artifacts/14443974379); JSON `public_evidence/task04_moving_l2_verdict.json`, `first_failure=NONE`, `status=TASK04_REAL_GAZEBO_MOVING_GUI_L2_SCOPED_PASS`
+- Runner rc=0; X11 창 `RVIZ_X11=1`, `GAZEBO_X11=1`.
+- 실제 이동 `odom_moved_m=0.21789435001628935`, `stopped_dwell_sec=1.0155393329999924`, Native S02 contact `0/24127` 관측, 정확한 Goal UUID `2a440893522c4448a882a437aff0b652` 취소.
+- RMW CM 실제 source pairs `352`, 최대 CM publisher gap `56.385833ms` / 120ms, Observer gap `85.605417ms` / 120ms, Guard 내부 CM age `30.373535ms` / 150ms.
+- Scan/Odom/Clock 각 300ms, Guard 150ms, 120ms CM/Observer, 정지 1초, Nav/Loc Lifecycle ACK, CM clean exit, 실제 SQLite 14 topic을 같은 수치 JSON의 20개 `checks`가 모두 true로 검증.
+- SHA256 custody(artifact 내 JSON 출처): `bag_sqlite_sha256=1010635b6ab33c55ede91682c042693f32e1472ec311b62347b38fad321f70c0`, `bag_metadata_sha256=23441f596dfa53469a01128bb471986ba5428e5e305b02a2ac653bc10edff33c`. 실제 강사 WSL2의 원본 bag SHA와 혼동하지 않는다.
+- 원래 Task03 공개 성공 #44223320904는 역사적 증거로만 보존하며 이번 회차 결과에 섞지 않는다.
+
+## 8. Owner 실행기 공개 L0 RED→GREEN 및 출력물 분리
+
+- L0 RED [#44344958553](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44344958553): 변경된 소스 SHA/Run 핀을 요구하는 테스트에 대해 기존 원샷이 구 SHA로 남아 있어 `test_pinned_source_and_private_evidence_archive` / `test_static_self_check_instant_no_ros` 실패.
+- 1차 핀 정정 후, 작은 별도 진단 ZIP 존재를 요구하는 L0 RED [#44345333077](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44345333077): `test_small_separate_diagnostic_zip_without_raw_bag` 실패.
+- 최종 GREEN Owner 소스 커밋 `96c29ff4f333237084d64999cf828a7f6b5d157b`; [Bootstrap Run #44345736985](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44345736985) `Ran 7 tests ... OK`. 범용 public Python [#44345750251](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44345750251) `success`.
+- Owner 원샷 `scripts/axia_g07_task04_owner_moving_l3_once.sh`의 고정 `STUDENT_SHA=ef6ffe58...`, `REVIEW_SHA=ff0455d8...`, `CI_L2_RUN=44344038055`; controlling TTY 승인 `YES-P2-G07-GOAL`은 전혀 자동화하지 않는다.
+- 원본 비공개 TAR `.tar.gz` + 외부 SHA256는 기존 유지. 별도 `.diagnostics.zip` + 외부 SHA256는 제한된 JSON, 짧은 로그, `pregoal_baseline.json`, 원본 에러, 직접 Gazebo pose 읽기 시도 로그와 내부 SHA256SUMS만 포함한다. 원본 SQLite/소스/빌드폴더는 제출용 ZIP에서 제외.
+- 검증 수준은 원샷 **ROS-free L0** 뿐. 이 새 Owner 스크립트의 실제 WSL2 GPU + GUI + 이동은 **NOT_RUN**.
+
+## 9. 인수 최종 범위
+
+현장 근거리 센서값 `0.527m / 0.630m`의 실제 물리적 출처, 원본 Gazebo 좌표, 라이다/Relay 혼입 여부 및 Host 수신 약 3초 공백의 원인은 **아직 확정되지 않았다**. 공개 CI 신규 정상 baseline(1.4096/2.5161m)은 해당 원인의 반증도 원인 해결 증거도 아니다. 현장에 같은 현상이 생기면 최초 `pregoal_baseline.json`, 실제 Gazebo pose, publisher GID/QoS, `/scan`/ `/safety/scan` 관측과 필수 안전 타이밍을 확인하고 현장 재실행보다 CI RED 회귀를 우선해야 한다.
+
+```ini
+G07_PREG0AL_REAL_CLEAR=PASS_CI_NO_GOAL_ONLY
+G07_ACTUAL_NAV2_GOAL=PASS_CI_L2_SAME_STUDENT_SHA
+G07_MOVING_CLEAR_SLOW_STOP=PASS_CI_L2_SAME_SESSION
+G07_PHYSICAL_CONTACT_ZERO=PASS_CI_L2_S02_WITNESS
+G07_GOAL_UUID_CANCELED=PASS_CI_L2
+G07_SENSOR_AND_SAFETY_TTL=PASS_CI_L2
+G07_GAZEBO_RVIZ_L2=PASS_CI_XVFB
+G07_ORDERED_SHUTDOWN=PASS_CI_L2
+PUBLIC_CI=SUCCESS_SCOPED
+OWNER_WSL2_L3=HOLD_UNTIL_ACTUAL_EVIDENCE
+AXIA_MVP_DEMO_ACCEPTED=HOLD
+CERTIFIED_ESTOP=false
+MAIN_MERGED=false
+```
+
+최신 단일 실행 명령과 증거 보존 지침은 [강사 WSL2 Owner 가이드](../operations/AXIA_G07_TASK04_OWNER_MOVING_L3_RELEASE_ONE_SHOT_GUIDE_20261118_KO.md)에 따르며, 해당 가이드의 **원샷 소스 커밋 96c29ff4…**를 사용한다.
