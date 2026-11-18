@@ -35,7 +35,7 @@ for flag in AXIA_G07_CI_SIM_GOAL_ALLOWED AXIA_G07_TASK04_OWNER_MOVING_L3 \
     echo "D06_WSLG_NO_GOAL_MOTION_AUTHORITY_DENIED=$flag" >&2;exit 3;
   }
 done
-for exe in git bash python3 ros2 gz glxinfo xwininfo rviz2 colcon sha256sum tar timeout;do
+for exe in git bash python3 glxinfo xwininfo sha256sum tar timeout;do
   command -v "$exe" >/dev/null || {
     echo "D06_WSLG_MISSING_EXECUTABLE=$exe" >&2;exit 3;
   }
@@ -45,6 +45,12 @@ set +u
 source /opt/ros/jazzy/setup.bash
 set -u
 [[ "${ROS_DISTRO:-}" == jazzy ]] || { echo 'D06_WSLG_ROS_DISTRO_MISMATCH';exit 3; }
+# Fresh WSL2 shells may not have ros2/rviz2 in PATH until Jazzy is sourced.
+for exe in ros2 gz rviz2 colcon;do
+  command -v "$exe" >/dev/null || {
+    echo "D06_WSLG_MISSING_EXECUTABLE_AFTER_JAZZY_SOURCE=$exe" >&2;exit 3;
+  }
+done
 
 EVIDENCE_ROOT="${AXIA_D06_SENSOR_EVIDENCE_ROOT:-$HOME/axia_d06_g07_sensor_no_goal_evidence}"
 mkdir -p "$EVIDENCE_ROOT"
