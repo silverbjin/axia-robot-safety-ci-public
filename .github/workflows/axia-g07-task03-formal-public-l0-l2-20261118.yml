@@ -138,7 +138,7 @@ jobs:
               "binary_sha256":w["source_sha"],
               "leaked_processes_count":len(leaks),
               "native_nav2_l2_pass":False,
-              "motion_goal_sent":False,"certified_estop":False},sort_keys=True,indent=2)+"\\n")
+              "motion_goal_sent":False,"certified_estop":False},sort_keys=True,indent=2)+"\n")
           if result["status"]!="CONTACT_CALIBRATION_PROVEN_DISPOSABLE_ONLY":
               sys.exit(3)
           print("AXIA_G07_TASK03_CONTACT_POSITIVE_ONLY_PROVEN_NEW_GAZEBO_PARTITION_REQUIRED",flush=True)
