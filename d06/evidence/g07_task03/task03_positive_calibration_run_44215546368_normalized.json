@@ -1,0 +1,14 @@
+{
+  "binary_sha256": "1e2dd3ad4a7d445b981ca3df9677ea7c88a680a1e6b10d04084873cd578f7ba8",
+  "calibration_runner_rc": 0,
+  "certified_estop": false,
+  "cleanup_stage": "NATIVE_NAV_LOCALIZATION_ACK_BOTH",
+  "leaked_processes_count": 0,
+  "motion_goal_sent": false,
+  "native_missing_iterations": 0,
+  "native_nav2_l2_pass": false,
+  "native_observed_iterations": 21692,
+  "native_positive_contacts": 5346,
+  "sensor_found": true,
+  "status": "CONTACT_CALIBRATION_PROVEN_DISPOSABLE_ONLY"
+}
