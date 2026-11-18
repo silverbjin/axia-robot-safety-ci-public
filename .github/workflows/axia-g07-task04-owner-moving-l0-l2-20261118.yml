@@ -5,6 +5,7 @@ on:
     branches: ['fix/g07-task04-owner-wsl2-public-pregate-20261118']
     paths:
       - '.github/workflows/axia-g07-task04-owner-moving-l0-l2-20261118.yml'
+      - 'tests/test_g07_task04_pregoal_first_failure_contract.py'
   workflow_dispatch:
 permissions:
   contents: read
@@ -13,6 +14,10 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          path: ci
+          persist-credentials: false
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
@@ -26,6 +31,7 @@ jobs:
           test "$(git -C student rev-parse HEAD)" = 'd7ffec1ce73f0c4e672ea0fc51a1678139dc5a6f'
           cd student/block_B/day07/h01_runtime
           bash -n scripts/p2_no_goal_smoke_ci.sh
+          AXIA_G07_STUDENT_RUNTIME="$PWD" PYTHONDONTWRITEBYTECODE=1 python3 "$GITHUB_WORKSPACE/ci/tests/test_g07_task04_pregoal_first_failure_contract.py" -v
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_owner_shell_contract.py' -v
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_owner_moving_entry.py' -v
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task02_simple_tf.py' -v
