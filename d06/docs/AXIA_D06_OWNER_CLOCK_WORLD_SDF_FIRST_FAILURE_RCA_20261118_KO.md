@@ -37,3 +37,28 @@ B. Official Jazzy `nav2_bringup/launch/tb3_simulation_launch.py`는 world Xacro 
 - 공개 CI 정상 통합 **GREEN 이전** 새 WSL2 스크립트 SHA를 공개하지 않는다.
 - 승인을 얻지 않은 main 병합·학생 답안 누출 금지.
 - 현재 실제 강사 WSL2 Owner L3 = NOT_RUN, SW Stop != 인증된 E-Stop, `AXIA_MVP_DEMO_ACCEPTED=HOLD`.
+
+
+## 최종 GREEN: 실제 수정된 동일 Student SHA와 물리 시연
+
+### 2026-11-18 실제 공개 Native L2 성공
+
+- [Actions #44273028236](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44273028236), public workflow HEAD `6bb4cf2676c1424e6255ba2f8e1f1bdb23019958`, **실제 Student 수정 SHA `c7654a5426ec17e724cc7590f01f8a43206a000c`**, run completed/success, job `134694114168`.
+- 동일 workflow에 Jazzy real Launch `tools/test_g07_owner_clock_world_launch.py` 4개가 실제 실행. 사례: Owner/CI 적용 범위, 원래 H01/기본 동작 유지, Xacro exit !=0, SDF 부재/0바이트/유효하지 않은 XML을 실제 `Shutdown`으로 차단, 정상 Xacro+유효 SDF일 때만 `gazebo_server` action 반환. 실제 stdout: `G07_WORLD_XACRO_SDF_READY_BEFORE_GAZEBO`. 이 단위 테스트들은 ROS graph 미기동이며 실제 물리 L2 결과는 별도 같은 Run 단계에서 확보.
+- 실제 Gazebo physical plugin, official Jazzy/Harmonic Nav2 Waffle, Xvfb Gazebo + RViz 동시, 단일 Goal, `AXIA_G07_TASK04_NATIVE_ONE_MOVING_RUNNER_RC=0 RVIZ_X11=1 GAZEBO_X11=1`.
+- 엄격한 기존 Task04 read-only 21항목 checker 결과 `TASK04_REAL_GAZEBO_MOVING_GUI_L2_SCOPED_PASS`, `first_failure=NONE`. 실제 단일 Goal·odom 이동·CLEAR→SLOW→STOP, /clock timestamp 10회 이상 연속 및 실제 시간 진행, CM source+observer<=120ms, Guard native CM age<=150ms, Scan<=300ms, Contact0, 정확 UUID Cancel ACK status5, SQLite14-topic **실제 메시지**, Navigation + Localization ACK, CM process clean exit0 검사에 근거함. 별도 성공 Run들을 합산하여 PASS 만들지 않음.
+- 공개 artifact allowlisted numeric `axia-task04-moving-native-numeric-44273028236` ID `14412718399`. 개인 현장 Bag·로그 업로드 없음. 이 Run의 CI Xvfb 성공은 WSL2 WSLg GPU/프로세스 스케줄러 동등성 증명이 아님.
+
+### 2026-11-18 D06 연결 실행기 L0 GREEN
+
+- 공개 브랜치 `fix/d06-owner-clock-l2-candidate-20261118`, D06 스크립트 `d06/scripts/axia_d06_g07_classroom_once.sh`는 Owner에서 **검증된 물리장애물의 relocated world flag `AXIA_P2_G07_RELOCATED_OBSTACLE=1`**을 실행 전 내보냄. Exact Student SHA `c7654a5426ec17e724cc7590f01f8a43206a000c`와 실제 위 새 Native L2 workflow run `44273028236`/HEAD `6bb4cf...`, 수정 Launch Git blob `784a8d188f73ff4ae6d8bde136cfbd8591f942cf`를 이전 소스/Owner admission과 함께 고정하고 Git hash-object로 검사.
+- [최종 공개 L0 #44273959319](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44273959319), HEAD `ea69abfb4bee996765be15bd36e2378099e99029`, 완료/success.
+- 실제 로그: 기존 Owner/보안/Goal admission 16/16 PASS, 실제 고정 Student parity 5/5 PASS, 실제 Bash/Python heredoc 3/3 PASS, 신규 Clock first-boundary regression 5/5 PASS = **29/29 PASS**. `D06_G07_CLASSROOM_PUBLIC_L0_PASS SIXTEEN_PLUS_FIVE_OWNER_PARITY_PLUS_THREE_HEREDOC_PLUS_FIVE_CLOCK_TESTS NO_ROS_NO_GAZEBO_NO_GOAL`.
+- 최초 RED [#44272348265](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44272348265): 5개 신규 회귀 중 2 FAIL, Owner relocated flag 누락 및 Moving Launch가 SDF 순서를 보정하지 않음. 실제 수정 후 L0 + 실제 Native L2로 GREEN.
+- 유일한 구현 변경: D06 Owner simulation flag와 공개 Student P2 Launch의 fail-closed 순서. Nav2/CM/Guard/TF/Goal publisher/TTL 포크 또는 E-Stop 기능 추가 없음.
+
+### 현재 검증 수준
+
+- 기존 다른 G07 성공 증거 보존, 최근 새 수정 동일 Student SHA Native L2 완료.
+- 새 WSL2 강사 실제 GUI Moving Goal L3 **NOT_RUN**, 결과 `AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false`; 사용자 현장 최초 실패가 다시 발생하면 현장에서 같은 Goal 반복 금지, TAR.GZ/SHA256 원본을 공개 CI 최초 실패 회귀로 편입해야 함.
+- 사용자 승인 전 `main` 병합하지 않음. 실제 Owner L3가 끝나지 않았더라도 최신 공개 CI가 성공한 SHA를 강사용 **인수 후보**로만 제공 가능; Owner L3 PASS 및 제품 최종 인수로 보고 금지.
