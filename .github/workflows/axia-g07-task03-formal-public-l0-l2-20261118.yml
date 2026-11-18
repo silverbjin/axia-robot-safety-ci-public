@@ -1,4 +1,5 @@
-# Task03 formal 14-topic/Goal UUID/Guard CM age/S02 ECM evidence gates.
+# Task03: one REAL public Gazebo S02 native ECM + ROS14 + UUID + Guard age.
+# RED #44210394942 -> GREEN #44211063396; no private repositories.
 name: AXIA G07 Task03 formal public tracer OFF L0 L2
 on:
   push:
@@ -8,28 +9,133 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: axia-g07-task03-formal-public
+  group: axia-g07-task03-public-one-goal
   cancel-in-progress: false
 jobs:
-  public-contract-l0:
+  task03-public-one-formal-l2:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 55
     container:
       image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+    env:
+      ROS_DOMAIN_ID: '85'
+      ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+      GZ_PARTITION: axia_p2_t03_initial_${{ github.run_id }}
+      AXIA_P0_SIM_ONLY: '1'
+      AXIA_P2_G07_PHYSICAL_PREFLIGHT: '1'
+      AXIA_G07_CI_SIM_GOAL_ALLOWED: '1'
+      AXIA_G07_OWNER_STARTUP_PARITY: '1'
+      AXIA_G07_CI_OWNER_OBSERVER_PARITY: '1'
+      AXIA_G07_CI_OWNER_BAG_PARITY: '1'
+      AXIA_P2_G07_OWNER_PARITY_CHECK: '1'
+      AXIA_G07_TASK02_SIMPLE_TF_CANDIDATE: '1'
+      AXIA_G07_TASK03_FORMAL_CI: '1'
+      AXIA_G07_TASK03_ECM_WITNESS: '1'
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
+          path: ci
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 2818f33f0bce83f6b6adb786603f5be91328d4ba
+          ref: a5c8a860fc172a0b8c4cbc50ec7d3933de65fef3
           path: student
           persist-credentials: false
-      - name: Task03 GREEN 14-topic exact Goal/Guard/ECM fail-closed pure contract
+      - name: NO GOAL static and exact immutable official runtime L0
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C student rev-parse HEAD)" = 2818f33f0bce83f6b6adb786603f5be91328d4ba
+          test "$(git -C ci rev-parse HEAD)" = "${{ github.sha }}"
+          test "$(git -C student rev-parse HEAD)" = 'a5c8a860fc172a0b8c4cbc50ec7d3933de65fef3'
+          export PYTHONPATH="$GITHUB_WORKSPACE/ci${PYTHONPATH:+:$PYTHONPATH}"
           cd student/block_B/day07/h01_runtime
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task03_formal_evidence.py' -v
-          python3 -m py_compile tools/p2_g07_task03_contract.py tools/p2_g07_task03_ecm_positive.py tools/p2_g07_ci_moving_goal.py tools/p2_l3_world_overlay.py ros2_ws/src/axia_safety_supervisor/axia_safety_supervisor/p2_base_guard_node.py
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task02_simple_tf.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/d06/tests" -p 'test_g07_task02_public_strict_gate.py' -v
           bash -n scripts/p2_no_goal_smoke_ci.sh
-          echo AXIA_G07_TASK03_PUBLIC_FORMAL_SOURCE_L0_GREEN_NO_GOAL
+          python3 -m py_compile tools/p2_g07_task03_review.py tools/p2_g07_task03_ecm_positive.py tools/p2_g07_ci_moving_goal.py tools/p2_l3_world_overlay.py ros2_ws/src/axia_safety_supervisor/axia_safety_supervisor/p2_base_guard_node.py
+          test -f /opt/ros/jazzy/setup.bash
+          set +u; source /opt/ros/jazzy/setup.bash; set -u
+          for command in ros2 gz colcon; do command -v "$command"; done
+          python3 tools/p2_g07_owner_env_parity.py --mode ci --output "$GITHUB_WORKSPACE/task03_runtime_parity.json"
+          python3 - <<'PY'
+          import json,os
+          v=json.load(open(os.environ["GITHUB_WORKSPACE"]+"/task03_runtime_parity.json"))
+          assert v["status"]=="CORE_PARITY_PASS"
+          assert v["checked_packages"]==25 and v["checked_official_files"]==5
+          print("AXIA_G07_TASK03_OFFICIAL_JAZZY_HARMONIC_PARITY_25_5_PASS_NO_GOAL")
+          PY
+      - name: Build public same-binary GZ Sim8 ECM contact witness before any Goal
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          if ! command -v c++ >/dev/null || ! test -f /usr/include/gz/sim8/gz/sim/System.hh; then
+            apt-get update -qq
+            DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends cmake g++ libgz-sim8-dev
+          fi
+          cmake -S student/block_B/day07/h01_runtime/tools/native_s02_public -B "$GITHUB_WORKSPACE/task03-native-build" -DCMAKE_BUILD_TYPE=Release
+          cmake --build "$GITHUB_WORKSPACE/task03-native-build" --parallel 2
+          test -s "$GITHUB_WORKSPACE/task03-native-build/libaxia_g07_s02_ecm_witness.so"
+          sha256sum "$GITHUB_WORKSPACE/task03-native-build/libaxia_g07_s02_ecm_witness.so" > "$GITHUB_WORKSPACE/task03_witness_SHA256SUMS.txt"
+          echo AXIA_G07_TASK03_NATIVE_GZ8_S02_READONLY_PLUGIN_BUILT_NO_GOAL
+      - name: Real disposable Gazebo NO GOAL positive Contact calibration same compiled binary
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          set +u; source /opt/ros/jazzy/setup.bash; set -u
+          export GZ_SIM_SYSTEM_PLUGIN_PATH="$GITHUB_WORKSPACE/task03-native-build${GZ_SIM_SYSTEM_PLUGIN_PATH:+:$GZ_SIM_SYSTEM_PLUGIN_PATH}"
+          export AXIA_G07_TASK03_WITNESS_SHA256="$(sha256sum "$GITHUB_WORKSPACE/task03-native-build/libaxia_g07_s02_ecm_witness.so" | cut -d' ' -f1)"
+          export AXIA_P2_SMOKE_RESULTS="$GITHUB_WORKSPACE/student/block_B/day07/h01_runtime/results/task03-native-positive"
+          export AXIA_G07_TASK03_WITNESS_REPORT="$AXIA_P2_SMOKE_RESULTS/s02_ecm_witness.json"
+          export AXIA_G07_TASK03_POSITIVE_ONLY=1
+          export GZ_PARTITION="axia_p2_t03_positive_${{ github.run_id }}"
+          cd student/block_B/day07/h01_runtime
+          timeout --signal=TERM --kill-after=10s 900s bash scripts/p2_no_goal_smoke_ci.sh
+          python3 - <<'PY'
+          import json,os
+          w=json.load(open(os.environ["AXIA_G07_TASK03_WITNESS_REPORT"]))
+          assert w["report_complete"] is True and w["sensor_found"] is True
+          assert w["positive_contacts"]>0 and w["missing_iterations"]==0
+          print("AXIA_G07_TASK03_REAL_NATIVE_ECM_NO_GOAL_CONTACT_POSITIVE_PASS",
+                "frames",w["observed_iterations"],"contacts",w["positive_contacts"])
+          PY
+      - name: Actual independent official Jazzy Gazebo ONE Goal with TF tracer OFF
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          set +u; source /opt/ros/jazzy/setup.bash; set -u
+          export GZ_SIM_SYSTEM_PLUGIN_PATH="$GITHUB_WORKSPACE/task03-native-build${GZ_SIM_SYSTEM_PLUGIN_PATH:+:$GZ_SIM_SYSTEM_PLUGIN_PATH}"
+          export AXIA_G07_TASK03_WITNESS_SHA256="$(sha256sum "$GITHUB_WORKSPACE/task03-native-build/libaxia_g07_s02_ecm_witness.so" | cut -d' ' -f1)"
+          export AXIA_P2_SMOKE_RESULTS="$GITHUB_WORKSPACE/student/block_B/day07/h01_runtime/results/task03-real-moving"
+          export AXIA_G07_TASK03_WITNESS_REPORT="$AXIA_P2_SMOKE_RESULTS/s02_ecm_witness.json"
+          unset AXIA_G07_TASK03_POSITIVE_ONLY || true
+          export GZ_PARTITION="axia_p2_t03_moving_${{ github.run_id }}"
+          cd student/block_B/day07/h01_runtime
+          echo AXIA_G07_TASK03_REAL_ONE_GOAL_SOURCE_SHA=a5c8a860fc172a0b8c4cbc50ec7d3933de65fef3
+          env -u LD_PRELOAD -u AXIA_G07_TASK01_TF_AVAIL_PROBE timeout --signal=TERM --kill-after=10s 900s bash scripts/p2_no_goal_smoke_ci.sh
+          echo AXIA_G07_TASK03_REAL_ONE_GOAL_ORIGINAL_RUNNER_RC0
+      - name: Formal original S02 ECM, sqlite14, exact UUID terminal, Guard150 and CM120 post-Goal review
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          export PYTHONPATH="$GITHUB_WORKSPACE/ci${PYTHONPATH:+:$PYTHONPATH}"
+          root="$GITHUB_WORKSPACE/student/block_B/day07/h01_runtime/results"
+          mkdir -p "$GITHUB_WORKSPACE/public_evidence"
+          python3 student/block_B/day07/h01_runtime/tools/p2_g07_task03_review.py \
+            --positive-root "$root/task03-native-positive" \
+            --motion-root "$root/task03-real-moving" \
+            --positive-witness "$root/task03-native-positive/s02_ecm_witness.json" \
+            --motion-witness "$root/task03-real-moving/s02_ecm_witness.json" \
+            --output "$GITHUB_WORKSPACE/public_evidence/task03_formal_verdict.json"
+      - name: Upload ONLY allowlisted numeric SHA / counts, no raw bags or private data
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: axia-task03-formal-public-numeric-${{ github.run_id }}
+          path: |
+            public_evidence/task03_formal_verdict.json
+            task03_runtime_parity.json
+            task03_witness_SHA256SUMS.txt
+          retention-days: 30
+          if-no-files-found: warn
