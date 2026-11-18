@@ -95,6 +95,7 @@ if [[ "$GPU_RENDERER" != *'D3D12 (NVIDIA'* ]]; then
   exit 2
 fi
 echo "D08_OWNER_WSLG_NVIDIA_D3D12_VERIFIED=$GPU_RENDERER"
+printf '%s\n' "$GPU_INFO" > "$RUN_DIR/owner_gpu_probe.txt"
 
 # This SHA must be reachable from public PR #166, never a mutable branch tip.
 SRC="$RUN_DIR/src"
@@ -134,6 +135,9 @@ curl -fL --retry 3 --max-time 160 \
   -o "$MODEL"
 echo "4f44c33cea12d4b5785e5e7c0a20c13d0c62a77de607ce96a40d6036c7d7bbcf  $MODEL" |
   sha256sum -c -
+# Retain asset digests only; 100MiB official NuGet/ONNX/binary is NEVER
+# added to the outgoing diagnostic archive.
+sha256sum "$ASSETS/walk.dae" "$ORT_PACKAGE" "$MODEL" > "$RUN_DIR/asset_sha256.txt"
 
 YOLO_WS="$RUN_DIR/yolo_ws"
 mkdir -p "$YOLO_WS/src"
@@ -195,6 +199,21 @@ YOLO_GROUP=""
 cleanup() {
   if [[ -n "$YOLO_GROUP" ]]; then
     kill -- "-$YOLO_GROUP" 2>/dev/null || true
+  fi
+  # Always create a bounded PRIVATE diagnostics ZIP on Owner GUI exit,
+  # including Ctrl+C and fail-closed timing violations. Never archive
+  # checkout, .git, build, model assets or the full run directory.
+  if [[ -f "$SRC/d08/scripts/d08_compact_evidence.py" ]]; then
+    local compact="${RUN_DIR}.diagnostics.zip"
+    if python3 "$SRC/d08/scripts/d08_compact_evidence.py" \
+         --run "$RUN_DIR" --out "$compact"; then
+      sha256sum "$compact" > "${compact}.sha256"
+      echo "D08_OWNER_COMPACT_EVIDENCE=$compact"
+      echo "D08_OWNER_COMPACT_EVIDENCE_SHA256=$(cut -d' ' -f1 "${compact}.sha256")"
+      echo D08_OWNER_RAW_RUN_RETAINED_LOCALLY_NOT_ARCHIVED
+    else
+      echo D08_OWNER_COMPACT_EVIDENCE_FAILED >&2
+    fi
   fi
 }
 trap cleanup EXIT
