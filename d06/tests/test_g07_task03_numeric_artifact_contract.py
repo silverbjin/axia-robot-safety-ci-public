@@ -47,7 +47,7 @@ class Task03NumericEvidenceIntegrity(unittest.TestCase):
         self.assertEqual(obj["original_zip_sha256"],
                          "a0cb7e7a4c961c321e0f9c32fc0854e93b5b9137e72da5d21d9052a17d109cbe")
         self.assertEqual(obj["original_formal_verdict_json_sha256"],
-                         "c02a77d45a72f771e7505f0798014c528c49fbe9d4")
+                         "c02a77d45a72f771e7505f0798014c528c49fbe9d4ea77c6884265cb2ca28b86")
         self.assertEqual(obj["original_positive_raw_invalid_json_sha256"],
                          "ef33d89b2c4a9c06f412c73a4d555fe5ae731af3399ecebcd6eabf5e60494bc6")
         self.assertEqual(obj["positive_calibration_json_tail_only_normalized_sha256"],
