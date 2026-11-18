@@ -48,6 +48,7 @@ jobs:
           test "$(git -C ci rev-parse HEAD)" = "$GITHUB_SHA"
           python3 -m unittest discover -s ci/tests -p test_g07_task04_owner_public_wsl2_pregate.py -v
           python3 -m unittest discover -s ci/tests -p test_g07_task04_owner_field_regression_20261118.py -v
+          python3 -m unittest discover -s ci/tests -p test_g07_task04_native_path_stage_schema.py -v
           bash -n student/block_B/day07/h01_runtime/scripts/d07_h01_gui_no_goal_once.sh
           bash -n student/block_B/day07/h01_runtime/scripts/p2_no_goal_smoke_ci.sh
           bash -n student/block_B/day07/h01_runtime/tools/d07_h01_gpu_gui_watcher.sh
@@ -137,7 +138,7 @@ jobs:
           assert "pid=" in (root/"d07_gui_watcher_started.txt").read_text()
           phases=[json.loads(line) for line in
             (root/"d07_h01_geometry/phase_evidence.jsonl").read_text().splitlines()]
-          assert [p["phase"] for p in phases]==["before","intrusion","restored"]
+          assert [p["stage"] for p in phases]==["before","intrusion","restored"]
           assert all(p.get("rviz_subscription_count",0)>=1 for p in phases)
           geometry=json.loads((root/"d07_h01_geometry/d07_h01_geometry.json").read_text())
           assert geometry.get("goal_sent") is False
