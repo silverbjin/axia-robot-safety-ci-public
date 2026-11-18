@@ -54,3 +54,13 @@ bash d06/scripts/axia_d06_g07_classroom_once.sh --gui-only
 - **D06 같은 세션의 Gazebo+RViz Moving L2 및 강사 Moving Owner WSL2 L3: NOT_RUN / BLOCKED_WAITING_G07_OWNER_MOVING_RELEASE.**
 - Fail-closed: Guard 150ms, Scan 300ms, 최초 안전 상태 전이, Stop odom ≥1s, Contact 0, 동일 Goal Cancel ACK를 유지. 오류 발생하면 현장 재시도 대신 기존 G07 공개 CI 회귀로 인계.
 - 전체 `AXIA_MVP_DEMO_ACCEPTED=HOLD`, `CERTIFIED_ESTOP=false`, 사용자 승인 없는 main 병합 금지. SW stop을 인증된 E-Stop으로 주장하지 않음.
+
+## 공개 CI 최종 결과 — 2026-11-18
+
+- **실제 신규 D06 공개 CI L0:** [Actions #44249143480](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44249143480), commit `952e14bbf2c7f371de1bf57b4e5c7be84764088f`, job `134615261209`, **completed/success**.
+- 실제 GitHub Actions stdout: `Ran 6 tests in 0.008s` → `OK` → `D06_G07_CLASSROOM_PUBLIC_L0_PASS SIX_TESTS NO_ROS_NO_GAZEBO_NO_GOAL`. `D06_G07_CLASSROOM_OWNER_MOVING_L3=NOT_RUN` 및 `AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false`.
+- 로컬 `git hash-object` vs GitHub 원본 새 실행기 blob 동일 `f3098e2b667473a79903069b7e62d1a6cd2f4c50`; 단위 테스트 파일 blob `0b4fce8e6216394f0d7969751cd119b4158fde65`.
+- 실제 `--live` 로컬 fail-closed 확인: `RC=3`, `D06_G07_CLASSROOM_HOLD=D06_G07_CLASSROOM_MOVING_OWNER_NOT_RELEASED`; 실제 ROS/Gazebo/Goal 미실행.
+- 공개 Draft [PR #170](https://github.com/silverbjin/axia-robot-safety-ci-public/pull/170) 기반 브랜치 `feat/d06-g07-classroom-reuse-20261118`. 개인 RAW, private Instructor, 학생 정답 업로드 없음. main 병합 미승인.
+
+**본 최종 CI는 Python/Bash L0입니다.** G07 Task03 Moving L2 #44223320904와 Task04 Owner GUI PASS는 별도 원본 증거로 **재사용**했지만, 신규 D06 동일 세션 Moving+GUI L2나 WSL2 Moving L3는 수행하지 않았습니다.
