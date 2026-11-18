@@ -149,7 +149,8 @@ jobs:
           assert e["goal_sent"] is False
           assert e["gpu_causation_proven"] is False
           print("AXIA_G07_NATIVE_PREG0AL_TRUE_SCAN_CLEAR_L2_PASS",e["front_m"],e["side_m"])
-          PY          sha256sum "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"             > "$GITHUB_WORKSPACE/public_evidence/task04_moving_verdict.sha256"
+          PY
+          sha256sum "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"             > "$GITHUB_WORKSPACE/public_evidence/task04_moving_verdict.sha256"
           echo 'AXIA_D06_G07_CLOCK_WORLD_REPAIRED_NATIVE_GUI_MOVING_L2_PASS_OWNER_NOT_RUN'
           echo 'AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false'
       - name: Upload allowlisted numeric verdict only no original raw bag
