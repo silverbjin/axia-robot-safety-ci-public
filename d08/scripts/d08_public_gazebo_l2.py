@@ -428,7 +428,7 @@ def positive_contact_once(out:Path,env:dict,contact_topic:str)->dict:
     return verdict
 
 
-def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=False,cm_cadence_l1:bool=False,official_nav2:bool=False,official_path_phases:bool=False,live_person_range:bool=False,owner_gui=False):
+def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=False,cm_cadence_l1:bool=False,official_nav2:bool=False,official_path_phases:bool=False,live_person_range:bool=False,owner_gui=False,ci_owner_repro=False):
     out=Path(out).resolve()
     if official_path_phases and not official_nav2:
         raise ValueError('D08_PATH_PHASES_REQUIRE_SAME_WORLD_OFFICIAL_NAV2')
@@ -437,6 +437,12 @@ def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=Fals
     if owner_gui and not (official_nav2 and official_path_phases
                           and live_person_range):
         raise ValueError('D08_OWNER_GUI_REQUIRES_EXACT_SAME_WORLD_LIVE_E2E')
+    # Public Actions-only Owner-equivalent path-replanning stress:
+    # eight same-world cycles with one actual Gazebo GUI client.
+    if ci_owner_repro and (owner_gui or not official_nav2 or
+            not official_path_phases or os.environ.get('GITHUB_ACTIONS')!='true' or
+            not os.environ.get('DISPLAY')):
+        raise ValueError('D08_CI_GUI_REPRO_OFFICIAL_XVFB_ONLY')
     if out.exists():raise ValueError('D08_EVIDENCE_EXISTS')
     out.mkdir(parents=True)
     result={'gate':'D08_ONE_WORLD_GAZEBO_RGBD_NO_GOAL',
@@ -542,7 +548,7 @@ def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=Fals
                 gz_world,gz_robot,owner_gui=owner_gui,
                 rviz_config_file=owner_rviz)
             simulator_command=(
-                command if owner_gui else
+                command if (owner_gui or ci_owner_repro) else
                 ['xvfb-run','-a','-s','-screen 0 1280x720x24']+command)
             sim=_start('d08_official_nav2_one_world',
                 simulator_command,env,out,processes)
@@ -626,6 +632,17 @@ def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=Fals
                     'native_scene_service_verified':False,
                     'first_error':first_scene_error})+'\n')
                 raise RuntimeError('D08_GAZEBO_NATIVE_SCENE_BROADCASTER_NOT_READY:'+first_scene_error)
+        if ci_owner_repro:
+            # Connect one GUI-only client to ALREADY running Nav2 Gazebo.
+            # Xvfb wraps the complete caller; no second server/world.
+            ci_gui=_start('d08_ci_gazebo_gui',
+                          ['gz','sim','-g','-v2'],env,out,processes)
+            time.sleep(3)
+            if ci_gui.poll() is not None:
+                raise RuntimeError('D08_CI_GAZEBO_GUI_CLIENT_EXITED_BEFORE_REPLAN')
+            result['ci_gazebo_gui_client_running']=True
+            result['ci_gui_pixels_verified']=False
+            print('D08_CI_GAZEBO_GUI_CONNECTED_SCOPED_L2',flush=True)
         if official_nav2:
             # This is an official read-only ComputePathToPose ACTION only,
             # NOT NavigateToPose, FollowPath, or a robot command.
@@ -677,6 +694,21 @@ def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=Fals
             result['d05_executed']=True
             print('D08_LIVE_SAME_WORLD_RGBD_YOLO_D05_ACCEPTED_CANDIDATE',
                   flush=True)
+        if ci_owner_repro:
+            from d08_same_world_replan import run as repeat_path
+            for i in range(8):
+                if ci_gui.poll() is not None:
+                    raise RuntimeError('D08_CI_GAZEBO_GUI_CLIENT_EXITED_DURING_REPLAN')
+                d=out/'ci_owner_replan_cycles'/('cycle_%04d'%i)
+                rc=repeat_path(d,env,checkout_sha)
+                cycle=json.loads((d/'verdict.json').read_text())
+                if rc!=0:
+                    result['ci_owner_replan_failure_cycle']=i
+                    result['ci_owner_replan_first_boundary']=cycle.get('first_boundary')
+                    raise RuntimeError('D08_CI_REAL_GUI_EIGHT_CYCLES_FIRST_BOUNDARY:'+str(
+                        cycle.get('first_boundary')))
+                result['ci_owner_replan_cycles']=i+1
+            print('D08_CI_REAL_GUI_EIGHT_REPEAT_PATHS_L2_PASS',flush=True)
         # The calibration happens ONCE, only on the actual no-Goal L2 CI
         # path after real RGBD and the native Contact topic were verified.
         if lidar_pre_goal:
@@ -808,6 +840,8 @@ if __name__=='__main__':
         help='WSLg Gazebo + RViz2 opt-in after exact same public NO_GOAL checks')
     p.add_argument('--live-person-range',action='store_true',
         help='Same-world pinned live C++ YOLO RGBD/D05 2 VALID + UNKNOWN read-only')
+    p.add_argument('--ci-owner-repro',action='store_true',
+        help='Public Actions Xvfb-only same World GUI and 8 real replan cycles')
     p.add_argument('--positive-contact-once',action='store_true',
         help='Single non-robot Gazebo Contact positive calibration, no Nav2 Goal')
     a=p.parse_args()
@@ -816,4 +850,4 @@ if __name__=='__main__':
                              official_nav2=a.official_nav2,
                              official_path_phases=a.official_path_phases,
                              live_person_range=a.live_person_range,
-                             owner_gui=a.owner_gui))
+                             owner_gui=a.owner_gui,ci_owner_repro=a.ci_owner_repro))
