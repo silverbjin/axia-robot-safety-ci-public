@@ -24,6 +24,7 @@ from d04_waffle_pi_rgb_preflight import _start,_stop_all,sync_ros_discovery_envi
 from d08_live_world import build_overlay,RGB_TOPIC,DEPTH_TOPIC
 from d08_live_readonly_probe import select_pair
 from d08_runtime_provenance import make_runtime_provenance
+from d08_scene_broadcaster import validate_d08_scene_world,validate_native_scene_reply
 from d08_one_world_official_nav2_launch import (make_official_nav2_command, create_official_rviz_path_overlay)
 from d08_scan_gap_trace import first_scan_receive_gap
 from p2_contact_discovery import resolve_g07_contact_topic
@@ -482,8 +483,14 @@ def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=Fals
         gz_world=out/'actual_world.sdf'
         gz_robot=out/'actual_waffle.sdf'
         for src,dest in ((m['world'],gz_world),(m['robot_sdf'],gz_robot)):
+            # Official TB3 Xacro conditionally drops SceneBroadcaster for
+            # headless:=true. We PRE-EXPAND into SDF before Nav2's launch:
+            # therefore the later official headless:=False cannot restore it.
+            # Keep the scene service in CI and Owner; GUI still optional.
+            xacro_cmd=(['xacro',str(src),'headless:=false']
+                       if src==m['world'] else ['xacro',str(src)])
             with dest.open('w') as fp:
-                cp=subprocess.run(['xacro',str(src)],stdout=fp,stderr=subprocess.PIPE,
+                cp=subprocess.run(xacro_cmd,stdout=fp,stderr=subprocess.PIPE,
                      env=env,text=True,timeout=15)
             if cp.returncode!=0:
                 raise RuntimeError('D08_XACRO_FAILED:'+cp.stderr[-400:])
@@ -494,6 +501,9 @@ def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=Fals
             parsed=ET.parse(dest)
             if parsed.getroot().tag!='sdf':
                 raise RuntimeError('D08_XACRO_OUTPUT_IS_NOT_SDF')
+        if official_nav2:
+            result['rendered_world_scene']=validate_d08_scene_world(gz_world)
+            print('D08_GENERATED_WORLD_SCENE_BROADCASTER_PRESENT',flush=True)
         # Task00: pin the generated *actual* world and CI source in this
         # run before starting Gazebo; not a claim of live ROS/CM/Nav2 proof.
         # GitHub Docker root checkout may have host-owned files. Trust this root only.
@@ -586,6 +596,36 @@ def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=Fals
             raise RuntimeError('D08_NO_MATCHED_REAL_REGISTERED_RGBD')
         if not all(t in topics.stdout for t in (RGB_TOPIC,DEPTH_TOPIC)):
             raise RuntimeError('D08_GAZEBO_RGBD_TOPICS_NOT_ADVERTISED')
+        if official_nav2:
+            # Actual SceneBroadcaster native transport: models in returned
+            # scene, not only a GUI window and not only /scan in ROS.
+            first_scene_error='NOT_OBSERVED'
+            for attempt in range(8):
+                cp=_run(['gz','service','-s','/world/default/scene/info',
+                         '--reqtype','gz.msgs.Empty',
+                         '--reptype','gz.msgs.Scene',
+                         '--timeout','3000','--req',' '],
+                         env,timeout=7,check=False)
+                if cp.returncode==0:
+                    try:
+                        result['native_scene']=validate_native_scene_reply(cp.stdout)
+                        (out/'scene_info_response.txt').write_text(cp.stdout[:50000])
+                        (out/'scene_info_verdict.json').write_text(json.dumps(
+                            result['native_scene'],indent=2)+'\n')
+                        print('D08_REAL_GAZEBO_SCENE_BROADCASTER_L2_PASS',flush=True)
+                        break
+                    except ValueError as ex:
+                        first_scene_error=str(ex)
+                else:
+                    first_scene_error='NATIVE_SERVICE_RC_'+str(cp.returncode)+':'+(cp.stderr or cp.stdout)[-250:]
+                if sim.poll() is not None:
+                    raise RuntimeError('D08_GAZEBO_PROCESS_EXITED_BEFORE_NATIVE_SCENE')
+                time.sleep(.3)
+            else:
+                (out/'scene_info_verdict.json').write_text(json.dumps({
+                    'native_scene_service_verified':False,
+                    'first_error':first_scene_error})+'\n')
+                raise RuntimeError('D08_GAZEBO_NATIVE_SCENE_BROADCASTER_NOT_READY:'+first_scene_error)
         if official_nav2:
             # This is an official read-only ComputePathToPose ACTION only,
             # NOT NavigateToPose, FollowPath, or a robot command.
