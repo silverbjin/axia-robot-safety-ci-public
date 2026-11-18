@@ -35,3 +35,14 @@
 - Task04 runner `d08/scripts/d08_owner_no_goal_bootstrap.sh`는 public exact SHA clone, pinned official YOLO/ONNX 모델, ROS nounset-safe, 고유 로그 폴더, `--self-check|--doctor|--run` 제공. WSL2를 실제 실행하지 않았으므로 시연 출고 HOLD.
 - Latest native CM graph에서 unknown consumer를 발견, 실제 lifecycle active와 `scan.topic` 서비스 조회를 Task02 마지막 최소 회귀로 반영. CM 내부 수신 gap과 Guard age를 이 조회로 대체하지 않음. 새 exact SHA L2 결과는 PR #166에 별도 보고.
 - 사용자 승인 전 Student #43/Instructor #212/Public #166의 main 병합은 모두 NO, Moving G07 strict HOLD 유지.
+
+## 2026-11-18 Task04 최종 PUBLIC L2 범위 확정 — 기존 기록에 대한 최신 판정
+
+이 절은 이전의 임시 HOLD·개발 중 PENDING 표기를 최신 사실로 대체합니다.
+- Source `a83629edd71ce51567e184451f2a76bafcf1318b`, [Public Run #44248098353](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44248098353) **전 job SUCCESS**, 실제 `103 passed in 0.33s` + 물리 Gazebo L2 + 원본 C++ YOLO L1 + 한 World Nav2/CM/D05 L2 성공. SHA는 PR 기능 HEAD와 실제 checkout 모두 동일.
+- 원본 native CM lifecycle `active` / observation_sources `["scan"]` / scan.topic `scan` 직접 조회 GREEN, `D08_OFFICIAL_CM_NATIVE_ACTIVE_SCAN_SOURCE_NO_GOAL`. 실제 CM 내부 receive gap/Guard TTL/출력 감속은 **NOT_VERIFIED**; Robot Goal 및 cmd_vel 미발행.
+- 동일 World RGBD/Yolo/Depth 사람 거리 0.704022m/0.534589m, 원인 있는 UNKNOWN; 공식 3상 Path + 실측 Scan 1.866673/0.567960/1.869093m, lethal 0/66/0; observer max Scan callback gap 0.228737s(정지 중 관측자 값, CM age 아님).
+- Student PR #43 commit `2db53d55c4f3640e0fb5d73c94f21fc4a512bf04`, Instructor PR #212 commit `61dc409a55529108e2a64aecc9ba793522ec7810`에 동일 Public SHA Owner 원샷/3계층 수업 가이드 존재. 강사 정답·hidden tests는 공개 저장소에 미배포.
+- 정확한 공용 Owner script `d08/scripts/d08_owner_no_goal_bootstrap.sh` 옵션 `--self-check|--doctor|--run`; 검증 SHA `a83629edd71ce51567e184451f2a76bafcf1318b`; 수업 화면은 공식 Gazebo+RViz2/원본 Planner Path 표시; 종료 Ctrl+C/소유 그룹 정리. 이 script의 실제 WSL2 `--run`과 WSLg pixel/권한/렌더는 아직 **NOT_RUN/NOT_VERIFIED**. 타 GUI 기본 설정은 설치된 공식 Nav2 config에서 read-only Path 토픽만 임시 overlay로 변경.
+- Task04 **Public CI release candidate PASS**, 사용자 Owner L3 시각 인수까지 `D08_LIVE_NO_GOAL_ACCEPTED=NO`. Task03 Moving/CM Guard safety TTL 별도 HOLD. main 병합 3건 모두 사용자 승인 대기.
+- 최종 정확한 증거와 현재 범위는 `d08/docs/reports/D08_INTEGRATION_FINAL_ACCEPTANCE_KO.md` 참조. 지난 RED→GREEN 원본 CI 번호·최초 원인 분석은 각 Task 보고서 및 PR #166 이력에 보존했습니다.
