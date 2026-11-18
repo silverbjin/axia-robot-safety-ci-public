@@ -39,19 +39,20 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 7a286fa486f971839ae8fb6fc8c6cbf23d0af973
+          ref: de0bf5086ae0da594337220b4b02f600405fb911
           path: student
           persist-credentials: false
-      - name: NO GOAL Task03 6 + cleanup 7 + official Simple TF 5 + CM120 strict 5 L0 safety contracts
+      - name: NO GOAL Task03 6 + cleanup 7 + post-STOP lifecycle 3 + Simple TF 5 + CM120 strict 5 L0 contracts
         shell: bash
         run: |
           set -Eeuo pipefail
           test "$(git -C ci rev-parse HEAD)" = "${{ github.sha }}"
-          test "$(git -C student rev-parse HEAD)" = '7a286fa486f971839ae8fb6fc8c6cbf23d0af973'
+          test "$(git -C student rev-parse HEAD)" = 'de0bf5086ae0da594337220b4b02f600405fb911'
           export PYTHONPATH="$GITHUB_WORKSPACE/ci${PYTHONPATH:+:$PYTHONPATH}"
           cd student/block_B/day07/h01_runtime
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task03_formal_evidence.py' -v
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task03_calibration_cleanup.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task03_localization_shutdown_budget.py' -v
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task02_simple_tf.py' -v
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/d06/tests" -p 'test_g07_task02_public_strict_gate.py' -v
           bash -n scripts/p2_no_goal_smoke_ci.sh
@@ -158,7 +159,7 @@ jobs:
           export ROS_DOMAIN_ID='86'
           export GZ_PARTITION="axia_p2_t03_moving_${{ github.run_id }}"
           cd student/block_B/day07/h01_runtime
-          echo AXIA_G07_TASK03_REAL_ONE_GOAL_SOURCE_SHA=7a286fa486f971839ae8fb6fc8c6cbf23d0af973
+          echo AXIA_G07_TASK03_REAL_ONE_GOAL_SOURCE_SHA=de0bf5086ae0da594337220b4b02f600405fb911
           env -u LD_PRELOAD -u AXIA_G07_TASK01_TF_AVAIL_PROBE timeout --signal=TERM --kill-after=10s 900s bash scripts/p2_no_goal_smoke_ci.sh
           echo AXIA_G07_TASK03_REAL_ONE_GOAL_ORIGINAL_RUNNER_RC0
       - name: Formal original S02 ECM, sqlite14, exact UUID terminal, Guard150 and CM120 post-Goal review
