@@ -39,7 +39,7 @@ requested_domain="$(printenv AXIA_G07_TASK04_DOMAIN_ID || true)"
 if [[ -n "$requested_domain" ]];then export ROS_DOMAIN_ID="$requested_domain";fi
 [[ "$ROS_DOMAIN_ID" =~ ^[0-9]+$ ]] && ((ROS_DOMAIN_ID<=101)) || hold ROS_DOMAIN_ID_INVALID
 export ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
-export GZ_PARTITION="axia_p2_task04_$ROS_DOMAIN_ID\_$$_$(date -u +%s)"
+export GZ_PARTITION="axia_p2_task04_${ROS_DOMAIN_ID}_$_$(date -u +%s)"
 export QT_QPA_PLATFORM=xcb
 unset LIBGL_ALWAYS_SOFTWARE || true
 mkdir -p "$HOME/axia_g07_task04_wsl2"
