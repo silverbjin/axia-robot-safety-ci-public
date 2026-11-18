@@ -352,6 +352,12 @@ jobs:
           v=json.loads(Path('results/d08-official-nav2-sameworld/verdict.json').read_text())
           assert v['status']=='D08_REAL_GAZEBO_WAFFLE_RGBD_NO_GOAL_PASS',v
           assert v['official_nav2_same_world_requested'] is True
+          assert v['rendered_world_scene']['scene_broadcaster_count']==1
+          assert v['native_scene']['native_scene_service_verified'] is True
+          assert v['native_scene']['physical_person_model_in_native_scene'] is True
+          assert v['native_scene']['robot_model_in_native_scene'] is True
+          assert v['native_scene']['gui_pixels_verified'] is False
+          print('D08_REAL_GAZEBO_SCENE_BROADCASTER_L2_PASS')
           assert v['official_nav2_before_path']['status']=='D08_LIVE_NAV2_PATH_CANDIDATE'
           a=v['official_nav2_before_path']['real_amcl_and_tf']
           assert a['amcl_service_ack'] is True and a['localization_verified'] is True
