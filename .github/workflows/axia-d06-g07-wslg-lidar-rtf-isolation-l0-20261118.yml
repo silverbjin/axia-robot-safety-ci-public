@@ -1,0 +1,30 @@
+name: AXIA D06 G07 WSLg LiDAR geometry versus RTF isolation L0
+on:
+  push:
+    branches: ['fix/d06-wslg-lidar-vs-rtf-ci-20261118']
+    paths:
+      - '.github/workflows/axia-d06-g07-wslg-lidar-rtf-isolation-l0-20261118.yml'
+      - 'd06/tests/test_d06_lidar_rtf_field_evidence.py'
+      - 'd06/fixtures/g07_intel_d3d12_rtf_original_20261118.json'
+      - 'd06/scripts/axia_d06_g07_wslg_gpu_rtf_compare_once.sh'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  six-independent-axes:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: fe0569d51a57c3dac12da8a4b5e23706e487045c
+          path: student
+          persist-credentials: false
+      - name: Verify immutable Student SHA and six independent geometry/RTF cases
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C student rev-parse HEAD)" = fe0569d51a57c3dac12da8a4b5e23706e487045c
+          python3 -m unittest discover -s student/block_B/day07/h01_runtime/tools -p 'test_g07_lidar_rtf_separation.py' -v
+          echo 'AXIA_D06_G07_LIDAR_RTF_ISOLATION_L0_PASS_NO_ROS_NO_GAZEBO_NO_GOAL'
