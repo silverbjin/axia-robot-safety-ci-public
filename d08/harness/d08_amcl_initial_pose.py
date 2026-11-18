@@ -59,6 +59,47 @@ def inspect_free_map_pose(msg, x: float, y: float, radius_m=.12) -> dict:
     }
 
 
+def assess_static_amcl_witness(witness:dict) -> dict:
+    """Validate initial AMCL Pose once, then real *current* scan/odom and TF.
+
+    Official Jazzy AMCL publishes Pose upon initial/resampled filter updates
+    but may republish its last map→odom TF on every live LaserScan while
+    stationary, without publishing another Pose. This is NOT a relaxation of
+    the actual scan/odom/CM safety TTL.
+    """
+    pose=witness.get("amcl_pose")
+    if not isinstance(pose,dict):
+        raise ValueError("D08_FIRST_AMCL_POSE_MISSING")
+    if pose.get("received_after_request") is not True:
+        raise ValueError("D08_AMCL_POSE_PRE_REQUEST")
+    age=pose.get("first_source_age_sec")
+    if (pose.get("frame")!="map" or
+        not isinstance(pose.get("stamp_ns"),int) or pose["stamp_ns"]<=0 or
+        not isinstance(age,(float,int)) or not math.isfinite(age) or
+        not -.1<=age<=1.0):
+        raise ValueError("D08_AMCL_POSE_STALE_AT_FIRST_CAPTURE")
+    tf=witness.get("tf")
+    if (not isinstance(tf,dict) or tf.get("frame")!="map" or
+        tf.get("child_frame")!="base_link" or
+        tf.get("source")!="real_tf2_buffer_lookup" or
+        not isinstance(tf.get("stamp_ns"),int) or
+        tf["stamp_ns"]<=0):
+        raise ValueError("D08_REAL_TF_MISSING")
+    for topic in ("scan","odom"):
+        gap=witness.get(topic+"_first_gap_over_500ms")
+        if gap is not None:
+            raise ValueError("D08_FIRST_LIVE_SCAN_ODOM_GAP")
+        age=witness.get(topic+"_age_sec")
+        stamp=witness.get(topic+"_stamp_ns")
+        if (not isinstance(age,(int,float)) or not math.isfinite(age) or
+            not 0<=age<=.5 or not isinstance(stamp,int) or stamp<=0):
+            raise ValueError("D08_LIVE_SCAN_ODOM_STALE")
+    return {"localization_verified":True,
+            "static_pose_one_shot_not_a_repeating_sensor":True,
+            "scan_odom_age_limits_sec":.5,
+            "first_amcl_pose_source_age_limit_sec":1.0}
+
+
 def admit_actual_amcl(node, x: float, y: float, timeout_s=24.0) -> dict:
     """Require actual map, actual scan/odom, AMCL service ACK and map TF."""
     import rclpy
@@ -72,8 +113,36 @@ def admit_actual_amcl(node, x: float, y: float, timeout_s=24.0) -> dict:
     from tf2_ros import Buffer,TransformListener,TransformException
 
     latest={}
+    last_arrival={}
+    first_safety_gap={}
+    request_sent_at=[None]
+    first_post_request_amcl=[None]
+    def stamp_ns(msg):
+        return int(msg.header.stamp.sec)*10**9+int(msg.header.stamp.nanosec)
     def recv(kind,msg):
-        latest[kind]=(msg,time.monotonic())
+        now=time.monotonic()
+        if kind in ("scan","odom") and kind in last_arrival:
+            gap=now-last_arrival[kind]
+            if gap>.5 and kind not in first_safety_gap:
+                first_safety_gap[kind]={
+                    "gap_sec":round(gap,6),
+                    "first_at_host_monotonic":round(now,6)}
+        last_arrival[kind]=now
+        latest[kind]=(msg,now)
+        if (kind=="amcl_pose" and request_sent_at[0] is not None and
+            now>=request_sent_at[0] and first_post_request_amcl[0] is None):
+            # Sample actual ROS source-time age AT reception. Static AMCL
+            # need not publish another Pose after its initial filter update.
+            msg_stamp=stamp_ns(msg)
+            source_age=(node.get_clock().now().nanoseconds-msg_stamp)/1e9
+            first_post_request_amcl[0]={
+               "frame":msg.header.frame_id,
+               "stamp_ns":msg_stamp,
+               "first_source_age_sec":round(source_age,6),
+               "received_after_request":True,
+               "first_received_host_monotonic":round(now,6)}
+            print("D08_AMCL_FIRST_REAL_POST_REQUEST_POSE "+
+                  str(first_post_request_amcl[0]),flush=True)
     qos=QoSProfile(depth=1,reliability=ReliabilityPolicy.RELIABLE,
                    durability=DurabilityPolicy.TRANSIENT_LOCAL)
     subs=[
@@ -129,6 +198,7 @@ def admit_actual_amcl(node, x: float, y: float, timeout_s=24.0) -> dict:
         pose.pose.covariance[35]=.03
         req=SetInitialPose.Request()
         req.pose=pose
+        request_sent_at[0]=time.monotonic()
         pending=cli.call_async(req)
         rclpy.spin_until_future_complete(node,pending,timeout_sec=12)
         if (not pending.done() or pending.exception() is not None
@@ -137,35 +207,68 @@ def admit_actual_amcl(node, x: float, y: float, timeout_s=24.0) -> dict:
         verdict["amcl_service_ack"]=True
         verdict["amcl_service"]="/set_initial_pose"
         verdict["localization_verified"]=False
-        # An empty service ACK is NOT localization; require genuine /amcl_pose
-        # plus the TF2 map→base_link chain already subscribed BEFORE request.
-        # The 1.0s AMCL Pose and 0.5s real scan/odom gates stay unchanged.
+        # An AMCL service ACK alone is NOT localization. Require one real
+        # post-request, source-fresh AMCL Pose and the *current* real TF2
+        # map→base_link chain, plus live fresh Scan/Odom and first gap.
+        # Stationary Jazzy AMCL may never republish /amcl_pose despite
+        # continuing the live map→odom transform on each fresh LaserScan.
         end=time.monotonic()+18
-        last_error="AMCL_POSE_OR_TF_MISSING"
+        last_error="FIRST_AMCL_POSE_OR_REAL_TF_MISSING"
+        last_witness={}
         while time.monotonic()<end:
-            rclpy.spin_once(node,timeout_sec=.2)
-            if "amcl_pose" not in latest:
-                continue
-            amcl=latest["amcl_pose"][0]
-            if amcl.header.frame_id!="map" or amcl.header.stamp.sec<=0:
-                last_error="AMCL_POSE_FRAME_OR_STAMP_INVALID"
-                continue
-            if time.monotonic()-latest["amcl_pose"][1]>1.0:
-                last_error="AMCL_POSE_STALE"
+            rclpy.spin_once(node,timeout_sec=.15)
+            first=first_post_request_amcl[0]
+            if first is None:
+                last_error="FIRST_AMCL_POSE_MISSING"
                 continue
             try:
                 tf=tfbuf.lookup_transform("map","base_link",Time())
             except TransformException as ex:
-                last_error=str(ex)[:180]
+                last_error="REAL_TF_NOT_READY:"+str(ex)[:160]
                 continue
-            if tf.header.frame_id!="map" or tf.child_frame_id!="base_link":
-                last_error="MAP_BASE_LINK_CHAIN_WRONG"
+            now=time.monotonic()
+            current_scan=latest.get("scan")
+            current_odom=latest.get("odom")
+            witness={
+                "amcl_pose":first,
+                "tf":{"frame":tf.header.frame_id,
+                      "child_frame":tf.child_frame_id,
+                      "stamp_ns":stamp_ns(tf),
+                      "source":"real_tf2_buffer_lookup"},
+                "scan_stamp_ns":stamp_ns(current_scan[0]) if current_scan else 0,
+                "odom_stamp_ns":stamp_ns(current_odom[0]) if current_odom else 0,
+                "scan_age_sec":round(now-current_scan[1],6) if current_scan else None,
+                "odom_age_sec":round(now-current_odom[1],6) if current_odom else None,
+                "scan_first_gap_over_500ms":first_safety_gap.get("scan"),
+                "odom_first_gap_over_500ms":first_safety_gap.get("odom"),
+            }
+            last_witness=witness
+            try:
+                source_check=assess_static_amcl_witness(witness)
+            except ValueError as exc:
+                last_error=str(exc)
+                if ("FIRST_LIVE_SCAN_ODOM_GAP" in last_error or
+                    "AMCL_POSE_STALE_AT_FIRST_CAPTURE" in last_error):
+                    break
                 continue
-            verdict["localization_verified"]=True
-            verdict["amcl_pose_stamp_ns"]=int(amcl.header.stamp.sec)*10**9+int(amcl.header.stamp.nanosec)
-            verdict["map_base_link_tf_stamp_ns"]=int(tf.header.stamp.sec)*10**9+int(tf.header.stamp.nanosec)
+            verdict.update(source_check)
+            verdict["amcl_pose_stamp_ns"]=first["stamp_ns"]
+            verdict["amcl_pose_source_age_at_first_receive_sec"]=first[
+                "first_source_age_sec"]
+            verdict["map_base_link_tf_stamp_ns"]=witness["tf"]["stamp_ns"]
             verdict["map_base_link_tf_source"]="real_tf2_buffer_lookup"
+            verdict["live_scan_odom_at_localization"]=witness
+            print("D08_AMCL_REAL_FIRST_POSE_PLUS_LIVE_TF_READY "+
+                  str({"amcl_source_stamp_ns":first["stamp_ns"],
+                       "tf_stamp_ns":witness["tf"]["stamp_ns"],
+                       "scan_age_sec":witness["scan_age_sec"],
+                       "odom_age_sec":witness["odom_age_sec"]}),flush=True)
             return verdict
+        diagnostic={"first_amcl_pose":first_post_request_amcl[0],
+                    "first_safety_gaps":first_safety_gap,
+                    "last_witness":last_witness,
+                    "last_error":last_error}
+        print("D08_AMCL_REAL_FIRST_WITNESS_HOLD "+str(diagnostic),flush=True)
         raise RuntimeError("D08_AMCL_REAL_MAP_BASE_TF_NOT_READY:"+last_error)
     finally:
         for sub in subs:
