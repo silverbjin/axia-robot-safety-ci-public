@@ -20,6 +20,22 @@ class WslgABOneShotSafety(unittest.TestCase):
         self.assertNotIn('export GITHUB_ACTIONS=true',s)
         self.assertIn('D06_GAZEBO_LIVE_RELEASE=HOLD CERTIFIED_ESTOP=false',s)
 
+    def test_nvidia_single_no_goal_d08_reuse_never_runs_intel_or_goal(self):
+        s=SCRIPT.read_text()
+        self.assertIn('--nvidia-only', s)
+        self.assertIn('for gpu in "${adapters[@]}";do', s)
+        self.assertIn('adapters=(NVIDIA)', s)
+        self.assertIn('D06_GPU_RTF_NVIDIA_ONLY_NO_GOAL', s)
+        self.assertIn('D06_GPU_RTF_NVIDIA_SENSOR_CANDIDATE_NOT_ACCEPTED', s)
+        self.assertIn('D06_GAZEBO_LIVE_RELEASE=HOLD', s)
+        self.assertNotIn('AXIA_G07_CI_SIM_GOAL_ALLOWED=1', s)
+
+    def test_no_goal_native_segv_is_separate_failure_even_with_good_sensor(self):
+        s=SCRIPT.read_text()
+        self.assertIn('D06_GPU_RTF_NATIVE_SHUTDOWN_SEGV_HOLD', s)
+        self.assertIn('exit code -11', s)
+        self.assertIn('D06_GPU_RTF_NVIDIA_ONLY_NO_GOAL', s)
+
     def test_pin_source_commit_and_git_blobs(self):
         s=SCRIPT.read_text()
         self.assertIn("e4c2007064bec2103bb743bd27cdbdf0955961b7",s)
