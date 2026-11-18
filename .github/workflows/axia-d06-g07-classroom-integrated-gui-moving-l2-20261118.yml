@@ -153,6 +153,9 @@ jobs:
           apt-get update -qq
           DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
             --no-upgrade xvfb xauth x11-utils ros-jazzy-rviz2 libgl1-mesa-dri
+          # rviz2 belongs to /opt/ros/jazzy/bin: the prior CI shell had
+          # not sourced ROS before command -v and failed despite apt success.
+          set +u; source /opt/ros/jazzy/setup.bash; set -u
           for x in Xvfb xwininfo xdpyinfo rviz2;do command -v "$x";done
           test -s "$GITHUB_WORKSPACE/student/block_B/day07/h01_runtime/training/block_B/instructor/rviz/d07_h01_physical_replan.rviz"
           echo D06_G07_CI_GUI_DEPENDENCIES_READY_NO_GOAL
