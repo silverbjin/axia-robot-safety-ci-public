@@ -422,8 +422,12 @@ def compare_worst_scan_pair_receivers(pair, native, isolated_ros,
             return None
         for a in sorted(by_stamp[old_ns]):
             for b in sorted(by_stamp[new_ns]):
-                if (b>a and abs(a-old_parent)<=.5 and
-                    abs(b-new_parent)<=.5):
+                # Do NOT apply a 500ms matching tolerance here: the
+                # very first incident can delay the Observer >500ms.
+                # Same unique source stamps and causal ordering are enough
+                # to match a delayed receiver to earlier real observations.
+                if (b>a and a<=old_parent+.05 and
+                    b<=new_parent+.05):
                     return round(b-a,6)
         return None
 
