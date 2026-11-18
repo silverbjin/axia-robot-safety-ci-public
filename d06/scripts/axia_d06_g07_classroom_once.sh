@@ -94,24 +94,28 @@ run_verified_owner() {
     hold G07_NATIVE_ECM_CONTACT_DEV_HEADERS_REQUIRED_NO_GOAL
   [[ "${AXIA_G07_CI_SIM_GOAL_ALLOWED:-0}" != 1 ]] ||
     hold OWNER_CI_GOAL_AUTHORITY_OVERLAP_NO_GOAL
-  local base="$HOME/axia_d06_g07_owner_evidence"
-  mkdir -p "$base"
-  chmod 700 "$base"
-  local out src runtime build binary run_rc=0
-  out="$(mktemp -d "$base/d06-moving-XXXXXXXX")" || hold OWNER_EVIDENCE_ROOT
+  # EXIT trap runs after this function returns, so archive variables MUST
+  # outlive local scope. Never lose a WSL2 first-failure evidence bundle.
+  D06_OWNER_BASE="$HOME/axia_d06_g07_owner_evidence"
+  mkdir -p "$D06_OWNER_BASE"
+  chmod 700 "$D06_OWNER_BASE"
+  local src runtime build binary run_rc=0
+  D06_OWNER_OUT="$(mktemp -d "$D06_OWNER_BASE/d06-moving-XXXXXXXX")" ||
+    hold OWNER_EVIDENCE_ROOT
+  local out="$D06_OWNER_OUT" base="$D06_OWNER_BASE"
   chmod 700 "$out"
   finish_owner() {
     local rc=$?
     trap - EXIT INT TERM
     set +e
-    if [[ -d "$out" ]];then
-      (cd "$out" && find . -type f ! -name SHA256SUMS -print0 |
+    if [[ -n "${D06_OWNER_OUT:-}" && -d "$D06_OWNER_OUT" ]];then
+      (cd "$D06_OWNER_OUT" && find . -type f ! -name SHA256SUMS -print0 |
          sort -z | xargs -0 -r sha256sum > SHA256SUMS)
-      tar -czf "$out.tar.gz" -C "$base" "$(basename "$out")"
-      [[ -f "$out.tar.gz" ]] &&
-        sha256sum "$out.tar.gz" > "$out.tar.gz.sha256"
-      echo "D06_G07_OWNER_RAW_ARCHIVE=$out.tar.gz"
-      echo "D06_G07_OWNER_RAW_SHA256=$out.tar.gz.sha256"
+      tar -czf "$D06_OWNER_OUT.tar.gz" -C "$D06_OWNER_BASE" "$(basename "$D06_OWNER_OUT")"
+      [[ -f "$D06_OWNER_OUT.tar.gz" ]] &&
+        sha256sum "$D06_OWNER_OUT.tar.gz" > "$D06_OWNER_OUT.tar.gz.sha256"
+      echo "D06_G07_OWNER_RAW_ARCHIVE=$D06_OWNER_OUT.tar.gz"
+      echo "D06_G07_OWNER_RAW_SHA256=$D06_OWNER_OUT.tar.gz.sha256"
     fi
     echo 'D06_G07_OWNER_L3=RAW_REVIEW_REQUIRED_NOT_ACCEPTED'
     echo 'AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false'
