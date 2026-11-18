@@ -16,13 +16,13 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 8a67993cb25fec776532c519c5f91b1d34e1c85b
+          ref: 72bee0bec79f07eb1332ee2f36532addd23b3877
           path: student
           persist-credentials: false
-      - name: Exact Student SHA and ROS-free RED contract (Owner consent never simulated)
+      - name: Exact Student SHA and ROS-free GREEN contract (Owner consent never simulated)
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C student rev-parse HEAD)" = '8a67993cb25fec776532c519c5f91b1d34e1c85b'
+          test "$(git -C student rev-parse HEAD)" = '72bee0bec79f07eb1332ee2f36532addd23b3877'
           cd student/block_B/day07/h01_runtime
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_owner_moving_entry.py' -v
