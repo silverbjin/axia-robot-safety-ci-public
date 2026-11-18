@@ -14,14 +14,15 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 7a286fa486f971839ae8fb6fc8c6cbf23d0af973
+          ref: 01752add2e30c90c4d3286ef3a450f97746ecb55
           path: student
           persist-credentials: false
-      - name: GREEN #44220702329 exact disposable NO_GOAL SIGINT graceful non-Nav2 JSON proof; moving ACK unchanged
+      - name: GREEN actual disposable NO_GOAL 7 and post-Goal bounded Nav2 Localization ACK 3; no safety TTL waiver
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C student rev-parse HEAD)" = 7a286fa486f971839ae8fb6fc8c6cbf23d0af973
+          test "$(git -C student rev-parse HEAD)" = 01752add2e30c90c4d3286ef3a450f97746ecb55
           cd student/block_B/day07/h01_runtime
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p test_g07_task03_calibration_cleanup.py -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p test_g07_task03_localization_shutdown_budget.py -v
           echo TASK03_NO_GOAL_CALIBRATION_SHUTDOWN_ONLY_NO_NEW_GOAL
