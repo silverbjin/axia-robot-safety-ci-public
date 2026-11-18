@@ -1,4 +1,5 @@
-# Official Nav2 Simple TF only for slow Gazebo teaching scenario; never hardware.
+# Task02: one public-only safety candidate, no secret, no private Instructor.
+# RED before code; keep actual Gazebo L2 separate until static test GREEN.
 name: AXIA G07 Task02 official simple TF public CI L0 L2
 on:
   push:
@@ -7,8 +8,11 @@ on:
       - '.github/workflows/axia-g07-task02-simple-tf-public-l0-l2-20261118.yml'
 permissions:
   contents: read
+concurrency:
+  group: axia-g07-task02-simple-tf-one-candidate
+  cancel-in-progress: false
 jobs:
-  task02-simple-tf-safety-l0:
+  task02-public-l0:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     container:
@@ -16,11 +20,15 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
+          path: ci
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
           repository: silverbjin/axia-robot-safety-student
           ref: f890c580b025dde1038296401aed251d384d98b8
           path: student
           persist-credentials: false
-      - name: GREEN verify one public-only simple TF switch preserves STOP safety contracts
+      - name: Task02 GREEN official Simple TF only, freeze protective zones and TTL
         shell: bash
         run: |
           set -Eeuo pipefail
@@ -29,3 +37,98 @@ jobs:
           python3 -m unittest discover -s tools -p 'test_g07_task02_simple_tf.py' -v
           bash -n scripts/p2_no_goal_smoke_ci.sh
           python3 -m py_compile ros2_ws/src/axia_safety_bringup/launch/axia_p2_launch_policy.py
+          cd "$GITHUB_WORKSPACE"
+      - name: Public CI strict CM120 + Guard150 safety verifier GREEN
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          export PYTHONPATH="$GITHUB_WORKSPACE/ci${PYTHONPATH:+:$PYTHONPATH}"
+          python3 -m unittest discover -s ci/d06/tests -p 'test_g07_task02_public_strict_gate.py' -v
+
+  task02-public-gazebo-candidate:
+    needs: task02-public-l0
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+    env:
+      ROS_DOMAIN_ID: '84'
+      ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+      GZ_PARTITION: axia_p2_task02_simple_tf_${{ github.run_id }}
+      AXIA_P0_SIM_ONLY: '1'
+      AXIA_G07_CI_SIM_GOAL_ALLOWED: '1'
+      AXIA_G07_TASK02_SIMPLE_TF_CANDIDATE: '1'
+      AXIA_P2_G07_PHYSICAL_PREFLIGHT: '1'
+      AXIA_G07_OWNER_STARTUP_PARITY: '1'
+      AXIA_G07_CI_OWNER_OBSERVER_PARITY: '1'
+      AXIA_G07_CI_OWNER_BAG_PARITY: '1'
+      AXIA_P2_G07_OWNER_PARITY_CHECK: '1'
+    steps:
+      - name: Checkout public Task02 strict contract
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          path: ci
+          persist-credentials: false
+      - name: Checkout exact public candidate source (no private Instructor)
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: f890c580b025dde1038296401aed251d384d98b8
+          path: runtime
+          persist-credentials: false
+      - name: NO_GOAL parity, static CM safety and no-tracer contract
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C runtime rev-parse HEAD)" = f890c580b025dde1038296401aed251d384d98b8
+          test "$(git -C ci rev-parse HEAD)" = "${{ github.sha }}"
+          export PYTHONPATH="$GITHUB_WORKSPACE/ci${PYTHONPATH:+:$PYTHONPATH}"
+          python3 -m unittest discover -s ci/d06/tests -p 'test_g07_task02_public_strict_gate.py' -v
+          (cd runtime/block_B/day07/h01_runtime &&
+            python3 -m unittest discover -s tools -p 'test_g07_task02_simple_tf.py' -v &&
+            bash -n scripts/p2_no_goal_smoke_ci.sh)
+          test -f /opt/ros/jazzy/setup.bash
+          set +u; source /opt/ros/jazzy/setup.bash; set -u
+          for cmd in ros2 gz colcon; do command -v "$cmd"; done
+          mkdir -p "$GITHUB_WORKSPACE/public_evidence"
+          cd runtime/block_B/day07/h01_runtime
+          python3 tools/p2_g07_owner_env_parity.py --mode ci --output "$GITHUB_WORKSPACE/public_evidence/runtime_parity.json"
+          python3 - <<'PY'
+          import json,os
+          d=json.load(open(os.environ["GITHUB_WORKSPACE"]+"/public_evidence/runtime_parity.json"))
+          assert d["status"]=="CORE_PARITY_PASS",d["status"]
+          assert d["checked_packages"]==25 and d["checked_official_files"]==5
+          print("AXIA_G07_TASK02_SIMPLE_TF_CORE_PARITY_25_5_PASS")
+          PY
+          echo AXIA_G07_TASK02_SIMPLE_TF_SIM_ONLY_NO_GOAL_PREFLIGHT_PASS
+      - name: Actual official Jazzy Gazebo ONE Goal Simple TF without TF shim or LTTng
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          set +u; source /opt/ros/jazzy/setup.bash; set -u
+          export PYTHONPATH="$GITHUB_WORKSPACE/ci${PYTHONPATH:+:$PYTHONPATH}"
+          export AXIA_P2_SMOKE_RESULTS="$GITHUB_WORKSPACE/runtime/block_B/day07/h01_runtime/results/task02_simple_tf"
+          mkdir -p "$GITHUB_WORKSPACE/public_evidence"
+          cd runtime/block_B/day07/h01_runtime
+          echo AXIA_G07_TASK02_SIMPLE_TF_ONE_GOAL_ARMED_SOURCE_SHA=f890c580b025dde1038296401aed251d384d98b8
+          set +e
+          env -u LD_PRELOAD -u AXIA_G07_TASK01_TF_AVAIL_PROBE \
+            timeout --signal=TERM --kill-after=10s 900s bash scripts/p2_no_goal_smoke_ci.sh
+          GOAL_RC=$?
+          set -e
+          cd "$GITHUB_WORKSPACE"
+          python3 ci/d06/scripts/g07_task02_public_candidate_verdict.py \
+            --report "$AXIA_P2_SMOKE_RESULTS/g07_ci_moving/ci_moving_goal_result.json" \
+            --events "$AXIA_P2_SMOKE_RESULTS/g07_ci_moving/actual_ros_events.jsonl" \
+            --output "$GITHUB_WORKSPACE/public_evidence/task02_candidate_verdict.json" \
+            --runner-rc "$GOAL_RC"
+      - name: Upload allowlisted numeric-only Task02 artifact (no raw bag or TF)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: axia-task02-simple-tf-numeric-${{ github.run_id }}
+          path: |
+            public_evidence/task02_candidate_verdict.json
+            public_evidence/runtime_parity.json
+          retention-days: 30
+          if-no-files-found: error
