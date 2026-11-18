@@ -42,6 +42,7 @@ jobs:
             d08/tests/test_d08_scan_gap_trace.py \
             d08/tests/test_d08_field_first_518ms_receive_boundary.py \
             d08/tests/test_d08_native_gazebo_scan_causal_trace.py \
+            d08/tests/test_d08_native_clock_first_gap_layer.py \
             d08/tests/test_d08_native_probe_apt_contract.py \
             d08/tests/test_d08_independent_clock_evidence_history.py \
             d08/tests/test_d08_yolo_archive_gate.py \
