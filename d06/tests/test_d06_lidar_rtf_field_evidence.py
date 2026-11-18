@@ -14,7 +14,8 @@ def report(front,side,rtf,gap,near=0.05):
                              "side_median_m":side,
                              "near_ring_fraction_median":near,
                              "max_receipt_gap_sec":gap,
-                             "count":60}},
+                             "count":60,
+                             "clear_count":60 if front>.75 and side>1.2 else 0}},
       "rtf_diagnostics":{"ros_clock_rtf":rtf,
                          "timing_pattern":"SIMULATION_SLOWDOWN_CONSISTENT" if rtf and rtf<.8 else "RTF_NORMAL"}}
 
@@ -55,6 +56,16 @@ class OriginalFieldAndAdapterAB(unittest.TestCase):
           "D3D12 (Intel Iris Xe)","llvmpipe (LLVM 20.1)")
         self.assertEqual(c["result"],"ADAPTER_COMPARISON_INVALID")
         self.assertFalse(c["gpu_causality_proven"])
+
+    def test_normal_median_but_one_unsafe_scan_must_not_prove_range_recovery(self):
+        intel=report(.525,.63,.30,.789,1.)
+        nvidia=report(1.41,2.52,.98,.12,.05)
+        nvidia["metrics"]["safety"]["clear_count"]=59
+        c=compare_adapter_results(intel,nvidia,
+            "D3D12 (Intel Iris Xe)", "D3D12 (NVIDIA RTX 2060)")
+        self.assertFalse(c["nvidia"]["range_clear"])
+        self.assertNotEqual(c["result"],"DISTANCE_AND_RTF_BOTH_IMPROVE_CANDIDATE")
+        self.assertFalse(c["moving_goal_approved"])
 
     def test_absent_original_rtf_prohibits_independent_rtf_conclusion(self):
         c=compare_adapter_results(
