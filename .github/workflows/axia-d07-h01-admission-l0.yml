@@ -1,0 +1,26 @@
+name: AXIA D07 H01 public one-Goal geometry admission L0
+on:
+  push:
+    branches: ['feat/d07-h01-motion-lesson-20261114']
+    paths:
+      - 'tests/test_d07_h01_public_contract.py'
+      - 'tools/d07_h01_public_contract.py'
+      - '.github/workflows/axia-d07-h01-admission-l0.yml'
+  pull_request:
+    branches: ['release/p2-g06-cm-ttl-20261110']
+    paths:
+      - 'tests/test_d07_h01_public_contract.py'
+      - 'tools/d07_h01_public_contract.py'
+      - '.github/workflows/axia-d07-h01-admission-l0.yml'
+permissions:
+  contents: read
+jobs:
+  admission-no-ros-no-goal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: D07 H01 no Goal allowed before real Nav2 geometry and physical scan
+        run: python3 -m unittest discover -s tests -p test_d07_h01_public_contract.py -v
+      - name: Accurate verification boundary
+        run: echo 'AXIA_D07_H01_PUBLIC_L0_ONLY_REAL_ROS_GAZEBO_AND_MOTION_NOT_RUN'
