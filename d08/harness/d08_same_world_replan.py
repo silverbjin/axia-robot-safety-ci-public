@@ -9,7 +9,8 @@ from __future__ import annotations
 
 from collections import deque
 from d08_scan_gap_trace import (first_scan_receive_gap, diagnose_first_receive_boundary,
-                                compare_native_scan_first_gap)
+                                compare_native_scan_first_gap,
+                                diagnose_native_clock_during_first_gap)
 import json
 import math
 from pathlib import Path
@@ -429,6 +430,7 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
                 "path_distance_from_obstacle_m":round(_path_distance_to_point(pts,CANDIDATE_MAP),6)}
 
     native_trace=out/"native_gz_scan_rx.jsonl"
+    native_clock_trace=out/"native_gz_clock_rx.jsonl"
     native_enabled=env.get("AXIA_D08_NATIVE_RX_PROBE")=="1"
     native_proc=None
     native_log=None
@@ -444,7 +446,9 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
                 str(Path(__file__).with_name("d08_gz_native_scan_probe.py")),
                 "--topic", "/scan",
                 "--out", str(native_trace),
+                "--clock-out", str(native_clock_trace),
                 "--max-events", "1024",
+                "--max-clock-events", "2048",
             ],env=env,stdin=subprocess.DEVNULL,stdout=native_log,
               stderr=subprocess.STDOUT)
             def native_has_samples():
@@ -587,6 +591,15 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
                             if line.strip()]
             except (OSError, ValueError) as exc:
                 result["native_scan_read_error"]=str(exc)[:200]
+            clock_events=[]
+            try:
+                if native_clock_trace.is_file():
+                    clock_events=[
+                        json.loads(line) for line in
+                        native_clock_trace.read_text().splitlines()
+                        if line.strip()]
+            except (OSError,ValueError) as exc:
+                result["native_clock_read_error"]=str(exc)[:200]
             stamps=[x.get("source_stamp_ns") for x in events]
             gaps=[b["host_monotonic_sec"]-a["host_monotonic_sec"]
                   for a,b in zip(events,events[1:])]
@@ -602,14 +615,25 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
                 "bridge_dds_send_measured":False,
                 "first_violation_cause":"UNDETERMINED",
                 "first_gap_crosscheck":compare_native_scan_first_gap(first,events),
+                "clock_sample_count":len(clock_events),
+                "clock_history_complete":len(clock_events)<2048,
+                "clock_max_host_receive_gap_sec":round(
+                    max((b["host_monotonic_sec"]-a["host_monotonic_sec"])
+                        for a,b in zip(clock_events,clock_events[1:])),6)
+                    if len(clock_events)>1 else None,
+                "first_gap_clock_layer":diagnose_native_clock_during_first_gap(
+                    first,events,clock_events),
             }
-            if (len(events)<8 or len(set(stamps))<8 or len(events)>=1024):
+            if (len(events)<8 or len(set(stamps))<8 or len(events)>=1024
+                    or len(clock_events)<8 or len(clock_events)>=2048):
                 result["status"]="HOLD"
                 result.setdefault("first_boundary","D08_NATIVE_GZ_SCAN_RX_EVIDENCE_INCOMPLETE")
             print("D08_NATIVE_GZ_SCAN_RX_WITNESS "
                   +json.dumps({k:result["native_scan_transport_rx"][k] for k in
                        ("sample_count","max_host_receive_gap_sec",
-                        "history_complete","first_violation_cause")}),
+                        "history_complete","clock_sample_count",
+                        "clock_max_host_receive_gap_sec",
+                        "first_violation_cause")}),
                   flush=True)
         # No synthetic /scan or arbitrary ROS cmd_vel publisher is created here.
         (out/"verdict.json").write_text(json.dumps(result,indent=2,sort_keys=True)+"\n")
