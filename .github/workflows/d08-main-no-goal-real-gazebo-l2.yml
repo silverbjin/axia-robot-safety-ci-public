@@ -345,7 +345,8 @@ jobs:
       - name: RED reproduce actual Gazebo 255 on not-yet-generated Nav2 temp SDF
         shell: bash
         run: |
-          set -euo pipefail
+          set -eo pipefail
+          # ROS setup uses optional unbound vars; never source under set -u.
           source /opt/ros/jazzy/setup.bash
           python3 - <<'PY'
           import json,os,subprocess,tempfile
