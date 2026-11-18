@@ -6,6 +6,7 @@ on:
       - 'd06/scripts/axia_d06_g07_classroom_once.sh'
       - 'd06/tests/test_d06_g07_classroom_reuse.py'
       - 'd06/tests/test_d06_g07_owner_mode_field_regression.py'
+      - 'd06/tests/test_d06_g07_here_doc_execution.py'
       - '.github/workflows/axia-d06-g07-classroom-reuse-public-l0-20261118.yml'
       - 'd06/docs/AXIA_D06_G07_CLASSROOM_REUSE_20261118_KO.md'
       - 'd06/docs/AXIA_D06_WSL2_OWNER_CI_KERNEL_FIRST_FAILURE_RCA_20261118_KO.md'
@@ -14,6 +15,7 @@ on:
       - 'd06/scripts/axia_d06_g07_classroom_once.sh'
       - 'd06/tests/test_d06_g07_classroom_reuse.py'
       - 'd06/tests/test_d06_g07_owner_mode_field_regression.py'
+      - 'd06/tests/test_d06_g07_here_doc_execution.py'
       - '.github/workflows/axia-d06-g07-classroom-reuse-public-l0-20261118.yml'
       - 'd06/docs/AXIA_D06_G07_CLASSROOM_REUSE_20261118_KO.md'
       - 'd06/docs/AXIA_D06_WSL2_OWNER_CI_KERNEL_FIRST_FAILURE_RCA_20261118_KO.md'
@@ -39,6 +41,7 @@ jobs:
           test "$(git -C student rev-parse HEAD)" = 1129cd8804954fd6481d1b6b4ebf0e0b98c68c3c
           python3 -m unittest discover -s d06/tests -p 'test_d06_g07_classroom_reuse.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_g07_owner_mode_field_regression.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_g07_here_doc_execution.py' -v
           bash d06/scripts/axia_d06_g07_classroom_once.sh --self-check
           echo 'D06_G07_CLASSROOM_PUBLIC_L0_PASS FOURTEEN_PLUS_FIVE_OWNER_PARITY_TESTS NO_ROS_NO_GAZEBO_NO_GOAL'
           echo 'D06_G07_CLASSROOM_OWNER_MOVING_L3=NOT_RUN'
