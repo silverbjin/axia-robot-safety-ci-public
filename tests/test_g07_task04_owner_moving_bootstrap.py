@@ -65,6 +65,13 @@ class OwnerMovingBootstrap(unittest.TestCase):
         self.assertIn("SHA256SUMS",s)
         self.assertIn("diagnostics.zip",s)
 
+    def test_owner_preserves_first_pregoal_failure_not_outer_generic_wrapper(self):
+        s=SCRIPT.read_text()
+        self.assertIn('native/g07_ci_pregoal/pregoal_baseline.json',s)
+        self.assertIn('ORIGINAL_FIRST_FAILURE',s)
+        self.assertIn('FIRST_FAILURE="$ORIGINAL_FIRST_FAILURE"',s)
+        self.assertIn('hold "$FIRST_FAILURE"',s)
+
     def test_bad_argument_fails_without_any_goal(self):
         r=subprocess.run(["bash",str(SCRIPT),"--bad-mode"],
                          text=True,capture_output=True,timeout=8)
