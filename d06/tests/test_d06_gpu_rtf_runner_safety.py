@@ -22,14 +22,14 @@ class WslgABOneShotSafety(unittest.TestCase):
 
     def test_pin_source_commit_and_git_blobs(self):
         s=SCRIPT.read_text()
-        self.assertIn("f541c36a3984aa65a13de03ef60861103718afb1",s)
-        self.assertIn("fa61de88205c54dc69e36e1722499af3b8e630af",s)
+        self.assertIn("41e77f1aa187abf041c1fd839c117e25d934bd8e",s)
+        self.assertIn("1b02be0cd0c99b38c79fa43b0e7d12d7b9d81f92",s)
         self.assertIn("9314fd4c8f5354d82cbcb43ad43fcbc371197f61",s)
         self.assertIn('git hash-object "$TMP/owner.sh"',s)
         self.assertIn('git hash-object "$TMP/compare.py"',s)
         o=OWNER.read_text()
-        self.assertIn("f541c36a3984aa65a13de03ef60861103718afb1",o)
-        self.assertIn("6fd0a7f74d21676dbcb7e6e1ac0ac797a1222621",o)
+        self.assertIn("41e77f1aa187abf041c1fd839c117e25d934bd8e",o)
+        self.assertIn("15938b98f56a512e50ad75ece3ef0317494dd472",o)
 
     def test_bash_syntax_self_check_and_ci_owner_denial(self):
         chk=subprocess.run(["bash","-n",str(SCRIPT)],capture_output=True,text=True,timeout=5)
