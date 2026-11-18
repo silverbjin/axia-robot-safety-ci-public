@@ -194,9 +194,10 @@ def assess_static_amcl_witness(witness:dict) -> dict:
                     and recovery[t].get("steady_span_sec",0)>=1.0
                     and 0<=recovery[t].get("latest_receive_age_sec",999)<=.5
                     and 0<=recovery[t].get("maximum_stable_gap_sec",999)<.5
-                    for t in ("scan","odom","clock"))
+                    for t in ("scan","odom","clock")))
         if not recovered:
             raise ValueError("D08_FIRST_LIVE_SCAN_ODOM_GAP")
+    for topic in ("scan","odom"):
         age=witness.get(topic+"_age_sec")
         stamp=witness.get(topic+"_stamp_ns")
         if (not isinstance(age,(int,float)) or not math.isfinite(age) or
