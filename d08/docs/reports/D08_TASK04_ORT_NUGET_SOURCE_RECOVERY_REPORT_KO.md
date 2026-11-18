@@ -25,3 +25,11 @@
 - 동일 소스 변경의 사전계획은 상단 마스터 계획 v1.1로 기록되었으며, 새 코드 실패가 아닌 **이전 검증기 계약 잔존** 문제다.
 - RED: public CI 실제 L0 실패 Run #44205408900; GREEN 최소 수정: 이전 테스트 파일을 공식 NuGet 1.20.0 ZIP/ID/version/ELF/header 검증 계약으로 대체. 새 C++ / ROS 성공은 새 exact-SHA CI 완료 전까지 NOT_VERIFIED.
 - 새 테스트 실행 명령: `python -m pytest -q d08/tests/test_d08_yolo_archive_gate.py d08/tests/test_d08_official_ort_nuget.py` 및 전체 D08 CI L0.
+
+## 공식 NuGet 바이너리 실증 및 고지문 오류 (2026-11-18)
+
+- Run #44205661175, HEAD 32689b6a4f720712a251dac88c8826e06a264f07: L0 **34 passed in 0.16s**, native Gazebo RGB-D/scan L2 job success, downstream pinned C++ upstream build job exit2.
+- NuGet official fetch/validation 실제 로그: `D08_OFFICIAL_NUGET_ORT_1200_VALID`, version `1.20.0`, 9 C++ headers, `ELF64 x86_64`, package SHA256 `36dbafacb1bc532e92d02371bd70582a61105872561fc9982314854d1c7ebf72`, lib SHA256 `6097fe8cedc8b5b3c8e107e9c2acf04eb50f58f0f045e3d7c5c50ead38112c72`.
+- 최초 GREEN 불충족 경계: 공식 NuGet 검증 뒤 GitHub raw 태그의 `LICENSE`/고지문 별도 다운로드 HTTP 404, **컴파일 진입 전**. 이를 YOLO 실행 실패나 Gazebo 실패로 오판하지 않는다.
+- 최소 수정: 검증된 **같은 Microsoft NuGet 1.20.0** 내부의 라이선스/ThirdPartyNotices 원본만 추출·SHA256 기록; 패키지 바이트 해시는 위 실제 관찰값으로 workflow에서 강제 검증. 바이너리 재컴파일·Upstream 코드 수정·외부 mirror 도입 없음.
+- 라이선스/고지문 중 하나라도 누락되면 `D08_NUGET_LICENSE_NOTICES_MISSING`으로 HOLD. 새 exact-SHA ROS C++/DetectionArray 결과 미확인까지 GREEN 아님.

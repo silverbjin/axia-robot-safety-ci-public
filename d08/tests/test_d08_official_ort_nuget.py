@@ -30,6 +30,8 @@ def fake_package(path, ident="Microsoft.ML.OnnxRuntime", version="1.20.0",
             for n in ("onnxruntime_c_api.h","onnxruntime_cxx_api.h",
                       "onnxruntime_cxx_inline.h"):
                 z.writestr("build/native/include/"+n,"/* test only */")
+        z.writestr("LICENSE.txt", "Copyright (c) Microsoft Corporation " * 5)
+        z.writestr("ThirdPartyNotices.txt", "THIRD PARTY SOFTWARE NOTICES " * 5)
     return path
 
 def test_pinned_nuget_contract_l0(tmp_path):
@@ -40,6 +42,8 @@ def test_pinned_nuget_contract_l0(tmp_path):
     assert v["version"]=="1.20.0"
     assert len(v["package_sha256"])==64
     assert (root/"include/onnxruntime_cxx_api.h").exists()
+    assert (root/"LICENSE").exists() and (root/"ThirdPartyNotices.txt").exists()
+    assert len(v["license_sha256"]) == len(v["notices_sha256"]) == 64
     assert v["ros_or_gazebo_executed"] is False
     assert json.loads((root/"manifest.json").read_text())==v
 

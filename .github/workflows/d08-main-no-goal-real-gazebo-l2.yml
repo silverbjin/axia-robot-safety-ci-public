@@ -349,19 +349,17 @@ jobs:
             echo 'D08_NUGET_DOWNLOAD_BLOCKED'
             exit 2
           fi
+          echo '36dbafacb1bc532e92d02371bd70582a61105872561fc9982314854d1c7ebf72  /tmp/microsoft.ml.onnxruntime.1.20.0.nupkg' | sha256sum -c - || {
+            echo 'D08_NUGET_EXACT_SHA256_MISMATCH'
+            exit 2
+          }
           python3 d08/scripts/d08_prepare_official_ort_nuget.py \
             --package "$ORT_PACKAGE" --root "$ORT_ROOT" || {
               echo 'D08_NUGET_ASSET_VALIDATION_BLOCKED'
               exit 2
             }
-          # Upstream vendor installs these two files. Get the exact pinned
-          # Microsoft 1.20.0 texts, not generated or substituted notices.
-          curl -fLsS --retry 2 --max-time 30 \
-            'https://raw.githubusercontent.com/microsoft/onnxruntime/v1.20.0/LICENSE' \
-            -o "$ORT_ROOT/LICENSE" || exit 2
-          curl -fLsS --retry 2 --max-time 30 \
-            'https://raw.githubusercontent.com/microsoft/onnxruntime/v1.20.0/ThirdPartyNotices.txt' \
-            -o "$ORT_ROOT/ThirdPartyNotices.txt" || exit 2
+          # Both licensing documents are extracted from the SAME signed-ID/
+          # version-checked Microsoft NuGet ZIP by the read-only verifier.
           test -s "$ORT_ROOT/LICENSE" && test -s "$ORT_ROOT/ThirdPartyNotices.txt"
           echo 'D08_OFFICIAL_NUGET_ORT_1200_VALID_WITH_NOTICES'
           cd /tmp/axia_ui9_yolo_ws

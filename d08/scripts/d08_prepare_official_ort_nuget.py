@@ -56,6 +56,15 @@ def prepare(package: Path, root: Path) -> dict:
         if (len(lib) < 4096 or lib[:5] != b"\x7fELF\x02" or lib[5] != 1
                 or struct.unpack_from("<H", lib, 18)[0] != 62):
             raise ValueError("D08_NUGET_SO_NOT_ELF64_X86_64")
+        # Read copyright documents from the *same verified Microsoft NuGet*,
+        # not from a GitHub raw tag URL which failed HTTP 404 in public CI.
+        licenses = [n for n in names if Path(n).name in ("LICENSE.txt", "LICENSE")]
+        notices = [n for n in names if Path(n).name == "ThirdPartyNotices.txt"]
+        if len(licenses) != 1 or len(notices) != 1:
+            raise ValueError("D08_NUGET_LICENSE_NOTICES_MISSING")
+        license_bytes, notice_bytes = zf.read(licenses[0]), zf.read(notices[0])
+        if len(license_bytes) < 100 or len(notice_bytes) < 100:
+            raise ValueError("D08_NUGET_LICENSE_NOTICES_EMPTY")
         headers = sorted(n for n in names if n.startswith(prefix)
                          and not n.endswith("/") and
                          Path(n).suffix in (".h", ".hpp"))
@@ -65,6 +74,8 @@ def prepare(package: Path, root: Path) -> dict:
         (root / "lib").mkdir()
         (root / "include").mkdir()
         (root / "lib/libonnxruntime.so").write_bytes(lib)
+        (root / "LICENSE").write_bytes(license_bytes)
+        (root / "ThirdPartyNotices.txt").write_bytes(notice_bytes)
         for name in headers:
             rel = name[len(prefix):]
             if not rel or any(t in (".", "..") for t in Path(rel).parts):
@@ -79,6 +90,8 @@ def prepare(package: Path, root: Path) -> dict:
         "vendor_source": "api.nuget.org/v3-flatcontainer",
         "package_sha256": hashlib.sha256(package.read_bytes()).hexdigest(),
         "lib_sha256": hashlib.sha256(lib).hexdigest(),
+        "license_sha256": hashlib.sha256(license_bytes).hexdigest(),
+        "notices_sha256": hashlib.sha256(notice_bytes).hexdigest(),
         "lib_arch": "ELF64 x86_64",
         "header_prefix": prefix,
         "header_count": len(headers),
