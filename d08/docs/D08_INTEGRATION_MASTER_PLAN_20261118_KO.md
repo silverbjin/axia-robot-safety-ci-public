@@ -110,3 +110,12 @@
 - 최소 가설: 공식 Microsoft NuGet 1.20.0 Linux x64 라이브러리에는 `libonnxruntime.so` 파일이 존재하지만, ELF NEEDED/SONAME인 `libonnxruntime.so.1` 경로가 upstream vendor install layout에 없었다. 바이너리를 변경하거나 다른 버전을 받지 않고 **같은 SHA 검증된 실제 바이너리 파일의 soname symlink만 설치**.
 - RED: 원본 exit127 log / `ldd ... libonnxruntime.so.1 not found` / package missing symlink. GREEN: 오리지널 C++ YOLO executable loader exit127 소멸, 실제 ROS DetectionArray (person >=1)와 원본 Gazebo RGB replay L1 SUCCESS. ELF `readelf -d` SONAME을 검증하지 못하면 BLOCKED, 임의 symlink명 추가 불가.
 - 검증 계층 추가 금지: 기존 L0 symlink contract, 기존 공용 C++ YOLO Build/Replay L1과 실제 same-world Nav2/Gazebo L2를 사용한다. 이 YOLO replay는 **라이브 RGBD+YOLO 동시** 증거가 아니라 다음 Task01 선행 준비일 뿐.
+
+## 12. v1.5 — 2026-11-18 Task02 실제 3상 Path·실측 Scan/Costmap (CI 별도 범위)
+
+- 최신 D08 PASS: public Run #44211587111 HEAD `05503ecc434152ac497e3ae4b1535516a5410fc4`에서 독립 job ① Gazebo 물리 인체/RGBD/LaserScan, ② 한 World 공식 Nav2 AMCL/TF + 첫 `ComputePathToPose`, ③ 고정 upstream C++ YOLO의 **실제 Gazebo RGB 재생** DetectionArray ROS L1가 각각 성공. 서로 다른 job의 원본을 실제 단일 E2E로 승격 금지.
+- 후속 필수 1차 RED/목표: 현재 공식 Nav2 job은 `before` 한 Path만 관찰한다. 기존 D07-H01 공개 L2 [#44051183220]의 검증 좌표 goal map `(-1.7,0.7)`, 인체 Proxy far `(-0.58,-0.5)`, intrusion world `(-1.9791189342778877,0.17129139623634398)`를 **같은 D08 Gazebo 프로세스의 opt-in stage sequence**에 재사용한다. 좌표가 실제 D08 scan/costmap/path에 맞는지는 새 실행에서 독립 검증해야 하며 예전 D07 PASS를 자동 승격 금지.
+- 기존 센서-only·공식 Nav2 first Path 성공 경로는 보존한다. `--official-nav2-replan-phases`를 별도로 명시했을 때만 실제 `/scan` 및 `/global_costmap/costmap`의 header stamp·host receive time·phase epochs를 모으고, native `/world/default/set_pose` ACK 이후 actual Costmap lethal increase/clear 및 공식 Action 원본 before/intrusion/restored path 3건을 JSONL에 기록한다. 종료 시 반드시 original far pose로 복원. *로봇 주행 Goal*이나 Twist publisher 없음.
+- 성공은 동일 ROS_DOMAIN_ID/GZ_PARTITION·source SHA/World와 각 단계를 연결한 live ROS 원본 증거에서 before↔intrusion 경로 변동 `>=0.15m`, restored↔before `<=0.12m`, /scan Costmap stamp 진행·/odom 정지·TF freshness; 최초 gap/타이밍 위반과 공식 CM 실제 /scan subscription discovery를 별도 기록한다. 실제 scan→CM 수신 주기 미계측 시 CM end-to-end PASS 금지.
+- 최소 L0: ① before/near/restore 공식 Path 원본을 요구하는 판정기, ② 실제 source stamps 및 monotonic first gap 누락·stale 방지, ③ NO_GOAL/중복 publisher 금지. L2는 기존 공식 Nav2 job 한 번만 재검증; 다른 성공 job은 SHA 변화 영향 범위만 확인한다.
+- 3상 기본 geometry 불일치나 CPU 부하로 clock/Scan gap이 최초 발생하면 CI 원본 evidence 보존, 최초 실패 경계만 수정한다. 안전 TTL 연장/Planner 교체/새 프레임워크 금지.
