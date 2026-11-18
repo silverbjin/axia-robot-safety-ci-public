@@ -38,6 +38,10 @@ def test_readonly_native_trace_script_must_exist_and_not_publish():
     assert "node.subscribe(" in s
     assert "host_monotonic_sec" in s
     assert "source_stamp_ns" in s
+    assert "gz.msgs10.clock_pb2" in s
+    assert '"/clock"' in s
+    assert "sim_stamp_ns" in s
+    assert "--clock-out" in s
     assert "node.advertise(" not in s
     assert "create_publisher" not in s
     assert "cmd_vel" not in s
