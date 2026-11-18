@@ -47,7 +47,7 @@ class OwnerMovingBootstrap(unittest.TestCase):
     def test_pinned_source_and_private_evidence_archive(self):
         s=SCRIPT.read_text()
         self.assertIn(SHA,s)
-        self.assertIn("44264236859",s)
+        self.assertIn(str(RUN),s)
         self.assertIn("p2_g07_task04_moving_review.py",s)
         self.assertIn("AXIA_G07_TASK04_ARCHIVE=",s)
         self.assertIn("AXIA_G07_TASK04_SHA256=",s)
