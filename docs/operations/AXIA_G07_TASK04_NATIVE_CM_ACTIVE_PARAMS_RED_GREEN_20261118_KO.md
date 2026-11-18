@@ -61,3 +61,46 @@ MAIN_MERGED=false
 ## 6. 주니어 개발자 프롬프트 예시
 
 > 실제 Gazebo와 RViz가 동시에 실행 중이고 공식 CM Lifecycle가 정상인 상태에서 첫 번째 `ros2 param get`은 성공했으나 두 번째 실행의 DDS service discovery가 timeout했다. 최종 shell rc만 보지 말고 최초 서비스 미응답을 원본으로 고정하라. Node 탈락·TTL 초과라고 단정하지 말고 네이티브 GetParameters 서비스의 **한 번의 실제 응답으로 4개 정확한 현재 값**을 검사하는 L0 RED를 만들고 GREEN 후 같은 소스 SHA로 실제 Gazebo L2의 CM120/Guard150/odom/Goal UUID/Localization ACK를 검증하라. 어떤 ACK도 꾸며내지 말 것.
+
+## 7. 같은 SHA 실제 L2 최종 GREEN 결과 (증거 확정)
+
+이 문서의 최초 작성 당시 미검증이었던 최종 L2가 **동일 Student SHA에서 실제 성공**했다. 수정 전 성공 #44259558479를 합산한 것이 아니다.
+
+- 공개 CI 실제 L2: [Run #44264236859](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44264236859), 실제 워크플로 코드 SHA `860d647a79acdd7a36b77df9e9e8513208da7423`.
+- 실제 시뮬레이션 소스: Student `486ec02e8e0762e9abefd3063b5d25b2ff5f1fb8`.
+- 실제 L0 stdout: `AXIA_G07_TASK04_PUBLIC_NATIVE_MOVING_L0_PASS=27` (동일 실행의 테스트 그룹 검증).
+- 실제 동작 종료 stdout: `AXIA_G07_TASK04_NATIVE_ONE_MOVING_RUNNER_RC=0 RVIZ_X11=1 GAZEBO_X11=1`.
+- 실제 읽기 전용 판정: `TASK04_REAL_GAZEBO_MOVING_GUI_L2_SCOPED_PASS`, `first_failure=NONE`.
+- 공개 GitHub Actions 숫자·해시 원본 artifact ID **14410070500**, ZIP 다운로드 SHA256 `ff253e991b5ae869ba3b9dcabb0c01f752f9747815925f4dcedc4537b78b2525`, 내부 판정 JSON SHA256 `5af6cf2c59fa77da3f649a063d84be9bfbcc30d577db02fa79c869b9127ad070`. 참고: ZIP은 원시 rosbag을 포함하지 않으며 로컬 원본의 해시 값·카운트만 포함함.
+
+**같은 실행의 실제 수치 (artifact 원본 JSON 읽기 확인):**
+
+| 확인 항목 | 실제 결과 |
+|---|---|
+| Goal | 한 개, UUID `c90cf27f7345436cbaa8a311bf10f471`, 동일 UUID CANCELED(5) 검사 true |
+| 실제 odom | 0.2078203233m 이동, STOP 후 ZERO 1.033462714초 |
+| 공식 CM 발행 120ms | 445 실제 RMW 쌍, 최대 79.226479ms |
+| Observer CM 전달 120ms | 최대 94.21627ms |
+| Guard 내부 CM TTL 150ms | 최대 52.198446ms |
+| S02 Native Contact | 0건, 실제 Gazebo 반복 프레임 30,803 |
+| SQLite bag | 14개 토픽 모두 메시지 존재, `quick_check` + DB/metadata SHA256 검증 |
+| SQLite DB SHA256 | `2aa309985ed66a899bfdf0e0d87705e427474cc4c298af325733fd2597712197` |
+| SQLite metadata SHA256 | `155818e4108fc90a3bfbf93927abd670e3584fc9e108ce5d9d65c8594ae7573a` |
+| Native Contact 플러그인 SHA256 | `dc5d748b17e3269874c6c146c580e04d20d75ef88e1ed816d991d84fd25630bf` |
+| 실제 GUI | Gazebo 1, RViz 1 |
+| 실제 Lifecycle | Navigation ACK=true, Localization ACK=true, CM clean exit=true |
+| 최초 타이밍 위반/Guard latch | NONE / false |
+| 인증 E-Stop | false (소프트웨어 정지, 인증 아님) |
+
+이 숫자는 공개 CI 컨테이너의 ROS 2 Jazzy/Gazebo Harmonic/Xvfb **L2 한정**이다. WSLg D3D12 GPU·WSL2 타이밍과 Owner의 실제 controlling-TTY 승인·프로세스 PID는 **L3 미검증**이다.
+
+## 8. RELEASE / REVIEW / COMMIT
+
+- 사용자 강사 WSL2에 제공할 원샷은 정확한 Student SHA `486ec02e8e0762e9abefd3063b5d25b2ff5f1fb8`만 내려받는다. CI 소스 SHA `860d647a79acdd7a36b77df9e9e8513208da7423` 및 L2 Run #44264236859를 함께 고정한다.
+- 실행기: `scripts/axia_g07_task04_owner_moving_l3_once.sh`. Owner CPU·PID·TTY/환경 인가 및 PRIVATE HOME tar.gz/SHA256, 실패 시 `task04_owner_verdict.json` HOLD 보존. 신규 상용 기능·엔진·watchdog/TTL 완화 없음.
+- 공개 CI Bootstrap L0: [Run #44264980026](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44264980026), 실제 완료 success 5/5. 이 L0는 ROS/Gazebo를 실행하지 않고 Owner CLI/Pin/TTY 의도와 증거 보존 코드를 검증한다.
+- 잔여 **Owner WSL2 실제 Moving Goal L3는 NOT_RUN**. 현장 원본 TAR/SHA256과 실제 영상·odom/Goal/CM/Guard/Contact/ACK를 대조하기 전에는 `AXIA_MVP_DEMO_ACCEPTED=PASS`로 승격하지 않는다.
+- 위 REFACTOR는 기존 네 번 CLI 호출을 삭제하고 한 번 응답으로 합침; REVIEW에서 원본 Nav2/Guard TTL·ROS graph·Topic의 변경 없음, 새 Owner 플러그인 권한이 CI credential을 수용하지 않는 점 확인, GUI 우선순위는 시연용 read-only client 한정.
+- 두 PR의 main 병합은 수행하지 않음. 강사용 정답/학생 TODO 저장소 분리 유지.
+
+현재 판정: 공개 CI Stage B **L2 PASS_SCOPED**, Stage C **HOLD / NOT_RUN**, `CERTIFIED_ESTOP=false`, `MAIN_MERGED=false`.
