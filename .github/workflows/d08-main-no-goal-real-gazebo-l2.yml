@@ -16,6 +16,8 @@ permissions:
 concurrency:
   group: d08-main-public-no-goal-${{ github.ref }}
   cancel-in-progress: true
+env:
+  AXIA_D08_EXACT_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
 jobs:
   l0-human-proxy-red-green:
     runs-on: ubuntu-24.04
@@ -24,6 +26,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -82,6 +85,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Install official Waffle/Gazebo RGBD (no modified ROS or Nav2)
         shell: bash
         run: |
@@ -301,6 +305,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Install official Nav2 Gazebo Harmonic Waffle (NO Goal)
         shell: bash
         run: |
@@ -377,6 +382,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Download same-run real Gazebo L2 near RGB (exact same commit)
         uses: actions/download-artifact@v4
         with:

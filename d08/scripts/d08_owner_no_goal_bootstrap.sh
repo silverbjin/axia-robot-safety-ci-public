@@ -13,6 +13,7 @@ SHA="${AXIA_D08_PUBLIC_SHA:-}"
 if [[ ! "$SHA" =~ ^[0-9a-f]{40}$ ]]; then
   echo D08_OWNER_PINNED_PUBLIC_SHA_REQUIRED >&2; exit 2
 fi
+export AXIA_D08_EXACT_SOURCE_SHA="$SHA"
 if [[ ! -r /opt/ros/jazzy/setup.bash ]]; then
   echo D08_OWNER_ROS_JAZZY_REQUIRED >&2; exit 2
 fi

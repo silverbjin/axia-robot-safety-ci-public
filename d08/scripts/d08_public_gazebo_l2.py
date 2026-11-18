@@ -505,7 +505,10 @@ def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=Fals
             raise RuntimeError('D08_GIT_SOURCE_SHA_NOT_AVAILABLE:'
                                +sha_cp.stderr.strip()[-180:])
         checkout_sha=sha_cp.stdout.strip()
-        if env.get('GITHUB_SHA') and checkout_sha!=env['GITHUB_SHA']:
+        # PR Actions default github.sha can be a synthetic merge commit;
+        # our explicit checkout and Owner pin the same immutable PR HEAD.
+        expected_sha=env.get('AXIA_D08_EXACT_SOURCE_SHA') or env.get('GITHUB_SHA')
+        if expected_sha and checkout_sha!=expected_sha:
             raise RuntimeError('D08_GITHUB_EVENT_SHA_CHECKOUT_MISMATCH')
         result['runtime_provenance']=make_runtime_provenance(
             gz_world,env,checkout_sha)
@@ -730,6 +733,9 @@ def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=Fals
                 result['owner_gui_user_stopped']=True
                 print('D08_OWNER_GUI_CTRLC_ACK',flush=True)
     except Exception as exc:
+        # A GUI repeat may fail AFTER the earlier same-world phases passed.
+        # Final verdict and exit code must fail closed, not retain old PASS.
+        result['status']='BLOCKED'
         result['blocker']=type(exc).__name__+':'+str(exc)[:500]
         print('D08_REAL_GAZEBO_L2_BLOCKED '+result['blocker'],flush=True)
     finally:
