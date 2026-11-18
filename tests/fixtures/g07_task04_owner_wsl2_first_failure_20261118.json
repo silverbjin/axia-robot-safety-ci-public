@@ -1,0 +1,29 @@
+{
+  "schema": "axia.g07.task04.owner_first_gui_failure_redacted_v1",
+  "source": "user_supplied_owner_gazebo_evidence_archive_2026_11_18",
+  "archive_sha256": "60794337c9dd346c08be41571fec7b84a931154b27d9a06566eaea835d587415",
+  "archive_inner_sha256_checks": "11_of_11_pass",
+  "task03_public_student_sha": "01752add2e30c90c4d3286ef3a450f97746ecb55",
+  "task03_public_ci_l2_run": 44223320904,
+  "owner_os": "WSL2 Ubuntu 24.04",
+  "runtime_parity": "CORE_PARITY_PASS_25_packages_5_official_files",
+  "actual_gz_partition": "axia_p2_task04_86_ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST1794975058",
+  "error_stage": "D07_H01_GUI_RVIZ_PATH_SUBSCRIPTION_ABSENT",
+  "native_before_failure": [
+    "D07_H01_GUI_NAV_SERVICES_DISCOVERED",
+    "D07_H01_GUI_AFTER_FREE_BASELINE_MARKER"
+  ],
+  "outer_wrapper_first_failure": "PUBLIC_NO_GOAL_GUI_RUNTIME_FAILED",
+  "gui_window_observed": {
+    "rviz": 0,
+    "gazebo": 0,
+    "xwininfo_available": 1
+  },
+  "native_gui_watcher_log_in_archive": false,
+  "native_gui_watcher_ack_in_archive": false,
+  "wslg_renderer": "D3D12 (Intel(R) Iris(R) Xe Graphics)",
+  "owner_nvidia_gpu": "NVIDIA GeForce RTX 2060 with Max-Q Design",
+  "goal_sent": false,
+  "certified_estop": false,
+  "first_failure_analysis": "MALFORMED_GZ_PARTITION_PROVEN_BY_BASH; RVIZ_SUBSCRIPTION_ABSENT_PROVEN; GUI_WATCHER_CAUSE_NOT_PROVEN"
+}
