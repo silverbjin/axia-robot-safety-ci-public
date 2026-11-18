@@ -109,15 +109,26 @@ run_verified_owner() {
     trap - EXIT INT TERM
     set +e
     if [[ -n "${D06_OWNER_OUT:-}" && -d "$D06_OWNER_OUT" ]];then
-      (cd "$D06_OWNER_OUT" && find . -type f ! -name SHA256SUMS -print0 |
-         sort -z | xargs -0 -r sha256sum > SHA256SUMS)
-      tar -czf "$D06_OWNER_OUT.tar.gz" -C "$D06_OWNER_BASE" "$(basename "$D06_OWNER_OUT")"
-      [[ -f "$D06_OWNER_OUT.tar.gz" ]] &&
-        sha256sum "$D06_OWNER_OUT.tar.gz" > "$D06_OWNER_OUT.tar.gz.sha256"
-      echo "D06_G07_OWNER_RAW_ARCHIVE=$D06_OWNER_OUT.tar.gz"
-      echo "D06_G07_OWNER_RAW_SHA256=$D06_OWNER_OUT.tar.gz.sha256"
+      if ! (cd "$D06_OWNER_OUT" && find . -type f ! -name SHA256SUMS -print0 |
+         sort -z | xargs -0 -r sha256sum > SHA256SUMS);then
+        echo 'D06_G07_OWNER_CUSTODY_SUMS_INCOMPLETE' >&2
+        rc=3
+      fi
+      if tar -czf "$D06_OWNER_OUT.tar.gz" -C "$D06_OWNER_BASE" "$(basename "$D06_OWNER_OUT")" &&
+         [[ -s "$D06_OWNER_OUT.tar.gz" ]] &&
+         sha256sum "$D06_OWNER_OUT.tar.gz" > "$D06_OWNER_OUT.tar.gz.sha256";then
+        echo "D06_G07_OWNER_RAW_ARCHIVE=$D06_OWNER_OUT.tar.gz"
+        echo "D06_G07_OWNER_RAW_SHA256=$D06_OWNER_OUT.tar.gz.sha256"
+      else
+        echo 'D06_G07_OWNER_CUSTODY_ARCHIVE_UNVERIFIED_HOLD' >&2
+        rc=3
+      fi
     fi
-    echo 'D06_G07_OWNER_L3=RAW_REVIEW_REQUIRED_NOT_ACCEPTED'
+    if [[ "$rc" == 0 ]];then
+      echo 'D06_G07_OWNER_L3=RAW_REVIEW_REQUIRED_NOT_ACCEPTED'
+    else
+      echo 'D06_G07_OWNER_L3=HOLD_FAILED_OR_BLOCKED'
+    fi
     echo 'AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false'
     exit "$rc"
   }
