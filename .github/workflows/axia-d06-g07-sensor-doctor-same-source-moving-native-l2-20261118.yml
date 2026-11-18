@@ -42,14 +42,14 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: feffb37219abc3649530a8439c3ba0a1f3fdca88
+          ref: 9862353e7116bc4a14a5bb365ae356642e83ef0e
           path: student
           persist-credentials: false
       - name: Exact public Student source and minimum L0 before physical run
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C student rev-parse HEAD)" = 'feffb37219abc3649530a8439c3ba0a1f3fdca88'
+          test "$(git -C student rev-parse HEAD)" = '9862353e7116bc4a14a5bb365ae356642e83ef0e'
           test "$(git -C ci rev-parse HEAD)" = "$GITHUB_SHA"
           cd student/block_B/day07/h01_runtime
           set +u; source /opt/ros/jazzy/setup.bash; set -u
@@ -135,7 +135,7 @@ jobs:
             exit 3
           fi
           windows_count=$((rviz_seen+gazebo_seen))
-          python3 tools/p2_g07_task04_moving_review.py             --motion-root "$GITHUB_WORKSPACE/native"             --witness "$GITHUB_WORKSPACE/native/s02_ecm_witness.json"             --source-sha 'feffb37219abc3649530a8439c3ba0a1f3fdca88'             --gui-windows "$windows_count"             --output "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"
+          python3 tools/p2_g07_task04_moving_review.py             --motion-root "$GITHUB_WORKSPACE/native"             --witness "$GITHUB_WORKSPACE/native/s02_ecm_witness.json"             --source-sha '9862353e7116bc4a14a5bb365ae356642e83ef0e'             --gui-windows "$windows_count"             --output "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"
           # True same-session PRE-GOAL baseline. Do not fake it with Linux
           # CI source or mark Owner WSLg sensor parity as verified.
           python3 - "$GITHUB_WORKSPACE/native/g07_ci_pregoal/owner_pregoal_baseline.json" <<'PY'
