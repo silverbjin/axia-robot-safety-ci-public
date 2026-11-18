@@ -110,6 +110,29 @@ def evaluate_three_phases(rows: list[dict], scan_receive_gaps: list[float]) -> d
             "actual_cm_safety_ttl_proven":False}
 
 
+def assess_official_cm_native_scan(state_id:int, state_label:str,
+                                   observation_sources:list, scan_topic:str)->dict:
+    """Scoped proof from *real official* CM lifecycle/get_parameters services.
+
+    This verifies the active configured scan source only. It does not
+    fabricate collision_monitor internal callback gaps or STOP/SLOW actions
+    when the stationary Waffle has no cmd_vel inputs.
+    """
+    if state_id!=3 or state_label!="active":
+        raise ValueError("D08_OFFICIAL_CM_NOT_ACTIVE")
+    if ("scan" not in observation_sources):
+        raise ValueError("D08_OFFICIAL_CM_SCAN_SOURCE_MISSING")
+    if scan_topic not in ("scan","/scan"):
+        raise ValueError("D08_OFFICIAL_CM_SCAN_TOPIC_NOT_REAL")
+    return {"official_cm_active_scan_configured":True,
+            "cm_native_lifecycle_state":"active",
+            "cm_scan_source_name":"scan",
+            "cm_actual_configured_scan_topic":scan_topic,
+            "cm_internal_receive_gap_verified":False,
+            "cm_action_state_verified":False,
+            "moving_goal_sent":False}
+
+
 def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
     import rclpy
     from rclpy.action import ActionClient
@@ -122,6 +145,8 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
     from nav_msgs.msg import OccupancyGrid, Odometry, Path as NavPath
     from sensor_msgs.msg import LaserScan
     from nav2_msgs.action import ComputePathToPose
+    from lifecycle_msgs.srv import GetState
+    from rcl_interfaces.srv import GetParameters
     from action_msgs.msg import GoalStatus
     from geometry_msgs.msg import PoseStamped
     from tf2_ros import Buffer, TransformListener, TransformException
@@ -214,6 +239,46 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
             time.sleep(.12)
         raise RuntimeError("D08_"+code+"_FIRST_REAL_BOUNDARY")
 
+    def read_official_cm_native_state_and_scan():
+        # A DDS node name can be '_NODE_NAME_UNKNOWN_' even while the
+        # official collision_monitor is active. Query its own services
+        # instead of assuming which anonymous endpoint subscribed.
+        state_cli=node.create_client(GetState,"/collision_monitor/get_state")
+        param_cli=node.create_client(
+            GetParameters,"/collision_monitor/get_parameters")
+        if not state_cli.wait_for_service(timeout_sec=8):
+            raise RuntimeError("D08_OFFICIAL_CM_NATIVE_STATE_SCAN_NOT_VERIFIED:GET_STATE_ABSENT")
+        if not param_cli.wait_for_service(timeout_sec=8):
+            raise RuntimeError("D08_OFFICIAL_CM_NATIVE_STATE_SCAN_NOT_VERIFIED:GET_PARAMETERS_ABSENT")
+        state_future=state_cli.call_async(GetState.Request())
+        until(lambda:state_future.done(),
+              "OFFICIAL_CM_NATIVE_STATE_SCAN_NOT_VERIFIED:STATE_REPLY_TIMEOUT",8)
+        state=state_future.result()
+        if state is None:
+            raise RuntimeError("D08_OFFICIAL_CM_NATIVE_STATE_SCAN_NOT_VERIFIED:EMPTY_STATE")
+        req=GetParameters.Request()
+        req.names=["observation_sources","scan.topic"]
+        param_future=param_cli.call_async(req)
+        until(lambda:param_future.done(),
+              "OFFICIAL_CM_NATIVE_STATE_SCAN_NOT_VERIFIED:PARAM_REPLY_TIMEOUT",8)
+        params=param_future.result()
+        if params is None or len(params.values)!=2:
+            raise RuntimeError("D08_OFFICIAL_CM_NATIVE_STATE_SCAN_NOT_VERIFIED:PARAM_VALUES_ABSENT")
+        sources=list(params.values[0].string_array_value)
+        topic=str(params.values[1].string_value)
+        try:
+            witness=assess_official_cm_native_scan(
+                int(state.current_state.id),str(state.current_state.label),
+                sources,topic)
+        except ValueError as exc:
+            raise RuntimeError(
+                "D08_OFFICIAL_CM_NATIVE_STATE_SCAN_NOT_VERIFIED:"+str(exc)) from exc
+        witness["cm_native_state_service"]="/collision_monitor/get_state"
+        witness["cm_native_param_service"]="/collision_monitor/get_parameters"
+        witness["cm_native_observation_sources"]=sources
+        witness["cm_native_verified_at_monotonic_s"]=round(time.monotonic(),6)
+        return witness
+
     def move(stage, xyz):
         request=('name: "axia_p2_g07_obstacle", '
             'position: {x: %.9f, y: %.9f, z: %.4f}, orientation: {w: 1}'%
@@ -298,7 +363,18 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
            "collision_monitor" in p.node_name for p in consumers)
         result["native_cm_scan_receive_gap_verified"]=False
         result["safety_cm_state_verified"]=False
+        result["scan_graph_anonymous_subscriber_count"]=sum(
+            p.node_name=="_NODE_NAME_UNKNOWN_" for p in consumers)
         if not pubs:raise RuntimeError("D08_REAL_SCAN_PUBLISHER_ABSENT")
+        result.update(read_official_cm_native_state_and_scan())
+        print("D08_OFFICIAL_CM_NATIVE_ACTIVE_SCAN_SOURCE_NO_GOAL "+
+              json.dumps({k:result.get(k) for k in (
+                "official_cm_active_scan_configured",
+                "cm_native_lifecycle_state",
+                "cm_native_observation_sources",
+                "cm_actual_configured_scan_topic",
+                "native_cm_scan_receive_gap_verified",
+                "safety_cm_state_verified")},sort_keys=True),flush=True)
         for stage,xyz,expect in [
             ("before",FAR_WORLD,"far"),
             ("intrusion",NEAR_WORLD,"near"),
