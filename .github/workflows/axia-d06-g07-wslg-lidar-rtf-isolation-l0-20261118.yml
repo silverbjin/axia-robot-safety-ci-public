@@ -5,6 +5,7 @@ on:
     paths:
       - '.github/workflows/axia-d06-g07-wslg-lidar-rtf-isolation-l0-20261118.yml'
       - 'd06/tests/test_d06_lidar_rtf_field_evidence.py'
+      - 'd06/tools/axia_d06_lidar_rtf_compare.py'
       - 'd06/fixtures/g07_intel_d3d12_rtf_original_20261118.json'
       - 'd06/scripts/axia_d06_g07_wslg_gpu_rtf_compare_once.sh'
   workflow_dispatch:
@@ -27,4 +28,5 @@ jobs:
           set -Eeuo pipefail
           test "$(git -C student rev-parse HEAD)" = f541c36a3984aa65a13de03ef60861103718afb1
           python3 -m unittest discover -s student/block_B/day07/h01_runtime/tools -p 'test_g07_lidar_rtf_separation.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_lidar_rtf_field_evidence.py' -v
           echo 'AXIA_D06_G07_LIDAR_RTF_ISOLATION_L0_PASS_NO_ROS_NO_GAZEBO_NO_GOAL'
