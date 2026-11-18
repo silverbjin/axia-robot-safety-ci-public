@@ -12,13 +12,13 @@ from d08_same_world_replan import cm_state_is_active
 def test_owner_sparse_real_scan_reproducer_is_custodied_not_forged():
     sparse={"scan":[(100.0,1_000_000_000),(100.82,1_100_000_000)],
             "odom":[(100.0,1_000_000_000),(100.75,1_100_000_000)],
-            "clock":[(100.0,1_000_000_000),(100.8,1_900_000_000)]}
+            "clock":[(100.0,1_000_000_000),(100.8,1_060_000_000)]}
     report=summarize_actual_receive_history(sparse,now=119.0,started_at=99.0)
     assert report["status"]=="D08_REAL_RX_DIAGNOSTIC_NOT_SAFETY_PASS"
     assert report["scan"]["callback_count"]==2
     assert report["scan"]["max_host_receive_gap_sec"]==.82
     assert report["scan"]["latest_receive_age_sec"]>.5
-    assert report["clock"]["observed_sim_time_progress_sec"]==.9
+    assert report["clock"]["observed_sim_time_progress_sec"]==.06
     assert report["clock"]["observed_rtf"]<.1
     assert report["publisher_rmw_cadence_measured"] is False
     assert report["control_published"] is False
