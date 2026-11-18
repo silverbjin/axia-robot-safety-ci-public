@@ -7,6 +7,8 @@ on:
       - 'd06/tests/test_d06_g07_classroom_reuse.py'
       - 'd06/tests/test_d06_g07_owner_mode_field_regression.py'
       - 'd06/tests/test_d06_g07_here_doc_execution.py'
+      - '.github/workflows/axia-d06-g07-owner-native-world-regression-20261118.yml'
+      - '.github/workflows/axia-d06-g07-fixed-owner-native-moving-l2-20261118.yml'
       - '.github/workflows/axia-d06-g07-classroom-reuse-public-l0-20261118.yml'
       - 'd06/docs/AXIA_D06_G07_CLASSROOM_REUSE_20261118_KO.md'
       - 'd06/docs/AXIA_D06_WSL2_OWNER_CI_KERNEL_FIRST_FAILURE_RCA_20261118_KO.md'
@@ -16,6 +18,8 @@ on:
       - 'd06/tests/test_d06_g07_classroom_reuse.py'
       - 'd06/tests/test_d06_g07_owner_mode_field_regression.py'
       - 'd06/tests/test_d06_g07_here_doc_execution.py'
+      - '.github/workflows/axia-d06-g07-owner-native-world-regression-20261118.yml'
+      - '.github/workflows/axia-d06-g07-fixed-owner-native-moving-l2-20261118.yml'
       - '.github/workflows/axia-d06-g07-classroom-reuse-public-l0-20261118.yml'
       - 'd06/docs/AXIA_D06_G07_CLASSROOM_REUSE_20261118_KO.md'
       - 'd06/docs/AXIA_D06_WSL2_OWNER_CI_KERNEL_FIRST_FAILURE_RCA_20261118_KO.md'
@@ -30,7 +34,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 1129cd8804954fd6481d1b6b4ebf0e0b98c68c3c
+          ref: e9adb73d658859a53976d9848aa75bd5be710def
           path: student
           persist-credentials: false
       - name: RED GREEN source-only no goal contract
@@ -38,11 +42,11 @@ jobs:
         run: |
           set -Eeuo pipefail
           bash -n d06/scripts/axia_d06_g07_classroom_once.sh
-          test "$(git -C student rev-parse HEAD)" = 1129cd8804954fd6481d1b6b4ebf0e0b98c68c3c
+          test "$(git -C student rev-parse HEAD)" = e9adb73d658859a53976d9848aa75bd5be710def
           python3 -m unittest discover -s d06/tests -p 'test_d06_g07_classroom_reuse.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_g07_owner_mode_field_regression.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_g07_here_doc_execution.py' -v
           bash d06/scripts/axia_d06_g07_classroom_once.sh --self-check
-          echo 'D06_G07_CLASSROOM_PUBLIC_L0_PASS FOURTEEN_PLUS_FIVE_OWNER_PARITY_TESTS NO_ROS_NO_GAZEBO_NO_GOAL'
+          echo 'D06_G07_CLASSROOM_PUBLIC_L0_PASS FIFTEEN_PLUS_FIVE_OWNER_PARITY_PLUS_THREE_HEREDOC_TESTS NO_ROS_NO_GAZEBO_NO_GOAL'
           echo 'D06_G07_CLASSROOM_OWNER_MOVING_L3=NOT_RUN'
           echo 'AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false'
