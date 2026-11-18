@@ -128,6 +128,18 @@ esac
             self.assertEqual(r.returncode,3)
             self.assertIn('TASK04_MOVING_CI_SOURCE_OR_CONCLUSION_MISMATCH',r.stderr)
 
+    def test_owner_embedded_readonly_verifier_compiles(self):
+        src = RUNNER.read_text()
+        marker = """python3 - "$runtime" "$out/native" "$out/owner_readonly_gate.json" <<'PY'\n"""
+        self.assertIn(marker,src)
+        body = src.split(marker,1)[1].split("\nPY\n",1)[0]
+        compile(body,"d06_owner_readonly_gate.py","exec")
+        self.assertIn("audit_guard_internal_cm_age",body)
+        self.assertIn("GUARD_NATIVE_CM_AGE_TTL150_PASS",body)
+        self.assertIn('w.get("missing_iterations")==0',body)
+        self.assertIn('root/"rosbag2"',body)
+        self.assertIn('"owner_l3_accepted":False',body)
+
     def test_unknown_flags_fail_closed(self):
         result = subprocess.run(['bash', str(RUNNER), '--foo'], text=True,
                                 capture_output=True, timeout=5)
