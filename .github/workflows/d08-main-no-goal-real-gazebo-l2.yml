@@ -340,9 +340,20 @@ jobs:
             ros-jazzy-navigation2 ros-jazzy-sensor-msgs \
             libgl1-mesa-dri libglx-mesa0 xvfb xauth
           if [ "$AXIA_D08_NATIVE_RX_PROBE" = "1" ]; then
-            apt-get install -y -qq --no-install-recommends \
+            # Only this CI diagnostic image needs native Python bindings.
+            # Official Gazebo Harmonic Noble binaries: signed OSRF repository.
+            # Do NOT install the gz-harmonic meta-package or upgrade the
+            # already-pinned ROS Jazzy/Gazebo libraries for this probe.
+            curl -fLsS --retry 2 --connect-timeout 15 --max-time 60 \
+              https://packages.osrfoundation.org/gazebo.gpg \
+              -o /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg
+            test -s /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] https://packages.osrfoundation.org/gazebo/ubuntu-stable noble main" \
+              > /etc/apt/sources.list.d/axia-gazebo-stable.list
+            apt-get update -qq -o APT::Update::Error-Mode=any -o Acquire::Retries=1
+            apt-get install -y -qq --no-install-recommends --no-upgrade \
               python3-gz-transport13 python3-gz-msgs10
-            /usr/bin/python3 -c 'from gz.transport13 import Node; from gz.msgs10.laserscan_pb2 import LaserScan; print("D08_NATIVE_GZ_TRANSPORT13_IMPORT_L2_PASS")'
+            /usr/bin/python3 -c 'from gz.transport13 import Node; from gz.msgs10.laserscan_pb2 import LaserScan; print("D08_NATIVE_PYTHON_APT_IMPORT_L2_PASS")'
           fi
       - name: Validate fixed SHA public human visual geometry
         shell: bash
