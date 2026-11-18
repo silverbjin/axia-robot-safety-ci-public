@@ -50,3 +50,38 @@ def test_healthy_under_500ms_pair_must_not_be_called_safety_failure():
     assert x["candidate"]=="NO_LARGE_RELATIVE_RX_DELAY"
     assert x["first_500ms_violation"] is False
     assert x["cause"]=="UNDETERMINED"
+
+
+
+def test_real_public_667085ms_first_gap_exact_stamp_pair_must_not_be_cut_off():
+    # Actual public Gazebo #44364535033, cycle_0003, NO_GOAL.
+    # The old matcher rejected source reception more than 500ms before the
+    # delayed Observer callback, exactly the evidence we need to retain.
+    real={"previous_ros_stamp_ns":46_701_000_000,
+          "current_ros_stamp_ns":46_800_000_000,
+          "previous_host_monotonic_sec":222.554508,
+          "current_host_monotonic_sec":223.221594,
+          "receive_gap_sec":0.667085}
+    native=[
+        {"source_stamp_ns":46_701_000_000,
+         "host_monotonic_sec":222.439849},
+        {"source_stamp_ns":46_800_000_000,
+         "host_monotonic_sec":222.603553}]
+    isolated=[
+        {"topic":"scan","source_stamp_ns":46_701_000_000,
+         "host_monotonic_sec":222.441524},
+        {"topic":"scan","source_stamp_ns":46_800_000_000,
+         "host_monotonic_sec":222.604613}]
+    same=[
+        {"source_stamp_ns":46_701_000_000,
+         "host_monotonic_sec":222.512840},
+        {"source_stamp_ns":46_800_000_000,
+         "host_monotonic_sec":223.221907}]
+    actual=compare_worst_scan_pair_receivers(real,native,isolated,same)
+    assert actual["source_pair_matched"] is True
+    assert actual["native_gap_sec"]==0.163704
+    assert actual["isolated_ros_gap_sec"]==0.163089
+    assert actual["same_python_gap_sec"]==0.709067
+    assert actual["first_500ms_violation"] is True
+    assert actual["candidate"]=="SAME_PYTHON_PROCESS_DELAY_CANDIDATE"
+    assert actual["cause"]=="UNDETERMINED"
