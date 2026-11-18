@@ -1,6 +1,8 @@
 """D06's classroom-only wrapper must reuse G07 evidence without faking Owner authority."""
 from pathlib import Path
 import subprocess
+import tempfile
+import os
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -79,6 +81,52 @@ class D06ClassroomReuse(unittest.TestCase):
         self.assertIn('AXIA_G07_CI_SIM_GOAL_ALLOWED=0', src)
         self.assertNotIn('export GITHUB_ACTIONS=true', src)
         self.assertNotIn('ros2 action send_goal', src)
+
+    def test_live_evidence_exit_trap_survives_function_return(self):
+        src = RUNNER.read_text()
+        self.assertIn('D06_OWNER_OUT=', src)
+        self.assertIn('trap finish_owner EXIT', src)
+        self.assertIn('sha256sum "$D06_OWNER_OUT.tar.gz"', src)
+
+    def test_ci_status_uses_exact_three_success_run_receipts(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            gh = Path(tmp) / "gh"
+            gh.write_text("""#!/bin/sh
+case "$2" in
+  */44223320904) echo '6bc8b0711ab056e63e100f3eede2c5f06cdf3856 completed success' ;;
+  */44238643061) echo '5bb0cd72086f2f1a057f382649b773fff106f1f9 completed success' ;;
+  */44249348860) echo '6b98a18fa7abc80401a129f715ace7703ab54286 completed success' ;;
+  *) exit 2 ;;
+esac
+""")
+            gh.chmod(0o755)
+            env = {**os.environ, "PATH":tmp+os.pathsep+os.environ.get("PATH","")}
+            env.pop("GITHUB_ACTIONS",None)
+            r = subprocess.run(["bash",str(RUNNER),"--ci-status"],env=env,
+                               text=True,capture_output=True,timeout=7)
+            self.assertEqual(r.returncode,0,r.stderr)
+            self.assertIn('TASK04_MOVING_HISTORICAL_CI_PASS run=44249348860',r.stdout)
+            self.assertIn('VERIFICATION_ONLY_NO_GAZEBO_NO_RVIZ',r.stdout)
+            self.assertIn('OWNER_MOVING_L3=NOT_RUN',r.stdout)
+
+    def test_ci_status_rejects_stale_green_source_receipt(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            gh = Path(tmp) / "gh"
+            gh.write_text("""#!/bin/sh
+case "$2" in
+  */44223320904) echo '6bc8b0711ab056e63e100f3eede2c5f06cdf3856 completed success' ;;
+  */44238643061) echo '5bb0cd72086f2f1a057f382649b773fff106f1f9 completed success' ;;
+  */44249348860) echo '09b2c7cf54ff1074ff4439008a3cb1a6fb1355de completed failure' ;;
+  *) exit 2 ;;
+esac
+""")
+            gh.chmod(0o755)
+            env = {**os.environ, "PATH":tmp+os.pathsep+os.environ.get("PATH","")}
+            env.pop("GITHUB_ACTIONS",None)
+            r = subprocess.run(["bash",str(RUNNER),"--ci-status"],env=env,
+                               text=True,capture_output=True,timeout=7)
+            self.assertEqual(r.returncode,3)
+            self.assertIn('TASK04_MOVING_CI_SOURCE_OR_CONCLUSION_MISMATCH',r.stderr)
 
     def test_unknown_flags_fail_closed(self):
         result = subprocess.run(['bash', str(RUNNER), '--foo'], text=True,
