@@ -40,6 +40,8 @@ jobs:
             d08/tests/test_d08_yolo_archive_gate.py \
             d08/tests/test_d08_official_ort_nuget.py \
             d08/tests/test_d08_one_world_official_nav2_launch.py \
+            d08/tests/test_d08_workflow_python_heredoc.py \
+            d08/tests/test_d08_yolo_first_boundary.py \
             d08/tests/test_d08_collocated_human_proxy.py \
             d08/tests/test_d08_g07_lidar_visible_proxy.py \
             d08/tests/test_d08_rgbd_alignment_evidence.py \
@@ -109,24 +111,6 @@ jobs:
           root=Path('results/d08-human-contact-calibration')
           v=json.loads((root/'verdict.json').read_text())
           assert v['status']=='D08_REAL_GAZEBO_WAFFLE_RGBD_NO_GOAL_PASS'
-          # Second actual Gazebo run, not evidence stitched from earlier run:
-          # the official Nav2 Jazzy launch owns BOTH the one World and Waffle.
-          # Only ComputePathToPose is allowed; moving Goal and Twist forbidden.
-          python3 -u d08/scripts/d08_public_gazebo_l2.py \
-            --actor /tmp/axia-d08-assets/walk.dae \
-            --out results/d08-official-nav2-sameworld \
-            --official-nav2
-          python3 - <<'PY'
-          import json
-          from pathlib import Path
-          v=json.loads(Path('results/d08-official-nav2-sameworld/verdict.json').read_text())
-          assert v['status']=='D08_REAL_GAZEBO_WAFFLE_RGBD_NO_GOAL_PASS',v
-          assert v['official_nav2_same_world_requested'] is True
-          assert v['official_nav2_before_path']['status']=='D08_LIVE_NAV2_PATH_CANDIDATE'
-          assert v['goal_sent'] is False and v['cmd_vel_published'] is False
-          assert v['actual_rgbd']['matched'] is True
-          print('D08_OFFICIAL_NAV2_SAME_WORLD_BEFORE_PATH_L2_PASS_NO_GOAL')
-          PY
           # Owner 1XZYehm8: old upstream intel depth + new 640x480 RGBD
           # rendered concurrently under WSLg. Assert REAL official Waffle
           # copied model has only D08 camera, without changing /opt/ros.
@@ -235,6 +219,24 @@ jobs:
           print('D08_G07_ROBOT_NO_COLLISION_NOT_CLAIMED')
           PY
           # This asserts real camera *framing* only, not YOLO inference.
+          # Second actual Gazebo run, not evidence stitched from earlier run:
+          # the official Nav2 Jazzy launch owns BOTH the one World and Waffle.
+          # Only ComputePathToPose is allowed; moving Goal and Twist forbidden.
+          python3 -u d08/scripts/d08_public_gazebo_l2.py \
+            --actor /tmp/axia-d08-assets/walk.dae \
+            --out results/d08-official-nav2-sameworld \
+            --official-nav2
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          v=json.loads(Path('results/d08-official-nav2-sameworld/verdict.json').read_text())
+          assert v['status']=='D08_REAL_GAZEBO_WAFFLE_RGBD_NO_GOAL_PASS',v
+          assert v['official_nav2_same_world_requested'] is True
+          assert v['official_nav2_before_path']['status']=='D08_LIVE_NAV2_PATH_CANDIDATE'
+          assert v['goal_sent'] is False and v['cmd_vel_published'] is False
+          assert v['actual_rgbd']['matched'] is True
+          print('D08_OFFICIAL_NAV2_SAME_WORLD_BEFORE_PATH_L2_PASS_NO_GOAL')
+          PY
           python3 d08/harness/d08_visible_person_frame.py \
             results/d08-human-contact-calibration/real_gazebo_rgb.ppm
       - name: BgYnTVv7 real Gazebo RGB -> exact pinned ONNX person class (NO GOAL)
@@ -442,11 +444,26 @@ jobs:
           PID=$!
           trap 'kill -- -"$PID" 2>/dev/null || true' EXIT
           sleep 3
-          timeout --signal=TERM --kill-after=5s 65s \
+          if ! kill -0 "$PID" 2>/dev/null; then
+            echo 'D08_YOLO_LAUNCH_EXITED_BEFORE_REPLAY'
+            tail -n 100 /tmp/ui9_yolo_runtime.log || true
+            exit 2
+          fi
+          echo 'D08_YOLO_PRE_REPLAY_SOURCE_DISCOVERY'
+          timeout 8s ros2 node list || true
+          timeout 8s ros2 topic list -t || true
+          if ! timeout --signal=TERM --kill-after=5s 65s \
             python3 d08/scripts/d08_ui9_yolo_replay_probe.py \
             --ppm /tmp/d08-real-gazebo-evidence/real_gazebo_ui9_near_rgb.ppm \
             --out /tmp/axia_ui9_yolo_model/replay_verdict.json \
-            --timeout-s 55
+            --timeout-s 55; then
+            echo 'D08_YOLO_DETECTION_FIRST_BOUNDARY'
+            tail -n 140 /tmp/ui9_yolo_runtime.log || true
+            timeout 8s ros2 node list || true
+            timeout 8s ros2 topic list -t || true
+            ldd /tmp/axia_ui9_yolo_ws/install/lib/yolo_ros/yolo_node || true
+            exit 2
+          fi
           echo 'UI9_REAL_YOLO_ROS_PERSON_DETECTION_L1_PASS'
           python3 - <<'PY'
           import json
@@ -462,6 +479,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: d08-ui9-public-yolo-ros-replay-l1
-          path: /tmp/axia_ui9_yolo_model/replay_verdict.json
+          path: |
+            /tmp/axia_ui9_yolo_model/replay_verdict.json
+            /tmp/ui9_yolo_runtime.log
           retention-days: 7
           if-no-files-found: warn
