@@ -14,14 +14,14 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: d08b7cff671e7eafcc788e46726afdd3c2ec9f60
+          ref: 7a286fa486f971839ae8fb6fc8c6cbf23d0af973
           path: student
           persist-credentials: false
-      - name: GREEN disposable native Contact positive-only SIGINT with clean no-leak, strict separate moving Nav2 ACK unaffected
+      - name: GREEN #44220702329 exact disposable NO_GOAL SIGINT graceful non-Nav2 JSON proof; moving ACK unchanged
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C student rev-parse HEAD)" = d08b7cff671e7eafcc788e46726afdd3c2ec9f60
+          test "$(git -C student rev-parse HEAD)" = 7a286fa486f971839ae8fb6fc8c6cbf23d0af973
           cd student/block_B/day07/h01_runtime
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p test_g07_task03_calibration_cleanup.py -v
           echo TASK03_NO_GOAL_CALIBRATION_SHUTDOWN_ONLY_NO_NEW_GOAL
