@@ -140,6 +140,13 @@ esac
         self.assertIn('root/"rosbag2"',body)
         self.assertIn('"owner_l3_accepted":False',body)
 
+    def test_owner_raw_archive_failure_and_candidate_verdict_separated(self):
+        src = RUNNER.read_text()
+        self.assertIn('D06_G07_OWNER_CUSTODY_ARCHIVE_UNVERIFIED_HOLD',src)
+        self.assertIn('D06_G07_OWNER_L3=HOLD_FAILED_OR_BLOCKED',src)
+        self.assertIn('D06_G07_OWNER_L3=RAW_REVIEW_REQUIRED_NOT_ACCEPTED',src)
+        self.assertIn('[[ -s "$D06_OWNER_OUT.tar.gz" ]]',src)
+
     def test_unknown_flags_fail_closed(self):
         result = subprocess.run(['bash', str(RUNNER), '--foo'], text=True,
                                 capture_output=True, timeout=5)
