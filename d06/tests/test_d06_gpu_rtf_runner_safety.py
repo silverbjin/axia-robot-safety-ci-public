@@ -53,10 +53,11 @@ class WslgABOneShotSafety(unittest.TestCase):
         valid=subprocess.run(["bash",str(SCRIPT),"--self-check"],capture_output=True,text=True,timeout=5)
         self.assertEqual(valid.returncode,0,valid.stderr)
         self.assertIn("NO_GAZEBO_NO_GOAL",valid.stdout)
-        denied=subprocess.run(["bash",str(SCRIPT),"--compare"],capture_output=True,text=True,timeout=5,
-                             env={"PATH":"/usr/bin:/bin","GITHUB_ACTIONS":"true"})
-        self.assertEqual(denied.returncode,3,(denied.stdout,denied.stderr))
-        self.assertIn("D06_GPU_RTF_REAL_WSLG_REQUIRED",denied.stderr)
+        for mode in ("--compare","--nvidia-only"):
+            denied=subprocess.run(["bash",str(SCRIPT),mode],capture_output=True,text=True,timeout=5,
+                                 env={"PATH":"/usr/bin:/bin","GITHUB_ACTIONS":"true"})
+            self.assertEqual(denied.returncode,3,(mode,denied.stdout,denied.stderr))
+            self.assertIn("D06_GPU_RTF_REAL_WSLG_REQUIRED",denied.stderr)
 
 if __name__=="__main__":
     unittest.main()
