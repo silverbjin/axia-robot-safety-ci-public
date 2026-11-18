@@ -541,8 +541,15 @@ def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=Fals
             result['generated_world_preflight']=inspect_generated_world(gz_world)
             sim=_start('gazebo_server',
                 ['gz','sim','-r','-s','-v3',str(gz_world)],env,out,processes)
-            result['startup_world']=wait_for_native_world(
-                sim,gz_world,env,evidence_path=out/'gazebo_startup.json')
+            try:
+                result['startup_world']=wait_for_native_world(
+                    sim,gz_world,env,evidence_path=out/'gazebo_startup.json')
+            except RuntimeError as ex:
+                if 'D08_GAZEBO_SERVER_EXIT_BEFORE_WORLD_READY' in str(ex):
+                    # Do not wait for RGBD/Contact after a dead Gazebo server.
+                    print('D08_GAZEBO_SERVER_EXIT_BEFORE_WORLD_READY '+str(ex),
+                          flush=True)
+                raise
             result['gazebo_server_started_before_nav2']=True
             print('D08_GAZEBO_WORLD_READY_BEFORE_NAV2_L2_PASS',flush=True)
             owner_rviz=None
