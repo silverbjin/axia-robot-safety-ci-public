@@ -40,7 +40,7 @@ Student 실행 소스 SHA: **f890c580b025dde1038296401aed251d384d98b8** (학생 
 
 실제 CI 실행 명령: python3 -m unittest discover -s tools -p test_g07_task02_simple_tf.py -v ; PYTHONPATH="$GITHUB_WORKSPACE/ci" python3 -m unittest discover -s ci/d06/tests -p test_g07_task02_public_strict_gate.py -v ; bash -n scripts/p2_no_goal_smoke_ci.sh ; python3 -m py_compile ros2_ws/src/axia_safety_bringup/launch/axia_p2_launch_policy.py ; python3 tools/p2_g07_owner_env_parity.py --mode ci --output runtime_parity.json ; env -u LD_PRELOAD -u AXIA_G07_TASK01_TF_AVAIL_PROBE timeout --signal=TERM --kill-after=10s 900s bash scripts/p2_no_goal_smoke_ci.sh ; python3 ci/d06/scripts/g07_task02_public_candidate_verdict.py --report .../ci_moving_goal_result.json --events .../actual_ros_events.jsonl --output .../task02_candidate_verdict.json --runner-rc 0.
 
-## 3. 실제 Gazette 단일 Goal과 최초 안전 경계 증거
+## 3. 실제 Gazebo 단일 Goal과 최초 안전 경계 증거
 
 동일 공개 Run **44206510291**, 실제 GOAL EXECUTING UUID **f961d8d935ec40bc97e0c25547f05b54**:
 
