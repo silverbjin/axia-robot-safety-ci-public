@@ -73,11 +73,11 @@ Task04 공개 사전검증 실행기 READY, 실제 Owner WSL2 실행 NOT_RUN. �
 
 ## 2026-11-18 실제 강사 WSL2 화면 최종 검수 완료 (후속 인수 판정)
 
-위의 원샷은 **강사 WSL2에서 실제로 실행됐으며**, 원본 TAR/SHA256과 제출된 화면을 대조한 결과 \`NO_GOAL_GUI_VISUAL_ACCEPTED=PASS_SCOPED\`입니다. 기존 안내의 **"성공 기대 패턴/아직 WSL2 실제 결과 아님"** 문구는 최초 배포 시점의 안내였으며 현재 현장 인수 결과가 아닙니다.
+위의 원샷은 **강사 WSL2에서 실제로 실행됐으며**, 원본 TAR/SHA256과 제출된 화면을 대조한 결과 `NO_GOAL_GUI_VISUAL_ACCEPTED=PASS_SCOPED`입니다. 기존 안내의 **"성공 기대 패턴/아직 WSL2 실제 결과 아님"** 문구는 최초 배포 시점의 안내였으며 현재 현장 인수 결과가 아닙니다.
 
-- 현장 원본 \`owner-gui-pregate-lxXToFIk.tar.gz\` SHA256 \`4e69c1a43f3623104da0425211dd2cd20c90c2d986750c66196ee397756defb2\`, 내부 73/73 및 native 59/59 무결성 PASS.
-- 실제 \`run_rc=0\`, RViz/Gazebo 각 1개 X11 창, Nav2 Path 3단계 DDS subscriber 각 1개, WSLg D3D12 NVIDIA GLX PASS.
-- 사용자가 제출한 1861×868 화면에서 Gazebo 월드와 RViz Costmap/Path 표시를 직접 확인. PNG SHA256 \`46f9d35283f7164f6724226a6b82542350bad222a8e65ea320adc37d073716c2\`. 원본 화면은 로컬 경로를 포함하므로 공개 Git에 저장하지 않음.
+- 현장 원본 `owner-gui-pregate-lxXToFIk.tar.gz` SHA256 `4e69c1a43f3623104da0425211dd2cd20c90c2d986750c66196ee397756defb2`, 내부 73/73 및 native 59/59 무결성 PASS.
+- 실제 `run_rc=0`, RViz/Gazebo 각 1개 X11 창, Nav2 Path 3단계 DDS subscriber 각 1개, WSLg D3D12 NVIDIA GLX PASS.
+- 사용자가 제출한 1861×868 화면에서 Gazebo 월드와 RViz Costmap/Path 표시를 직접 확인. PNG SHA256 `46f9d35283f7164f6724226a6b82542350bad222a8e65ea320adc37d073716c2`. 원본 화면은 로컬 경로를 포함하므로 공개 Git에 저장하지 않음.
 - **NO_GOAL GUI 사전 인수는 종료**. 단, 실제 Owner Moving Goal L3 NOT_RUN 및 전체 MVP HOLD, SW Stop≠인증 E-Stop, main 미병합.
 
 [최종 범위 확정 보고서](./AXIA_G07_TASK04_OWNER_NO_GOAL_GUI_VISUAL_FINAL_ACCEPTANCE_20261118_KO.md)부터 확인하고, 과거 실패한 SHA를 재실행하지 마십시오.
