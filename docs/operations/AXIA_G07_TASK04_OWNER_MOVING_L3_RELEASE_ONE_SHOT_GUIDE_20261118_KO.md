@@ -41,7 +41,7 @@
 
 사전 준비가 끝나면 이미 정해진 ROS Domain/GZ Partition 안에 Gazebo 서버 **한 개**와 read-only GUI 클라이언트, RViz가 실행된다. 실물 로봇이 아닌 **시뮬레이션만** 대상이다.
 
-**실제 주행 승인:** 실행기는 기존 Student 소스의 실제 `/dev/tty`로 `YES-P2-G07-GOAL`을 요구한다. 강사가 키보드로 정확히 입력해야 한다. 자동 응답·파이프·CI 환경변수로 대체하지 않는다. 승인 전 Supervisor/CM/Guard의 정확 PID·세션과 Student Git SHA가 재검증되며 불일치하면 한 개의 Goal도 전송하지 않는다.
+**실제 주행 승인:** 실행기는 기존 Student 소스의 실제 `/dev/tty`로 `YES-P2-G07-GOAL`을 요구한다. 강사가 키보드로 정확히 입력해야 한다. 자동 응답·파이프·CI 환경변수로 대체하지 않는다. 실제 TTY 승인 이후에도 Goal 발행 전 기존 `admit_owner()`가 Supervisor/CM/Guard의 정확 PID·세션과 Student Git SHA를 재검증합니다. 이 검사에 실패하면 Goal을 전송하지 않습니다.
 
 ## 콘솔 기대 패턴
 
