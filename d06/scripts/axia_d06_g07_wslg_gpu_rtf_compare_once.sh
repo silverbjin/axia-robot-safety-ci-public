@@ -59,7 +59,7 @@ for gpu in NVIDIA Intel;do
   }
   sha256sum -c --status "$archive.sha256" || exit 3
   sub="$(basename "$archive" .tar.gz)"
-  for item in native/g07_wslg_sensor_truth.json renderer.txt native/g07_world.sdf.xacro native/g07_demo_waffle.sdf.xacro native/launch.log;do
+  for item in native/g07_wslg_sensor_truth.json renderer.txt native/g07_world.sdf.xacro native/g07_demo_waffle.sdf.xacro native/initialpose.json native/launch.log;do
     tar -xOf "$archive" "$sub/$item" > "$RUN_DIR/$lc.$(basename "$item")" || exit 3
   done
   grep -Ei "OpenGL renderer string:.*D3D12.*$gpu" "$RUN_DIR/$lc.renderer.txt" >/dev/null || {
@@ -90,6 +90,17 @@ for stem in g07_world.sdf.xacro g07_demo_waffle.sdf.xacro;do
     echo "D06_GPU_RTF_WORLD_OR_WAFFLE_NOT_IDENTICAL=$stem" >&2;exit 3;
   }
 done
+# Same frozen initial pose and static occupancy map are required to
+# attribute LiDAR geometry changes to renderer condition rather than scene.
+python3 - "$RUN_DIR/intel.initialpose.json" "$RUN_DIR/nvidia.initialpose.json" <<'PY'
+import json,sys
+a,b=[json.load(open(p)) for p in sys.argv[1:]]
+assert a["result"]=="POSE_DELIVERY_ACKNOWLEDGED"
+assert b["result"]=="POSE_DELIVERY_ACKNOWLEDGED"
+assert a["position"]==b["position"]==[-2.0,-0.5,0.0]
+assert a["map_meta"]["data_sha256"]==b["map_meta"]["data_sha256"]
+print("D06_GPU_RTF_AB_SAME_GAZEBO_WORLD_WAFFLE_INITIALPOSE_AND_MAP_PROVEN_NO_GOAL")
+PY
 python3 "$TMP/compare.py" \
   --intel-json "$RUN_DIR/intel.g07_wslg_sensor_truth.json" \
   --nvidia-json "$RUN_DIR/nvidia.g07_wslg_sensor_truth.json" \
