@@ -8,7 +8,7 @@ on:
 permissions:
   contents: read
 jobs:
-  task02-simple-tf-safety-red:
+  task02-simple-tf-safety-l0:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     container:
@@ -17,13 +17,15 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: e2eaa152c44d5c6c788c8cb4115b199cb935631e
+          ref: f890c580b025dde1038296401aed251d384d98b8
           path: student
           persist-credentials: false
-      - name: RED official simple TF is not yet present
+      - name: GREEN verify one public-only simple TF switch preserves STOP safety contracts
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C student rev-parse HEAD)" = e2eaa152c44d5c6c788c8cb4115b199cb935631e
+          test "$(git -C student rev-parse HEAD)" = f890c580b025dde1038296401aed251d384d98b8
           cd student/block_B/day07/h01_runtime
           python3 -m unittest discover -s tools -p 'test_g07_task02_simple_tf.py' -v
+          bash -n scripts/p2_no_goal_smoke_ci.sh
+          python3 -m py_compile ros2_ws/src/axia_safety_bringup/launch/axia_p2_launch_policy.py
