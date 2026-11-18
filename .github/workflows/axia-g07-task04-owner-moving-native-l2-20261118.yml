@@ -42,14 +42,14 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 09b2c7cf54ff1074ff4439008a3cb1a6fb1355de
+          ref: a1ef4e72c7de5b440f25258015dc22368954f4c8
           path: student
           persist-credentials: false
       - name: Exact public Student source and minimum L0 before physical run
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C student rev-parse HEAD)" = '09b2c7cf54ff1074ff4439008a3cb1a6fb1355de'
+          test "$(git -C student rev-parse HEAD)" = 'a1ef4e72c7de5b440f25258015dc22368954f4c8'
           test "$(git -C ci rev-parse HEAD)" = "$GITHUB_SHA"
           cd student/block_B/day07/h01_runtime
           bash -n scripts/p2_no_goal_smoke_ci.sh
@@ -58,7 +58,8 @@ jobs:
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_owner_moving_entry.py' -v
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task02_simple_tf.py' -v
           PYTHONPATH="$GITHUB_WORKSPACE/ci${PYTHONPATH:+:$PYTHONPATH}" PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_moving_review_scope.py' -v
-          echo 'AXIA_G07_TASK04_PUBLIC_NATIVE_MOVING_L0_PASS=17'
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_pre_goal_odom_readiness.py' -v
+          echo 'AXIA_G07_TASK04_PUBLIC_NATIVE_MOVING_L0_PASS=20'
       - name: Prepare Xvfb GUI and same Gazebo8 native S02 contact witness
         shell: bash
         run: |
@@ -132,7 +133,7 @@ jobs:
             exit 3
           fi
           windows_count=$((rviz_seen+gazebo_seen))
-          python3 tools/p2_g07_task04_moving_review.py             --motion-root "$GITHUB_WORKSPACE/native"             --witness "$GITHUB_WORKSPACE/native/s02_ecm_witness.json"             --source-sha '09b2c7cf54ff1074ff4439008a3cb1a6fb1355de'             --gui-windows "$windows_count"             --output "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"
+          python3 tools/p2_g07_task04_moving_review.py             --motion-root "$GITHUB_WORKSPACE/native"             --witness "$GITHUB_WORKSPACE/native/s02_ecm_witness.json"             --source-sha 'a1ef4e72c7de5b440f25258015dc22368954f4c8'             --gui-windows "$windows_count"             --output "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"
           sha256sum "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"             > "$GITHUB_WORKSPACE/public_evidence/task04_moving_verdict.sha256"
           echo 'AXIA_G07_TASK04_NATIVE_MOVING_GUI_XVFB_L2_PASS_OWNER_WSL2_NOT_RUN'
           echo 'AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false'
