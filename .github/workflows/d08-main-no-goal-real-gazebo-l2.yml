@@ -440,6 +440,13 @@ jobs:
               assert native['clock_max_host_receive_gap_sec'] is not None,native
               assert native['clock_max_host_receive_gap_sec']<=.5,native
               assert native['first_gap_clock_layer']['timing_layer']=='NO_REAL_FIRST_ROS_GAP',native
+              isolated=cycle['isolated_ros_process_scan_rx']
+              assert isolated['enabled'] is True and isolated['separate_process'] is True,isolated
+              assert isolated['sample_count']>=8,isolated
+              assert isolated['history_complete'] is True,isolated
+              assert isolated['max_host_receive_gap_sec'] is not None,isolated
+              assert isolated['max_host_receive_gap_sec']<=.5,isolated
+              assert isolated['first_gap_crosscheck']['cause']=='UNDETERMINED',isolated
               assert native['first_violation_cause']=='UNDETERMINED',native
               assert native['publisher_send_timing_proven'] is False,native
               for topic in ('scan','odom','clock'):
