@@ -12,6 +12,7 @@ MAX_FILE=256*1024
 ROOT_LOGS=['yolo_native.log','yolo_ldd.log','yolo_build.log','owner_gpu_probe.txt','asset_sha256.txt']
 LIVE_FILES=[
  'verdict.json','runtime_provenance.json','amcl_receive_timing.json',
+ 'gazebo_startup.json',
  'official_nav2_before_path.json','overlay/manifest.json',
  'actual_world.sdf','actual_waffle.sdf','gazebo_topics.txt',
  'scene_info_verdict.json','scene_info_response.txt','native_create_ack.txt',
@@ -53,6 +54,8 @@ def create_compact_evidence(run_dir:Path,archive:Path)->dict:
     for f in ROOT_LOGS:add_from(run_dir/f,'logs/'+f,bounded=True)
     add_from(run_dir/'live_evidence'/'d08_official_nav2_one_world.log',
              'logs/d08_official_nav2_one_world.log',bounded=True)
+    add_from(run_dir/'live_evidence'/'gazebo_server.log',
+             'logs/gazebo_server.log',bounded=True)
     cycles=run_dir/'live_evidence'/'owner_replan_cycles'
     ids=sorted((p for p in cycles.glob('cycle_[0-9][0-9][0-9][0-9]') if p.is_dir()),
                key=lambda p:p.name)
