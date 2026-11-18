@@ -1,6 +1,6 @@
 # AXIA G07 Task04 — Owner WSL2/WSLg 공개 GUI 사전검증 인계
 
-2026-11-18 KST. Task04 상태: PUBLIC_GUI_PREGATE_L0_READY, 실제 Owner L3 NOT_RUN, MVP HOLD.
+2026-11-18 KST. Task04 상태: PUBLIC_GUI_PREGATE_L0_AND_NATIVE_XVFB_L2_PASS_SCOPED, 실제 Owner L3 NOT_RUN, MVP HOLD.
 
 ## 근거와 실행 범위
 
@@ -16,12 +16,26 @@
 - 변경 파일: scripts/axia_g07_task04_public_owner_wsl2_pregate_once.sh, tests/test_g07_task04_owner_public_wsl2_pregate.py, .github/workflows/axia-g07-task04-owner-wsl2-pregate-public-l0-20261118.yml, 본 문서.
 - Review: ROS official/Student 원본 수정 없음, Guide만 공개 CI 개발 브랜치에 추가. USER 현장 L3 및 main 병합 미수행.
 
+
+## 2026-11-18 실제 현장 실패 수정 및 출고 게이트
+
+**이전에 발행한 실행기 SHA 4db31c90afe568282bc9d49713e053bf70b43152는 폐기합니다.** 원본 사용자 WSL2 압축 SHA256은 60794337c9dd346c08be41571fec7b84a931154b27d9a06566eaea835d587415, 내부 11/11 무결성 PASS입니다.
+
+- 최초 확인 오류: D07_H01_GUI_RVIZ_PATH_SUBSCRIPTION_ABSENT. 추가로 실제 GZ_PARTITION에 ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST가 섞여 있었습니다. Bash 특수 변수 $_가 이전 export 마지막 인수로 해석된 정확한 원인을 확인하고 PID 생성 코드를 수정했습니다.
+- 공개 RED [#44237062643](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44237062643) → 공개 L0 GREEN [#44237386904](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44237386904): **10/10**. GZ_PARTITION 문자열 오염 재현/차단.
+- 공개 실제 Gazebo/RViz Xvfb RED [#44237948105](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44237948105): 원본 GUI runner rc=0, 창 2개 관찰. CI reviewer의 stage 대신 phase 필드 접근 오류를 확인·회귀로 편입.
+- 공개 실제 Gazebo/RViz Xvfb 최종 GREEN [#44238643061](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44238643061): **L0 12/12 + 실제 3단계 ROS/Gazebo/Nav2/RViz DDS Path subscriber L2 PASS**, 원본 rc=0, X11 RViz/Gazebo 창 2개. WSLg GPU 승격 금지.
+- 수정된 원샷은 별도 GPU GUI watcher 시작 ACK/조기 종료·Gazebo native 전송 토픽·RViz Path 구독 로그를 **Owner 단일 TAR.GZ 내부에 모두 보존**합니다. D3D12 NVIDIA/Intel GLX를 실제 확인 후 선택하고 실패 시 fail closed합니다.
+- [정식 교육용 오류 RCA 및 실험 기록](./AXIA_G07_TASK04_WSL2_GUI_FIRST_FAILURE_RCA_20261118_KO.md).
+
+**다음 현장 실행은 오직 위 최종 GREEN SHA 5bb0cd72086f2f1a057f382649b773fff106f1f9로 수행**하십시오. GUI만 검증하며 Moving Goal L3, 전체 MVP 및 E-Stop 인증은 아닙니다.
+
 ## Owner WSL2 — 복사·붙여넣기 단일 명령
 
 ~~~bash
 (
   set -Eeuo pipefail
-  SOURCE_SHA='4db31c90afe568282bc9d49713e053bf70b43152'
+  SOURCE_SHA='5bb0cd72086f2f1a057f382649b773fff106f1f9'
   SCRIPT="$(mktemp --suffix=.sh)"
   trap 'rm -f -- "$SCRIPT"' EXIT
   curl -fLsS --retry 3 --max-time 90 \
