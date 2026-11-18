@@ -76,8 +76,8 @@ def test_owner_and_ci_use_same_ordered_launch():
 
 def test_compact_owner_saves_first_gazebo_exit_without_build_assets(tmp_path):
     import json,zipfile
-    from d08_compact_evidence import create_compact_evidence
     sys.path.insert(0,str(ROOT/'d08/scripts'))
+    from d08_compact_evidence import create_compact_evidence
     run=tmp_path/'owner_run';e=run/'live_evidence';e.mkdir(parents=True)
     (e/'gazebo_startup.json').write_text(json.dumps({
         'status':'BLOCKED','first_boundary':'D08_GAZEBO_SERVER_EXIT_BEFORE_WORLD_READY',
