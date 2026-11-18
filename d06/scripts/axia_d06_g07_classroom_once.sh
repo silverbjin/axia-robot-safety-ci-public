@@ -18,6 +18,12 @@ readonly TASK04_MOVING_STUDENT_SHA='d7ffec1ce73f0c4e672ea0fc51a1678139dc5a6f'
 readonly TASK04_MOVING_RUNTIME_SCRIPT_BLOB='0a4e58578dee5608c4010bc092dc3a88c385ae6d'
 readonly TASK04_MOVING_GOAL_ENGINE_BLOB='d7b19286dac3b8e921358e2ffab93a35ddfcf812'
 readonly TASK04_MOVING_SHUTDOWN_BLOB='6d813b6343a0b44c11727ed5fa330f43b3d446c1'
+# Do not reclassify an older exact-source native L2 success as current Owner
+# release after newer physical failures. NO_GOAL #44325953833 first Safety
+# Scan delivery 356.136ms > 300ms; Moving #44325984617 Nav2 lifecycle
+# SERVICE_MISSING after STOP/Cancel. Field WSLg original 819.175ms scan gap.
+# The current Owner course guide explicitly holds Moving until first-boundary
+# regressions, WSLg NO_GOAL source/receive, and native teardown are green.
 
 hold() {
   echo "D06_G07_CLASSROOM_HOLD=$1" >&2
@@ -56,6 +62,7 @@ self_check() {
   echo "D06_G07_CLASSROOM_REUSED_SAME_SESSION_NATIVE_CI=$TASK04_MOVING_L2_RUN"
   echo "D06_G07_CLASSROOM_PINNED_OWNER_SOURCE=$TASK04_MOVING_STUDENT_SHA"
   echo 'D06_G07_CLASSROOM_OWNER_MOVING_L3=NOT_RUN'
+  echo 'D06_G07_CLASSROOM_MOVING_RELEASE=HOLD_SCAN300_NATIVE_SHUTDOWN'
   echo 'AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false'
 }
 
@@ -301,6 +308,10 @@ fi
 if [[ "$mode" == --live ]];then
   [[ "${GITHUB_ACTIONS:-}" != true && -t 0 && -t 1 && -r /dev/tty ]] ||
     hold D06_G07_OWNER_REAL_TTY_REQUIRED_NO_GOAL
+  # Mandatory fail-closed release boundary: newer actual native Safety Scan
+  # TTL + Nav2 post-Goal lifecycle failures and Owner WSLg all-angle ranges.
+  # No environment variable or CI-only authority can override this HOLD.
+  hold D06_G07_OWNER_MOVING_RELEASE_HOLD_SCAN300_NAV2_SHUTDOWN
 fi
 [[ "${GITHUB_ACTIONS:-}" != true || "$mode" == --ci-status ]] ||
   hold D06_G07_CLASSROOM_OWNER_WSL2_ONLY
@@ -311,7 +322,7 @@ check_run "$TASK04_MOVING_L2_RUN" "$TASK04_MOVING_L2_HEAD" TASK04_MOVING
 if [[ "$mode" == --ci-status ]];then
   echo 'D06_G07_CLASSROOM_CI_REUSE_PROVENANCE_PASS TASK04_NATIVE_MOVING_GUI_L2_SCOPED'
   echo 'D06_G07_CLASSROOM_VERIFICATION_ONLY_NO_GAZEBO_NO_RVIZ'
-  echo 'D06_G07_CLASSROOM_GUI_ACTION=--gui-only D06_G07_CLASSROOM_MOVING_ACTION=--live_MANUAL_TTY_OWNER_CANDIDATE'
+  echo 'D06_G07_CLASSROOM_GUI_ACTION=--gui-only D06_G07_CLASSROOM_MOVING_ACTION=--live_BLOCKED_NO_GOAL'
   echo 'D06_G07_CLASSROOM_OWNER_MOVING_L3=NOT_RUN'
   exit 0
 fi
