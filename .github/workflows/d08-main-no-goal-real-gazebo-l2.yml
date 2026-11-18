@@ -448,6 +448,13 @@ jobs:
               assert isolated['max_host_receive_gap_sec'] is not None,isolated
               assert isolated['max_host_receive_gap_sec']<=.5,isolated
               assert isolated['first_gap_crosscheck']['cause']=='UNDETERMINED',isolated
+              paired=cycle['worst_scan_causal_pair']
+              assert paired['source_pair_matched'] is True,(i,paired)
+              assert paired['cause']=='UNDETERMINED',(i,paired)
+              assert paired['observer_gap_sec']<.5,(i,paired)
+              assert paired['native_gap_sec'] is not None,(i,paired)
+              assert paired['isolated_ros_gap_sec'] is not None,(i,paired)
+              assert paired['same_python_gap_sec'] is not None,(i,paired)
               assert native['first_violation_cause']=='UNDETERMINED',native
               assert native['publisher_send_timing_proven'] is False,native
               for topic in ('scan','odom','clock'):
