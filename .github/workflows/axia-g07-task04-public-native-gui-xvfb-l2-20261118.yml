@@ -1,0 +1,169 @@
+name: AXIA G07 Task04 public native Gazebo RViz Xvfb NO_GOAL L2
+on:
+  push:
+    branches: ['fix/g07-task04-owner-wsl2-public-pregate-20261118']
+    paths: ['.github/workflows/axia-g07-task04-public-native-gui-xvfb-l2-20261118.yml']
+permissions:
+  contents: read
+concurrency:
+  group: axia-task04-public-native-xvfb
+  cancel-in-progress: false
+jobs:
+  native-gui-no-goal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 38
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+    env:
+      ROS_DOMAIN_ID: '87'
+      ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+      GZ_PARTITION: axia_p2_task04_public_xvfb
+      AXIA_P0_SIM_ONLY: '1'
+      AXIA_G07_CI_SIM_GOAL_ALLOWED: '0'
+      AXIA_P2_G07_PHYSICAL_PREFLIGHT: '1'
+      AXIA_G07_OWNER_STARTUP_PARITY: '1'
+      AXIA_G07_CI_OWNER_BAG_PARITY: '0'
+      AXIA_D07_H01_GPU_GUI_TRIAL: '1'
+      AXIA_D07_H01_CI_SOFTWARE_GUI: '1'
+      AXIA_D07_GUI_HOLD_S: '8'
+      QT_QPA_PLATFORM: xcb
+      QT_X11_NO_MITSHM: '1'
+      LIBGL_ALWAYS_SOFTWARE: '1'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          path: ci
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: 01752add2e30c90c4d3286ef3a450f97746ecb55
+          path: student
+          persist-credentials: false
+      - name: L0 actual Owner field 10 regressions and SHA-pinned public Student
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C student rev-parse HEAD)" = 01752add2e30c90c4d3286ef3a450f97746ecb55
+          test "$(git -C ci rev-parse HEAD)" = "$GITHUB_SHA"
+          python3 -m unittest discover -s ci/tests -p test_g07_task04_owner_public_wsl2_pregate.py -v
+          python3 -m unittest discover -s ci/tests -p test_g07_task04_owner_field_regression_20261118.py -v
+          bash -n student/block_B/day07/h01_runtime/scripts/d07_h01_gui_no_goal_once.sh
+          bash -n student/block_B/day07/h01_runtime/scripts/p2_no_goal_smoke_ci.sh
+          bash -n student/block_B/day07/h01_runtime/tools/d07_h01_gpu_gui_watcher.sh
+          echo AXIA_G07_TASK04_PUBLIC_L0_10_PASS_NO_ROS_GOAL
+      - name: GUI dependencies without official Nav2 upgrades
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          set +u;source /opt/ros/jazzy/setup.bash;set -u
+          if ! command -v Xvfb >/dev/null || ! command -v xwininfo >/dev/null || ! command -v rviz2 >/dev/null;then
+            apt-get update -qq
+            DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends --no-upgrade \
+              xvfb x11-utils ros-jazzy-rviz2
+          fi
+          for x in Xvfb xwininfo gz ros2 colcon rviz2;do command -v "$x";done
+      - name: Real Gazebo Harmonic Waffle official Nav2 Path to real RViz2 Xvfb
+        shell: bash
+        timeout-minutes: 27
+        run: |
+          set -Eeuo pipefail
+          set +u;source /opt/ros/jazzy/setup.bash;set -u
+          export DISPLAY=:98 GALLIUM_DRIVER=llvmpipe
+          export GZ_PARTITION="axia_p2_task04_xvfb_$GITHUB_RUN_ID"
+          mkdir -p "$GITHUB_WORKSPACE/evidence"
+          Xvfb :98 -screen 0 1600x900x24 -nolisten tcp > "$GITHUB_WORKSPACE/evidence/xvfb.log" 2>&1 &
+          xvfb_pid=$!
+          owner_pid=''
+          cleanup() {
+            trap - EXIT
+            set +e
+            if [[ -n "$owner_pid" ]];then
+              kill -INT -- "-$owner_pid" 2>/dev/null || true
+              sleep 2
+              kill -TERM -- "-$owner_pid" 2>/dev/null || true
+              wait "$owner_pid" 2>/dev/null || true
+            fi
+            kill -TERM "$xvfb_pid" 2>/dev/null || true
+            wait "$xvfb_pid" 2>/dev/null || true
+            echo AXIA_G07_TASK04_PUBLIC_NATIVE_GUI_CLEANUP_NO_GOAL
+          }
+          trap cleanup EXIT
+          sleep 2
+          kill -0 "$xvfb_pid"
+          export AXIA_P2_SMOKE_RESULTS="$GITHUB_WORKSPACE/evidence/native"
+          export AXIA_D07_GUI_EVIDENCE_DIR="$GITHUB_WORKSPACE/evidence/rviz"
+          cd "$GITHUB_WORKSPACE/student/block_B/day07/h01_runtime"
+          setsid timeout --signal=TERM --kill-after=10s 920s \
+            bash scripts/d07_h01_gui_no_goal_once.sh --run > "$GITHUB_WORKSPACE/evidence/gui_stdout.log" 2>&1 &
+          owner_pid=$!
+          rviz_seen=0;gazebo_seen=0
+          for ((i=0;i<780;i++));do
+            kill -0 "$owner_pid" 2>/dev/null || break
+            tree="$(timeout 4s xwininfo -root -tree 2>/dev/null || true)"
+            grep -Eiq RViz <<< "$tree" && rviz_seen=1
+            grep -Eiq Gazebo <<< "$tree" && gazebo_seen=1
+            sleep 1
+          done
+          set +e;wait "$owner_pid";runner_rc=$?;set -e
+          owner_pid=''
+          echo "AXIA_G07_TASK04_NATIVE_RUNNER_RC=$runner_rc RVIZ_X11=$rviz_seen GAZEBO_X11=$gazebo_seen"
+          if [[ "$runner_rc" != 0 ]];then
+            for f in "$GITHUB_WORKSPACE/evidence/native/d07_gui_watcher.log" \
+                     "$GITHUB_WORKSPACE/evidence/native/d07_h01_geometry.log" \
+                     "$GITHUB_WORKSPACE/evidence/native/launch.log" \
+                     "$GITHUB_WORKSPACE/evidence/gui_stdout.log";do
+              [[ -f "$f" ]] || continue
+              echo "=== FIRST NATIVE GUI EVIDENCE === $f"
+              tail -n 90 "$f"
+            done
+            exit 3
+          fi
+          [[ "$rviz_seen" == 1 && "$gazebo_seen" == 1 ]] || {
+            echo AXIA_G07_TASK04_FIRST_NATIVE_GUI_FAILURE=XVFB_WINDOW_ABSENT
+            exit 3
+          }
+          python3 - "$GITHUB_WORKSPACE/evidence" <<'PY'
+          import json,sys
+          from pathlib import Path
+          out=Path(sys.argv[1]);root=out/"native"
+          watcher=(root/"d07_gui_watcher.log").read_text()
+          for marker in ("D07_H01_GUI_WATCHER_PROCESS_ENTERED",
+              "D07_H01_GUI_AFTER_FREE_BASELINE_MARKER",
+              "D07_H01_GUI_SERVER_WORLD_DISCOVERED_NOT_GUI_RENDER_PROOF",
+              "D07_H01_GUI_CI_SOFTWARE_BACKEND_XVFB_NO_WSLG_GPU_PROOF",
+              "D07_H01_GUI_CHILDREN_SPAWNED"):
+            assert marker in watcher,("FIRST_WATCHER_LIFECYCLE_STAGE",marker)
+          assert "pid=" in (root/"d07_gui_watcher_started.txt").read_text()
+          phases=[json.loads(line) for line in
+            (root/"d07_h01_geometry/phase_evidence.jsonl").read_text().splitlines()]
+          assert [p["phase"] for p in phases]==["before","intrusion","restored"]
+          assert all(p.get("rviz_subscription_count",0)>=1 for p in phases)
+          geometry=json.loads((root/"d07_h01_geometry/d07_h01_geometry.json").read_text())
+          assert geometry.get("goal_sent") is False
+          assert geometry.get("real_nav2") is True
+          assert geometry.get("obstacle_restored_away") is True
+          report={"schema":"axia.g07.task04.public_xvfb_native_gui_l2_v1",
+            "status":"REAL_GAZEBO_NAV2_RVIZ_DDS_L2_PASS",
+            "public_student_sha":"01752add2e30c90c4d3286ef3a450f97746ecb55",
+            "real_gui_windows_seen":2,
+            "rviz_path_subscriptions":[p["rviz_subscription_count"] for p in phases],
+            "path_phases":["before","intrusion","restored"],
+            "goal_sent":False,"wslg_gpu_verified":False,
+            "owner_moving_l3":False,"certified_estop":False}
+          (out/"task04_native_xvfb_verdict.json").write_text(json.dumps(report,sort_keys=True,indent=2)+"\n")
+          print("AXIA_G07_TASK04_PUBLIC_REAL_GAZEBO_RVIZ_XVFB_PATH_SUBSCRIBER_L2_PASS",flush=True)
+          PY
+          echo 'AXIA_G07_TASK04_OWNER_WSL2_WSLG_GPU_L3_NOT_RUN'
+          echo 'AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false'
+      - name: Upload public numeric evidence only, never Owner WSL2 contents
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: axia-g07-task04-public-xvfb-native
+          path: |
+            evidence/task04_native_xvfb_verdict.json
+            evidence/native/d07_gui_watcher_started.txt
+            evidence/native/d07_gui_watcher_exit.txt
+          retention-days: 14
+          if-no-files-found: warn
