@@ -38,7 +38,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: e9adb73d658859a53976d9848aa75bd5be710def
+          ref: c7654a5426ec17e724cc7590f01f8a43206a000c
           path: student
           persist-credentials: false
       - name: RED GREEN source-only no goal contract
@@ -46,7 +46,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           bash -n d06/scripts/axia_d06_g07_classroom_once.sh
-          test "$(git -C student rev-parse HEAD)" = e9adb73d658859a53976d9848aa75bd5be710def
+          test "$(git -C student rev-parse HEAD)" = c7654a5426ec17e724cc7590f01f8a43206a000c
           python3 -m unittest discover -s d06/tests -p 'test_d06_g07_classroom_reuse.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_g07_owner_mode_field_regression.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_g07_here_doc_execution.py' -v
