@@ -59,6 +59,96 @@ def inspect_free_map_pose(msg, x: float, y: float, radius_m=.12) -> dict:
     }
 
 
+def assess_pre_goal_receive_recovery(streams, *, started_at, now):
+    """Bounded real callback recovery AFTER a NO_GOAL localization warm-up.
+
+    A startup 500ms+ receive gap remains in forensic evidence. Admission
+    requires a NEW 1.0s contiguous stream from each of real Scan, Odom and
+    Clock, with NO 500ms+ callback gaps, fresh ROS sim stamps and latest
+    wall reception <=500ms. This is never a post-Goal safety TTL waiver.
+    """
+    def blocked(detail):
+        raise ValueError("D08_NO_GOAL_RX_NOT_STABLE:"+detail)
+    if (not isinstance(streams,dict) or not isinstance(now,(float,int))
+            or not isinstance(started_at,(float,int))
+            or not all(math.isfinite(v) for v in (now,started_at))
+            or not 0<=now-started_at<=45):
+        blocked("INVALID_REAL_TIMELINE")
+    topics=("scan","odom","clock")
+    source={}
+    history_gaps={}
+    latest_sim_stamps={}
+    global_begin=float(started_at)
+    for topic in topics:
+        raw=streams.get(topic)
+        if not isinstance(raw,(list,tuple)) or len(raw)<6:
+            blocked(topic.upper()+"_INSUFFICIENT_REAL_CALLBACKS")
+        samples=[]
+        for sample in raw:
+            if (not isinstance(sample,(tuple,list)) or len(sample)!=2
+                    or type(sample[0]) not in (int,float)
+                    or not math.isfinite(sample[0])
+                    or type(sample[1]) is not int or sample[1]<=0):
+                blocked(topic.upper()+"_INVALID_CALLBACK")
+            samples.append((float(sample[0]),sample[1]))
+        if any(b[0]<=a[0] or b[1]<=a[1]
+               for a,b in zip(samples,samples[1:])):
+            blocked(topic.upper()+"_NONMONOTONIC_CALLBACK_OR_SIM_STAMP")
+        first_gap=None
+        last_gap_at=None
+        for before,after in zip(samples,samples[1:]):
+            gap=after[0]-before[0]
+            if gap>=.5 and after[0]>=started_at:
+                if first_gap is None:
+                    first_gap={"gap_sec":round(gap,6),
+                               "previous_ros_stamp_ns":before[1],
+                               "current_ros_stamp_ns":after[1],
+                               "first_at_host_monotonic":round(after[0],6),
+                               "publisher_rmw_gap_measured":False}
+                last_gap_at=after[0]
+        history_gaps[topic]=first_gap
+        if last_gap_at is not None:
+            global_begin=max(global_begin,last_gap_at)
+        source[topic]=samples
+        latest_sim_stamps[topic]=samples[-1][1]
+    steady={}
+    for topic in topics:
+        observed=[x for x in source[topic] if x[0]>=global_begin]
+        if len(observed)<6:
+            blocked(topic.upper()+"_RECOVERY_SAMPLES_MISSING")
+        duration=observed[-1][0]-observed[0][0]
+        if duration<1.0:
+            blocked(topic.upper()+"_RECOVERY_SPAN_TOO_SHORT")
+        gaps=[b[0]-a[0] for a,b in zip(observed,observed[1:])]
+        if not gaps or max(gaps)>=.5:
+            blocked(topic.upper()+"_CONTINUED_RECEIVE_GAP")
+        current_age=now-observed[-1][0]
+        if not 0<=current_age<=.5:
+            blocked(topic.upper()+"_LATEST_CALLBACK_STALE")
+        steady[topic]={
+            "callback_count":len(observed),
+            "steady_span_sec":round(duration,6),
+            "maximum_stable_gap_sec":round(max(gaps),6),
+            "latest_receive_age_sec":round(current_age,6),
+            "latest_ros_stamp_ns":observed[-1][1],
+            "actual_ros_callbacks":True}
+    for topic in ("scan","odom"):
+        sim_age=(latest_sim_stamps["clock"]-latest_sim_stamps[topic])/1e9
+        if not -.1<=sim_age<=.5:
+            blocked(topic.upper()+"_SIM_STAMP_NOT_CURRENT_WITH_CLOCK")
+        steady[topic]["sim_source_age_sec"]=round(sim_age,6)
+    return {
+        "status":"D08_NO_GOAL_REAL_RX_RECOVERED",
+        "goal_sent":False,"control_published":False,
+        "limits_unchanged":True,"actual_stream_verified":True,
+        "steady_window_start_host_monotonic":round(global_begin,6),
+        "minimum_steady_span_sec":1.0,
+        "callback_receive_limit_sec":.5,
+        "historical_first_gaps":history_gaps,
+        **steady,
+    }
+
+
 def assess_static_amcl_witness(witness:dict) -> dict:
     """Validate initial AMCL Pose once, then real *current* scan/odom and TF.
 
@@ -85,9 +175,26 @@ def assess_static_amcl_witness(witness:dict) -> dict:
         not isinstance(tf.get("stamp_ns"),int) or
         tf["stamp_ns"]<=0):
         raise ValueError("D08_REAL_TF_MISSING")
-    for topic in ("scan","odom"):
-        gap=witness.get(topic+"_first_gap_over_500ms")
-        if gap is not None:
+    recovery=witness.get("no_goal_pre_goal_recovery")
+    historical_gap=any(
+        witness.get(t+"_first_gap_over_500ms") is not None
+        for t in ("scan","odom"))
+    if historical_gap:
+        recovered=(isinstance(recovery,dict)
+            and recovery.get("status")=="D08_NO_GOAL_REAL_RX_RECOVERED"
+            and recovery.get("goal_sent") is False
+            and recovery.get("control_published") is False
+            and recovery.get("limits_unchanged") is True
+            and recovery.get("actual_stream_verified") is True
+            and recovery.get("callback_receive_limit_sec")==.5
+            and all(isinstance(recovery.get(t),dict)
+                    and recovery[t].get("actual_ros_callbacks") is True
+                    and recovery[t].get("callback_count",0)>=6
+                    and recovery[t].get("steady_span_sec",0)>=1.0
+                    and 0<=recovery[t].get("latest_receive_age_sec",999)<=.5
+                    and 0<=recovery[t].get("maximum_stable_gap_sec",999)<.5
+                    for t in ("scan","odom","clock"))
+        if not recovered:
             raise ValueError("D08_FIRST_LIVE_SCAN_ODOM_GAP")
         age=witness.get(topic+"_age_sec")
         stamp=witness.get(topic+"_stamp_ns")
@@ -95,6 +202,8 @@ def assess_static_amcl_witness(witness:dict) -> dict:
             not 0<=age<=.5 or not isinstance(stamp,int) or stamp<=0):
             raise ValueError("D08_LIVE_SCAN_ODOM_STALE")
     return {"localization_verified":True,
+            "startup_gap_recovered_no_goal":historical_gap,
+            "startup_gap_not_l3_safety_pass":True,
             "static_pose_one_shot_not_a_repeating_sensor":True,
             "scan_odom_age_limits_sec":.5,
             "first_amcl_pose_source_age_limit_sec":1.0}
