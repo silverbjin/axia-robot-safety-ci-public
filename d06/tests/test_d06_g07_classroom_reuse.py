@@ -60,7 +60,7 @@ class D06ClassroomReuse(unittest.TestCase):
     def test_ci_status_explicitly_says_no_gui_launched(self):
         src = RUNNER.read_text()
         self.assertIn('D06_G07_CLASSROOM_VERIFICATION_ONLY_NO_GAZEBO_NO_RVIZ', src)
-        self.assertIn('D06_G07_CLASSROOM_MOVING_ACTION=--live_MANUAL_TTY_OWNER_CANDIDATE', src)
+        self.assertIn('D06_G07_CLASSROOM_MOVING_ACTION=--live_BLOCKED_NO_GOAL', src)
 
     def test_last_green_task04_pinned_with_all_native_l2_gates(self):
         src = RUNNER.read_text()
@@ -79,6 +79,17 @@ class D06ClassroomReuse(unittest.TestCase):
         self.assertIn('D3D12 (Intel', src)
         self.assertIn('unset GALLIUM_DRIVER MESA_D3D12_DEFAULT_ADAPTER_NAME', src)
         self.assertIn('WSLG_D3D12_ADAPTER_UNVERIFIED_NO_GOAL', src)
+
+    def test_newer_actual_field_and_native_failures_block_live_before_network(self):
+        src = RUNNER.read_text()
+        # Historical G07 exact-source success is retained, but newer
+        # scan TTL and lifecycle failures prohibit new Owner moving admission.
+        self.assertIn('44325953833', src)  # NO_GOAL safety scan 356ms >300ms
+        self.assertIn('44325984617', src)  # native Navigation service missing
+        marker = 'hold D06_G07_OWNER_MOVING_RELEASE_HOLD_SCAN300_NAV2_SHUTDOWN'
+        self.assertIn(marker, src)
+        self.assertLess(src.index(marker), src.index('command -v gh >/dev/null'))
+        self.assertIn('D06_G07_CLASSROOM_MOVING_ACTION=--live_BLOCKED_NO_GOAL', src)
 
     def test_owner_live_reuses_proven_g07_manual_runner(self):
         src = RUNNER.read_text()
