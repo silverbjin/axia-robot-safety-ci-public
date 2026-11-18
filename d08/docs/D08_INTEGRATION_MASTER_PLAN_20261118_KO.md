@@ -138,3 +138,16 @@
 - live YOLO/Depth로 인해 기존 실제 Scan wall gap 500ms 상한, AMCL/TF 및 official CM /scan QoS/cadence에 최초 위반이 생기면 FAIL-CLOSED/HOLD; safety TTL 완화 금지. CM state 미발행 및 실제 감속 미실행은 표시하되, 테스트용 합성 cmd_vel을 실제 /cmd_vel로 배선하지 않는다.
 - 새 결선에서 원본 ROS Graph·tf/clock·2 VALID+UNKNOWN과 공식 Path 3상이 동일 GZ_PARTITION / ROS_DOMAIN_ID / SHA로 확인돼야 Task01/Task02 교육형 완성 후보. 화면 픽셀/Owner WSLg와 G07 moving strict 인수는 여전히 별도 조건.
 - 한 CI 실행기의 동일 public SHA 원샷을 Student/Instructor 가이드에 반영하고, owner L3 마지막 한 번 + main 병합은 최종 승인 전까지 하지 않는다.
+
+## 15. v1.8 — 2026-11-18 실제 D05 깊이 ROI 물리 불일치 첫 경계 / 1회 최소 후보
+
+- Public CI [#44229304083](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44229304083), source feature SHA d06c00a3846b1fcdcc8a5f3532b54a523de78283: L0 75 PASS, 독립 Gazebo sensor job PASS, original YOLO C++ replay L1 PASS. 새 **같은 World** 한 번의 Gazebo/Nav2+실시간 YOLO에서 Scan/Costmap 공식 3 Path PASS, RGBD/YOLO/Depth 실제 VALID 2건 및 사유가 있는 UNKNOWN 1건을 확보. 다만 실제 두 VALID ROI가 물리적으로 서로 다른 거리를 일관되게 반영하지 않아 `D08_TWO_ACTUAL_PERSON_DISTANCES_NOT_DISTINCT` HOLD.
+- 원본 동일 World 로그/아티팩트 #14394487446:
+  - slow native person(-1.43,-.50,.24): 실제 /scan 0.559762m, person confidence 0.254660, bbox XYXY (162,92,458,380), valid Depth pixels 11/16, ROI median 0.475343m, RGB/Depth/Detection stamp 모두 18.801s.
+  - stop native person(-1.63,-.50,.24): 실제 /scan 0.362725m, person confidence 0.549731, bbox (116,25,499,105), valid pixels 10/16, ROI median **0.534589m** (더 가까워졌으나 증가), stamps 25.401s.
+  - Side unknown: actual 4 registered RGBD + 4 YOLO DetectionArray, `NO_PERSON_CLASS_IN_ACTUAL_YOLO`, stamps 30.402s; 2 VALID/1 UNKNOWN **자료 전달 자체는 입증**.
+  - Stop bbox 세로 80px(480px 이미지의 16.7%)로 Slow 288px 대비 상단 일부만 검출. 사람 전신 ROI와 물리 Proxy 연관성이 부족한 후보로 판단. 원인은 **아직 확정 아님**. 같은 frame ID+stamp는 정확한 사람 물리 거리의 증명이 아님.
+- minimal RED/진단: 기존 두 실제 VALID가 감소 방향·유의미한 간격을 만족하지 못한 원본을 L0 계약에 편입: `slow_distance > stop_distance` and `slow-stop>=0.12m`, 절대 차만으로 거꾸로 측정한 결과를 PASS로 승격 금지. 각 VALID의 실제 16개 Depth ROI(float32)·RGB frame PPM·bbox 원본·stamp/host age·LiDAR를 SHA256 묶음으로 저장. 새로운 tracker/학습/인공 깊이 금지.
+- 한 개 물리 후보만 조정: 첫 유효 거리 단계의 물리 Proxy를 x=-1.20,y=-0.5,z=.24 (기존 x=-1.43 대비 0.23m 먼 장면; LiDAR 후보 약 .79m)로 이동하여 확실한 거리 분리 여유 확보. **측정 전 위치 후보 ≠ 실제 측정 거리**, 실제 Scan으로 증명. 두 번째 Stop x=-1.63과 UNKNOWN 측면 위치/기존 World/YOLO 엔진·confidence threshold·Depth median 알고리즘은 그대로. 더 먼 위치에서 Person 검출 실패하면 새 원본 증거로 HOLD하고 모의 sample/threshold 완화 금지.
+- 동시에 새 same-world combined job이 공식 Nav2/Costmap/Path 3상 모두 PASS했는데 별도의 **이미 검증된 독립** Nav2 첫 Path job이 `D08_OFFICIAL_NAV2_PLANNER_UNAVAILABLE`로 실패. 해당 job 원본에서 `/controller_server/change_state` service 응답 timeout 경고가 먼저 기록; 공식 Nav2 GitHub Issue #6556도 lifecycle response timeout vs actual state 확인을 제안함. 원인 확정 아님. **중복 독립 Nav2 L2를 일반 push에서 재실행하지 않고 opt-in workflow_dispatch 진단 전용**으로 두어, 새 combined same-world job 자체의 Nav2/Path 3상 실증이 유일한 release gate가 되게 한다. 기존 센서/YOLO replay L1은 model pin 확인 용도로 보존하며 성공 증거 합성 금지.
+- CM 공식 Scan subscription graph는 확보했지만 CM 내부 첫 Rx gap/Guard age/CM state는 NOT_VERIFIED. Scan 0.5s 안전 관측 상한과 Guard/CM TTL은 늘리지 않는다. G07 moving strict/Owner GUI 추가 개발은 게이트 통과 이전까지 보류.
