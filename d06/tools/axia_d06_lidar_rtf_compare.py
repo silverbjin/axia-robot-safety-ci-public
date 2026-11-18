@@ -14,9 +14,14 @@ def _safe_range(report):
     try:
         m=report["metrics"]["safety"]
         f,s,near=float(m["front_median_m"]),float(m["side_median_m"]),m.get("near_ring_fraction_median")
+        # A median is not safety clearance: a single real Scan can still
+        # violate strict front/side thresholds. Compare ALL received scans.
+        # Missing clear_count in legacy evidence is UNVERIFIED, not PASS.
+        count=int(m["count"])
+        clear_count=int(m["clear_count"])
         return (math.isfinite(f) and math.isfinite(s) and f>.75 and s>1.2
                 and (near is None or (math.isfinite(float(near)) and float(near)<.95))
-                and int(m["count"]) >=20)
+                and count>=20 and clear_count==count)
     except (KeyError,ValueError,TypeError):
         return False
 
