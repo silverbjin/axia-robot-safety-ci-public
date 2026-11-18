@@ -73,3 +73,26 @@ def test_owner_and_ci_use_same_ordered_launch():
     assert 'D08_REAL_GAZEBO_TEMPFILE_RED_REPRODUCED' in workflow
     assert 'D08_GAZEBO_WORLD_READY_BEFORE_NAV2_L2_PASS' in workflow
     assert "v['startup_world']['native_world_service_verified'] is True" in workflow
+
+def test_compact_owner_saves_first_gazebo_exit_without_build_assets(tmp_path):
+    import json,zipfile
+    from d08_compact_evidence import create_compact_evidence
+    sys.path.insert(0,str(ROOT/'d08/scripts'))
+    run=tmp_path/'owner_run';e=run/'live_evidence';e.mkdir(parents=True)
+    (e/'gazebo_startup.json').write_text(json.dumps({
+        'status':'BLOCKED','first_boundary':'D08_GAZEBO_SERVER_EXIT_BEFORE_WORLD_READY',
+        'server_exit_code':255}))
+    (e/'gazebo_server.log').write_text(
+        'Unable to find or download file\n'+'startup detail\n'*1000)
+    big=run/'assets'/'onnxruntime.nupkg';big.parent.mkdir()
+    big.write_bytes(b'X'*100000)
+    archive=tmp_path/'diagnostics.zip'
+    create_compact_evidence(run,archive)
+    with zipfile.ZipFile(archive) as z:
+        names=z.namelist()
+        assert 'live_evidence/gazebo_startup.json' in names
+        assert 'logs/gazebo_server_error_context.txt' in names
+        assert all(not x.startswith('assets/') for x in names)
+        assert b'D08_GAZEBO_SERVER_EXIT_BEFORE_WORLD_READY' in z.read(
+            'live_evidence/gazebo_startup.json')
+    assert archive.stat().st_size<10000
