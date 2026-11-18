@@ -70,7 +70,8 @@ def run(out:Path,timeout_s=25,*,initialize_amcl=False,spawn_xy=None):
                 raise ValueError('D08_AMCL_PINNED_SPAWN_REQUIRED')
             from d08_amcl_initial_pose import admit_actual_amcl
             verdict['real_amcl_and_tf']=admit_actual_amcl(
-                node,float(spawn_xy[0]),float(spawn_xy[1]))
+                node,float(spawn_xy[0]),float(spawn_xy[1]),
+                timing_out=out.parent/'amcl_receive_timing.json')
             if not verdict['real_amcl_and_tf']['localization_verified']:
                 raise RuntimeError('D08_AMCL_INITIAL_POSE_ACK_NOT_LOCALIZATION')
             print('D08_OFFICIAL_AMCL_REAL_TF_READY_NO_GOAL '+json.dumps(
