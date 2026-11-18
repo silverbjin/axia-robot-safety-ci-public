@@ -1,0 +1,49 @@
+name: AXIA D06 G07 Owner native world witness old RED new GREEN L0
+on:
+  push:
+    branches: [fix/d06-wsl2-owner-parity-first-boundary-20261118]
+    paths:
+      - '.github/workflows/axia-d06-g07-owner-native-world-regression-20261118.yml'
+      - 'd06/scripts/axia_d06_g07_classroom_once.sh'
+      - 'd06/tests/test_d06_g07_owner_mode_field_regression.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  original-owner-ecm-red-green:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: 1129cd8804954fd6481d1b6b4ebf0e0b98c68c3c
+          path: student-old
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: e9adb73d658859a53976d9848aa75bd5be710def
+          path: student-fixed
+          persist-credentials: false
+      - name: Actual original owner native world rejection RED
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C student-old rev-parse HEAD)" = 1129cd8804954fd6481d1b6b4ebf0e0b98c68c3c
+          test "$(git -C student-fixed rev-parse HEAD)" = e9adb73d658859a53976d9848aa75bd5be710def
+          cp student-fixed/block_B/day07/h01_runtime/tools/test_g07_task04_owner_ecm_admission.py              student-old/block_B/day07/h01_runtime/tools/test_g07_task04_owner_ecm_admission.py
+          set +e
+          (cd student-old/block_B/day07/h01_runtime &&             python3 -m unittest discover -s tools -p test_g07_task04_owner_ecm_admission.py -v)               > original-owner-red.log 2>&1
+          rc=$?
+          set -e
+          cat original-owner-red.log
+          test "$rc" -ne 0
+          grep -Fq 'FAIL: test_reproduce_old_ci_only_ecm_rejection_on_owner' original-owner-red.log
+          grep -Fq 'FAILED (failures=1)' original-owner-red.log
+          echo D06_G07_ORIGINAL_WSL2_OWNER_NATIVE_WORLD_ECM_RED_EXPECTED
+      - name: Exact new source native Contact witness Owner GREEN + negatives
+        run: |
+          set -Eeuo pipefail
+          (cd student-fixed/block_B/day07/h01_runtime &&             python3 -m unittest discover -s tools -p test_g07_task04_owner_ecm_admission.py -v)               |& tee native-world-green.log
+          echo D06_G07_OWNER_ECM_NATIVE_WORLD_L0_FIVE_CASES_PASS NO_ROS_NO_GAZEBO_NO_GOAL
