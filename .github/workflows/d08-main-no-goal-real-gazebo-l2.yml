@@ -439,6 +439,16 @@ jobs:
           # Both licensing documents are extracted from the SAME signed-ID/
           # version-checked Microsoft NuGet ZIP by the read-only verifier.
           test -s "$ORT_ROOT/LICENSE" && test -s "$ORT_ROOT/ThirdPartyNotices.txt"
+          # Evidence #44210297492: native yolo_node exit127 on missing
+          # libonnxruntime.so.1. Verify actual Microsoft ELF SONAME before
+          # allowing its exact same binary's loader alias into vendor install.
+          if ! readelf -d "$ORT_ROOT/lib/libonnxruntime.so" |
+                grep -F 'Library soname: [libonnxruntime.so.1]'; then
+            echo 'D08_OFFICIAL_ORT_ELF_SONAME_UNEXPECTED'
+            exit 2
+          fi
+          test -L "$ORT_ROOT/lib/libonnxruntime.so.1"
+          echo 'D08_OFFICIAL_ORT_ELF_SONAME_SYMLINK_VERIFIED'
           echo 'D08_OFFICIAL_NUGET_ORT_1200_VALID_WITH_NOTICES'
           cd /tmp/axia_ui9_yolo_ws
           source /opt/ros/jazzy/setup.bash
@@ -492,6 +502,14 @@ jobs:
           source /opt/ros/jazzy/setup.bash
           source /tmp/axia_ui9_yolo_ws/install/setup.bash
           set -u
+          ldd /tmp/axia_ui9_yolo_ws/install/lib/yolo_ros/yolo_node |
+            tee /tmp/ui9_yolo_ldd.log
+          if grep -Fq 'not found' /tmp/ui9_yolo_ldd.log ||
+             ! grep -Fq 'libonnxruntime.so.1 =>' /tmp/ui9_yolo_ldd.log; then
+            echo 'D08_YOLO_NATIVE_SHARED_LIBRARY_UNRESOLVED'
+            exit 2
+          fi
+          echo 'D08_YOLO_NATIVE_ELF_DEPENDENCIES_VERIFIED'
           setsid ros2 launch yolo_bringup yolo.launch.py \
             params_file:=/tmp/axia_ui9_yolo_model/d08_ui9_yolo.yaml \
             > /tmp/ui9_yolo_runtime.log 2>&1 &

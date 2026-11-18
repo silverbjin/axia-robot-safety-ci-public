@@ -74,6 +74,10 @@ def prepare(package: Path, root: Path) -> dict:
         (root / "lib").mkdir()
         (root / "include").mkdir()
         (root / "lib/libonnxruntime.so").write_bytes(lib)
+        # Verified actual CI #44210297492: upstream yolo_node linked ELF NEEDED
+        # libonnxruntime.so.1; NuGet stores only libonnxruntime.so. Keep the
+        # immutable Microsoft binary and create its exact runtime SONAME alias.
+        (root / "lib/libonnxruntime.so.1").symlink_to("libonnxruntime.so")
         (root / "LICENSE").write_bytes(license_bytes)
         (root / "ThirdPartyNotices.txt").write_bytes(notice_bytes)
         for name in headers:
@@ -90,6 +94,7 @@ def prepare(package: Path, root: Path) -> dict:
         "vendor_source": "api.nuget.org/v3-flatcontainer",
         "package_sha256": hashlib.sha256(package.read_bytes()).hexdigest(),
         "lib_sha256": hashlib.sha256(lib).hexdigest(),
+        "elf_loader_alias": "libonnxruntime.so.1",
         "license_sha256": hashlib.sha256(license_bytes).hexdigest(),
         "notices_sha256": hashlib.sha256(notice_bytes).hexdigest(),
         "lib_arch": "ELF64 x86_64",

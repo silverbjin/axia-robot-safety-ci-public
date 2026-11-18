@@ -43,6 +43,11 @@ def test_pinned_nuget_contract_l0(tmp_path):
     assert len(v["package_sha256"])==64
     assert (root/"include/onnxruntime_cxx_api.h").exists()
     assert (root/"LICENSE").exists() and (root/"ThirdPartyNotices.txt").exists()
+    soname=root/"lib/libonnxruntime.so.1"
+    assert soname.is_symlink()
+    assert soname.readlink().as_posix()=="libonnxruntime.so"
+    assert soname.resolve()==(root/"lib/libonnxruntime.so").resolve()
+    assert v["elf_loader_alias"]=="libonnxruntime.so.1"
     assert len(v["license_sha256"]) == len(v["notices_sha256"]) == 64
     assert v["ros_or_gazebo_executed"] is False
     assert json.loads((root/"manifest.json").read_text())==v
