@@ -67,7 +67,7 @@ required=(
  ros-jazzy-nav2-minimal-tb3-sim ros-jazzy-turtlebot3-gazebo
  ros-jazzy-ros-gz ros-jazzy-ros-gz-image ros-jazzy-xacro
  ros-jazzy-nav2-collision-monitor ros-jazzy-nav2-bringup
- ros-jazzy-navigation2 ros-jazzy-rviz2 libgl1-mesa-dri libglx-mesa0
+ ros-jazzy-navigation2 ros-jazzy-rviz2 libgl1-mesa-dri libglx-mesa0 mesa-utils
 )
 missing=()
 for pkg in "${required[@]}"; do
@@ -80,6 +80,21 @@ if ((${#missing[@]}>0)); then
   sudo apt-get update -qq
   sudo apt-get install -y -qq --no-install-recommends "${missing[@]}"
 fi
+
+# Actual Owner evidence selected Intel Iris Xe on a dual-GPU WSLg host.
+# Official Microsoft WSLg selection: MESA_D3D12_DEFAULT_ADAPTER_NAME.
+# Request NVIDIA and verify GLX actually uses it; software fallback or
+# an unchanged Intel renderer is a BLOCKER before burning 100+ MB assets.
+# NVIDIA selection improves GPU eligibility but is NOT a 500ms/RTF PASS.
+export MESA_D3D12_DEFAULT_ADAPTER_NAME=NVIDIA
+GPU_INFO="$(glxinfo -B 2>&1 || true)"
+GPU_RENDERER="$(printf '%s\n' "$GPU_INFO" | grep -m1 'OpenGL renderer string:' || true)"
+if [[ "$GPU_RENDERER" != *'D3D12 (NVIDIA'* ]]; then
+  echo "D08_OWNER_WSLG_NVIDIA_D3D12_NOT_AVAILABLE=$GPU_RENDERER" >&2
+  echo 'D08_OWNER_L3_HOLD_SELECT_DISCRETE_GPU_IN_WINDOWS_AND_VERIFY_GLX' >&2
+  exit 2
+fi
+echo "D08_OWNER_WSLG_NVIDIA_D3D12_VERIFIED=$GPU_RENDERER"
 
 # This SHA must be reachable from public PR #166, never a mutable branch tip.
 SRC="$RUN_DIR/src"
