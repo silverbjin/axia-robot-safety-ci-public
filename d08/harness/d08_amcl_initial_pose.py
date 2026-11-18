@@ -86,6 +86,12 @@ def admit_actual_amcl(node, x: float, y: float, timeout_s=24.0) -> dict:
         node.create_subscription(PoseWithCovarianceStamped,"/amcl_pose",
              lambda m:recv("amcl_pose",m),10),
     ]
+    # Official AMCL can send the first dynamic map→odom transform directly
+    # after SetInitialPose. Subscribe to /tf BEFORE triggering that event:
+    # a late TransformListener can miss the only update of a stationary robot.
+    # No timeout, safety TTL, fake pose, or transform is modified.
+    tfbuf=Buffer()
+    listener=TransformListener(tfbuf,node,spin_thread=False)
     deadline=time.monotonic()+timeout_s
     try:
         while (time.monotonic()<deadline
@@ -132,9 +138,8 @@ def admit_actual_amcl(node, x: float, y: float, timeout_s=24.0) -> dict:
         verdict["amcl_service"]="/set_initial_pose"
         verdict["localization_verified"]=False
         # An empty service ACK is NOT localization; require genuine /amcl_pose
-        # plus a TF2 map→base_link chain. Never publish synthetic TF.
-        tfbuf=Buffer()
-        listener=TransformListener(tfbuf,node,spin_thread=False)
+        # plus the TF2 map→base_link chain already subscribed BEFORE request.
+        # The 1.0s AMCL Pose and 0.5s real scan/odom gates stay unchanged.
         end=time.monotonic()+18
         last_error="AMCL_POSE_OR_TF_MISSING"
         while time.monotonic()<end:
