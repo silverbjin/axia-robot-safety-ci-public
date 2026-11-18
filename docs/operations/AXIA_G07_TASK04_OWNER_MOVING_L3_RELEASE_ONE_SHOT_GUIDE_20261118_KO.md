@@ -1,6 +1,6 @@
 # AXIA G07 Task04 — 강사 WSL2 Moving Goal L3 단일 시연 실행·인수 가이드
 
-2026-11-18 KST / 실제 강사 WSL2 Moving Goal **NOT_RUN** / 배포는 공개 CI 범위 한정 L2 검증 후 / SW Stop ≠ 인증 E-Stop.
+2026-11-19 KST / 실제 강사 WSL2 Moving Goal **NOT_RUN** / 배포는 공개 CI 범위 한정 L2 검증 후 / SW Stop ≠ 인증 E-Stop.
 
 ## 검증한 고정 공개 소스와 단계
 
@@ -8,26 +8,30 @@
 |---|---|
 | 공개 CI PR | https://github.com/silverbjin/axia-robot-safety-ci-public/pull/169 |
 | Student PR | https://github.com/silverbjin/axia-robot-safety-student/pull/46 |
-| 단일 주행 소스 SHA | `d7ffec1ce73f0c4e672ea0fc51a1678139dc5a6f` |
-| CI read-only 판정 소스 SHA | `08fef7f78459c915a29f15fe07a4a60b213b46d7` |
-| 실제 Gazebo Harmonic + Nav2 + Waffle + RViz Xvfb L2 | https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44268914763 |
-| 출고 Owner 원샷 Bootstrap L0 | https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44269770417 |
-| L2 원본 공개 수치·SHA256 artifact | https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44268914763/artifacts/14411537039 |
+| 단일 주행 소스 SHA | `ef6ffe58ddacb89ed37b225279f8e86453cf82b7` |
+| CI read-only 판정 소스 SHA | `ff0455d8fc11e3a4eee26f82f4ccd59d57420002` |
+| 실제 Gazebo Harmonic + Nav2 + Waffle + RViz Xvfb L2 | https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44344038055 |
+| 출고 Owner 원샷 Bootstrap L0 | https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44345736985 |
+| L2 원본 공개 수치·SHA256 artifact | https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44344038055/artifacts/14443974379 |
 | 강사 실제 WSL2 L3 | **실행 전, 미검증** |
 | main | **병합 안 함** |
 
-사전 성공인 NO_GOAL GUI나 Task03 기존 L2는 다시 실행하지 않는다. 이번 출고 후보는 공개 CI Run #44268914763에서 **하나의 실제 Moving Goal+GUI 통합 실행**으로 안전수치·정확 UUID CANCELED·Native Contact0·SQLite14·Nav2 Lifecycle ACK와 CM clean exit 검증을 마쳤다. 다만 공개 Xvfb는 Owner WSLg D3D12가 아니므로 L3 승격 불가.
+사전 성공인 NO_GOAL GUI나 Task03 기존 L2는 다시 실행하지 않는다. 이번 출고 후보는 공개 CI Run #44344038055에서 **하나의 실제 Moving Goal+GUI 통합 실행**으로 안전수치·정확 UUID CANCELED·Native Contact0·SQLite14·Nav2 Lifecycle ACK와 CM clean exit 검증을 마쳤다. 다만 공개 Xvfb는 Owner WSLg D3D12가 아니므로 L3 승격 불가.
+
+이번 소스의 동일 세션 L2 공개 검증에서는 실제 Odometry 이동 0.217894m, 정지 유지 1.015539초, Native Contact 0, CM Publisher 56.386ms/120ms, Observer 85.605ms/120ms, Guard 내부 CM age 30.374ms/150ms, 실제 Goal UUID `2a440893522c4448a882a437aff0b652` 취소, 14-topic rosbag 및 Lifecycle/CM 종료가 모두 검증됐다. 공개 CI 수치 아티팩트는 소량의 JSON/SHA만 공개한다.
+
+**중요한 한계:** 이번 CI의 초기 CLEAR 정면 1.409572m/측면 2.516088m와 현장 원본의 0.527m/0.630m는 일치하지 않는다. 현장 장애물 원인·실제 엔티티 좌표와 WSLg 환경은 검증되지 않았다. 새로운 Owner 실행에서 같은 실패가 발생하면 재실행하지 말고 아래 소형 진단 ZIP과 원본 비공개 TAR를 보존한다.
 
 기존 실행 명령에서 사용했던 원샷 커밋 `e56bbad873e0e37c83f34ecbcc206cc8a648e63d`은 WSLg D3D12 변수를 전역 export하는 이전 배포 후보이므로 **현장 신규 실행에 사용하지 않는다.** 새 고정 SHA는 동일 Student SHA의 공개 L2 및 원샷 Bootstrap L0를 통과했다.
 
 ## 강사 WSL2 복사·붙여넣기 명령 (하나의 블록)
 
-다음은 **이 시점의 실증 공개 원샷 SHA `8a11485ed393ee80dadf0dc55aa21e2baf06fcd8`**를 고정한다. CI가 검증한 Student SHA는 내부에서 별도 확인한다. 무작위 main HEAD를 내려받지 않는다.
+다음은 **이 시점의 실증 공개 원샷 SHA `96c29ff4f333237084d64999cf828a7f6b5d157b`**를 고정한다. CI가 검증한 Student SHA는 내부에서 별도 확인한다. 무작위 main HEAD를 내려받지 않는다.
 
 ```bash
 (
   set -Eeuo pipefail
-  SOURCE_SHA='8a11485ed393ee80dadf0dc55aa21e2baf06fcd8'
+  SOURCE_SHA='96c29ff4f333237084d64999cf828a7f6b5d157b'
   RUNNER="$(mktemp --suffix=.sh)"
   trap 'rm -f -- "$RUNNER"' EXIT
   curl -fLsS --retry 3 --max-time 90 \
@@ -50,7 +54,7 @@
 `--self-check` 성공은 ROS를 시작하지 않는 L0이다:
 
 ```text
-AXIA_G07_TASK04_OWNER_MOVING_BOOTSTRAP_L0_PASS student_sha=d7ffec1ce73f0c4e672ea0fc51a1678139dc5a6f l2_run=44268914763 NO_ROS_NO_GAZEBO_NO_GOAL
+AXIA_G07_TASK04_OWNER_MOVING_BOOTSTRAP_L0_PASS student_sha=ef6ffe58ddacb89ed37b225279f8e86453cf82b7 l2_run=44344038055 NO_ROS_NO_GAZEBO_NO_GOAL
 AXIA_G07_TASK04_OWNER_MOVING_L3=NOT_RUN
 AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false
 ```
@@ -58,7 +62,7 @@ AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false
 **현장에서 실제로 성공한 뒤 기대할 패턴 (아직 실행 증거가 아님):**
 
 ```text
-AXIA_G07_TASK04_STUDENT_SHA_VERIFIED=d7ffec1ce73f0c4e672ea0fc51a1678139dc5a6f
+AXIA_G07_TASK04_STUDENT_SHA_VERIFIED=ef6ffe58ddacb89ed37b225279f8e86453cf82b7
 AXIA_G07_TASK04_OWNER_CORE_PARITY_25_5_PASS
 AXIA_G07_TASK04_WSLG_D3D12_GPU_SELECTED=...
 AXIA_G07_TASK04_OWNER_MOVING_BEGIN student_sha=...
@@ -69,6 +73,8 @@ AXIA_G07_TASK04_OWNER_SINGLE_NATIVE_NUMERICAL_CANDIDATE_PASS_SCOPED
 AXIA_G07_TASK04_OWNER_VISUAL_AND_RAW_REVIEW_PENDING
 AXIA_G07_TASK04_ARCHIVE=/home/.../owner-moving-XXXXXXXX.tar.gz
 AXIA_G07_TASK04_SHA256=/home/.../owner-moving-XXXXXXXX.tar.gz.sha256
+AXIA_G07_TASK04_DIAGNOSTIC_ZIP=/home/.../owner-moving-XXXXXXXX.diagnostics.zip
+AXIA_G07_TASK04_DIAGNOSTIC_SHA256=/home/.../owner-moving-XXXXXXXX.diagnostics.zip.sha256
 AXIA_G07_TASK04_OWNER_NUMERICAL_CANDIDATE=PASS_SCOPED_RAW_REVIEW_PENDING
 AXIA_G07_TASK04_OWNER_MOVING_L3=HOLD
 AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false
@@ -79,7 +85,8 @@ AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false
 ## 증거 보존·민감정보
 
 - 로컬 경로: `$HOME/axia_g07_task04_owner_moving/owner-moving-XXXXXXXX/`
-- 로컬 압축: 같은 접두사의 `.tar.gz`, `.tar.gz.sha256`
+- 로컬 원본 압축: 같은 접두사의 `.tar.gz`, `.tar.gz.sha256`
+- **디버깅 제출용 소형 ZIP**: 같은 접두사의 `.diagnostics.zip`, `.diagnostics.zip.sha256`. 허용목록 JSON/짧은 로그/실제 Pose 조회 및 별도 SHA256SUMS만 포함합니다. 전체 SQLite rosbag·빌드/소스 디렉터리는 포함하지 않습니다.
 - 압축 내부: `manifest.txt`, `owner_parity.json`, D3D12 GLX 원본, 네이티브 Contact 증거/실행 로그, 실제 SQLite14 rosbag/metadata, Goal/CM/Guard raw event, Lifecycle 종료 원본, `task04_owner_numeric_review.json`, `task04_owner_verdict.json`, `first_failure.txt`, `SHA256SUMS`.
 - 원본 출력은 **강사 HOME에만 비공개**로 보관. 사용자 개인 경로·rosbag 전체를 공개 GitHub/CI artifact에 올리지 않는다. 현장 산출물 제출 시 암호/개인 경로 등 민감정보를 비식별화하고 전달 범위를 확인한다.
 
