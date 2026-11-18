@@ -11,6 +11,11 @@ on:
       - 'd06/scripts/axia_d06_g07_wslg_sensor_no_goal_once.sh'
       - 'd06/tests/test_d06_gpu_rtf_runner_safety.py'
       - 'd06/tests/test_d06_native_raw_scan_ttl_boundary.py'
+  pull_request:
+    paths:
+      - 'd06/scripts/axia_d06_g07_wslg_gpu_rtf_compare_once.sh'
+      - 'd06/tests/test_d06_gpu_rtf_runner_safety.py'
+      - '.github/workflows/axia-d06-g07-wslg-lidar-rtf-isolation-l0-20261118.yml'
   workflow_dispatch:
 permissions:
   contents: read
@@ -35,4 +40,6 @@ jobs:
           python3 -m unittest discover -s d06/tests -p 'test_d06_gpu_rtf_runner_safety.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_native_raw_scan_ttl_boundary.py' -v
           bash -n d06/scripts/axia_d06_g07_wslg_sensor_no_goal_once.sh
+          bash -n d06/scripts/axia_d06_g07_wslg_gpu_rtf_compare_once.sh
+          bash d06/scripts/axia_d06_g07_wslg_gpu_rtf_compare_once.sh --self-check
           echo 'AXIA_D06_G07_LIDAR_RTF_ISOLATION_L0_PASS_NO_ROS_NO_GAZEBO_NO_GOAL'
