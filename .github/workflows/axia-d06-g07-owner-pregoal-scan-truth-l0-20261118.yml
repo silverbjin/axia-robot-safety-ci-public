@@ -18,12 +18,12 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: ff03be0837df44faf2a0024f53b88be50761fe43
+          ref: f6d63585649a4fdcf24edee5b9aaecc29002f386
           path: student
           persist-credentials: false
       - name: Validate immutable public Student SHA and actual numeric field incident
         run: |
           set -Eeuo pipefail
-          test "$(git -C student rev-parse HEAD)" = ff03be0837df44faf2a0024f53b88be50761fe43
+          test "$(git -C student rev-parse HEAD)" = f6d63585649a4fdcf24edee5b9aaecc29002f386
           python3 -m unittest discover -s student/block_B/day07/h01_runtime/tools             -p 'test_g07_owner_pregoal_field_truth.py' -v
           echo 'AXIA_D06_OWNER_PREG0AL_FIELD_L0_GREEN_ROS_GAZEBO_WSLG_NOT_RUN'
