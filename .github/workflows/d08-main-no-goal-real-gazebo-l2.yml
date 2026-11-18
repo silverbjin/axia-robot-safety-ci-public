@@ -412,6 +412,7 @@ jobs:
               for topic in ('scan','odom','clock'):
                   d=cycle['independent_ros_rx_timing'][topic]
                   assert d['callback_count']>=3,(i,topic,d)
+                  assert d['history_complete'] is True,(i,topic,d)
                   assert d['max_host_receive_gap_sec'] is not None,(i,topic,d)
                   assert d['max_host_receive_gap_sec']<=.5,(i,topic,d)
           print('D08_REAL_SAME_RUN_EIGHT_CYCLES_SCAN_ODOM_CLOCK_CADENCE_L2_PASS_NOT_CM')
