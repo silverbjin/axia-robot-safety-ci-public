@@ -55,6 +55,11 @@ class D06ClassroomReuse(unittest.TestCase):
         self.assertIn('D06_G07_CLASSROOM_OWNER_WSL2_ONLY',
                       result.stdout + result.stderr)
 
+    def test_ci_status_explicitly_says_no_gui_launched(self):
+        src = RUNNER.read_text()
+        self.assertIn('D06_G07_CLASSROOM_VERIFICATION_ONLY_NO_GAZEBO_NO_RVIZ', src)
+        self.assertIn('D06_G07_CLASSROOM_MOVING_ACTION=BLOCKED_WAIT_G07_OWNER', src)
+
     def test_unknown_flags_fail_closed(self):
         result = subprocess.run(['bash', str(RUNNER), '--foo'], text=True,
                                 capture_output=True, timeout=5)
