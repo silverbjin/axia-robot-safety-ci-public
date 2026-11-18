@@ -258,7 +258,6 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
     tfbuf=Buffer()
     listener=TransformListener(tfbuf,node,spin_thread=False)
     thread=threading.Thread(target=exe.spin,daemon=True)
-    thread.start()
 
     # Read-only, independent ROS callback witness. Different executor thread
     # still shares the host/GIL, so it cannot prove native publisher/RMW gaps.
@@ -297,7 +296,6 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
     ]
     independent_thread=threading.Thread(
         target=independent_executor.spin,daemon=True)
-    independent_thread.start()
 
     def independent_snapshot():
         with independent_lock:
@@ -461,8 +459,9 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
     isolated_log=None
 
     try:
-        until(lambda:bool(snapshot()[0] and snapshot()[1] and snapshot()[2]),
-              "SCAN_COSTMAP_ODOM_MISSING",25)
+        # ARM both independent receive processes before the original ROS
+        # executor can record its FIRST callback. A previous real 515.572ms
+        # gap occurred before the native or isolated process subscribed.
         if native_enabled:
             # CI-only, separate-process Gazebo Transport Rx; no publisher.
             native_log=(out/"native_gz_scan_rx.log").open("w")
@@ -494,6 +493,13 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
                     raise RuntimeError("D08_ISOLATED_ROS_SCAN_PROBE_EARLY_EXIT")
                 return isolated_trace.exists() and isolated_trace.stat().st_size>0
             until(isolated_has_samples,"ISOLATED_ROS_SCAN_RX_NOT_READY",9)
+        result["probe_armed_at_host_monotonic_sec"]=round(time.monotonic(),6)
+        result["first_gap_probes_armed_before_observer"]=True
+        thread.start()
+        independent_thread.start()
+        result["observer_executor_started_at_monotonic_sec"]=round(time.monotonic(),6)
+        until(lambda:bool(snapshot()[0] and snapshot()[1] and snapshot()[2]),
+              "SCAN_COSTMAP_ODOM_MISSING",25)
         # This information is discovery only: it does not prove a CM callback period.
         graph_start=time.monotonic()
         pubs=node.get_publishers_info_by_topic("/scan")
@@ -776,9 +782,10 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
         (out/"verdict.json").write_text(json.dumps(result,indent=2,sort_keys=True)+"\n")
         independent_executor.shutdown(timeout_sec=2)
         independent_node.destroy_node()
-        independent_thread.join(timeout=2)
+        if independent_thread.ident is not None:
+            independent_thread.join(timeout=2)
         exe.shutdown(timeout_sec=3)
         node.destroy_node()
         rclpy.shutdown()
-        if thread:thread.join(timeout=2)
+        if thread.ident is not None:thread.join(timeout=2)
     return 0 if result["status"].endswith("_PASS_NO_GOAL") else 2
