@@ -6,9 +6,9 @@ MODE="${1:---run}"
 [[ $# -le 1 && ( "$MODE" == --run || "$MODE" == --self-check ) ]] || {
   echo 'D06_WSLG_SENSOR_USAGE=--self-check|--run' >&2;exit 2;
 }
-readonly STUDENT_SHA='ec58a1d10572421db33ed570f2f4b6f31070a5ab'
+readonly STUDENT_SHA='e5df639d6f983e7494d2d240bc3394d166ea186b'
 readonly PROBE_BLOB='f795f9b6456df75546ab22988b53c953c53345a5'
-readonly SMOKE_BLOB='c84726fd4f66b1b434ce05164fc2ba3b51374824'
+readonly SMOKE_BLOB='28b3b156cd99019180b37000aa0b2706c0dc38d7'
 readonly LAUNCH_BLOB='b2886cdf509d99ea62528cd013669258764b05e0'
 readonly REPO='https://github.com/silverbjin/axia-robot-safety-student.git'
 readonly REL='block_B/day07/h01_runtime'
