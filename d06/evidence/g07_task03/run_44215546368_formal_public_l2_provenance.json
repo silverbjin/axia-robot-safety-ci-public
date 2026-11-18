@@ -1,0 +1,30 @@
+{
+  "schema": "axia.g07.task03.original_public_artifact_json_repair_provenance_v1",
+  "original_run_id": 44215546368,
+  "original_gazebo_source_sha": "c996a5f415ca90e9dac99d798944a56d6b70d8be",
+  "original_student_source_sha": "b53a5128cd7165f6465f2916b4c4554f9663798d",
+  "original_numeric_artifact_id": 14387738909,
+  "original_zip_sha256": "a0cb7e7a4c961c321e0f9c32fc0854e93b5b9137e72da5d21d9052a17d109cbe",
+  "original_formal_verdict_json_sha256": "c02a77d45a72f771e7505f0798014c528c49fbe9d4ea77c6884265cb2ca28b86",
+  "original_positive_raw_invalid_json_sha256": "ef33d89b2c4a9c06f412c73a4d555fe5ae731af3399ecebcd6eabf5e60494bc6",
+  "positive_calibration_json_tail_only_normalized_sha256": "5abb8ad189f6bb109f910b7af2d044f09f81cb375037e7682d6f759f4098f2be",
+  "normalized_path": "d06/evidence/g07_task03/task03_positive_calibration_run_44215546368_normalized.json",
+  "repair": "Original supplementary JSON ended with literal backslash+n after closing brace. Replaced those exact two bytes with one LF only; every field unchanged.",
+  "original_aux_invalid_reason": "Trailing raw literal escaped newline after JSON close; JSONDecodeError Extra data.",
+  "actual_goal": {
+    "first_failure": "NONE",
+    "goal_uuid": "d5e8b10633f04f74a24186022082aaab",
+    "guard_after_forward_cm_age_max_ms": 49.872948,
+    "cm_rmw_source_gap_max_ms": 52.513109,
+    "cm_observer_gap_max_ms": 67.913195,
+    "contact_count": 0,
+    "bag_topic_count": 14,
+    "source_goal_ci_job": 134504345226,
+    "original_formal_verdict": "TASK03_PUBLIC_L2_FORMAL_EVIDENCE_PASS_SCOPED"
+  },
+  "formal_original_json_intact": true,
+  "safety_runtime_or_goal_retested_for_aux_serializer_typo": false,
+  "owner_wsl2_l3_accepted": false,
+  "certified_estop": false,
+  "main_merged": false
+}
