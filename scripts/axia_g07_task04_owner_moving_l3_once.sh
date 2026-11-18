@@ -6,10 +6,10 @@
 set -Eeuo pipefail
 umask 077
 readonly STUDENT_REPO='silverbjin/axia-robot-safety-student'
-readonly STUDENT_SHA='ef6ffe58ddacb89ed37b225279f8e86453cf82b7'
+readonly STUDENT_SHA='725b6168b381554e29add26e0dcc85a0e2fce8e7'
 readonly REVIEW_REPO='silverbjin/axia-robot-safety-ci-public'
-readonly REVIEW_SHA='ff0455d8fc11e3a4eee26f82f4ccd59d57420002'
-readonly CI_L2_RUN=44344038055
+readonly REVIEW_SHA='99ddd89758d9bf890b6af09693eba65c52dab4d2'
+readonly CI_L2_RUN=44356618739
 MODE="${1:---run}"
 if [[ $# -gt 1 ]];then echo 'AXIA_G07_TASK04_FIRST_FAILURE=BAD_ARGUMENTS' >&2;exit 3;fi
 case "$MODE" in
@@ -241,6 +241,10 @@ done
 # their original runtime environment.
 export AXIA_G07_TASK04_GUI_D3D12_ADAPTER="$GPU"
 unset GALLIUM_DRIVER MESA_D3D12_DEFAULT_ADAPTER_NAME || true
+# Real Gazebo software-rendered gpu_lidar: same as verified public CI L2.
+# Student runner reasserts this before launching the one Gazebo server;
+# only gz sim -g / rviz2 GUI children explicitly opt out for D3D12 GPU.
+export LIBGL_ALWAYS_SOFTWARE=1
 echo "AXIA_G07_TASK04_WSLG_D3D12_GPU_SELECTED=$GPU"
 
 # Read-only native Gazebo8 contact witness, identical source and build path to CI.
