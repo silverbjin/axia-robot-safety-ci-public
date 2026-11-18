@@ -289,3 +289,82 @@ def diagnose_native_clock_during_first_gap(first_boundary, native_scan, native_c
         ),
     })
     return result
+
+
+def compare_isolated_ros_first_gap(first_boundary, isolated_events, native_events):
+    """First actual parent ROS callback gap vs separate Python ROS subscriber.
+
+    Same-source timestamp pair is mandatory; a separate process avoids shared
+    Python GIL, but cannot by itself distinguish Bridge/DDS and host scheduling.
+    Conclusions are *candidate layers*, never proven resource root causes.
+    """
+    answer={
+        "cause":"UNDETERMINED",
+        "candidate":"NO_REAL_FIRST_ROS_GAP",
+        "first_scan_violation_retained":False,
+        "isolation_proven":False,
+        "isolated_pair_matched":False,
+        "native_pair_matched":False,
+        "isolated_receive_gap_sec":None,
+        "native_receive_gap_sec":None,
+        "publisher_send_timing_proven":False,
+        "dds_internal_delay_measured":False,
+    }
+    b=first_boundary if isinstance(first_boundary,dict) else {}
+    try:
+        ros_gap=float(b["receive_gap_sec"])
+        prev_stamp=int(b["previous_ros_stamp_ns"])
+        next_stamp=int(b["current_ros_stamp_ns"])
+        parent_before=float(b["previous_host_monotonic_sec"])
+        parent_after=float(b["current_host_monotonic_sec"])
+    except (KeyError,ValueError,TypeError,OverflowError):
+        return answer
+    if ros_gap<=.5 or next_stamp<=prev_stamp or parent_after<=parent_before:
+        return answer
+    answer["first_scan_violation_retained"]=True
+
+    def pair_gap(events):
+        if not isinstance(events,(list,tuple)):
+            return None
+        def get_source(stamp):
+            found=[]
+            for e in events:
+                if not isinstance(e,dict) or e.get("topic","scan")!="scan":
+                    continue
+                try:
+                    at=float(e["host_monotonic_sec"])
+                    ns=int(e["source_stamp_ns"])
+                except (KeyError,ValueError,TypeError,OverflowError):
+                    continue
+                if ns==stamp and at==at and abs(at)<1e12:
+                    found.append(at)
+            return found
+        before=get_source(prev_stamp)
+        after=get_source(next_stamp)
+        if not before or not after:
+            return None
+        # Require receipt not later than the parent after-boundary by more
+        # than 50ms. Larger disagreement is not safe causal order evidence.
+        for a in sorted(before):
+            for c in sorted(after):
+                if c>a and c<=parent_after+.05 and a<=parent_before+.05:
+                    return round(c-a,6)
+        return None
+
+    isolated=pair_gap(isolated_events)
+    native=pair_gap(native_events)
+    answer["isolated_pair_matched"]=isolated is not None
+    answer["native_pair_matched"]=native is not None
+    if isolated is None or native is None:
+        answer["candidate"]="ROS_PROCESS_TIMESTAMP_PAIR_MISSING"
+        return answer
+    answer["isolation_proven"]=True
+    answer["isolated_receive_gap_sec"]=isolated
+    answer["native_receive_gap_sec"]=native
+    if native>.5:
+        answer["candidate"]="AT_OR_BEFORE_NATIVE_TRANSPORT_RX"
+    elif isolated>.5:
+        answer["candidate"]="ROS_BRIDGE_DDS_OR_HOST_SCHEDULER"
+    else:
+        answer["candidate"]="LOCAL_ROS_PROCESS_DISPATCH_OR_GIL"
+    return answer
