@@ -183,3 +183,109 @@ def compare_native_scan_first_gap(first_boundary, native_events):
                       if gap > .5 else "AFTER_NATIVE_TRANSPORT_RX"),
     })
     return verdict
+
+
+def diagnose_native_clock_during_first_gap(first_boundary, native_scan, native_clock):
+    """Classify a *live observed* first ROS gap using SAME-host native clock.
+
+    A Gazebo Transport /clock callback is not Gazebo's internal sensor send
+    timestamp; resource root cause is always undetermined. Timestamp pairs
+    must be found in original native scan; never synthesize missing samples.
+    """
+    base=compare_native_scan_first_gap(first_boundary, native_scan)
+    result={
+        "timing_layer":"NO_REAL_FIRST_ROS_GAP",
+        "root_resource_cause":"UNDETERMINED",
+        "first_scan_violation_retained":base["first_scan_violation_retained"],
+        "native_pair_matched":base["native_pair_matched"],
+        "native_receive_gap_sec":base["native_receive_gap_sec"],
+        "clock_window_bracketed":False,
+        "clock_callback_gap_max_sec":None,
+        "clock_sim_progress_sec":None,
+        "clock_host_span_sec":None,
+        "effective_rtf":None,
+        "gz_internal_publisher_send_measured":False,
+        "bridge_dds_send_measured":False,
+    }
+    if not base["first_scan_violation_retained"]:
+        return result
+    if not base["native_pair_matched"]:
+        result["timing_layer"]="INSUFFICIENT_NATIVE_SCAN_PAIR"
+        return result
+    if base["native_receive_gap_sec"] <= .5:
+        result["timing_layer"]="AFTER_NATIVE_TRANSPORT_RX"
+        return result
+
+    try:
+        first_stamp=int(first_boundary["previous_ros_stamp_ns"])
+        last_stamp=int(first_boundary["current_ros_stamp_ns"])
+    except (KeyError,ValueError,TypeError,OverflowError):
+        result["timing_layer"]="INSUFFICIENT_NATIVE_CLOCK"
+        return result
+    events=[x for x in native_scan if (
+        isinstance(x,dict) and
+        x.get("source_stamp_ns") in (first_stamp,last_stamp) and
+        isinstance(x.get("host_monotonic_sec"),(int,float)))]
+    try:
+        native_start=next(float(x["host_monotonic_sec"])
+                         for x in events if x["source_stamp_ns"]==first_stamp)
+        native_end=next(float(x["host_monotonic_sec"])
+                       for x in events if x["source_stamp_ns"]==last_stamp)
+    except (ValueError,StopIteration,TypeError):
+        result["timing_layer"]="INSUFFICIENT_NATIVE_CLOCK"
+        return result
+
+    result["timing_layer"]="INSUFFICIENT_NATIVE_CLOCK"
+    if not isinstance(native_clock,(list,tuple)) or len(native_clock)<3:
+        return result
+    import math
+    samples=[]
+    for item in native_clock:
+        if not isinstance(item,dict):
+            continue
+        try:
+            host=float(item["host_monotonic_sec"])
+            sim_ns=int(item["sim_stamp_ns"])
+        except (ValueError,KeyError,TypeError,OverflowError):
+            continue
+        if math.isfinite(host) and sim_ns>=0 and native_start-.1 <= host <= native_end+.1:
+            samples.append((host,sim_ns))
+    samples.sort()
+    if len(samples)<3:
+        return result
+    before=min(samples,key=lambda p:abs(p[0]-native_start))
+    after=min(samples,key=lambda p:abs(p[0]-native_end))
+    if (abs(before[0]-native_start)>.08 or
+        abs(after[0]-native_end)>.08 or
+        after[0]-before[0]<.25):
+        return result
+    window=[p for p in samples if before[0] <= p[0] <= after[0]]
+    if len(window)<3:
+        return result
+    gaps=[b[0]-a[0] for a,b in zip(window,window[1:])]
+    if any(g<0 for g in gaps):
+        return result
+    max_gap=max(gaps)
+    result["clock_callback_gap_max_sec"]=round(max_gap,6)
+    if max_gap>.25:
+        result["timing_layer"]="NATIVE_CLOCK_RECEIVE_STALL_OR_MISSING_SAMPLES"
+        return result
+    sim_progress=(after[1]-before[1])/1e9
+    if sim_progress<0:
+        result["timing_layer"]="NATIVE_CLOCK_SIM_TIME_DISCONTINUITY"
+        return result
+    span=after[0]-before[0]
+    if span<=0:
+        return result
+    rtf=sim_progress/span
+    result.update({
+        "clock_window_bracketed":True,
+        "clock_sim_progress_sec":round(sim_progress,6),
+        "clock_host_span_sec":round(span,6),
+        "effective_rtf":round(rtf,6),
+        "timing_layer":(
+            "SIMULATION_PROGRESS_SLOW"
+            if rtf < .25 else "NATIVE_SENSOR_OR_TRANSPORT_DELAY"
+        ),
+    })
+    return result
