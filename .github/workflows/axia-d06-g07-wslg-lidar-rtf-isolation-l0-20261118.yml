@@ -10,11 +10,13 @@ on:
       - 'd06/scripts/axia_d06_g07_wslg_gpu_rtf_compare_once.sh'
       - 'd06/scripts/axia_d06_g07_wslg_sensor_no_goal_once.sh'
       - 'd06/tests/test_d06_gpu_rtf_runner_safety.py'
+      - 'd06/docs/AXIA_D06_D08_MVP_NVIDIA_NO_GOAL_REUSE_RCA_20261119_KO.md'
       - 'd06/tests/test_d06_native_raw_scan_ttl_boundary.py'
   pull_request:
     paths:
       - 'd06/scripts/axia_d06_g07_wslg_gpu_rtf_compare_once.sh'
       - 'd06/tests/test_d06_gpu_rtf_runner_safety.py'
+      - 'd06/docs/AXIA_D06_D08_MVP_NVIDIA_NO_GOAL_REUSE_RCA_20261119_KO.md'
       - '.github/workflows/axia-d06-g07-wslg-lidar-rtf-isolation-l0-20261118.yml'
   workflow_dispatch:
 permissions:
