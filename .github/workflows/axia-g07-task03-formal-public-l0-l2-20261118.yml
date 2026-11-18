@@ -20,13 +20,16 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 6b06c4c873adcde93eae22171879b6489c2ce5c0
+          ref: 2818f33f0bce83f6b6adb786603f5be91328d4ba
           path: student
           persist-credentials: false
-      - name: Task03 RED genuine missing raw evidence contract
+      - name: Task03 GREEN 14-topic exact Goal/Guard/ECM fail-closed pure contract
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C student rev-parse HEAD)" = 6b06c4c873adcde93eae22171879b6489c2ce5c0
+          test "$(git -C student rev-parse HEAD)" = 2818f33f0bce83f6b6adb786603f5be91328d4ba
           cd student/block_B/day07/h01_runtime
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task03_formal_evidence.py' -v
+          python3 -m py_compile tools/p2_g07_task03_contract.py tools/p2_g07_task03_ecm_positive.py tools/p2_g07_ci_moving_goal.py tools/p2_l3_world_overlay.py ros2_ws/src/axia_safety_supervisor/axia_safety_supervisor/p2_base_guard_node.py
+          bash -n scripts/p2_no_goal_smoke_ci.sh
+          echo AXIA_G07_TASK03_PUBLIC_FORMAL_SOURCE_L0_GREEN_NO_GOAL
