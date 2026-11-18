@@ -192,7 +192,12 @@ run_verified_owner() {
   export AXIA_G07_TASK03_WITNESS_REPORT="$out/native/s02_ecm_witness.json"
   export AXIA_P0_SIM_ONLY=1 AXIA_P2_G07_PHYSICAL_PREFLIGHT=1
   export AXIA_G07_OWNER_STARTUP_PARITY=1 AXIA_G07_CI_OWNER_BAG_PARITY=1
-  export AXIA_P2_G07_OWNER_PARITY_CHECK=1
+  # The pinned Student script interprets this historical flag as CI-only:
+  # it calls p2_g07_owner_env_parity.py --mode ci and explicitly rejects
+  # microsoft-standard-WSL2. The Owner path checks --mode owner below,
+  # including ALL SAME 25 packages and 5 official file hashes.
+  # No ROS, CM, Guard, TF or safety TTL checks are skipped.
+  export AXIA_P2_G07_OWNER_PARITY_CHECK=0
   export AXIA_G07_TASK02_SIMPLE_TF_CANDIDATE=1
   export AXIA_G07_TASK03_ECM_WITNESS=1
   export AXIA_G07_TASK04_OWNER_MOVING_L3=1
@@ -214,6 +219,20 @@ run_verified_owner() {
   python3 "$runtime/tools/p2_g07_owner_env_parity.py" --mode owner \
     --output "$out/owner_parity.json" > "$out/owner_parity.log" 2>&1 ||
     hold D06_G07_OWNER_25_5_PARITY_FAILED_NO_GOAL
+  # Preserve kernel distinction: PASS here does NOT mean WSL2 scheduler or
+  # WSLg GPU timing is equivalent to the native public Linux CI machine.
+  python3 - "$out/owner_parity.json" <<'PY' ||
+    hold D06_G07_OWNER_CORE_PARITY_REPORT_INVALID_NO_GOAL
+import json,sys
+from pathlib import Path
+r=json.loads(Path(sys.argv[1]).read_text())
+assert (r.get("status")=="CORE_PARITY_PASS" and r.get("mode")=="owner"
+        and r.get("wsl_detected") is True
+        and r.get("checked_packages")==25
+        and r.get("checked_official_files")==5
+        and r.get("mismatch")=={})
+print("D06_G07_OWNER_CORE_PARITY_PASS_PACKAGES25_FILES5_WSL2")
+PY
   echo "D06_G07_OWNER_PIN_VERIFIED=$TASK04_MOVING_STUDENT_SHA"
   echo 'D06_G07_OWNER_REAL_GAZEBO_RVIZ_MOVING_CANDIDATE_START'
   echo 'D06_G07_OWNER_CONSENT_IS_MANUAL_TTY_ONLY=YES-P2-G07-GOAL'
