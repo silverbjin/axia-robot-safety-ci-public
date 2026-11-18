@@ -12,7 +12,8 @@ from d08_scan_gap_trace import (first_scan_receive_gap, diagnose_first_receive_b
                                 compare_native_scan_first_gap,
                                 diagnose_native_clock_during_first_gap,
                                 compare_isolated_ros_first_gap,
-                                compare_worst_scan_pair_receivers)
+                                compare_worst_scan_pair_receivers,
+                                scan_gap_operation_overlaps)
 import json
 import math
 from pathlib import Path
@@ -204,6 +205,16 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
     exe.add_node(node)
     thread=None
     moved=False
+    operation_spans=[]
+
+    def record_span(name,start):
+        # Bounded diagnostic of exact host-monotonic synchronous operations.
+        if len(operation_spans)<48:
+            operation_spans.append({
+                "name":name,
+                "start_sec":round(start,6),
+                "end_sec":round(time.monotonic(),6),
+            })
 
     def on_scan(msg):
         entry_at=time.monotonic()  # callback entry, before per-range CPU work
@@ -312,9 +323,15 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
         state_cli=node.create_client(GetState,"/collision_monitor/get_state")
         param_cli=node.create_client(
             GetParameters,"/collision_monitor/get_parameters")
-        if not state_cli.wait_for_service(timeout_sec=8):
+        started=time.monotonic()
+        state_ready=state_cli.wait_for_service(timeout_sec=8)
+        record_span("cm_get_state_service_wait",started)
+        if not state_ready:
             raise RuntimeError("D08_OFFICIAL_CM_NATIVE_STATE_SCAN_NOT_VERIFIED:GET_STATE_ABSENT")
-        if not param_cli.wait_for_service(timeout_sec=8):
+        started=time.monotonic()
+        params_ready=param_cli.wait_for_service(timeout_sec=8)
+        record_span("cm_get_parameters_service_wait",started)
+        if not params_ready:
             raise RuntimeError("D08_OFFICIAL_CM_NATIVE_STATE_SCAN_NOT_VERIFIED:GET_PARAMETERS_ABSENT")
         # Native lifecycle service can exist while activation is still
         # transitioning. Read ONLY real service responses until ACTIVE,
@@ -365,10 +382,12 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
         request=('name: "axia_p2_g07_obstacle", '
             'position: {x: %.9f, y: %.9f, z: %.4f}, orientation: {w: 1}'%
             (xyz[0],xyz[1],xyz[2]))
+        pose_start=time.monotonic()
         cp=subprocess.run(['gz','service','-s','/world/default/set_pose',
               '--reqtype','gz.msgs.Pose','--reptype','gz.msgs.Boolean',
               '--timeout','5000','--req',request],
               env=env,text=True,capture_output=True,timeout=13,check=False)
+        record_span("gazebo_native_set_pose",pose_start)
         (out/f'{stage}_native_ack.txt').write_text(cp.stdout+cp.stderr)
         if cp.returncode!=0 or "data: true" not in cp.stdout:
             raise RuntimeError("D08_"+stage.upper()+"_NATIVE_SET_POSE_NOT_ACKNOWLEDGED")
@@ -476,8 +495,12 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
                 return isolated_trace.exists() and isolated_trace.stat().st_size>0
             until(isolated_has_samples,"ISOLATED_ROS_SCAN_RX_NOT_READY",9)
         # This information is discovery only: it does not prove a CM callback period.
+        graph_start=time.monotonic()
         pubs=node.get_publishers_info_by_topic("/scan")
+        record_span("graph_publishers",graph_start)
+        graph_start=time.monotonic()
         consumers=node.get_subscriptions_info_by_topic("/scan")
+        record_span("graph_subscriptions",graph_start)
         result["real_scan_publishers"]=[{"node":p.node_name,"type":p.topic_type}
                                         for p in pubs]
         result["real_scan_consumers"]=[{"node":p.node_name,"type":p.topic_type}
@@ -489,7 +512,9 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
         result["scan_graph_anonymous_subscriber_count"]=sum(
             p.node_name=="_NODE_NAME_UNKNOWN_" for p in consumers)
         if not pubs:raise RuntimeError("D08_REAL_SCAN_PUBLISHER_ABSENT")
+        cm_probe_start=time.monotonic()
         result.update(read_official_cm_native_state_and_scan())
+        record_span("cm_native_service_probe",cm_probe_start)
         print("D08_OFFICIAL_CM_NATIVE_ACTIVE_SCAN_SOURCE_NO_GOAL "+
               json.dumps({k:result.get(k) for k in (
                 "official_cm_active_scan_configured",
@@ -721,6 +746,8 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
                     pair,native_events,iso_events,same_rows)
                 cmp["parent_callback_entry_gap_sec"]=round(
                     after["entry_at"]-before["entry_at"],6)
+                cmp["operation_overlap_report"]=scan_gap_operation_overlaps(
+                    pair,operation_spans)
                 result["worst_scan_causal_pair"]=cmp
                 result["worst_scan_pair_source_stamps"]=pair
                 print("D08_REAL_WORST_SCAN_SOURCE_PAIR "
@@ -744,6 +771,7 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
                 k:result["isolated_ros_process_scan_rx"][k] for k in
                 ("sample_count","max_host_receive_gap_sec","history_complete")
             },sort_keys=True),flush=True)
+        result["read_only_operation_spans"]=operation_spans[:48]
         # No synthetic /scan or arbitrary ROS cmd_vel publisher is created here.
         (out/"verdict.json").write_text(json.dumps(result,indent=2,sort_keys=True)+"\n")
         independent_executor.shutdown(timeout_sec=2)
