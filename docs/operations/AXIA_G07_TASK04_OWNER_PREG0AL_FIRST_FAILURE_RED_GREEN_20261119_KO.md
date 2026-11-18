@@ -101,7 +101,7 @@ MAIN_MERGED=false
 - Runner rc=0; X11 창 `RVIZ_X11=1`, `GAZEBO_X11=1`.
 - 실제 이동 `odom_moved_m=0.21789435001628935`, `stopped_dwell_sec=1.0155393329999924`, Native S02 contact `0/24127` 관측, 정확한 Goal UUID `2a440893522c4448a882a437aff0b652` 취소.
 - RMW CM 실제 source pairs `352`, 최대 CM publisher gap `56.385833ms` / 120ms, Observer gap `85.605417ms` / 120ms, Guard 내부 CM age `30.373535ms` / 150ms.
-- Scan/Odom/Clock 각 300ms, Guard 150ms, 120ms CM/Observer, 정지 1초, Nav/Loc Lifecycle ACK, CM clean exit, 실제 SQLite 14 topic을 같은 수치 JSON의 20개 `checks`가 모두 true로 검증.
+- Scan/Odom/Clock 각 300ms, Guard 150ms, 120ms CM/Observer, 정지 1초, Nav/Loc Lifecycle ACK, CM clean exit, 실제 SQLite 14 topic을 같은 수치 JSON의 21개 `checks`가 모두 true로 검증.
 - SHA256 custody(artifact 내 JSON 출처): `bag_sqlite_sha256=1010635b6ab33c55ede91682c042693f32e1472ec311b62347b38fad321f70c0`, `bag_metadata_sha256=23441f596dfa53469a01128bb471986ba5428e5e305b02a2ac653bc10edff33c`. 실제 강사 WSL2의 원본 bag SHA와 혼동하지 않는다.
 - 원래 Task03 공개 성공 #44223320904는 역사적 증거로만 보존하며 이번 회차 결과에 섞지 않는다.
 
