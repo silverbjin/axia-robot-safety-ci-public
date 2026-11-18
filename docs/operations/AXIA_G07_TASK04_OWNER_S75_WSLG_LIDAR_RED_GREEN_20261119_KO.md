@@ -68,3 +68,30 @@ MAIN_MERGED=false
 ```
 
 **남은 유일한 현장 검수**: 고정 공개 Owner 원샷으로 동일 강사 WSL2에서 한 번 실행하고, 주행 화면·LiDAR baseline·최초 상태/타이밍·1초 stop dwell·실제 Goal UUID 취소·CM/Guard end-to-end 안전 TTL·shutdown·원본 증거 SHA를 동일 세션으로 검수한다. 새 실패면 같은 현장 재실행부터 하지 않고 첫 실패/최초 타이밍 위반을 좁혀 공개 CI RED 회귀로 되돌린다. Main 병합은 별도 승인까지 금지.
+
+## 7. 추가 REVIEW에서 발견한 실제 Gazebo Pose 파서 오류 및 최종 출고 재인수
+
+수정 이전 `p2_g07_owner_pregoal_l2.py::parse_gz_model_pose`는 `[-2.0 | -0.5 | 0.1]`만 파싱하고 **S75 원본 `gz model --pose`의 `[-2.000520 -0.500000 0.010007]` 공백 구분 좌표는 파싱하지 못했다**. 이 때문에 앞서 실제 Gazebo에 Pose가 존재하는데 baseline에서는 `gazebo_robot_world_pose=null`로 보인 것이다. 장애물·월드 원본은 조작하지 않는다.
+
+- RED Student 테스트 SHA: `05c5adba089ba1b76a40e8d041ef19ac6b70a4b4`, `tools/test_g07_task04_owner_sensor_renderer_parity.py::test_real_gazebo_model_pose_uses_whitespace_separated_coordinates`.
+- 공개 실제 CI [#44358905525](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44358905525)에서 **L0 의도적 FAIL**: `AssertionError: None != {'x': -2.00052, ...}`, 실제 Gazebo L2는 이전 단계 실패로 실행하지 않음.
+- GREEN Student 최종 SHA: `c4cc2a7adc0309d9107e35f31d8f3dd95fa8dac2`. 최소 수정은 `line[1:-1].replace("|", " ").split()`으로 구형 pipe/실제 공백 좌표 3개를 모두 허용. `finite`/행·좌표 개수 검증 및 `UNKNOWN` 시 거부는 그대로, 안전 파라미터·Goal 절차 불변.
+- 최종 동일 소스 실제 Gazebo **No-Goal** [#44359662336](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44359662336) **SUCCESS**. `/safety/scan` front `1.4211193323135376m`, side `2.5133426189422607m`, `goal_sent=false`, `first_failure=NONE`. 정상 CLEAR이므로 이번 세션에서 block-only `gz model pose` 쿼리는 실행되지 않았음: 파서 호환성의 증거는 위 실제 출력 기반 L0.
+- 최종 동일 소스 실제 **Gazebo+Nav2 Moving Goal+RViz/Gazebo Xvfb** [#44359652805](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44359652805) **SUCCESS** (runner rc=0, `RVIZ_X11=1`, `GAZEBO_X11=1`); `first_failure=NONE`, 상태 `TASK04_REAL_GAZEBO_MOVING_GUI_L2_SCOPED_PASS`. 최종 공개 수치 JSON [artifact #14452139684](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44359652805/artifacts/14452139684), SHA256 `a3d22d61c61eb7b4ef7393b2bb7eefee8f3affab08451f4dabf1c3bb6a790ae7`.
+- 실제 동일 세션 21/21 checks true: Odometry `0.1985615656683851m`, 0속도 dwell `1.0136805289999984s`, 접촉 `0` / native `28783` iterations, Goal UUID `d909284cfa9246638e04e364bd9070ed` 취소, CM source `59.330454ms/120ms`, observer `86.804873ms/120ms`, Guard 내부 CM age `36.841757ms/150ms`; Scan/Odom/Clock 300ms, 실제 bag 14 topics, Nav/Loc Lifecycle ACK와 CM clean-exit 등 포함. JSON custody: SQLite `9cab6c717a9d82aa1e03c1d9189ab8099186dfa2a3646f468cf01ce07249a3fa`, metadata `20bc4e2e128b5db13e3c67b4b7be2d3f6454073ef6d6f316247485a937326e8b`.
+- 최종 실행기 소스 commit `8c86d72f4669d62f9a8e71b7e528052781aca980`, 내부 Student SHA `c4cc2a7...`, 공개 CI review SHA `2b4cd883e9a61286c8bf0e85295a72024c42485e`, native Moving L2 `#44359652805`. L0 Bootstrap은 새 SHA 핀에 대한 `tests/test_g07_task04_owner_moving_bootstrap.py`로 검증한다. 아래 실증 수준은 CI의 범위만 반영한다.
+
+```ini
+S75_OLD_OWNER_FIRST_FAILURE=OWNER_PREGOAL_NOT_CLEAR_BEFORE_FIXTURE
+FINAL_STUDENT_SOURCE=c4cc2a7adc0309d9107e35f31d8f3dd95fa8dac2
+PUBLIC_CI_PREG0AL_REAL_L2=PASS
+PUBLIC_CI_MOVING_GUI_REAL_L2=PASS_21_OF_21
+OWNER_NEW_WSL2_L3=NOT_RUN
+OWNER_GPU_LIDAR_0_5M_PHYSICAL_ROOT=HYPOTHESIS_NOT_YET_CONFIRMED
+OWNER_HOST_PAUSE_4_4S=UNRESOLVED
+AXIA_MVP_DEMO_ACCEPTED=HOLD
+CERTIFIED_ESTOP=false
+MAIN_MERGED=false
+```
+
+최신 실행 명령은 [강사 Owner 가이드](AXIA_G07_TASK04_OWNER_MOVING_L3_RELEASE_ONE_SHOT_GUIDE_20261118_KO.md)에만 유지한다. **이 보고서에 포함된 이전 SHA/Run 수치는 당시의 실증 기록으로 보존하며, 최신 배포판과 혼용하지 않는다.**
