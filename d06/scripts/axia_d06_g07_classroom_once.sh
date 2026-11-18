@@ -12,13 +12,14 @@ readonly TASK04_GUI_L2_RUN='44238643061'
 readonly TASK04_GUI_L2_HEAD='5bb0cd72086f2f1a057f382649b773fff106f1f9'
 readonly TASK04_GUI_SCRIPT='scripts/axia_g07_task04_public_owner_wsl2_pregate_once.sh'
 readonly TASK04_GUI_SCRIPT_BLOB='a15cf37e1a1d2a0253029c0a1dd8e2530e307c25'
-readonly TASK04_MOVING_L2_RUN='44263904176'
-readonly TASK04_MOVING_L2_HEAD='7487dde355543f2a92e412ab79788f4a39a34abb'
-readonly TASK04_MOVING_STUDENT_SHA='e9adb73d658859a53976d9848aa75bd5be710def'
+readonly TASK04_MOVING_L2_RUN='44273028236'
+readonly TASK04_MOVING_L2_HEAD='6bb4cf2676c1424e6255ba2f8e1f1bdb23019958'
+readonly TASK04_MOVING_STUDENT_SHA='c7654a5426ec17e724cc7590f01f8a43206a000c'
 readonly TASK04_MOVING_RUNTIME_SCRIPT_BLOB='daa04c5c6555a1cb9e851db8a31a57699821782a'
 readonly TASK04_MOVING_GOAL_ENGINE_BLOB='33664dacebb0a36818d13870c27176ac0923ae4c'
 readonly TASK04_MOVING_SHUTDOWN_BLOB='ff81c749b0441fee11745a29bf6fe3f7d242720c'
 readonly TASK04_MOVING_OWNER_ECM_WORLD_BLOB='e6bc7d2b167f2839a6a48f0e10bc91aa25091b0b'
+readonly TASK04_MOVING_OWNER_LAUNCH_BLOB='784a8d188f73ff4ae6d8bde136cfbd8591f942cf'
 
 hold() {
   echo "D06_G07_CLASSROOM_HOLD=$1" >&2
@@ -48,7 +49,8 @@ self_check() {
      "$TASK04_MOVING_RUNTIME_SCRIPT_BLOB" =~ ^[0-9a-f]{40}$ &&
      "$TASK04_MOVING_GOAL_ENGINE_BLOB" =~ ^[0-9a-f]{40}$ &&
      "$TASK04_MOVING_SHUTDOWN_BLOB" =~ ^[0-9a-f]{40}$ &&
-     "$TASK04_MOVING_OWNER_ECM_WORLD_BLOB" =~ ^[0-9a-f]{40}$ ]] || hold INVALID_OWNER_PIN
+     "$TASK04_MOVING_OWNER_ECM_WORLD_BLOB" =~ ^[0-9a-f]{40}$ &&
+     "$TASK04_MOVING_OWNER_LAUNCH_BLOB" =~ ^[0-9a-f]{40}$ ]] || hold INVALID_OWNER_PIN
   [[ "$TASK03_GAZEBO_L2_RUN" =~ ^[0-9]+$ &&
      "$TASK04_GUI_L2_RUN" =~ ^[0-9]+$ &&
      "$TASK04_MOVING_L2_RUN" =~ ^[0-9]+$ ]] || hold INVALID_RUN_PIN
@@ -174,7 +176,8 @@ run_verified_owner() {
   [[ "$(git hash-object "$runtime/scripts/p2_no_goal_smoke_ci.sh")" == "$TASK04_MOVING_RUNTIME_SCRIPT_BLOB" &&
      "$(git hash-object "$runtime/tools/p2_g07_ci_moving_goal.py")" == "$TASK04_MOVING_GOAL_ENGINE_BLOB" &&
      "$(git hash-object "$runtime/tools/p2_g07_ordered_shutdown.py")" == "$TASK04_MOVING_SHUTDOWN_BLOB" &&
-     "$(git hash-object "$runtime/tools/p2_l3_world_overlay.py")" == "$TASK04_MOVING_OWNER_ECM_WORLD_BLOB" ]] ||
+     "$(git hash-object "$runtime/tools/p2_l3_world_overlay.py")" == "$TASK04_MOVING_OWNER_ECM_WORLD_BLOB" &&
+     "$(git hash-object "$runtime/ros2_ws/src/axia_safety_bringup/launch/axia_tb3_p2.launch.py")" == "$TASK04_MOVING_OWNER_LAUNCH_BLOB" ]] ||
     hold G07_OWNER_RUNTIME_BLOB_MISMATCH
   bash -n "$runtime/scripts/p2_no_goal_smoke_ci.sh" ||
     hold G07_OWNER_RUNTIME_SYNTAX_NO_GOAL
@@ -201,6 +204,11 @@ run_verified_owner() {
   # including ALL SAME 25 packages and 5 official file hashes.
   # No ROS, CM, Guard, TF or safety TTL checks are skipped.
   export AXIA_P2_G07_OWNER_PARITY_CHECK=0
+  # The exact frozen G07 world overlay includes the relocated physical
+  # obstacle at x=-0.58, y=-0.5 with native Contact witness. Task04 Owner
+  # Simple-TF admission must match THAT scenario, never CI spoofed authority.
+  # Verified by pinned world-overlay Git blob and public scenario regression.
+  export AXIA_P2_G07_RELOCATED_OBSTACLE=1
   export AXIA_G07_TASK02_SIMPLE_TF_CANDIDATE=1
   export AXIA_G07_TASK03_ECM_WITNESS=1
   export AXIA_G07_TASK04_OWNER_MOVING_L3=1

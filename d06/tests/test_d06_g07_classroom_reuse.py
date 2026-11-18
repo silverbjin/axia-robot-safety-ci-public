@@ -65,12 +65,18 @@ class D06ClassroomReuse(unittest.TestCase):
     def test_last_green_task04_pinned_with_all_native_l2_gates(self):
         src = RUNNER.read_text()
         for exact in (
-            '44263904176',
-            '7487dde355543f2a92e412ab79788f4a39a34abb',
-            'e9adb73d658859a53976d9848aa75bd5be710def',
+            '44273028236',
+            '6bb4cf2676c1424e6255ba2f8e1f1bdb23019958',
+            'c7654a5426ec17e724cc7590f01f8a43206a000c',
         ):
             self.assertIn(exact, src)
         self.assertIn('TASK04_MOVING', src)
+
+    def test_pinned_last_green_clock_order_launch_blob(self):
+        src=RUNNER.read_text()
+        self.assertIn('784a8d188f73ff4ae6d8bde136cfbd8591f942cf',src)
+        self.assertIn('TASK04_MOVING_OWNER_LAUNCH_BLOB',src)
+        self.assertIn('git hash-object "$runtime/ros2_ws/src/axia_safety_bringup/launch/axia_tb3_p2.launch.py"',src)
 
     def test_pinned_new_owner_ecm_world_source_blob(self):
         src = RUNNER.read_text()
@@ -101,7 +107,7 @@ class D06ClassroomReuse(unittest.TestCase):
 case "$2" in
   */44223320904) echo '6bc8b0711ab056e63e100f3eede2c5f06cdf3856 completed success' ;;
   */44238643061) echo '5bb0cd72086f2f1a057f382649b773fff106f1f9 completed success' ;;
-  */44263904176) echo '7487dde355543f2a92e412ab79788f4a39a34abb completed success' ;;
+  */44273028236) echo '6bb4cf2676c1424e6255ba2f8e1f1bdb23019958 completed success' ;;
   *) exit 2 ;;
 esac
 """)
@@ -111,7 +117,7 @@ esac
             r = subprocess.run(["bash",str(RUNNER),"--ci-status"],env=env,
                                text=True,capture_output=True,timeout=7)
             self.assertEqual(r.returncode,0,r.stderr)
-            self.assertIn('TASK04_MOVING_HISTORICAL_CI_PASS run=44263904176',r.stdout)
+            self.assertIn('TASK04_MOVING_HISTORICAL_CI_PASS run=44273028236',r.stdout)
             self.assertIn('VERIFICATION_ONLY_NO_GAZEBO_NO_RVIZ',r.stdout)
             self.assertIn('OWNER_MOVING_L3=NOT_RUN',r.stdout)
 
@@ -122,7 +128,7 @@ esac
 case "$2" in
   */44223320904) echo '6bc8b0711ab056e63e100f3eede2c5f06cdf3856 completed success' ;;
   */44238643061) echo '5bb0cd72086f2f1a057f382649b773fff106f1f9 completed success' ;;
-  */44263904176) echo '09b2c7cf54ff1074ff4439008a3cb1a6fb1355de completed failure' ;;
+  */44273028236) echo '09b2c7cf54ff1074ff4439008a3cb1a6fb1355de completed failure' ;;
   *) exit 2 ;;
 esac
 """)
