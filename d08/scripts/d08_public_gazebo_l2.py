@@ -427,10 +427,12 @@ def positive_contact_once(out:Path,env:dict,contact_topic:str)->dict:
     return verdict
 
 
-def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=False,cm_cadence_l1:bool=False,official_nav2:bool=False,official_path_phases:bool=False):
+def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=False,cm_cadence_l1:bool=False,official_nav2:bool=False,official_path_phases:bool=False,live_person_range:bool=False):
     out=Path(out).resolve()
     if official_path_phases and not official_nav2:
         raise ValueError('D08_PATH_PHASES_REQUIRE_SAME_WORLD_OFFICIAL_NAV2')
+    if live_person_range and not (official_nav2 and official_path_phases):
+        raise ValueError('D08_LIVE_RANGE_REQUIRES_SAME_WORLD_OFFICIAL_NAV2_3PATHS')
     if out.exists():raise ValueError('D08_EVIDENCE_EXISTS')
     out.mkdir(parents=True)
     result={'gate':'D08_ONE_WORLD_GAZEBO_RGBD_NO_GOAL',
@@ -586,6 +588,24 @@ def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=Fals
                              'PHASE_CONTRACT_FAILED')))
                 print('D08_OFFICIAL_SAME_WORLD_THREE_PHASE_PATHS_L2_PASS_NO_GOAL',
                       flush=True)
+        if live_person_range:
+            # SAME actual Gazebo World + Waffle + physical person Proxy as all
+            # three official Nav2 paths above, with externally running pinned
+            # upstream C++ yolo_ros. This is strictly read-only D05 median.
+            from d08_live_person_range_session import run_session as live_range
+            measured_dir=out/'live_person_range'
+            live_rc=live_range(measured_dir,env,checkout_sha,
+                               gz_robot,observe_real_front_scan)
+            result['live_person_range']=json.loads(
+                (measured_dir/'verdict.json').read_text())
+            if live_rc!=0:
+                raise RuntimeError('D08_LIVE_PERSON_RANGE_FIRST_BOUNDARY:'+
+                   str(result['live_person_range'].get('first_boundary',
+                       'REAL_ROS_D05_TWO_VALID_UNKNOWN_NOT_PROVEN')))
+            result['yolo_executed']=True
+            result['d05_executed']=True
+            print('D08_LIVE_SAME_WORLD_RGBD_YOLO_D05_ACCEPTED_CANDIDATE',
+                  flush=True)
         # The calibration happens ONCE, only on the actual no-Goal L2 CI
         # path after real RGBD and the native Contact topic were verified.
         if lidar_pre_goal:
@@ -682,10 +702,13 @@ if __name__=='__main__':
         help='Opt-in official Nav2 owns the same world/Waffle, no driving Goal')
     p.add_argument('--official-path-phases',action='store_true',
         help='Opt-in same-run actual far/intrusion/restore 3 official Paths, NO GOAL')
+    p.add_argument('--live-person-range',action='store_true',
+        help='Same-world pinned live C++ YOLO RGBD/D05 2 VALID + UNKNOWN read-only')
     p.add_argument('--positive-contact-once',action='store_true',
         help='Single non-robot Gazebo Contact positive calibration, no Nav2 Goal')
     a=p.parse_args()
     raise SystemExit(run(a.out,a.actor,positive_contact=a.positive_contact_once,
                              lidar_pre_goal=a.lidar_pre_goal,cm_cadence_l1=a.cm_cadence_l1,
                              official_nav2=a.official_nav2,
-                             official_path_phases=a.official_path_phases))
+                             official_path_phases=a.official_path_phases,
+                             live_person_range=a.live_person_range))

@@ -47,6 +47,7 @@ jobs:
             d08/tests/test_d08_same_world_replan.py \
             d08/tests/test_d08_amcl_tf_subscription_order.py \
             d08/tests/test_d08_live_person_range.py \
+            d08/tests/test_d08_live_person_range_session.py \
             d08/tests/test_d08_collocated_human_proxy.py \
             d08/tests/test_d08_g07_lidar_visible_proxy.py \
             d08/tests/test_d08_rgbd_alignment_evidence.py \
@@ -553,6 +554,79 @@ jobs:
           assert v['moving_goal_sent'] is False and v['roi_depth_d05_verified'] is False
           print('UI9_EXACT_YOLO_ROS_REPLAY_L1_ONLY_D05_AND_WSLG_UNVERIFIED')
           PY
+      - name: SAME real Gazebo Waffle physical person with official Nav2, live YOLO and D05 (NO GOAL)
+        shell: bash
+        run: |
+          set -eo pipefail
+          # Reuse compiled exact upstream yolo_ros + validated Microsoft
+          # ONNX Runtime and model from THIS SAME CI job, never rebuild engine.
+          apt-get install -y -qq --no-install-recommends \
+            python3-yaml python3-numpy ros-jazzy-nav2-minimal-tb3-sim \
+            ros-jazzy-turtlebot3-gazebo ros-jazzy-ros-gz \
+            ros-jazzy-xacro ros-jazzy-nav2-bringup ros-jazzy-navigation2 \
+            ros-jazzy-nav2-collision-monitor \
+            libgl1-mesa-dri libglx-mesa0 xvfb xauth
+          mkdir -p /tmp/axia-d08-live-assets
+          curl --fail --location --retry 3 --connect-timeout 15 --max-time 100 \
+            'https://fuel.gazebosim.org/1.0/Mingfei/models/actor/tip/files/meshes/walk.dae' \
+            -o /tmp/axia-d08-live-assets/walk.dae
+          echo '49af0df3a319d1cb8ca2cebf02dbd00f625e5d5bec820bc5e109925b18b65c6e  /tmp/axia-d08-live-assets/walk.dae' | sha256sum -c -
+          python3 - <<'PY'
+          from pathlib import Path
+          src=Path('/tmp/axia_ui9_yolo_model/d08_ui9_yolo.yaml').read_text()
+          assert src.count('use_sim_time: false')==1
+          assert src.count('rgb_topic: /axia/d08/rgbd/image')==1
+          Path('/tmp/axia_ui9_yolo_model/d08_live_yolo.yaml').write_text(
+            src.replace('use_sim_time: false','use_sim_time: true'))
+          print('D08_LIVE_OFFICIAL_YOLO_SIM_CLOCK_CONFIG_SOURCE_VERIFIED')
+          PY
+          source /opt/ros/jazzy/setup.bash
+          source /tmp/axia_ui9_yolo_ws/install/setup.bash
+          setsid ros2 launch yolo_bringup yolo.launch.py \
+            params_file:=/tmp/axia_ui9_yolo_model/d08_live_yolo.yaml \
+            > /tmp/d08_live_yolo_node.log 2>&1 &
+          LIVE_YOLO_PID=$!
+          trap 'kill -- -"$LIVE_YOLO_PID" 2>/dev/null || true' EXIT
+          sleep 3
+          if ! kill -0 "$LIVE_YOLO_PID"; then
+            echo 'D08_LIVE_YOLO_NATIVE_LAUNCH_EXITED'
+            tail -n 80 /tmp/d08_live_yolo_node.log
+            exit 2
+          fi
+          python3 -u d08/scripts/d08_public_gazebo_l2.py \
+            --actor /tmp/axia-d08-live-assets/walk.dae \
+            --out results/d08-live-person-nav2-e2e \
+            --official-nav2 --official-path-phases --live-person-range || {
+              echo 'D08_LIVE_SAME_WORLD_FIRST_BOUNDARY'
+              tail -n 100 /tmp/d08_live_yolo_node.log || true
+              exit 2
+            }
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          v=json.loads(Path('results/d08-live-person-nav2-e2e/verdict.json').read_text())
+          assert v['status']=='D08_REAL_GAZEBO_WAFFLE_RGBD_NO_GOAL_PASS',v
+          assert v['goal_sent'] is False and v['cmd_vel_published'] is False
+          assert v['official_path_phases']['status']=='D08_REAL_THREE_OFFICIAL_NAV2_PATH_PHASES_L2_PASS_NO_GOAL'
+          d=v['live_person_range']
+          assert d['status']=='D08_REAL_LIVE_PERSON_RANGE_2VALID_UNKNOWN_L2_PASS_NO_GOAL',d
+          assert d['valid_distance_delta_m']>=.12
+          assert v['actual_rgbd']['matched'] is True
+          assert v['yolo_executed'] is True and v['d05_executed'] is True
+          assert d['actual_human_restored_far'] is True
+          print('D08_REAL_LIVE_RGBD_YOLO_D05_NAV2_THREE_PATHS_L2_PASS_NO_GOAL')
+          PY
+      - name: Upload exact-SHA SAME-WORLD public live RGBD-YOLO-D05 Nav2 L2 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d08-same-world-live-person-range-cm-nav2-evidence
+          path: |
+            results/d08-live-person-nav2-e2e/
+            /tmp/d08_live_yolo_node.log
+          retention-days: 7
+          if-no-files-found: warn
+
       - name: Upload only public-source, replay classification verdict
         if: always()
         uses: actions/upload-artifact@v4
