@@ -31,3 +31,9 @@
 - L2: 기존 정확한 342c... SHA에 대해서만 실제 Gazebo PASS (#44310101993). 래퍼 추가 커밋에서 Gazebo 새 실행 없음.
 - L3: Owner WSL2/WSLg NOT_RUN.
 - Git: 공개 브랜치 `release/d08-wsl2-owner-acceptance-20261118`, main 병합 없음.
+
+## 추가 회귀 — PR synthetic merge checkout 경계
+
+- 첫 경량 공개 CI [#44324664874](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44324664874) 성공, `Ran 3 tests in 0.005s; OK`, `D08_OWNER_WRAPPER_PUBLIC_CI_L0_PASS_NO_ROS_GAZEBO_NOT_L3`. 그러나 checkout 실제 SHA `830a1343b50eea913d638ecb335f69a82d4a24b8`은 PR synthetic merge로서 릴리스 HEAD `182c462c1cd67b20488b3de7c0869ea1d9d49101`와 다름.
+- 단일 RED 가설: Actions checkout이 PR merge commit을 기본 사용. 새 L0 회귀는 `ref: ${{ github.event.pull_request.head.sha || github.sha }}`가 없으면 FAIL하도록 추가. 로컬 RED `Ran 4 tests; FAILED (failures=1)`; GREEN 동일 소스에서 `Ran 4 tests; OK`.
+- 최소 수정: 기존 Owner 런타임·AMCL 파일/모든 TTL 불변, wrapper workflow checkout만 정확한 PR HEAD로 핀하고 `AXIA_D08_RELEASE_EXPECTED_SHA` 비교. 새 공개 CI 결과와 릴리스 최종 SHA는 PR #178의 run에 기록. main 병합하지 않음.
