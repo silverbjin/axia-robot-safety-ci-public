@@ -8,6 +8,7 @@ D07-H01 L2 world/map coordinates are *candidates*, not evidence for D08.
 from __future__ import annotations
 
 from collections import deque
+from d08_scan_gap_trace import first_scan_receive_gap
 import json
 import math
 from pathlib import Path
@@ -440,6 +441,11 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
         result["first_scan_wall_gap_over_500ms"]=next((
             {"index":i+1,"gap_sec":round(v,6)}
             for i,v in enumerate(gaps) if v>.5),None)
+        # Preserve source-vs-host timing at the FIRST >500ms receive
+        # violation. Publisher-vs-bridge causality remains unmeasured.
+        result["first_scan_timing_boundary"]=first_scan_receive_gap(
+            [(sample["at"],int(round(sample["stamp"]*1e9))) for sample in scans],
+            limit_s=.5)
         result["three_phases"]=rows
         result.update(evaluate_three_phases(rows,gaps))
     except Exception as exc:
