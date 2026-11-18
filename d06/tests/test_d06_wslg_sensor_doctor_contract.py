@@ -42,6 +42,15 @@ class WslgDoctorSafety(unittest.TestCase):
         self.assertIn('git hash-object "$RUNTIME/tools/g07_wslg_no_goal_sensor_probe.py"',t)
         self.assertIn('d06-wslg-sensor-XXXXXXXX',t)
 
+    def test_ros_commands_are_checked_after_sourcing_jazzy(self):
+        # A fresh WSL2 Ubuntu shell need not already have /opt/ros/jazzy/bin
+        # in PATH. Previous runner checked ros2/rviz2 before source/setup.
+        t=SCRIPT.read_text()
+        source=t.index('source /opt/ros/jazzy/setup.bash')
+        post=t.index('for exe in ros2 gz rviz2;do')
+        self.assertLess(source,post)
+        self.assertNotIn('for exe in git bash python3 ros2 gz',t[:source])
+
     def test_archive_custody_on_both_unsafe_and_clear(self):
         t=SCRIPT.read_text()
         self.assertIn('tar -C "$EVIDENCE_ROOT" -czf "$RUN_DIR.tar.gz"',t)
