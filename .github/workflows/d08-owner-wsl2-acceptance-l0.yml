@@ -8,6 +8,14 @@ on:
       - d08/tests/test_d08_owner_wsl2_acceptance_wrapper.py
       - d08/docs/reports/D08_OWNER_WSL2_ACCEPTANCE_WRAPPER_20261118_KO.md
       - .github/workflows/d08-owner-wsl2-acceptance-l0.yml
+  pull_request:
+    branches:
+      - baseline/d08-owner-wsl2-acceptance-tested-20261118
+    paths:
+      - d08/scripts/d08_owner_wsl2_acceptance_20261118.sh
+      - d08/tests/test_d08_owner_wsl2_acceptance_wrapper.py
+      - d08/docs/reports/D08_OWNER_WSL2_ACCEPTANCE_WRAPPER_20261118_KO.md
+      - .github/workflows/d08-owner-wsl2-acceptance-l0.yml
   workflow_dispatch:
 permissions:
   contents: read
