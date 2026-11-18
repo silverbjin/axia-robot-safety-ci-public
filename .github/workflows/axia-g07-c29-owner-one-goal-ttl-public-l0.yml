@@ -1,0 +1,26 @@
+name: AXIA G07 C29 Owner one Goal 150ms 300ms public pinned L0
+on:
+  push:
+    branches: [fix/g07-c29-owner-one-goal-ttl-20261117]
+    paths: ['.github/workflows/axia-g07-c29-owner-one-goal-ttl-public-l0.yml']
+permissions:
+  contents: read
+jobs:
+  owner-exact-public-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Exact source blobs and no ROS/manual Goal authority regression
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git hash-object scripts/axia_g07_c29_owner_one_goal_ttl_once.sh)" = 58ae3f94aab4aa29c6764ed105a1995d8f755709
+          test "$(git hash-object tests/test_axia_g07_c29_owner_candidate.py)" = c918cce754b8b72b1f03ee8668e0c1fb6e77bf8a
+          bash -n scripts/axia_g07_c29_owner_one_goal_ttl_once.sh
+          python3 -m unittest discover -s tests -p test_axia_g07_c29_owner_candidate.py -v
+          bash scripts/axia_g07_c29_owner_one_goal_ttl_once.sh --self-check
+          ! grep -Fq 'AXIA_MVP_DEMO_ACCEPTED=PASS' scripts/axia_g07_c29_owner_one_goal_ttl_once.sh
+          echo AXIA_G07_C29_PUBLIC_OWNER_ONE_GOAL_L0_PASS_NO_ROS_NO_GAZEBO_NO_GOAL
