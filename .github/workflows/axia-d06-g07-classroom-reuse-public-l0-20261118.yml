@@ -1,4 +1,4 @@
-name: D06 G07 historical Gazebo drive classroom source reuse L0
+name: D06 G07 exact Task04 GREEN Owner candidate reuse L0
 on:
   push:
     branches: [feat/d06-g07-classroom-reuse-20261118]
@@ -28,6 +28,6 @@ jobs:
           bash -n d06/scripts/axia_d06_g07_classroom_once.sh
           python3 -m unittest discover -s d06/tests -p 'test_d06_g07_classroom_reuse.py' -v
           bash d06/scripts/axia_d06_g07_classroom_once.sh --self-check
-          echo 'D06_G07_CLASSROOM_PUBLIC_L0_PASS SEVEN_TESTS NO_ROS_NO_GAZEBO_NO_GOAL'
+          echo 'D06_G07_CLASSROOM_PUBLIC_L0_PASS TWELVE_TESTS NO_ROS_NO_GAZEBO_NO_GOAL'
           echo 'D06_G07_CLASSROOM_OWNER_MOVING_L3=NOT_RUN'
           echo 'AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false'
