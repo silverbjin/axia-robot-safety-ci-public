@@ -10,7 +10,8 @@ from __future__ import annotations
 from collections import deque
 from d08_scan_gap_trace import (first_scan_receive_gap, diagnose_first_receive_boundary,
                                 compare_native_scan_first_gap,
-                                diagnose_native_clock_during_first_gap)
+                                diagnose_native_clock_during_first_gap,
+                                compare_isolated_ros_first_gap)
 import json
 import math
 from pathlib import Path
@@ -434,6 +435,10 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
     native_enabled=env.get("AXIA_D08_NATIVE_RX_PROBE")=="1"
     native_proc=None
     native_log=None
+    isolated_trace=out/"isolated_ros_scan_rx.jsonl"
+    isolated_enabled=env.get("AXIA_D08_ROS_ISOLATED_RX_PROBE")=="1"
+    isolated_proc=None
+    isolated_log=None
 
     try:
         until(lambda:bool(snapshot()[0] and snapshot()[1] and snapshot()[2]),
@@ -456,6 +461,19 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
                     raise RuntimeError("D08_NATIVE_GZ_SCAN_PROBE_EARLY_EXIT")
                 return native_trace.exists() and native_trace.stat().st_size>0
             until(native_has_samples,"NATIVE_GZ_SCAN_RX_NOT_READY",9)
+        if isolated_enabled:
+            isolated_log=(out/"isolated_ros_scan_rx.log").open("w")
+            isolated_proc=subprocess.Popen([
+                "/usr/bin/python3","-u",
+                str(Path(__file__).with_name("d08_ros_isolated_scan_probe.py")),
+                "--out",str(isolated_trace),"--max-samples","1024",
+            ],env=env,stdin=subprocess.DEVNULL,stdout=isolated_log,
+              stderr=subprocess.STDOUT)
+            def isolated_has_samples():
+                if isolated_proc.poll() is not None:
+                    raise RuntimeError("D08_ISOLATED_ROS_SCAN_PROBE_EARLY_EXIT")
+                return isolated_trace.exists() and isolated_trace.stat().st_size>0
+            until(isolated_has_samples,"ISOLATED_ROS_SCAN_RX_NOT_READY",9)
         # This information is discovery only: it does not prove a CM callback period.
         pubs=node.get_publishers_info_by_topic("/scan")
         consumers=node.get_subscriptions_info_by_topic("/scan")
@@ -583,6 +601,15 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
                 native_proc.wait(timeout=2)
         if native_log is not None:
             native_log.close()
+        if isolated_proc is not None:
+            isolated_proc.terminate()
+            try:
+                isolated_proc.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                isolated_proc.kill()
+                isolated_proc.wait(timeout=2)
+        if isolated_log is not None:
+            isolated_log.close()
         if native_enabled:
             events=[]
             try:
@@ -635,6 +662,40 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
                         "clock_max_host_receive_gap_sec",
                         "first_violation_cause")}),
                   flush=True)
+        if isolated_enabled:
+            iso_events=[]
+            native_events=[]
+            try:
+                if isolated_trace.is_file():
+                    iso_events=[json.loads(line) for line in
+                                isolated_trace.read_text().splitlines() if line.strip()]
+                if native_trace.is_file():
+                    native_events=[json.loads(line) for line in
+                                   native_trace.read_text().splitlines() if line.strip()]
+            except (OSError,ValueError) as exc:
+                result["isolated_ros_scan_read_error"]=str(exc)[:200]
+            iso_gaps=[b["host_monotonic_sec"]-a["host_monotonic_sec"]
+                      for a,b in zip(iso_events,iso_events[1:])]
+            result["isolated_ros_process_scan_rx"]={
+                "enabled":True,
+                "separate_process":True,
+                "sample_count":len(iso_events),
+                "history_complete":len(iso_events)<1024,
+                "max_host_receive_gap_sec":round(max(iso_gaps),6)
+                    if iso_gaps else None,
+                "first_gap_crosscheck":compare_isolated_ros_first_gap(
+                    result.get("first_scan_timing_boundary"),
+                    iso_events,native_events),
+                "bridge_dds_internal_send_measured":False,
+                "root_resource_cause":"UNDETERMINED",
+            }
+            if len(iso_events)<8 or len(iso_events)>=1024:
+                result["status"]="HOLD"
+                result.setdefault("first_boundary","D08_ISOLATED_ROS_RX_EVIDENCE_INCOMPLETE")
+            print("D08_ISOLATED_ROS_SCAN_PROCESS_WITNESS "+json.dumps({
+                k:result["isolated_ros_process_scan_rx"][k] for k in
+                ("sample_count","max_host_receive_gap_sec","history_complete")
+            },sort_keys=True),flush=True)
         # No synthetic /scan or arbitrary ROS cmd_vel publisher is created here.
         (out/"verdict.json").write_text(json.dumps(result,indent=2,sort_keys=True)+"\n")
         independent_executor.shutdown(timeout_sec=2)
