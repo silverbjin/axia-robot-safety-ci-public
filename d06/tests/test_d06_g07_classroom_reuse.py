@@ -60,6 +60,26 @@ class D06ClassroomReuse(unittest.TestCase):
         self.assertIn('D06_G07_CLASSROOM_VERIFICATION_ONLY_NO_GAZEBO_NO_RVIZ', src)
         self.assertIn('D06_G07_CLASSROOM_MOVING_ACTION=BLOCKED_WAIT_G07_OWNER', src)
 
+    def test_last_green_task04_pinned_with_all_native_l2_gates(self):
+        src = RUNNER.read_text()
+        for exact in (
+            '44249348860',
+            '6b98a18fa7abc80401a129f715ace7703ab54286',
+            '1129cd8804954fd6481d1b6b4ebf0e0b98c68c3c',
+        ):
+            self.assertIn(exact, src)
+        self.assertIn('TASK04_MOVING', src)
+
+    def test_owner_live_reuses_proven_g07_manual_runner(self):
+        src = RUNNER.read_text()
+        self.assertIn('run_verified_owner', src)
+        self.assertIn('AXIA_G07_TASK04_OWNER_MOVING_L3=1', src)
+        self.assertIn('AXIA_G07_TASK04_EXPECTED_STUDENT_SHA', src)
+        self.assertIn('scripts/p2_no_goal_smoke_ci.sh', src)
+        self.assertIn('AXIA_G07_CI_SIM_GOAL_ALLOWED=0', src)
+        self.assertNotIn('export GITHUB_ACTIONS=true', src)
+        self.assertNotIn('ros2 action send_goal', src)
+
     def test_unknown_flags_fail_closed(self):
         result = subprocess.run(['bash', str(RUNNER), '--foo'], text=True,
                                 capture_output=True, timeout=5)
