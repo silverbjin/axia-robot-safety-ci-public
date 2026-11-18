@@ -72,6 +72,13 @@ assert d["goal_sent"] is False and d["fixture_moved"] is False
 assert m.get("ros_clock_rtf") is not None and m["ros_clock_rtf"]>0
 print("D06_GPU_RTF_CLOCK_MEASURED",m["ros_clock_rtf"],m["timing_pattern"])
 PY
+  # Record the actual Gazebo/Ogre2 GL renderer separately from glxinfo:
+  # glxinfo describes the WSLg client, NOT conclusive sensor-server GPU use.
+  # Filter to minimal render evidence; never assert GPU causation from it.
+  if [[ -r "$HOME/.gz/rendering/ogre2.log" ]];then
+    grep -Ei 'GL_RENDERER|GL_VENDOR|OpenGL|D3D12' "$HOME/.gz/rendering/ogre2.log" \
+      | tail -n 12 > "$RUN_DIR/$lc.ogre2_gl_evidence.txt" || true
+  fi
   echo "D06_GPU_RTF_AB_CASE_FINISHED=$gpu SENSOR_EXIT=$rc NO_GOAL"
   # A fatal shutdown after NVIDIA must not be followed by another session.
   if [[ "$gpu" == NVIDIA ]] && grep -Eiq 'exit code -11|SIGSEGV|Segmentation fault|Traceback' "$RUN_DIR/nvidia.launch.log";then
