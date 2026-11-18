@@ -43,7 +43,9 @@ World overlay `p2_l3_world_overlay.py`은 원통을 최초 `(-0.58,-0.50)`에 �
 - 진단 증거 확대 커밋 `c9888b6dd592db8b7f261282489c83c815f4ca4a`, 실제 L2 [#44342786005](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44342786005): `launch.log` **첫 오류** `G07_TASK02_SIMPLE_TF_SIM_ONLY_AUTHORITY_DENIED`, 다음 `/tmp/nav2_m_*.sdf` 파일 부재, 후속 `CLOCK_MISSING`. 이 오류의 최초 원인은 실제 현장 근거리 장애물 오류와 **별개**다.
 - 원인 확정 범위: 새 no-Goal 워크플로가 Moving 전용 Simple TF 권한 플래그를 실수로 포함했다. `AXIA_G07_TASK02_SIMPLE_TF_CANDIDATE` 플래그를 **no-Goal 워크플로에서만 제거**: `594de36540ba8808cde55e5471a6be5370eb9c26`.
 - 이어진 `/tmp/nav2_m_*.sdf` 임시 World 파일 부재가 위 launch 예외의 후속인지 별도 Gazebo start 순서 경쟁인지 아직 분리되지 않았다. 그럴듯한 원인만으로 World 또는 TTL을 임의 수정하지 않는다.
-- 수정 후 실제 L2: [#44343312599](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44343312599) — 결과 별도 확인 필요. 성공 판정을 사전 기입하지 않음.
+- 수정 후 실제 L2: [#44343312599](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44343312599) **completed/success**, 실제 runner `rc=0`.
+- 해당 단일 실제 센서 관측: `status=CLEAR`, `first_failure=NONE`, `/safety/scan frame_id=base_scan`, sim stamp `38.802`, `front_m=1.4095721244812012`, `side_m=2.5160880088806152`, Goal 0. `P2_G07_OWNER_PREGOAL_L2_READY_NO_GOAL`와 preloaded set_pose ACK 후 LiDAR 2개 검증에 대한 기존 runner 결과는 성공. 이 수치는 원본 현장 0.527/0.630m와 **불일치**함. 해당 사실은 현장 원인 규명 **미완료**로 분류한다.
+- 주의: 해당 baseline의 `raw_scan=null`, `gazebo_robot_world_pose=null`, `initial_obstacle_world_pose=null`. 추가된 읽기 전용 좌표 조회는 초기 BLOCKED에서만 실행하도록 한 상태이므로, 이번 CLEAR 회차는 실제 Gazebo Pose 출처를 증명하지 않는다. 정상/오염 세션 비교를 완료했다고 주장하지 않는다.
 
 ## 5. REVIEW / 명령 / 판정
 
@@ -80,7 +82,7 @@ AXIA_G07_STUDENT_RUNTIME="$PWD" PYTHONDONTWRITEBYTECODE=1 \
 6. 새 Student SHA의 한 번의 실제 Moving Goal+GUI, STOP dwell, 0 contact, 정확 Goal UUID status 5, Lifecycle ACK, Owner GPU L3 원본 검수
 
 ```ini
-G07_PREG0AL_REAL_CLEAR=NOT_VERIFIED
+G07_PREG0AL_REAL_CLEAR=PASS_CI_NO_GOAL_ONLY
 G07_SENSOR_AND_SAFETY_TTL=NOT_VERIFIED
 G07_MOVING_GOAL_GUI_NEW_SHA=NOT_RUN
 OWNER_WSL2_L3=HOLD
