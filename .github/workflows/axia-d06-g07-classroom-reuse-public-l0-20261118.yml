@@ -12,6 +12,7 @@ on:
       - '.github/workflows/axia-d06-g07-classroom-reuse-public-l0-20261118.yml'
       - 'd06/docs/AXIA_D06_G07_CLASSROOM_REUSE_20261118_KO.md'
       - 'd06/docs/AXIA_D06_WSL2_OWNER_CI_KERNEL_FIRST_FAILURE_RCA_20261118_KO.md'
+      - 'd06/docs/AXIA_D06_WSL2_OWNER_HEREDOC_WORLD_ECM_RCA_20261118_KO.md'
   pull_request:
     paths:
       - 'd06/scripts/axia_d06_g07_classroom_once.sh'
@@ -23,6 +24,7 @@ on:
       - '.github/workflows/axia-d06-g07-classroom-reuse-public-l0-20261118.yml'
       - 'd06/docs/AXIA_D06_G07_CLASSROOM_REUSE_20261118_KO.md'
       - 'd06/docs/AXIA_D06_WSL2_OWNER_CI_KERNEL_FIRST_FAILURE_RCA_20261118_KO.md'
+      - 'd06/docs/AXIA_D06_WSL2_OWNER_HEREDOC_WORLD_ECM_RCA_20261118_KO.md'
 permissions:
   contents: read
 jobs:
