@@ -201,6 +201,11 @@ run_verified_owner() {
   # including ALL SAME 25 packages and 5 official file hashes.
   # No ROS, CM, Guard, TF or safety TTL checks are skipped.
   export AXIA_P2_G07_OWNER_PARITY_CHECK=0
+  # The exact frozen G07 world overlay includes the relocated physical
+  # obstacle at x=-0.58, y=-0.5 with native Contact witness. Task04 Owner
+  # Simple-TF admission must match THAT scenario, never CI spoofed authority.
+  # Verified by pinned world-overlay Git blob and public scenario regression.
+  export AXIA_P2_G07_RELOCATED_OBSTACLE=1
   export AXIA_G07_TASK02_SIMPLE_TF_CANDIDATE=1
   export AXIA_G07_TASK03_ECM_WITNESS=1
   export AXIA_G07_TASK04_OWNER_MOVING_L3=1
