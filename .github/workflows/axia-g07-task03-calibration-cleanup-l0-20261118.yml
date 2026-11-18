@@ -16,14 +16,14 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: d0744fde2bf39f5b655c62bdd64bb4f1e3d9fabf
+          ref: 46358819f8e8096d0f456fbc9e16c7272fad3b5d
           path: student
           persist-credentials: false
-      - name: RED reproduce actual public #44217387168 disposable NO_GOAL Navigation ACK timeout with positive contact zero leaked process
+      - name: GREEN exact disposable NO_GOAL Navigation timeout only after positive Contact and zero process leaks; moving Goal unchanged
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C student rev-parse HEAD)" = d0744fde2bf39f5b655c62bdd64bb4f1e3d9fabf
+          test "$(git -C student rev-parse HEAD)" = 46358819f8e8096d0f456fbc9e16c7272fad3b5d
           cd student/block_B/day07/h01_runtime
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p test_g07_task03_calibration_cleanup.py -v
           echo TASK03_NO_GOAL_CALIBRATION_SHUTDOWN_ONLY_NO_NEW_GOAL
