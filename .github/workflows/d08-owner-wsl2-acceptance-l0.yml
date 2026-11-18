@@ -1,0 +1,32 @@
+name: AXIA D08 pinned WSL2 Owner NO_GOAL wrapper L0
+on:
+  push:
+    branches:
+      - release/d08-wsl2-owner-acceptance-20261118
+    paths:
+      - d08/scripts/d08_owner_wsl2_acceptance_20261118.sh
+      - d08/tests/test_d08_owner_wsl2_acceptance_wrapper.py
+      - d08/docs/reports/D08_OWNER_WSL2_ACCEPTANCE_WRAPPER_20261118_KO.md
+      - .github/workflows/d08-owner-wsl2-acceptance-l0.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  owner-wrapper-l0:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out exact release commit
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Test immutable bootstrap and launch wrapper (no ROS or Gazebo)
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          echo "D08_OWNER_WRAPPER_CI_SHA=$(git rev-parse HEAD)"
+          test "$(git hash-object d08/scripts/d08_owner_no_goal_bootstrap.sh)" = 'bad5b738e57827a102ebe56595d3b4b7dc3e6f83'
+          bash -n d08/scripts/d08_owner_wsl2_acceptance_20261118.sh
+          python3 -m unittest discover -s d08/tests -p 'test_d08_owner_wsl2_acceptance_wrapper.py' -v
+          bash d08/scripts/d08_owner_wsl2_acceptance_20261118.sh --self-check
+          echo D08_OWNER_WRAPPER_PUBLIC_CI_L0_PASS_NO_ROS_GAZEBO_NOT_L3
