@@ -1,0 +1,65 @@
+name: AXIA D06 WSLg original Waffle no-goal sensor doctor public L0
+on:
+  push:
+    branches: ['feat/d06-wslg-no-goal-doctor-ci-20261118']
+    paths:
+      - '.github/workflows/axia-d06-wslg-no-goal-sensor-doctor-l0-20261118.yml'
+      - 'd06/scripts/axia_d06_g07_wslg_sensor_no_goal_once.sh'
+      - 'd06/tests/test_d06_wslg_sensor_doctor_contract.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  exact-code-readonly-regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: 9862353e7116bc4a14a5bb365ae356642e83ef0e
+          path: student
+          persist-credentials: false
+      - name: Real exact source lint and no motion authority negative
+        run: |
+          set -Eeuo pipefail
+          R=student/block_B/day07/h01_runtime
+          test "$(git -C student rev-parse HEAD)" = 9862353e7116bc4a14a5bb365ae356642e83ef0e
+          test "$(git hash-object "$R/tools/g07_wslg_no_goal_sensor_probe.py")" = f795f9b6456df75546ab22988b53c953c53345a5
+          test "$(git hash-object "$R/scripts/p2_no_goal_smoke_ci.sh")" = 48203661d92b92517f5ea44f4a0b14cc26b24630
+          test "$(git hash-object "$R/ros2_ws/src/axia_safety_bringup/launch/axia_tb3_p2.launch.py")" = b2886cdf509d99ea62528cd013669258764b05e0
+          bash -n d06/scripts/axia_d06_g07_wslg_sensor_no_goal_once.sh
+          bash -n "$R/scripts/p2_no_goal_smoke_ci.sh"
+          python3 -m py_compile "$R/tools/g07_wslg_no_goal_sensor_probe.py" "$R/ros2_ws/src/axia_safety_bringup/launch/axia_tb3_p2.launch.py"
+          bash d06/scripts/axia_d06_g07_wslg_sensor_no_goal_once.sh --self-check
+          set +e
+          bash d06/scripts/axia_d06_g07_wslg_sensor_no_goal_once.sh --run > owner-denied.log 2>&1
+          rc=$?
+          set -e
+          test "$rc" -eq 3
+          grep -Fq D06_WSLG_NO_GOAL_REAL_OWNER_WSLG_REQUIRED owner-denied.log
+          echo 'D06_WSLG_FAKE_CI_OWNER_RUN_DENIED_NO_GOAL'
+      - name: Verify actual Owner public Git bootstrap using pinned raw fetch
+        run: |
+          set -Eeuo pipefail
+          TMP="$(mktemp -d)"
+          trap 'rm -rf -- "$TMP"' EXIT
+          STUDENT_SHA=9862353e7116bc4a14a5bb365ae356642e83ef0e
+          git clone --quiet --no-checkout --filter=blob:none \
+            https://github.com/silverbjin/axia-robot-safety-student.git "$TMP/student"
+          git -C "$TMP/student" fetch --quiet --depth=1 origin "$STUDENT_SHA"
+          git -C "$TMP/student" checkout --quiet --detach "$STUDENT_SHA"
+          test "$(git -C "$TMP/student" rev-parse HEAD)" = "$STUDENT_SHA"
+          R="$TMP/student/block_B/day07/h01_runtime"
+          test "$(git hash-object "$R/tools/g07_wslg_no_goal_sensor_probe.py")" = f795f9b6456df75546ab22988b53c953c53345a5
+          test "$(git hash-object "$R/scripts/p2_no_goal_smoke_ci.sh")" = 48203661d92b92517f5ea44f4a0b14cc26b24630
+          test "$(git hash-object "$R/ros2_ws/src/axia_safety_bringup/launch/axia_tb3_p2.launch.py")" = b2886cdf509d99ea62528cd013669258764b05e0
+          bash -n "$R/scripts/p2_no_goal_smoke_ci.sh"
+          echo 'AXIA_D06_WSLG_OWNER_REAL_GITHUB_SHA_BLOB_BOOTSTRAP_PASS_NO_GOAL'
+      - name: First unsafe field and negative boundary 5 cases
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest discover -s student/block_B/day07/h01_runtime/tools -p 'test_g07_wslg_no_goal_sensor_probe.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_wslg_sensor_doctor_contract.py' -v
+          echo 'AXIA_D06_G07_WSLG_NO_GOAL_L0_PASS REAL_ROS_GAZEBO_WSLG_NOT_RUN'
