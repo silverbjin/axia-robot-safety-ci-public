@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import math
 import time
+from collections import deque
 
 
 def inspect_free_map_pose(msg, x: float, y: float, radius_m=.12) -> dict:
@@ -217,6 +218,7 @@ def admit_actual_amcl(node, x: float, y: float, timeout_s=24.0) -> dict:
     from rclpy.time import Time
     from nav_msgs.msg import OccupancyGrid,Odometry
     from sensor_msgs.msg import LaserScan
+    from rosgraph_msgs.msg import Clock
     from geometry_msgs.msg import PoseWithCovarianceStamped
     from nav2_msgs.srv import SetInitialPose
     from tf2_ros import Buffer,TransformListener,TransformException
@@ -224,6 +226,9 @@ def admit_actual_amcl(node, x: float, y: float, timeout_s=24.0) -> dict:
     latest={}
     last_arrival={}
     first_safety_gap={}
+    # Actual real sensor callback times/stamps, bounded read-only memory.
+    # No synthetic ROS message, no safety TTL or Gazebo update-rate change.
+    receive_history={k:deque(maxlen=200) for k in ("scan","odom","clock")}
     request_sent_at=[None]
     first_post_request_amcl=[None]
     def stamp_ns(msg):
@@ -232,12 +237,18 @@ def admit_actual_amcl(node, x: float, y: float, timeout_s=24.0) -> dict:
         now=time.monotonic()
         if kind in ("scan","odom") and kind in last_arrival:
             gap=now-last_arrival[kind]
-            if gap>.5 and kind not in first_safety_gap:
+            if gap>=.5 and kind not in first_safety_gap:
+                prior=receive_history[kind][-1] if receive_history[kind] else None
                 first_safety_gap[kind]={
                     "gap_sec":round(gap,6),
-                    "first_at_host_monotonic":round(now,6)}
+                    "first_at_host_monotonic":round(now,6),
+                    "previous_ros_stamp_ns":prior[1] if prior else None,
+                    "current_ros_stamp_ns":stamp_ns(msg),
+                    "publisher_rmw_gap_measured":False}
         last_arrival[kind]=now
         latest[kind]=(msg,now)
+        if kind in receive_history:
+            receive_history[kind].append((now,stamp_ns(msg)))
         if (kind=="amcl_pose" and request_sent_at[0] is not None and
             now>=request_sent_at[0] and first_post_request_amcl[0] is None):
             # Sample actual ROS source-time age AT reception. Static AMCL
@@ -252,6 +263,12 @@ def admit_actual_amcl(node, x: float, y: float, timeout_s=24.0) -> dict:
                "first_received_host_monotonic":round(now,6)}
             print("D08_AMCL_FIRST_REAL_POST_REQUEST_POSE "+
                   str(first_post_request_amcl[0]),flush=True)
+    def receive_clock(msg):
+        now=time.monotonic()
+        ns=int(msg.clock.sec)*10**9+int(msg.clock.nanosec)
+        if ns>0 and (not receive_history["clock"]
+                     or ns>receive_history["clock"][-1][1]):
+            receive_history["clock"].append((now,ns))
     qos=QoSProfile(depth=1,reliability=ReliabilityPolicy.RELIABLE,
                    durability=DurabilityPolicy.TRANSIENT_LOCAL)
     subs=[
@@ -261,6 +278,8 @@ def admit_actual_amcl(node, x: float, y: float, timeout_s=24.0) -> dict:
              lambda m:recv("odom",m),qos_profile_sensor_data),
         node.create_subscription(LaserScan,"/scan",
              lambda m:recv("scan",m),qos_profile_sensor_data),
+        node.create_subscription(Clock,"/clock",
+             receive_clock,qos_profile_sensor_data),
         node.create_subscription(PoseWithCovarianceStamped,"/amcl_pose",
              lambda m:recv("amcl_pose",m),10),
     ]
@@ -352,12 +371,24 @@ def admit_actual_amcl(node, x: float, y: float, timeout_s=24.0) -> dict:
                 "odom_first_gap_over_500ms":first_safety_gap.get("odom"),
             }
             last_witness=witness
+            # A genuine initial no-Goal callback scheduling gap is retained
+            # as a first violation. It may be recovered ONLY with new real
+            # /scan, /odom and /clock observations for >=1s; no active
+            # safety/Goal execution is authorized by this readiness gate.
+            if first_safety_gap:
+                try:
+                    recovery=assess_pre_goal_receive_recovery(
+                        receive_history,started_at=request_sent_at[0],now=now)
+                except ValueError as exc:
+                    last_error=str(exc)
+                    last_witness["no_goal_recovery_pending"]=last_error
+                    continue
+                witness["no_goal_pre_goal_recovery"]=recovery
             try:
                 source_check=assess_static_amcl_witness(witness)
             except ValueError as exc:
                 last_error=str(exc)
-                if ("FIRST_LIVE_SCAN_ODOM_GAP" in last_error or
-                    "AMCL_POSE_STALE_AT_FIRST_CAPTURE" in last_error):
+                if "AMCL_POSE_STALE_AT_FIRST_CAPTURE" in last_error:
                     break
                 continue
             verdict.update(source_check)
@@ -367,6 +398,9 @@ def admit_actual_amcl(node, x: float, y: float, timeout_s=24.0) -> dict:
             verdict["map_base_link_tf_stamp_ns"]=witness["tf"]["stamp_ns"]
             verdict["map_base_link_tf_source"]="real_tf2_buffer_lookup"
             verdict["live_scan_odom_at_localization"]=witness
+            if source_check.get("startup_gap_recovered_no_goal"):
+                print("D08_FIRST_LIVE_SCAN_ODOM_GAP_RECOVERED_PRE_GOAL_ONLY "+
+                      str(witness["no_goal_pre_goal_recovery"]),flush=True)
             print("D08_AMCL_REAL_FIRST_POSE_PLUS_LIVE_TF_READY "+
                   str({"amcl_source_stamp_ns":first["stamp_ns"],
                        "tf_stamp_ns":witness["tf"]["stamp_ns"],
