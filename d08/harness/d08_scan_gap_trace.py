@@ -448,3 +448,45 @@ def compare_worst_scan_pair_receivers(pair, native, isolated_ros,
     else:
         verdict["candidate"]="MIXED_RECEIVER_TIMING_UNDETERMINED"
     return verdict
+
+
+def scan_gap_operation_overlaps(parent_pair, spans):
+    """Read-only correlation: actual host callback gap vs synchronous spans.
+
+    Overlap alone never proves the enclosed operation held the GIL/RMW lock.
+    Any future code fix needs separate A/B evidence at same ROS/Gazebo L2.
+    """
+    verdict={"status":"INSUFFICIENT_TIMING_EVIDENCE",
+             "root_cause_confirmed":False,
+             "overlaps":[]}
+    if not isinstance(parent_pair,dict) or not isinstance(spans,(list,tuple)):
+        return verdict
+    import math
+    try:
+        start=float(parent_pair["previous_host_monotonic_sec"])
+        end=float(parent_pair["current_host_monotonic_sec"])
+    except (KeyError,ValueError,TypeError,OverflowError):
+        return verdict
+    if not all(math.isfinite(t) for t in (start,end)) or end<=start:
+        return verdict
+    result=[]
+    for span in spans[:64]:
+        if not isinstance(span,dict):
+            continue
+        name=span.get("name")
+        try:
+            a=float(span["start_sec"]);b=float(span["end_sec"])
+        except (KeyError,ValueError,TypeError,OverflowError):
+            continue
+        if not isinstance(name,str) or not math.isfinite(a) or not math.isfinite(b) or b<=a:
+            continue
+        overlap=min(end,b)-max(start,a)
+        if overlap>0:
+            result.append({"name":name,
+                           "overlap_sec":round(overlap,6),
+                           "span_duration_sec":round(b-a,6),
+                           "started_in_gap":start<=a<=end})
+    result.sort(key=lambda item:-item["overlap_sec"])
+    verdict["status"]="OBSERVED_OVERLAP_NOT_CAUSE"
+    verdict["overlaps"]=result[:16]
+    return verdict
