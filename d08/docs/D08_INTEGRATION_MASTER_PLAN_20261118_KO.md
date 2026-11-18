@@ -68,3 +68,20 @@
 4. G07 이동 strict 최신 Green 확인 전 Task03은 별도 HOLD.
 
 계획 수정이 필요하면 기능 수정 전에 별도 계획 수정 커밋을 남긴다.
+
+## 7. 2026-11-18 v1.1: upstream ONNX Runtime 404로 인한 최소 CI 공급 경로 변경
+
+- 최초 실패 증거: Public CI Run #44202916170 (HEAD a538c15a956f4bf4ff651c306a0bdafba113ce48). Real Gazebo same physical proxy + native /scan L2 job succeeded, **downstream C++ YOLO job failed**: `curl: (22) The requested URL returned error: 404` when downloading Microsoft's official ONNX Runtime 1.20.0 GitHub tarball.
+- **새로운 확장 아님**: YOLO 엔진 `mgonzs13/yolo_ros` 고정 SHA `94d2dd500cb26027ee9c019f4d3a02029ac615cc`와 ONNX Runtime **1.20.0 그대로** 유지. Engine fork/새 YOLO 모델/임의 버전업 금지.
+- 수정 가설: Microsoft official NuGet `Microsoft.ML.OnnxRuntime` **1.20.0** (공식 flat-container `https://api.nuget.org/v3-flatcontainer/microsoft.ml.onnxruntime/1.20.0/microsoft.ml.onnxruntime.1.20.0.nupkg`)의 linux-x64 runtime .so와 해당 버전 C++ headers를, 원본 vendor의 `-DONNXRUNTIME_ROOT` 지원으로 전달. NuGet asset은 HTTP/ZIP 검사, package metadata ID/version, include/lib ABI & ELF 점검 및 파일 SHA256 로그를 통과한 경우에만 사용. 단순 HTTP 200이나 파일 존재만으로 build/ROS PASS 금지.
+- RED: GitHub tarball 404 및 6MB 미만 HTML/비 ZIP, 잘못된 NuGet package/version/arch, lib·header 누락; upstream 에러를 Gazebo 센서 FAIL로 잘못 판정하는 오류.
+- GREEN: 공식 NuGet 1.20.0 정확한 pkg 바이너리 재사용으로 pinned C++ `yolo_ros` build, 실제 `yolo_msgs/DetectionArray` 생성까지 PUBLIC CI. 기존 실제 Gazebo RGB 재생 L1과 같은 실행의 실시간 YOLO는 여전히 별도 계약.
+- 실패 시 `D08_ORIGINAL_ONNX_ASSET_UNAVAILABLE` 또는 `D08_NUGET_ASSET_VALIDATION_BLOCKED`를 증거에 남기고 Task04 HOLD. 외부 무결성/ABI가 충족되지 않으면 새로운 모델 구현으로 확대하지 않는다.
+
+## 8. v1.1: Task02 단일 세계 공식 Nav2 최소 launch 후보
+
+- Official Jazzy `nav2_bringup/tb3_simulation_launch.py`는 실제 `world:=...`, `robot_sdf:=...`, `headless:=True`, `use_rviz:=False`, `use_composition:=False` 인자를 지원한다. **새 두 번째 Gazebo 없이**, 기존 D08 `build_overlay` 결과를 같은 공식 launcher에 주입하는 opt-in 실행 경로만 검토한다.
+- 기존 D08 단독 Gazebo L2는 변경하지 않고 보존; opt-in 통합 분기는 검증된 D07-H01 물리 proxy/공식 planner 경로와 provenance를 일치시킨다.
+- 우선 실제 공식 Nav2 launch의 named Waffle spawn, /scan·/clock·TF·/odom, lifecycle, `ComputePathToPose` read-only 경계 **최초 실패 1개**만 L0→ROS L1→Gazebo L2로 평가. 준비되지 않은 경로에서는 GOAL/속도 발행 및 통합 PASS를 금지한다.
+- D06 실제 CM /scan input은 격리 output/read-only로만 구독 관찰하며, 기존 isolated synthetic CM L1 결과를 승격하지 않는다.
+- G07 Moving strict 및 Owner WSLg 진입 게이트 변경 없음.
