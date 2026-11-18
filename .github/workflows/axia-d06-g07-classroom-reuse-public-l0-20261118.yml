@@ -8,6 +8,7 @@ on:
       - 'd06/tests/test_d06_g07_owner_mode_field_regression.py'
       - '.github/workflows/axia-d06-g07-classroom-reuse-public-l0-20261118.yml'
       - 'd06/docs/AXIA_D06_G07_CLASSROOM_REUSE_20261118_KO.md'
+      - 'd06/docs/AXIA_D06_WSL2_OWNER_CI_KERNEL_FIRST_FAILURE_RCA_20261118_KO.md'
   pull_request:
     paths:
       - 'd06/scripts/axia_d06_g07_classroom_once.sh'
@@ -15,6 +16,7 @@ on:
       - 'd06/tests/test_d06_g07_owner_mode_field_regression.py'
       - '.github/workflows/axia-d06-g07-classroom-reuse-public-l0-20261118.yml'
       - 'd06/docs/AXIA_D06_G07_CLASSROOM_REUSE_20261118_KO.md'
+      - 'd06/docs/AXIA_D06_WSL2_OWNER_CI_KERNEL_FIRST_FAILURE_RCA_20261118_KO.md'
 permissions:
   contents: read
 jobs:
@@ -38,6 +40,6 @@ jobs:
           python3 -m unittest discover -s d06/tests -p 'test_d06_g07_classroom_reuse.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_g07_owner_mode_field_regression.py' -v
           bash d06/scripts/axia_d06_g07_classroom_once.sh --self-check
-          echo 'D06_G07_CLASSROOM_PUBLIC_L0_PASS FOURTEEN_PLUS_FOUR_OWNER_PARITY_TESTS NO_ROS_NO_GAZEBO_NO_GOAL'
+          echo 'D06_G07_CLASSROOM_PUBLIC_L0_PASS FOURTEEN_PLUS_FIVE_OWNER_PARITY_TESTS NO_ROS_NO_GAZEBO_NO_GOAL'
           echo 'D06_G07_CLASSROOM_OWNER_MOVING_L3=NOT_RUN'
           echo 'AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false'
