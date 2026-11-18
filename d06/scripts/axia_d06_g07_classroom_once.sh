@@ -224,7 +224,7 @@ import json,sys
 from pathlib import Path
 runtime,root,output=map(Path,sys.argv[1:])
 sys.path.insert(0,str(runtime/"tools"))
-from p2_g07_task03_contract import audit_bag_14
+from p2_g07_task03_contract import audit_bag_14,audit_guard_internal_cm_age
 def load(name):
     return json.loads((root/name).read_text())
 r=load("g07_ci_moving/ci_moving_goal_result.json")
@@ -232,10 +232,19 @@ s=load("g07_ordered_shutdown.json")
 a=load("g07_shutdown_audit.json")
 w=load("s02_ecm_witness.json")
 bag=audit_bag_14(root/"rosbag2")
+rows=[json.loads(line) for line in
+      (root/"g07_ci_moving/actual_ros_events.jsonl").read_text().splitlines()]
+goals=[row for row in rows if row.get("kind")=="owner_goal_published"]
+ends=[row for row in rows if row.get("kind")=="task03_motion_window_end"]
+guard=(audit_guard_internal_cm_age(rows,goal_start=goals[0]["t"],
+                                  window_end=ends[0]["t"])
+       if len(goals)==len(ends)==1 else {"status":"HOLD"})
 checks={
  "manual_pid_tty_owner_admitted":r.get("owner_authority_verified") is True,
  "numeric_candidate_only":r.get("status")=="NUMERICAL_CANDIDATE",
  "no_guard_latch":r.get("guard_latched") is False,
+ "guard_internal_cm_age_150ms":guard.get("status")=="GUARD_NATIVE_CM_AGE_TTL150_PASS",
+ "one_real_goal_window":len(goals)==len(ends)==1,
  "first_timing_violation_none":r.get("first_timing_violation") is None,
  "actual_movement":r.get("observed_odom_moved_m",0)>.05,
  "stopped_dwell_1s":r.get("odom_stopped_dwell_sec",0)>=1,
@@ -243,7 +252,7 @@ checks={
  "navigation_ack":s.get("navigation_ack") is True,
  "localization_ack":s.get("localization_ack") is True,
  "cm_child_clean_exit":a.get("cm_exit_code")==0,
- "native_contact0":w.get("sensor_found") is True and w.get("report_complete") is True and w.get("positive_contacts")==0,
+ "native_contact0":w.get("sensor_found") is True and w.get("report_complete") is True and w.get("positive_contacts")==0 and w.get("missing_iterations")==0 and type(w.get("observed_iterations")) is int and w["observed_iterations"]>=20,
  "bag_sqlite14":bag.get("status")=="ACTUAL_SQLITE_14_TOPIC_CUSTODY_PASS",
  "cm_observer_120ms":0<r.get("max_cm_interval_sec",999)<=.12,
  "guard_observer_150ms":0<r.get("max_guard_interval_sec",999)<=.15,
