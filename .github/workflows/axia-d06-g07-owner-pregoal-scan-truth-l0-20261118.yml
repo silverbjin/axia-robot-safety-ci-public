@@ -1,0 +1,30 @@
+name: D06 G07 exact WSLg pregoal LaserScan truth public L0
+on:
+  push:
+    branches: [fix/d06-owner-pregoal-scan-truth-20261118]
+    paths:
+      - '.github/workflows/axia-d06-g07-owner-pregoal-scan-truth-l0-20261118.yml'
+      - 'd06/tests/test_d06_pregoal_field_evidence.py'
+      - 'd06/fixtures/g07_owner_pregoal_lidar_summary_20261118.json'
+      - 'd06/docs/AXIA_D06_OWNER_PREGOAL_LIVE_CI_TEST_AND_RELEASE_PROMPT_20261118_KO.md'
+permissions:
+  contents: read
+jobs:
+  original-field-scan-truth:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: 8934f30ed7c497f31f3eeccacab49f5585156fbd
+          path: student
+          persist-credentials: false
+      - name: Validate immutable public Student SHA and actual numeric field incident
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C student rev-parse HEAD)" = 8934f30ed7c497f31f3eeccacab49f5585156fbd
+          python3 -m unittest discover -s student/block_B/day07/h01_runtime/tools             -p 'test_g07_owner_pregoal_field_truth.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_pregoal_field_evidence.py' -v
+          echo 'AXIA_D06_OWNER_PREG0AL_FIELD_6_PLUS_3_L0_GREEN_ROS_GAZEBO_WSLG_NOT_RUN'
