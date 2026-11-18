@@ -28,7 +28,7 @@ class D06ClassroomReuse(unittest.TestCase):
             'ros2 topic pub', 'pkill -f', 'killall', 'wsl --shutdown',
         ):
             self.assertNotIn(forbidden, src)
-        self.assertIn('D06_G07_CLASSROOM_MOVING_OWNER_NOT_RELEASED', src)
+        self.assertIn('D06_G07_OWNER_REAL_TTY_REQUIRED_NO_GOAL', src)
         self.assertIn('AXIA_MVP_DEMO_ACCEPTED=HOLD', src)
 
     def test_static_self_check_is_offline_and_no_goal(self):
@@ -38,11 +38,11 @@ class D06ClassroomReuse(unittest.TestCase):
         self.assertIn('D06_G07_CLASSROOM_STATIC_PASS', result.stdout)
         self.assertIn('NO_ROS_NO_GOAL', result.stdout)
 
-    def test_unreleased_moving_owner_fails_closed_before_download(self):
+    def test_owner_live_without_tty_fails_closed_before_download(self):
         result = subprocess.run(['bash', str(RUNNER), '--live'], text=True,
                                 capture_output=True, timeout=5)
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn('D06_G07_CLASSROOM_MOVING_OWNER_NOT_RELEASED',
+        self.assertIn('D06_G07_OWNER_REAL_TTY_REQUIRED_NO_GOAL',
                       result.stdout + result.stderr)
         self.assertIn('AXIA_MVP_DEMO_ACCEPTED=HOLD',
                       result.stdout + result.stderr)
@@ -58,7 +58,7 @@ class D06ClassroomReuse(unittest.TestCase):
     def test_ci_status_explicitly_says_no_gui_launched(self):
         src = RUNNER.read_text()
         self.assertIn('D06_G07_CLASSROOM_VERIFICATION_ONLY_NO_GAZEBO_NO_RVIZ', src)
-        self.assertIn('D06_G07_CLASSROOM_MOVING_ACTION=BLOCKED_WAIT_G07_OWNER', src)
+        self.assertIn('D06_G07_CLASSROOM_MOVING_ACTION=--live_MANUAL_TTY_OWNER_CANDIDATE', src)
 
     def test_last_green_task04_pinned_with_all_native_l2_gates(self):
         src = RUNNER.read_text()
