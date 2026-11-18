@@ -1,3 +1,5 @@
+# Actual 44306415620 first /scan raw 400.119ms while /safety/scan 119.38ms, ROS RTF .984428;
+# public L0 test_d06_native_raw_scan_ttl_boundary captures it and NEVER relaxes 300ms.
 name: AXIA D06 G07 real native separated LiDAR and ROS Clock RTF L2
 on:
   push:
