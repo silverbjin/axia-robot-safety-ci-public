@@ -10,8 +10,6 @@ jobs:
   cleanup-boundary-l0:
     runs-on: ubuntu-24.04
     timeout-minutes: 8
-    container:
-      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
