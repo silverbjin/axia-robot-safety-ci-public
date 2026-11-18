@@ -98,14 +98,14 @@ with zipfile.ZipFile(dest,'w',compression=zipfile.ZIP_DEFLATED,
             if total>65536 and path.suffix=='.log':
                 head=stream.read(12000)
                 stream.seek(max(0,total-32000))
-                payload=head+b'\\n[LOG_SNIPPET_MIDDLE_OMITTED]\\n'+stream.read()
+                payload=head+b'\n[LOG_SNIPPET_MIDDLE_OMITTED]\n'+stream.read()
             elif total<=262144:
                 payload=stream.read()
             else:
                 continue
         zf.writestr(rel,payload)
         hashes.append(hashlib.sha256(payload).hexdigest()+'  '+rel)
-    zf.writestr('SHA256SUMS','\\n'.join(hashes)+'\\n')
+    zf.writestr('SHA256SUMS','\n'.join(hashes)+'\n')
 print('AXIA_G07_TASK04_DIAGNOSTIC_BUNDLE_WRITTEN',flush=True)
 PY_DIAGNOSTICS
     if [[ -s "$OUT.diagnostics.zip" ]];then
