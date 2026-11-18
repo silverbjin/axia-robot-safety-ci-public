@@ -4,9 +4,9 @@ import subprocess
 import unittest
 
 SCRIPT=Path(__file__).resolve().parents[1]/"scripts/axia_g07_task04_owner_moving_l3_once.sh"
-SHA="ef6ffe58ddacb89ed37b225279f8e86453cf82b7"
-RUN=44344038055
-REVIEW_SHA='ff0455d8fc11e3a4eee26f82f4ccd59d57420002'
+SHA="725b6168b381554e29add26e0dcc85a0e2fce8e7"
+RUN=44356618739
+REVIEW_SHA='99ddd89758d9bf890b6af09693eba65c52dab4d2'
 
 class OwnerMovingBootstrap(unittest.TestCase):
     def test_static_self_check_instant_no_ros(self):
@@ -41,6 +41,7 @@ class OwnerMovingBootstrap(unittest.TestCase):
     def test_wslg_gpu_env_is_only_assigned_to_verified_gui_children(self):
         s=SCRIPT.read_text()
         self.assertIn('AXIA_G07_TASK04_GUI_D3D12_ADAPTER',s)
+        self.assertIn('export LIBGL_ALWAYS_SOFTWARE=1',s)
         self.assertIn('unset GALLIUM_DRIVER MESA_D3D12_DEFAULT_ADAPTER_NAME',s)
         self.assertNotIn('export GALLIUM_DRIVER=d3d12',s)
         self.assertIn('MESA_D3D12_DEFAULT_ADAPTER_NAME="$adapter"',s)
