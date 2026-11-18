@@ -26,4 +26,5 @@ jobs:
           set -Eeuo pipefail
           test "$(git -C student rev-parse HEAD)" = f6d63585649a4fdcf24edee5b9aaecc29002f386
           python3 -m unittest discover -s student/block_B/day07/h01_runtime/tools             -p 'test_g07_owner_pregoal_field_truth.py' -v
-          echo 'AXIA_D06_OWNER_PREG0AL_FIELD_L0_GREEN_ROS_GAZEBO_WSLG_NOT_RUN'
+          python3 -m unittest discover -s d06/tests -p 'test_d06_pregoal_field_evidence.py' -v
+          echo 'AXIA_D06_OWNER_PREG0AL_FIELD_5_PLUS_3_L0_GREEN_ROS_GAZEBO_WSLG_NOT_RUN'
