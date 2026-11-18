@@ -57,3 +57,29 @@
 6. **출고 가능한 산출물은 NO_GOAL 진단기 하나뿐**: `d06/scripts/axia_d06_g07_wslg_sensor_no_goal_once.sh`, 공개 GREEN L0 고정 ref `f907dfe4b2da9fad091da4982bbc3dd237d9fd79`, Git blob `df1c6158a07ed3139bacc451b9c452a562732929`. Owner WSL2에서 ROS2 Jazzy/Gazebo Harmonic, NVIDIA/Intel WSLg 실제 20s 센서 결과를 자동 수집하고 `~/axia_d06_g07_sensor_no_goal_evidence` 아래 원본 tar.gz + SHA256 보존. 안전 위반 시 RC3/HOLD, 정상 20s도 `NO_GOAL_SENSOR_WINDOW_CLEAR_CANDIDATE`까지만, 절대 Moving·최종 인수 PASS 아님.
 
 **WSLg 검증 범위:** 실제 강사 MSI WSLg 센서 실측은 수정 후 `NOT_RUN`. 기존 현장 .526/.629m와 Intel renderer의 근거는 보존되지만, NVIDIA 어댑터 전환 시 원인 해결은 미증명. `D06_GAZEBO_LIVE_RELEASE=HOLD`, `AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false`. 사용자 현장 한 차례의 NO_GOAL 증거에서 actual renderer, Scan 데이터, 주기, Guard/CM 경계를 먼저 판정하고 승인 전 main 병합 금지.
+
+## 7. 최종 WSL2 출고 점검 — PATH + 실제 Git bootstrap 회귀 (2026-11-18)
+
+### 최초 문제와 RED
+
+기존 NO_GOAL Owner one-shot은 **ROS 2 Jazzy `source`보다 먼저** `command -v ros2`, `rviz2`, `gz`를 검사했습니다. Ubuntu WSL2 새 세션에서 ROS 명령이 PATH에 등록되지 않은 경우 ROS는 실제 설치됐더라도 `D06_WSLG_MISSING_EXECUTABLE=ros2`로 잘못 차단될 수 있습니다.
+
+- 관련 코드: `d06/scripts/axia_d06_g07_wslg_sensor_no_goal_once.sh`
+- 신규 회귀: `d06/tests/test_d06_wslg_sensor_doctor_contract.py::WslgDoctorSafety.test_ros_commands_are_checked_after_sourcing_jazzy`.
+- **실제 RED**: 공개 [#44299109661](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44299109661), 위 회귀가 실행기 순서를 위반한다고 판정. 단위 테스트 기대 문자열을 구현된 `ros2 gz rviz2 colcon` 목록과 일치시키는 과정도 공개 [#44299280146](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44299280146)에서 별도 ERROR로 발견·수정.
+
+### 최소 GREEN
+
+- ROS2/rviz2/gz/colcon 명령 존재 검사를 **`source /opt/ros/jazzy/setup.bash` 이후**로 이동하고, `git bash python3 glxinfo xwininfo sha256sum tar timeout` 일반 OS 도구만 `source` 전에 검사합니다.
+- 공개 L0에 실제 GitHub `git clone --no-checkout --filter=blob:none` → `git fetch --depth=1 origin <exact Student SHA>` → `git checkout --detach` → 3개 개별 Git blob → Bash syntax 검증을 추가했습니다. 이 검증은 강사 WSL2 실행기의 실제 소스 부트스트랩 명령과 동일합니다.
+- **최종 공개 GREEN** [#44299487519](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44299487519), commit `e0c7502bb7acd3bd1f59e8a712bb3f4ed9bcdff8`: `Ran 6 tests ... OK`(Student), `Ran 5 tests ... OK`(D06), `AXIA_D06_WSLG_OWNER_REAL_GITHUB_SHA_BLOB_BOOTSTRAP_PASS_NO_GOAL`, `D06_WSLG_FAKE_CI_OWNER_RUN_DENIED_NO_GOAL`, `AXIA_D06_G07_WSLG_NO_GOAL_L0_PASS REAL_ROS_GAZEBO_WSLG_NOT_RUN`.
+- 최종 배포 NO_GOAL 스크립트 Git blob: `7e89f0e8b95085218839d4f664ddbe91055c43e3`, public commit `e0c7502bb7acd3bd1f59e8a712bb3f4ed9bcdff8`.
+- 기존 동일 Student SHA `9862353e7116bc4a14a5bb365ae356642e83ef0e`의 실제 Gazebo+RViz NO_GOAL L2 GREEN [#44293986036](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44293986036) 및 Task04 Moving L2 [#44294004552](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44294004552)는 **원본 그래프 코드를 변경하지 않았으므로 보존**하고 재실행하지 않았습니다. ROS2 Gazebo WSLg Owner 실행 여부는 `NOT_RUN`.
+
+### 검증 및 출고 판정
+
+- 공개 L0: PASS (11/11 + 실제 source Git/bootstrap + Owner CI 오용 차단)
+- 동일 학생 SHA의 Linux native NO_GOAL Gazebo GUI/RViz/Scan300ms L2: PASS (과거 보존).
+- 동일 학생 SHA의 Linux native Moving Goal CM120/Guard150/Scan300ms/Contact/Cancel/Stop/Lifecycle L2: PASS (과거 보존).
+- **강사 실제 WSL2 D3D12 Intel/NVIDIA 렌더러, LiDAR CLEAR 및 Scan 간격:** `NOT_RUN`.
+- **출고:** `--run`은 Goal을 전혀 발행하지 않는 **읽기 전용 진단 전용** 출고. Moving `--live`는 출고 보류. `D06_GAZEBO_LIVE_RELEASE=HOLD`, `AXIA_MVP_DEMO_ACCEPTED=HOLD`, `CERTIFIED_ESTOP=false`.
