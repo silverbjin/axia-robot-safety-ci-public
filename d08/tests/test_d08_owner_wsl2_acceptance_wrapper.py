@@ -21,6 +21,12 @@ class TestOwnerWsl2AcceptanceWrapper(unittest.TestCase):
         self.assertNotIn('refs/heads/main', source)
         self.assertNotIn('refs/pull/166/head', source)
 
+    def test_public_ci_checkout_must_match_exact_release_head(self):
+        workflow = (ROOT / '.github/workflows/d08-owner-wsl2-acceptance-l0.yml').read_text()
+        self.assertIn('ref: ${{ github.event.pull_request.head.sha || github.sha }}', workflow)
+        self.assertIn('AXIA_D08_RELEASE_EXPECTED_SHA:', workflow)
+        self.assertIn('test "$(git rev-parse HEAD)" = "$AXIA_D08_RELEASE_EXPECTED_SHA"', workflow)
+
     def test_self_check_is_non_ros_and_l3_fail_closed(self):
         r = subprocess.run(['bash', str(WRAPPER), '--self-check'], text=True,
                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=8)
