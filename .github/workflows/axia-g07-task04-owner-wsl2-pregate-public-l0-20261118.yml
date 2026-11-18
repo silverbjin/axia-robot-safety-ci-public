@@ -6,6 +6,8 @@ on:
       - '.github/workflows/axia-g07-task04-owner-wsl2-pregate-public-l0-20261118.yml'
       - 'scripts/axia_g07_task04_public_owner_wsl2_pregate_once.sh'
       - 'tests/test_g07_task04_owner_public_wsl2_pregate.py'
+      - 'tests/test_g07_task04_owner_field_regression_20261118.py'
+      - 'tests/fixtures/g07_task04_owner_wsl2_first_failure_20261118.json'
 permissions:
   contents: read
 jobs:
@@ -21,3 +23,4 @@ jobs:
         run: |
           set -Eeuo pipefail
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_g07_task04_owner_public_wsl2_pregate.py -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_g07_task04_owner_field_regression_20261118.py -v
