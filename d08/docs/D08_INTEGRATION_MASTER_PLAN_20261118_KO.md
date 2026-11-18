@@ -181,3 +181,11 @@
 - 정확한 RED 3: bootstrap `--self-check`는 bash 문법만 검사하므로 실제 `--run`이 검증된 CI yolo build dependencies, official model hash, ros-gz discovery, ROS setup과 동일하다고 단정할 수 없음. 기존 CI 성공 YAML과 shell 원샷의 단계별 SHA/option 단순 계약 검증을 추가. 외부 설치·Owner GUI/픽셀은 L0로 입증할 수 없다.
 - CI 절차: RED L0 테스트 1~3건 및 `#44239202179` 실증 실패를 원본으로 남김 → 최소 GREEN → exact-HEAD 공개 L0 92+ 및 실제 동일 World/AMCL/Path/RGBD/YOLO/D05 L2 완주 → Task04 보고서·가이드/PR SHA 갱신. 이미 PASS인 이전 headless source `16c1bdad...`의 증거는 유지하되 새로운 GUI 후보 SHA의 PASS로 대체하지 않음.
 - Owner WSL2는 오직 검증된 정확한 SHA로 한 번 실행하고 3D pixel 확인. 공식 CM 내부 상태/Guard TTL과 실제 주행 감속 미검증은 그대로 표시. NO_GOAL 인증 E-Stop/Moving 주장 및 main 자동 병합 금지.
+
+## 19. v1.12 — PR synthetic merge SHA / Owner pinned HEAD 동일성 및 GUI 예외 FAIL-CLOSED 최종 계약
+
+- 기존 공개 PR workflow `pull_request`에서 `actions/checkout` 기본값은 이벤트의 임시 merge commit SHA임. Owner bootstrap은 `refs/pull/166/head`의 **기능 브랜치 HEAD**를 `AXIA_D08_PUBLIC_SHA`로 checkout 하므로 두 실행 코드 SHA는 동일하지 않음. 과거 공개 CI 결과 `feature HEAD 16c1bd...` 대 실제 Actions checkout `b632d787...` 등 차이가 실제 증거에 기록되어 있으며, 동일 source SHA Owner 인수 계약을 만족시키지 못함.
+- RED L0: 4개 public Actions checkout 모두 `ref: ${{ github.event.pull_request.head.sha || github.sha }}`로 고정하지 않으면 FAIL; `AXIA_D08_EXACT_SOURCE_SHA` expected 매칭/Owner export가 빠져도 FAIL.
+- GREEN: 공개 CI checkout 인자 4곳 및 워크플로 env expected 1개 추가. 런타임 `git rev-parse HEAD` 결과를 해당 기대 SHA와 비교(기존 `D08_GITHUB_EVENT_SHA_CHECKOUT_MISMATCH` 차단 유지), Owner bootstrap도 `AXIA_D08_PUBLIC_SHA`와 같은 expected SHA를 자식 runner에 전달. SHA가 다른 다른 실행의 RGB/Depth·Path를 합성하지 않음. 트레이서·CM·Guard/센서 TTL과 전체 시뮬레이션 소스 불변.
+- 추가 최소 RED/수정: GUI 첫 3 Path/거리 PASS 뒤 반복 Path 관측 실패가 발생했을 때 기존 `result['status']=PASS`가 최종 예외 분기에도 남아 exit0이 되는 조용한 오탐. 예외 처리에서 `result['status']='BLOCKED'`로 바꾸고 최초 `blocker`/raw trace 유지하여 exit2 보장. Ctrl+C 정상 중단은 별도 분기에서 기록하고 소유 프로세스만 정리.
+- 본 변경은 성공한 기존 #44236129868과 개발 중 #44243971341의 증거를 지우지 않는다. 원본 RED L0→GREEN L0+실제 exact HEAD Gazebo L2 **새 한 번** 검증하여 최종 원샷 SHA를 확정한다. 실제 Owner WSLg GUI pixel 검증은 CI PASS로 대체 불가.
