@@ -28,3 +28,10 @@
 - Await exact-HEAD public L0/L2 and upstream ONNX archive diagnostic. If infra remains blocked, retain evidence; no blind retries.
 - Then finish Task01 physical 2 VALID+UNKNOWN and Task02 same-world official CM/Planner, publish exact-source public --self-check/--doctor/--run one-shot, and run Owner WSLg once.
 - Once all Task00/01/02+04 pass, request explicit main merge approval for 3 PRs in one message. No main merge performed.
+
+## 2026-11-18 최종 공개 코드 인수 후보 보강
+
+- [정확한 Public #44245796892](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44245796892), source=runner HEAD `910d3a22291f0ab8a4585f8dab5501219408171b`: 실제 세계 3 Path와 Live YOLO/D05 2 VALID+UNKNOWN L2 PASS. Owner WSLg 픽셀 NOT_RUN, 안전 CM 내부 timing NOT_VERIFIED.
+- Task04 runner `d08/scripts/d08_owner_no_goal_bootstrap.sh`는 public exact SHA clone, pinned official YOLO/ONNX 모델, ROS nounset-safe, 고유 로그 폴더, `--self-check|--doctor|--run` 제공. WSL2를 실제 실행하지 않았으므로 시연 출고 HOLD.
+- Latest native CM graph에서 unknown consumer를 발견, 실제 lifecycle active와 `scan.topic` 서비스 조회를 Task02 마지막 최소 회귀로 반영. CM 내부 수신 gap과 Guard age를 이 조회로 대체하지 않음. 새 exact SHA L2 결과는 PR #166에 별도 보고.
+- 사용자 승인 전 Student #43/Instructor #212/Public #166의 main 병합은 모두 NO, Moving G07 strict HOLD 유지.

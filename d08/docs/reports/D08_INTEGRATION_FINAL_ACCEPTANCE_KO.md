@@ -1,56 +1,42 @@
-# AXIA D08 — 통합 최종 인수 현황 / 출고 보류 보고서 (2026-11-18 KST)
+# AXIA D08 — 통합 인수 현황 / Owner L3 전 출고 HOLD (2026-11-18)
 
-**현재 결과: PARTIAL / RELEASE HOLD; 교육용 NO_GOAL 아직 인수 불가.** This report is not a declaration of all tasks complete.
+## 판정 및 출처
+- Public CI 개발 브랜치 `feat/d08-unified-sensor-cm-path-20261118`, PR [#166](https://github.com/silverbjin/axia-robot-safety-ci-public/pull/166), base main `62e366b51c64da25ad0216328fe1e019b78e0bef`, main 병합 NO.
+- Student `feat/d08-integrated-no-goal-live-20261118` PR [#43](https://github.com/silverbjin/axia-robot-safety-student/pull/43) / Instructor private `docs/d08-unified-teacher-guide-20261118` PR [#212](https://github.com/silverbjin/axia-robot-safety-instructor/pull/212): main 병합 NO.
+- 실제 [공개 Run #44245796892](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44245796892) **SUCCESS**, source SHA=GitHub Actions 실제 checkout SHA=`910d3a22291f0ab8a4585f8dab5501219408171b`, L0 `97 passed in 0.48s`; 원본 `d08-same-world-live-person-range-cm-nav2-evidence` artifact #14401772249 (보존 7일).
+- World=`default`, SDF SHA256 `d70a7773cf13c5ea5678279e36ef719603010fefe9cce90761ddd06b8131a461`, Waffle=`axia_d08_ci_waffle`, human physical Proxy=`axia_p2_g07_obstacle`, ROS_DOMAIN_ID=69/GZ_PARTITION=`axia_d08_ci_12493`.
 
-## 코드 및 Git 출처
-| Repo | Development branch / PR | base main SHA | Latest evidence |
-|---|---|---|---|
-| Public CI | feat/d08-unified-sensor-cm-path-20261118 / PR #166 | 62e366b51c64da25ad0216328fe1e019b78e0bef | previous head dfd4ba290807a933ac911dbc8e832f670386b77c |
-| Student | feat/d08-integrated-no-goal-live-20261118 / PR #43 | 6a3047b5aa219687f5fc918e467cea5115d3d482 | guide e8f1de9911a90c0f77e085ff8bd13594d55987a4 |
-| Instructor | docs/d08-unified-teacher-guide-20261118 / PR #212 | f46874470a814be8f6976b6adbcaa1e43a1fe681 | guide 839da3c3daa3d62bec4e1a9a7b47acf5a026a399 |
+## 실증 범위
+| Task | 실제 확인 | 범위 판정 |
+|---|---|---|
+| 00 | 공식 Waffle·한 Gazebo World·한 사람형 충돌 Proxy, source/clock/TF/Scan provenance | L2 PASS |
+| 01 | 한 실행의 실제 RGB/Depth·원본 C++ YOLO+D05 Depth ROI VALID `0.704022m`, `0.534589m` (차이 `0.16943m` ≥0.12m), no-person UNKNOWN | L2 PASS |
+| 02 | 실제 /scan, Costmap lethal `0→66→0`, 공식 ComputePathToPose before/intrusion/restored clearance `0.032872→0.334566→0.000266m`; observer Scan gap `0.220616s` (<0.5s) | 경로/센서 L2 PASS, **CM 직접 서비스 계측 PENDING** |
+| 03 | G07 scoped public 숫자 PASS는 현재 D08 동일 moving world/E2E가 아니며, 별도 Goal/Contact/odom/Guard 인수 없음 | MOVING HOLD |
+| 04 | 동일 Public Runner WSL2 원샷 --self-check/--doctor/--run, 공식 RViz Path 표시 overlay, Ctrl+C/소유 프로세스 종료, 학생 TODO·강사 private 분리 | L0 PASS/Owner WSLg L3 NOT_RUN |
 
-All main merges NO; owner approval required. Private instructor answer and hidden tests retained in private repo.
+### 최초 잔여 실패 경계
+위 Run의 실제 ROS graph Scan 소비자 중 `_NODE_NAME_UNKNOWN_` 2개, `official_cm_scan_subscription_discovered=false`. 그러나 원본 `d08_official_nav2_one_world.log`에서 공식 CM은 실제 `[scan]: Creating Scan`/lifecycle `Activating`를 출력함. 이름 discovery 실패를 CM 데이터 수신 PASS라고 취급하지 않는다. 이번 최소 L0 RED→native `/collision_monitor/get_state`/ `get_parameters` GREEN→동일 SHA 실제 L2 검증 결과는 PR #166 댓글에 출처를 기록한다. 실제 CM 내부 RMW receive gap·Guard age·CM velocity/STOP 상태 출력은 NO_GOAL 시연에서 **NOT_VERIFIED/NOT_RUN**.
 
-## 실행·기술 판정
-| Contract | Actual evidence | Level | Status |
-|---|---|---|---|
-| Task00 world provenance and actual Waffle/Proxy | real world generated, physical human, stamp/hash/domain/partition check; actual Gazebo first job #44201775704 PASS | L0 + native Gazebo partial L2 | PARTIAL; full integrated world with Nav2/CM not yet |
-| Task01 two real distances + UNKNOWN | public ROI strict L0 fixtures, no simultaneous actual YOLO/depth registration/2 VALID | L0 only | HOLD |
-| Task02 native /scan→official CM and same-world official Nav2 Path before/near/restore | isolated native CM with **synthetic scan**, actual /scan elsewhere; official Planner path NOT in this D08 world | independent ROS tests | HOLD |
-| Task03 moving tracer-OFF | Latest referenced G07 Task02 #44120024711 fails, no strict moving source/observer/Guard/Goal/odom shutdown green | none | HOLD dependency |
-| Task04 student/teacher guides and common WSL2 one-shot | guides in separate draft PRs; no new exact SHA public integrated one-shot | docs draft | HOLD |
-| Owner WSLg physical GUI | no Owner field execution | L3 NOT_RUN | NOT_VERIFIED |
+## 명령·증거
+- 실제 L0: `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -q d08/tests/test_d08_task04_exact_sha_and_failclosed.py d08/tests/test_d08_task04_native_path_and_rviz.py`
+- 실제 L2: `python3 -u d08/scripts/d08_public_gazebo_l2.py --actor /tmp/axia-d08-live-assets/walk.dae --out results/d08-live-person-nav2-e2e --official-nav2 --official-path-phases --live-person-range` (기존 pinned upstream yolo_ros가 동일 CI Job에서 실행 중이어야 함).
+- 원본: `runtime_provenance.json`, `verdict.json`, `official_path_phases/path_phases.jsonl`, `live_person_range/{farther,stop,unknown}_live_d05.json`, native Gazebo/Nav2 logs, original RGB PPM + SHA256SUMS.
+- WSL2/WSLg 실제 Gazebo/RViz 3D 픽셀은 아직 사용자 현장 L3를 실행하지 않았으므로 NOT_RUN. Xvfb/ROS L2 통과를 GUI 픽셀 PASS로 승격 금지.
+- USER 승인 전 모든 저장소 main 병합 금지. SW Stop은 인증된 E-Stop이 아니다.
 
-## Real CI output and first failure boundaries
-1. SHA 52b104... Public CI #44199555533 L0: "22 passed in 0.12s".
-2. SHA 9800cd... L2 #44199786210: "D08_REAL_GAZEBO_L2_BLOCKED RuntimeError:D08_GIT_SOURCE_SHA_NOT_AVAILABLE" exit2 before Gazebo. Fixed scoped Git checkout trust, no wildcard.
-3. SHA 25d3ed... L0 #44200740416: "26 passed in 0.14s"; Gazebo world sensor L2 showed actual scan near 0.558158m, STOP 0.363060m, restored 1.414728m, then max real /scan wall receive gap 0.519095s > unchanged 0.5s -> L2 failure exit1. Isolated CM callback max 0.063337s did not prove real CM /scan.
-4. SHA dfd4ba... L0 #44201775704: "28 passed in 0.16s"; Gazebo native job PASS for that run (observed near 0.569907m, restored 1.411924m), **separate** YOLO upstream build job failed ONNX Runtime archive "Unrecognized archive format", exit2. Intermittent scan gap from earlier run not closed; no full-workflow success.
-5. Newly proposed official ONNX archive preflight/verification in this report commit: exact SHA/new CI outcome pending. Could be infra blocked. No actual new success asserted.
-
-## Minimal actual CI command and evidence
-- Public source workflow: .github/workflows/d08-main-no-goal-real-gazebo-l2.yml
-- L0: python -m pytest -q d08/tests/test_d08_unified_runtime_provenance.py d08/tests/test_d08_public_person_range.py d08/tests/test_d08_scan_gap_trace.py d08/tests/test_d08_yolo_archive_gate.py
-- Real L2: python3 -u d08/scripts/d08_public_gazebo_l2.py --actor /tmp/axia-d08-assets/walk.dae --out results/d08-human-contact-calibration --lidar-pre-goal --cm-cadence-l1
-- Evidence artifacts: https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44201775704 ; outputs results/d08-human-contact-calibration/verdict.json, runtime_provenance.json, SHA256SUMS, native logs and first scan gap in verdict. Retention 7 days according to workflow.
-- Real installed ROS topic QoS/first CM native input gap/TF/actual registered person ROI, final publisher count, Contact safety, odom dwell, WSLg pixel: NOT_VERIFIED for unified run.
-- Neither an L0 fixture nor replayed YOLO ROS L1 is end-to-end connected actual RGB-D human distance.
-
-## Final mandatory flags (truthful)
+## 판정 문자열
+```text
 D08_UNIFIED_PLAN_COMMITTED=YES
-D08_TASK00_BASELINE_VERIFIED=HOLD
-D08_TASK01_PERSON_RANGE=HOLD
-D08_TASK02_NO_GOAL_SAME_WORLD=HOLD
+D08_TASK00_BASELINE_VERIFIED=PASS
+D08_TASK01_PERSON_RANGE=PASS
+D08_TASK02_NO_GOAL_SAME_WORLD=HOLD_CM_DIRECT_PROOF
 D08_LIVE_NO_GOAL_ACCEPTED=NO
 D08_MOVING_E2E_ACCEPTED=HOLD
 D08_OWNER_WSLG_VISUAL=NOT_RUN
+D08_PUBLIC_CI_EXACT_SHA=910d3a22291f0ab8a4585f8dab5501219408171b
 D08_STUDENT_MAIN_MERGED=NO
 D08_INSTRUCTOR_MAIN_MERGED=NO
 D08_PUBLIC_CI_MAIN_MERGED=NO
-
-## Next exact boundary
-1. Fix provenance of upstream ONNX download as infra vs valid archive; no inappropriate ROS code workaround.
-2. Investigate 519ms receiver gap with actual Gazebo publisher/RMW, bridge receiver and /clock across same run; do not raise TTL. Test prior failure in public CI first.
-3. Link existing D08 real sensor/YOLO and D05 measure with existing D07-H01 official Nav2+physical loop and D06 official CM on **one identical world SHA**. Obtain actual 2 VALID+UNKNOWN, Costmap+Path three stages, actual real Scan-to-CM first-gaps.
-4. Exact same public runner CI/WSL2 3-layer teaching smoke, one Owner field run after CI. Do not send Moving Goal until G07 strict separately green.
-5. Request **explicit** merge approval for Public #166, Student #43, Instructor #212 only when all required NO_GOAL gates are met.
+```
+이 문서는 변경 소스 HEAD의 새 실제 CI 결과 전까지 합격을 선언하지 않는다. 최신 판정·커밋 SHA는 PR #166의 원본 실행 댓글을 우선 확인한다.

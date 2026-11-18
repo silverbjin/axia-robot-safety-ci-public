@@ -189,3 +189,10 @@
 - GREEN: 공개 CI checkout 인자 4곳 및 워크플로 env expected 1개 추가. 런타임 `git rev-parse HEAD` 결과를 해당 기대 SHA와 비교(기존 `D08_GITHUB_EVENT_SHA_CHECKOUT_MISMATCH` 차단 유지), Owner bootstrap도 `AXIA_D08_PUBLIC_SHA`와 같은 expected SHA를 자식 runner에 전달. SHA가 다른 다른 실행의 RGB/Depth·Path를 합성하지 않음. 트레이서·CM·Guard/센서 TTL과 전체 시뮬레이션 소스 불변.
 - 추가 최소 RED/수정: GUI 첫 3 Path/거리 PASS 뒤 반복 Path 관측 실패가 발생했을 때 기존 `result['status']=PASS`가 최종 예외 분기에도 남아 exit0이 되는 조용한 오탐. 예외 처리에서 `result['status']='BLOCKED'`로 바꾸고 최초 `blocker`/raw trace 유지하여 exit2 보장. Ctrl+C 정상 중단은 별도 분기에서 기록하고 소유 프로세스만 정리.
 - 본 변경은 성공한 기존 #44236129868과 개발 중 #44243971341의 증거를 지우지 않는다. 원본 RED L0→GREEN L0+실제 exact HEAD Gazebo L2 **새 한 번** 검증하여 최종 원샷 SHA를 확정한다. 실제 Owner WSLg GUI pixel 검증은 CI PASS로 대체 불가.
+
+## 20. v1.13 — 현재 exact-SHA L2의 공식 CM 노드명 UNKNOWN 계측 경계
+
+- [공개 #44245796892](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44245796892)는 feature HEAD=actual checkout `910d3a22291f0ab8a4585f8dab5501219408171b`, L0 97 PASS, 실제 한 World + Waffle + 물리 사람 Proxy, D05 `0.704022/0.534589m` + 실제 UNKNOWN, 공식 Nav2 3 Path와 Costmap lethal `0→66→0`를 PASS. 원본 artifact #14401772249, ROS_DOMAIN_ID=69, GZ_PARTITION=`axia_d08_ci_12493`, world SHA256 `d70a7773cf13c5ea5678279e36ef719603010fefe9cce90761ddd06b8131a461`.
+- 그러나 동일 아티팩트 `official_path_phases/verdict.json`의 `official_cm_scan_subscription_discovered=false`, ROS graph의 Scan 소비자 중 2개 `_NODE_NAME_UNKNOWN_`. native Gazebo/Nav2 로그에는 `collision_monitor` PID, `[scan]: Creating Scan`, lifecycle `Activating` 실제 출력이 있으므로 그래프 이름만으로 FAIL/PASS를 단정할 수 없음.
+- RED: 공식 CM 설정 조회에 `ACTIVE`, `observation_sources`에 scan, `scan.topic`=scan 또는 /scan이 확인되지 않으면 PASS 금지. GREEN: 같은 ROS Domain의 기존 read-only Path observer에서 `/collision_monitor/get_state` 및 `/collision_monitor/get_parameters` native 서비스 응답만 조회. 이 증거는 **CM_ACTIVE_SCAN_CONFIGURED**이지 CM 내부 LaserScan RMW 수신 간격, Guard TTL이나 실제 CM SLOW/STOP 출력의 증거가 아님.
+- 공식 CM/Planner/Controller·Safety Supervisor 원본, Scan/Odom age, 120/150ms 안전 TTL, Goal/Cmd_vel은 변경하지 않는다. 새 exact-SHA CI L0→실제 L2 성공에 앞서 출고 승인 금지; Owner WSLg GUI 픽셀과 main 병합은 여전히 사용자 확인 필요.
