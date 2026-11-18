@@ -34,7 +34,7 @@
 ## 4. RED → GREEN → REFACTOR → REVIEW → COMMIT
 
 - RED 로컬: 새 helper 미구현 ImportError; 실제 deque >=6건 전달 시에도 SCAN_INSUFFICIENT_REAL_CALLBACKS; 고빈도 Clock 관찰 함수 미구현. 두 오류를 별도 재현.
-- RED 실제 Gazebo: #44290635539에서 실제 186 Scan callback에도 잘못된 INSFUFICIENT 판정이 발생해 원본 증거 확보.
+- RED 실제 Gazebo: #44290635539에서 실제 186 Scan callback에도 잘못된 INSUFFICIENT 판정이 발생해 원본 증거 확보.
 - 개발 중 실패도 보존: YAML 중복 env 때문에 #44290493299가 워크플로 구문에서 실패. #285bd628f14344adda48e86eaaa16243e06ecfa6에서 env 한 곳으로 통합. 이것은 ROS/Gazebo 런타임 실패가 아님.
 - GREEN 로컬 관련 회귀 **31 passed**; 확장 관련 회귀 **43 passed**.
 - 실제 GREEN 실행 소스 SHA **e48b7124bd8e01bdc9f80631f65a69dbbc6742c1**.
