@@ -37,6 +37,18 @@ finish() {
   fi
   if [[ -n "$OUT" && -d "$OUT" ]];then
     echo "$FIRST_FAILURE" > "$OUT/first_failure.txt"
+    if [[ ! -s "$OUT/task04_owner_verdict.json" ]] && command -v python3 >/dev/null 2>&1;then
+      python3 - "$OUT/task04_owner_verdict.json" "$FIRST_FAILURE" "$STUDENT_SHA" "$CI_L2_RUN" <<'PY' || true
+import json,sys
+from pathlib import Path
+record={"schema":"axia_g07_task04_owner_l3_local_hold_v1",
+        "status":"HOLD","first_failure":sys.argv[2],
+        "source_sha":sys.argv[3],"public_ci_native_l2_run":int(sys.argv[4]),
+        "owner_moving_l3_accepted":False,"axia_mvp_demo_accepted":False,
+        "certified_estop":False}
+Path(sys.argv[1]).write_text(json.dumps(record,sort_keys=True,indent=2)+"\n")
+PY
+    fi
     (
       cd "$OUT"
       find . -type f ! -name SHA256SUMS -print0 | sort -z |
@@ -69,7 +81,7 @@ source /etc/os-release
 [[ "$ID" == ubuntu && "$VERSION_ID" == 24.04 ]] || hold UBUNTU_2404_REQUIRED
 [[ -r /opt/ros/jazzy/setup.bash ]] || hold ROS_JAZZY_REQUIRED
 [[ -n "${DISPLAY:-}" && -n "${XDG_RUNTIME_DIR:-}" ]] || hold WSLG_GUI_REQUIRED
-for cmd in git bash python3 gz glxinfo xwininfo cmake c++ tar sha256sum timeout setsid colcon;do
+for cmd in git bash python3 gz glxinfo xwininfo tar sha256sum timeout setsid colcon;do
   command -v "$cmd" >/dev/null 2>&1 || hold "MISSING_COMMAND_$cmd"
 done
 
@@ -113,7 +125,15 @@ set -u
 for pkg in nav2_bringup nav2_minimal_tb3_sim ros_gz_sim;do
   ros2 pkg prefix "$pkg" >> "$OUT/official_packages.txt" 2>&1 || hold "OFFICIAL_PACKAGE_$pkg"
 done
-[[ -r /usr/include/gz/sim8/gz/sim/System.hh ]] || hold GAZEBO_SIM8_DEV_HEADERS_MISSING
+# Build-only packages, only if missing. Keep installed official ROS/Nav2
+# userspace frozen; do not silently upgrade packages or safety components.
+if [[ ! -r /usr/include/gz/sim8/gz/sim/System.hh ]] || ! command -v cmake >/dev/null 2>&1 || ! command -v c++ >/dev/null 2>&1;then
+  command -v sudo >/dev/null 2>&1 || hold GAZEBO_BUILD_DEPS_SUDO_REQUIRED
+  echo 'AXIA_G07_TASK04_BUILD_ONLY_DEPS_INSTALL_REQUESTED'
+  sudo apt-get update -qq || hold GAZEBO_BUILD_DEPS_APT_UPDATE_FAILED
+  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends --no-upgrade cmake g++ libgz-sim8-dev || hold GAZEBO_BUILD_DEPS_INSTALL_FAILED
+  [[ -r /usr/include/gz/sim8/gz/sim/System.hh ]] && command -v cmake >/dev/null 2>&1 && command -v c++ >/dev/null 2>&1 || hold GAZEBO_BUILD_DEPS_STILL_MISSING
+fi
 
 # No second private source: fetch both exact reviewed PUBLIC commits into caches.
 export GIT_TERMINAL_PROMPT=0
