@@ -8,30 +8,30 @@
 |---|---|
 | 공개 CI PR | https://github.com/silverbjin/axia-robot-safety-ci-public/pull/169 |
 | Student PR | https://github.com/silverbjin/axia-robot-safety-student/pull/46 |
-| 단일 주행 소스 SHA | `ef6ffe58ddacb89ed37b225279f8e86453cf82b7` |
-| CI read-only 판정 소스 SHA | `ff0455d8fc11e3a4eee26f82f4ccd59d57420002` |
-| 실제 Gazebo Harmonic + Nav2 + Waffle + RViz Xvfb L2 | https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44344038055 |
-| 출고 Owner 원샷 Bootstrap L0 | https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44345736985 |
-| L2 원본 공개 수치·SHA256 artifact | https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44344038055/artifacts/14443974379 |
-| 강사 실제 WSL2 L3 | **실행 전, 미검증** |
+| 단일 주행 소스 SHA | `725b6168b381554e29add26e0dcc85a0e2fce8e7` |
+| CI read-only 판정 소스 SHA | `99ddd89758d9bf890b6af09693eba65c52dab4d2` |
+| 실제 Gazebo Harmonic + Nav2 + Waffle + RViz Xvfb L2 | https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44356618739 |
+| 출고 Owner 원샷 Bootstrap L0 | https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44357547131 |
+| L2 원본 공개 수치·SHA256 artifact | https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44356618739/artifacts/14452776963 |
+| 강사 실제 WSL2 L3 | **종전 S75 실행 실패 / 수정판 미실행·미검증** |
 | main | **병합 안 함** |
 
-사전 성공인 NO_GOAL GUI나 Task03 기존 L2는 다시 실행하지 않는다. 이번 출고 후보는 공개 CI Run #44344038055에서 **하나의 실제 Moving Goal+GUI 통합 실행**으로 안전수치·정확 UUID CANCELED·Native Contact0·SQLite14·Nav2 Lifecycle ACK와 CM clean exit 검증을 마쳤다. 다만 공개 Xvfb는 Owner WSLg D3D12가 아니므로 L3 승격 불가.
+사전 성공인 NO_GOAL GUI나 Task03 기존 L2는 다시 실행하지 않는다. 이번 출고 후보는 공개 CI Run #44356618739에서 **하나의 실제 Moving Goal+GUI 통합 실행**으로 안전수치·정확 UUID CANCELED·Native Contact0·SQLite14·Nav2 Lifecycle ACK와 CM clean exit 검증을 마쳤다. 다만 공개 Xvfb는 Owner WSLg D3D12가 아니므로 L3 승격 불가.
 
-이번 소스의 동일 세션 L2 공개 검증에서는 실제 Odometry 이동 0.217894m, 정지 유지 1.015539초, Native Contact 0, CM Publisher 56.386ms/120ms, Observer 85.605ms/120ms, Guard 내부 CM age 30.374ms/150ms, 실제 Goal UUID `2a440893522c4448a882a437aff0b652` 취소, 14-topic rosbag 및 Lifecycle/CM 종료가 모두 검증됐다. 공개 CI 수치 아티팩트는 소량의 JSON/SHA만 공개한다.
+이번 소스의 동일 세션 L2 공개 검증에서는 실제 Odometry 이동 0.197251m, 정지 유지 1.011126초, Native Contact 0, CM Publisher 56.417ms/120ms, Observer 67.261ms/120ms, Guard 내부 CM age 24.374ms/150ms, 실제 Goal UUID `6ef4be38cf124959aa668f625655d4d2` 취소, 14-topic rosbag 및 Lifecycle/CM 종료가 모두 검증됐다. 공개 CI 수치 아티팩트는 소량의 JSON/SHA만 공개한다.
 
-**중요한 한계:** 이번 CI의 초기 CLEAR 정면 1.409572m/측면 2.516088m와 현장 원본의 0.527m/0.630m는 일치하지 않는다. 현장 장애물 원인·실제 엔티티 좌표와 WSLg 환경은 검증되지 않았다. 새로운 Owner 실행에서 같은 실패가 발생하면 재실행하지 말고 아래 소형 진단 ZIP과 원본 비공개 TAR를 보존한다.
+**중요한 한계:** 이번 CI의 초기 CLEAR 정면 1.425696m/측면 2.527606m와 최신 현장 S75 원본의 0.538428m/0.626332m는 일치하지 않는다. 현장 장애물 원인·실제 엔티티 좌표와 WSLg 환경은 검증되지 않았다. 새로운 Owner 실행에서 같은 실패가 발생하면 재실행하지 말고 아래 소형 진단 ZIP과 원본 비공개 TAR를 보존한다.
 
 기존 실행 명령에서 사용했던 원샷 커밋 `e56bbad873e0e37c83f34ecbcc206cc8a648e63d`은 WSLg D3D12 변수를 전역 export하는 이전 배포 후보이므로 **현장 신규 실행에 사용하지 않는다.** 새 고정 SHA는 동일 Student SHA의 공개 L2 및 원샷 Bootstrap L0를 통과했다.
 
 ## 강사 WSL2 복사·붙여넣기 명령 (하나의 블록)
 
-다음은 **이 시점의 실증 공개 원샷 SHA `96c29ff4f333237084d64999cf828a7f6b5d157b`**를 고정한다. CI가 검증한 Student SHA는 내부에서 별도 확인한다. 무작위 main HEAD를 내려받지 않는다.
+다음은 **이 시점의 실증 공개 원샷 SHA `4222b3544af2dbff8dd988d093e39d1717a1cbbe`**를 고정한다. CI가 검증한 Student SHA는 내부에서 별도 확인한다. 무작위 main HEAD를 내려받지 않는다.
 
 ```bash
 (
   set -Eeuo pipefail
-  SOURCE_SHA='96c29ff4f333237084d64999cf828a7f6b5d157b'
+  SOURCE_SHA='4222b3544af2dbff8dd988d093e39d1717a1cbbe'
   RUNNER="$(mktemp --suffix=.sh)"
   trap 'rm -f -- "$RUNNER"' EXIT
   curl -fLsS --retry 3 --max-time 90 \
@@ -43,7 +43,7 @@
 )
 ```
 
-강사 WSL2 Ubuntu 24.04에서 실행. 실행기는 고정된 Student와 공개 CI 코드의 SHA를 확인하고, 기존 Nav2 공식 overlay(자동 발견 또는 `AXIA_NAV2_OVERLAY_SETUP` 지정), ROS 2 Jazzy/Gazebo Harmonic, 공식 25개 package/5개 SHA, D3D12 GPU 렌더러를 확인한다. **D3D12 어댑터 환경변수는 Gazebo·RViz GUI 자식 프로세스에만 적용하고, Gazebo 물리·센서 서버 및 ROS 안전 노드에는 전역 적용하지 않는다.** 필수 Gazebo 개발 헤더가 없는 경우에만 `sudo apt`의 빌드용 패키지 설치를 요청할 수 있다. 그 외 별도 ROS 노드 실행 명령이나 GUI 디버깅 터미널은 불필요.
+강사 WSL2 Ubuntu 24.04에서 실행. 실행기는 고정된 Student와 공개 CI 코드의 SHA를 확인하고, 기존 Nav2 공식 overlay(자동 발견 또는 `AXIA_NAV2_OVERLAY_SETUP` 지정), ROS 2 Jazzy/Gazebo Harmonic, 공식 25개 package/5개 SHA, D3D12 GPU 렌더러를 확인한다. **Gazebo gpu_lidar 서버는 공개 성공 L2와 같은 `LIBGL_ALWAYS_SOFTWARE=1`로 실행하고, D3D12 어댑터 환경변수는 Gazebo·RViz GUI 자식 프로세스에만 적용합니다.** GUI의 `env -u LIBGL_ALWAYS_SOFTWARE`가 서버의 렌더링 설정을 바꾸지 않습니다. 필수 Gazebo 개발 헤더가 없는 경우에만 `sudo apt`의 빌드용 패키지 설치를 요청할 수 있다. 그 외 별도 ROS 노드 실행 명령이나 GUI 디버깅 터미널은 불필요.
 
 사전 준비가 끝나면 이미 정해진 ROS Domain/GZ Partition 안에 Gazebo 서버 **한 개**와 read-only GUI 클라이언트, RViz가 실행된다. 실물 로봇이 아닌 **시뮬레이션만** 대상이다.
 
@@ -54,7 +54,7 @@
 `--self-check` 성공은 ROS를 시작하지 않는 L0이다:
 
 ```text
-AXIA_G07_TASK04_OWNER_MOVING_BOOTSTRAP_L0_PASS student_sha=ef6ffe58ddacb89ed37b225279f8e86453cf82b7 l2_run=44344038055 NO_ROS_NO_GAZEBO_NO_GOAL
+AXIA_G07_TASK04_OWNER_MOVING_BOOTSTRAP_L0_PASS student_sha=725b6168b381554e29add26e0dcc85a0e2fce8e7 l2_run=44356618739 NO_ROS_NO_GAZEBO_NO_GOAL
 AXIA_G07_TASK04_OWNER_MOVING_L3=NOT_RUN
 AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false
 ```
@@ -62,9 +62,10 @@ AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false
 **현장에서 실제로 성공한 뒤 기대할 패턴 (아직 실행 증거가 아님):**
 
 ```text
-AXIA_G07_TASK04_STUDENT_SHA_VERIFIED=ef6ffe58ddacb89ed37b225279f8e86453cf82b7
+AXIA_G07_TASK04_STUDENT_SHA_VERIFIED=725b6168b381554e29add26e0dcc85a0e2fce8e7
 AXIA_G07_TASK04_OWNER_CORE_PARITY_25_5_PASS
 AXIA_G07_TASK04_WSLG_D3D12_GPU_SELECTED=...
+AXIA_G07_OWNER_GAZEBO_LIDAR_SOFTWARE_RENDERER_SELECTED D3D12_GUI_ONLY
 AXIA_G07_TASK04_OWNER_MOVING_BEGIN student_sha=...
 [강사가 controlling TTY에 YES-P2-G07-GOAL 직접 입력]
 AXIA_G07_TASK04_OWNER_NATIVE_RUNNER_RC=0
@@ -97,3 +98,14 @@ AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false
 ### 브랜치 정책
 
 개발 결과는 공개 CI PR #169 및 Student PR #46의 기능 브랜치에만 보관한다. 강사용 실행기와 학생 TODO 저장소 역할을 혼동하거나 main에 자동 병합하지 않는다.
+
+## S75 실측 실패 분석 및 새 배포판 증거 (2026-11-19)
+
+이번 원샷은 현장 S75의 `/scan` 377/377 `/safety/scan` 동일, 353/360 근거리 0.5m 링, 약 4.4초 WSL2 호스트 일시정지, 안전 최초 `BOOT_SAFE`, Goal 미전송을 분석한 후 배포한 **새 소프트웨어 센서 렌더러 후보**입니다. 최초 오류 기록을 외부 래퍼의 generic 실패로 덮지 않고 `pregoal_baseline.json`에서 직접 복원합니다.
+
+- 실제 RED: [센서 렌더러 CI #44356202944](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44356202944), [최초 실패 코드 전파 #44357055395](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44357055395)
+- 새 Student 수정 SHA: `725b6168b381554e29add26e0dcc85a0e2fce8e7`
+- GREEN: 실제 [No-Goal Gazebo #44356630025](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44356630025), 실제 [Moving+GUI #44356618739](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44356618739), 최종 [Owner Bootstrap #44357547131](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44357547131)
+- 교육용 근거 보고서: [S75 WSLg GPU LiDAR 진단과 RED→GREEN](AXIA_G07_TASK04_OWNER_S75_WSLG_LIDAR_RED_GREEN_20261119_KO.md)
+
+**주의:** CPU 센서 렌더러 수정이 동일 강사 WSL2의 실제 0.5m 링 및 4.4초 지연까지 해결했는지는 아직 확인하지 않았습니다. 이 새 원샷의 L3 결과는 무조건 HOLD로 시작하며, 한 번의 실제 WSL2 검수 후에만 판정합니다. 실패 시 현장 재실행을 반복하지 않고 소형 진단 ZIP + 원본 TAR를 보존합니다.
