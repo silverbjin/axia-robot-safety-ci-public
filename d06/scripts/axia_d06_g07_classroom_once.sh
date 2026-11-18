@@ -12,12 +12,12 @@ readonly TASK04_GUI_L2_RUN='44238643061'
 readonly TASK04_GUI_L2_HEAD='5bb0cd72086f2f1a057f382649b773fff106f1f9'
 readonly TASK04_GUI_SCRIPT='scripts/axia_g07_task04_public_owner_wsl2_pregate_once.sh'
 readonly TASK04_GUI_SCRIPT_BLOB='a15cf37e1a1d2a0253029c0a1dd8e2530e307c25'
-readonly TASK04_MOVING_L2_RUN='44249348860'
-readonly TASK04_MOVING_L2_HEAD='6b98a18fa7abc80401a129f715ace7703ab54286'
-readonly TASK04_MOVING_STUDENT_SHA='1129cd8804954fd6481d1b6b4ebf0e0b98c68c3c'
-readonly TASK04_MOVING_RUNTIME_SCRIPT_BLOB='daa04c5c6555a1cb9e851db8a31a57699821782a'
-readonly TASK04_MOVING_GOAL_ENGINE_BLOB='33664dacebb0a36818d13870c27176ac0923ae4c'
-readonly TASK04_MOVING_SHUTDOWN_BLOB='ff81c749b0441fee11745a29bf6fe3f7d242720c'
+readonly TASK04_MOVING_L2_RUN='44268914763'
+readonly TASK04_MOVING_L2_HEAD='08fef7f78459c915a29f15fe07a4a60b213b46d7'
+readonly TASK04_MOVING_STUDENT_SHA='d7ffec1ce73f0c4e672ea0fc51a1678139dc5a6f'
+readonly TASK04_MOVING_RUNTIME_SCRIPT_BLOB='0a4e58578dee5608c4010bc092dc3a88c385ae6d'
+readonly TASK04_MOVING_GOAL_ENGINE_BLOB='d7b19286dac3b8e921358e2ffab93a35ddfcf812'
+readonly TASK04_MOVING_SHUTDOWN_BLOB='6d813b6343a0b44c11727ed5fa330f43b3d446c1'
 
 hold() {
   echo "D06_G07_CLASSROOM_HOLD=$1" >&2
@@ -155,8 +155,19 @@ run_verified_owner() {
   done
   timeout 12s glxinfo -B > "$out/wslg_glxinfo.txt" 2>&1 ||
     hold WSLG_GLX_RENDER_UNAVAILABLE_NO_GOAL
-  grep -Eiq 'D3D12' "$out/wslg_glxinfo.txt" ||
-    hold WSLG_D3D12_RENDERER_NOT_VERIFIED_NO_GOAL
+  # The latest verified G07 Owner runtime requires the GPU adapter name
+  # explicitly. Keep D3D12 confined to its own Gazebo/RViz GUI children;
+  # never force the physics server, sensors or safety ROS nodes onto D3D12.
+  local renderer='' adapter=''
+  renderer="$(grep -m1 '^OpenGL renderer string:' "$out/wslg_glxinfo.txt" || true)"
+  case "$renderer" in
+    *"D3D12 (NVIDIA"*) adapter=NVIDIA ;;
+    *"D3D12 (Intel"*) adapter=Intel ;;
+    *) hold WSLG_D3D12_ADAPTER_UNVERIFIED_NO_GOAL ;;
+  esac
+  export AXIA_G07_TASK04_GUI_D3D12_ADAPTER="$adapter"
+  unset GALLIUM_DRIVER MESA_D3D12_DEFAULT_ADAPTER_NAME || true
+  echo "D06_G07_OWNER_GUI_ADAPTER_VERIFIED=$adapter"
 
   src="$(mktemp -d "$HOME/.cache_axia_d06_g07_source_XXXXXXXX")" ||
     hold G07_SOURCE_TEMP_UNAVAILABLE
