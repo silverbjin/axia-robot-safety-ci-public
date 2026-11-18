@@ -30,7 +30,7 @@ class WslgDoctorSafety(unittest.TestCase):
 
     def test_exact_student_commit_and_runtime_file_pins(self):
         t=SCRIPT.read_text()
-        self.assertIn('e5df639d6f983e7494d2d240bc3394d166ea186b',t)
+        self.assertIn('244d524f935ea6a59d05c4390ba407fc3a0d0a2c',t)
         for blob in ('f795f9b6456df75546ab22988b53c953c53345a5',
                      '28b3b156cd99019180b37000aa0b2706c0dc38d7',
                      'b2886cdf509d99ea62528cd013669258764b05e0'):
