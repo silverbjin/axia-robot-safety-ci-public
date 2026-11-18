@@ -54,6 +54,7 @@ jobs:
             d08/tests/test_d08_amcl_service_discovery_starvation.py \
             d08/tests/test_d08_owner_ci_field_boundaries.py \
             d08/tests/test_d08_owner_blank_scene_and_compact.py \
+            d08/tests/test_d08_owner_temp_world_startup_order.py \
             d08/tests/test_d08_live_person_range.py \
             d08/tests/test_d08_live_person_range_session.py \
             d08/tests/test_d08_roi_physical_trace.py \
