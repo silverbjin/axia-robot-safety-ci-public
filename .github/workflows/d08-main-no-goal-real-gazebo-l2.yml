@@ -342,10 +342,13 @@ jobs:
         run: |
           set -eo pipefail
           source /opt/ros/jazzy/setup.bash
-          python3 -u d08/scripts/d08_public_gazebo_l2.py \
+          # Single Xvfb display for the actual Gazebo server AND one GUI
+          # client. Repeat Owner's 8 no-Goal phases on one original World.
+          xvfb-run -a -s '-screen 0 1280x720x24' \
+            python3 -u d08/scripts/d08_public_gazebo_l2.py \
             --actor /tmp/axia-d08-nav2-assets/walk.dae \
             --out results/d08-official-nav2-sameworld \
-            --official-nav2 --official-path-phases
+            --official-nav2 --official-path-phases --ci-owner-repro
           python3 - <<'PY'
           import json
           from pathlib import Path
@@ -357,7 +360,11 @@ jobs:
           assert v['native_scene']['physical_person_model_in_native_scene'] is True
           assert v['native_scene']['robot_model_in_native_scene'] is True
           assert v['native_scene']['gui_pixels_verified'] is False
+          assert v['ci_gazebo_gui_client_running'] is True
+          assert v['ci_owner_replan_cycles']==8
+          assert v['ci_gui_pixels_verified'] is False
           print('D08_REAL_GAZEBO_SCENE_BROADCASTER_L2_PASS')
+          print('D08_CI_REAL_GUI_EIGHT_REPEAT_PATHS_L2_PASS')
           assert v['official_nav2_before_path']['status']=='D08_LIVE_NAV2_PATH_CANDIDATE'
           a=v['official_nav2_before_path']['real_amcl_and_tf']
           assert a['amcl_service_ack'] is True and a['localization_verified'] is True
