@@ -1,0 +1,28 @@
+# Task04 minimal RED/GREEN gate: pin the public Student source, never fake Owner TTY.
+name: AXIA G07 Task04 Owner Moving Entry L0
+on:
+  push:
+    branches: ['fix/g07-task04-owner-wsl2-public-pregate-20261118']
+    paths:
+      - '.github/workflows/axia-g07-task04-owner-moving-l0-l2-20261118.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  owner-moving-entry-l0:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: 8a67993cb25fec776532c519c5f91b1d34e1c85b
+          path: student
+          persist-credentials: false
+      - name: Exact Student SHA and ROS-free RED contract (Owner consent never simulated)
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C student rev-parse HEAD)" = '8a67993cb25fec776532c519c5f91b1d34e1c85b'
+          cd student/block_B/day07/h01_runtime
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_owner_moving_entry.py' -v
