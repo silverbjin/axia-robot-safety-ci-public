@@ -127,3 +127,14 @@
 - TDD: 구조적 RED는 TransformListener 생성이 `SetInitialPose.call_async`보다 뒤라는 소스 순서 회귀. GREEN 최소 변경은 동일 ROS 노드의 TF listener를 `/map`/Scan 대기 이전부터 만들고 **그 후** 공식 SetInitialPose를 1회 발행. **AMCL 1s host age, /scan·/odom 0.5s age, CM 0.15s/120ms 안전 TTL, Planner 또는 TF 값을 변경하지 않는다.**
 - 실제 CI에서 다른 운영 부하나 DDS discovery 영향도 가능하므로 원인 확정은 exact-SHA 새 Run의 최초 진입 로그와 단계별 stamp/TF 증거를 보고 결정한다. 같거나 새로운 최초 경계가 발생하면 증거를 보존하고 그 부분만 수정하며 무작정 재시도하거나 AMCL·안전 TTL을 늘리지 않는다.
 - 3상 L2 및 Task01 실제 YOLO+Depth 2 VALID/UNKNOWN, native CM /scan 수신/상태는 기존 HOLD 유지. 성공한 한 World 첫 Path SHA의 별도 증거는 보존한다.
+
+## 14. v1.7 — Task01 actual one-world live YOLO/Depth person range, 최종 관측 결선 계획
+
+- 새 증거: PR #166 HEAD d37d1a36507cfe5c99cd41f4384cc9c7cac3c5ca, public CI https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44227457087 FULL SUCCESS. 한 world에서 실제 RGBD/LaserScan, AMCL, Costmap lethal 0→73→0, official Nav2 3 Path before→intrusion→restored 및 CM 실제 /scan 구독 graph를 입증. 별도 CI job의 원본 Gazebo RGB replay에서 pinned C++ yolo_ros Person DetectionArray도 입증했으나 동일 프로세스 동시성/실제 D05 거리 결선은 미검증.
+- 목표는 새 YOLO/D05/Planner 재구현이 아니라 **동일 world와 동일 physical Proxy를 공유하는 경량 public read-only ROS adapter 결선**. 기존 d08/harness/d08_public_person_range.py의 0.05s stamp skew·0.5s steady age·동일 optical frame·32FC1 4x4 ROI median을 그대로 사용한다. 인지 엔진은 exact pinned upstream yolo_ros SHA 94d2dd500cb26027ee9c019f4d3a02029ac615cc, Microsoft NuGet ONNX 1.20.0 verified SHA. Student TODO/Instructor sealed answer 무변경.
+- 기존 YOLO L1 job은 오리지널 Gazebo RGB replay의 SUCCESS를 보존하고, 그 job에서 이미 설치한 C++ upstream overlay·pinned model을 재사용해 **새 하나의 Gazebo Harmonic + official Nav2 + same physical person**을 실행한다. 여기에 YOLO를 use_sim_time true로 구동하고 실제 live Gazebo registered RGB/Depth→actual DetectionArray→D05 관측을 수행한다. 동시 구동 센서 World가 시작된 뒤부터만 triad를 인정; 별도 job 데이터와 합쳐 E2E PASS 금지.
+- 최소 3개 실제 stage: physical Proxy slow (-1.43,-0.5,.24)에서 첫 VALID, stop (-1.63,-0.5,.24)에서 두 번째 실제 VALID 및 0.12m 이상 거리 차, 카메라 측면 외부 (-1.979118934,.171291,.24)에서 실제 RGBD·YOLO callback과 reasoned UNKNOWN(사람 class 없음). 원본 native set_pose ACK + actual new ROS LaserScan/camera frame과 monotonic 받은 시각을 함께 보존, 완료·실패 관계없이 far(-.58,-.5,.24)로 원상 복귀.
+- RED: 이전 실제 Owner 유효 거리 0개 / real ROS triad stamp·frame·stale 경계 및 손실; L0 mock fixtures가 ROS success를 증명하지 못함. 먼저 public test source-only 실제 RED로 adapter 부재 재현, 다음 최소 GREEN. 이미 SUCCESS인 이전 Gazebo/YOLO 분리 시험의 근거 SHA/아티팩트를 보존하고 바뀐 동시 경계 L2만 추가 검증.
+- live YOLO/Depth로 인해 기존 실제 Scan wall gap 500ms 상한, AMCL/TF 및 official CM /scan QoS/cadence에 최초 위반이 생기면 FAIL-CLOSED/HOLD; safety TTL 완화 금지. CM state 미발행 및 실제 감속 미실행은 표시하되, 테스트용 합성 cmd_vel을 실제 /cmd_vel로 배선하지 않는다.
+- 새 결선에서 원본 ROS Graph·tf/clock·2 VALID+UNKNOWN과 공식 Path 3상이 동일 GZ_PARTITION / ROS_DOMAIN_ID / SHA로 확인돼야 Task01/Task02 교육형 완성 후보. 화면 픽셀/Owner WSLg와 G07 moving strict 인수는 여전히 별도 조건.
+- 한 CI 실행기의 동일 public SHA 원샷을 Student/Instructor 가이드에 반영하고, owner L3 마지막 한 번 + main 병합은 최종 승인 전까지 하지 않는다.
