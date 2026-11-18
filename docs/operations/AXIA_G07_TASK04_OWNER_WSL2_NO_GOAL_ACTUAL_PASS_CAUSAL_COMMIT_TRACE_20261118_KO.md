@@ -127,3 +127,16 @@ Obstacle 삽입 시 실제 Costmap **신규 lethal 92개**가 기록됐으며, P
 **증상** `RViz Path subscriber absent` → **원본 추적** 파티션에 `ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST`가 들어간 비정상 값, watcher 원본 누락 → **재현 테스트** 동일 Bash `$_` 확장 → **원인 확정** 환경변수 마지막 인수 오염 → **최소 수정** `BASHPID` + 파티션 검증 + watcher ACK/로그 → **다음 실패 분리** 실제 native GUI는 rc0, CI 후처리만 `phase/stage` mismatch → **후처리 회귀 수정** → **별개 CI checkout 단언 실패 정리** → **공개 CI 실제 L2 PASS** → **이번 Owner WSL2 증거 73/73·59/59, Nav2 3단계 DDS, native runtime rc0, NONE**.
 
 이번 결과의 정확한 문구는 **`AXIA_G07_TASK04_OWNER_WSL2_GUI_NO_GOAL_AUTOMATED_PREGATE_PASS`**이며 **`AXIA_G07_TASK04_OWNER_MOVING_L3=NOT_RUN`** 및 **`AXIA_MVP_DEMO_ACCEPTED=HOLD`**가 동시 참이다.
+
+## 7. 후속 현장 육안 검수 종결 (2026-11-18, 본 문서의 당초 PENDING 판정 이후)
+
+**최신 판정:** \`AXIA_G07_TASK04_OWNER_WSL2_GUI_NO_GOAL_VISUAL_ACCEPTED=PASS_SCOPED\`입니다. 당초 본문에서 \`VISUAL_CONTENT_REVIEW_PENDING\`이라고 기록한 것은 **이전 스냅샷 시점의 사실**이며, 사용자가 추가로 제출한 실제 Gazebo/RViz 화면과 직접 육안 검수로 해당 항목이 해소되었습니다.
+
+- 이미지 파일 SHA256 \`46f9d35283f7164f6724226a6b82542350bad222a8e65ea320adc37d073716c2\`.
+- RViz 화면에서 \`Global Status: Ok\`, 표시된 Costmap·official Path, LaserScan/TF/Odometry 항목 확인. Gazebo 화면에서 3D 월드·장애물·바닥 grid 확인. 두 창 동시 표시.
+- 기존 Owner 자동 PASS의 73/73, 59/59, native 세 단계 Path/DDS subscriber 1개씩, \`run_rc=0\`, \`FIRST_FAILURE=NONE\`와 모순 없음.
+- 기존 GLSL/OGRE 경고는 별도 보존. 이 한 화면은 전체 장시간 GPU 안정성·모든 shader·Moving Goal의 물리 충돌 및 안전 TTL을 증명하지 않습니다.
+- **원래 MVP 복귀:** NO_GOAL GUI 디버깅 종료. Task04 **Owner Moving Goal L3**의 안전 인수 경로만 최소 개발·공개 CI 검증·강사 WSL2 실제 인수.
+- 전체 \`AXIA_MVP_DEMO_ACCEPTED=HOLD\`; \`CERTIFIED_ESTOP=false\`; \`main\` 미병합.
+
+[별도 최종 시각 인수 증거·MVP 복귀 보고서](./AXIA_G07_TASK04_OWNER_NO_GOAL_GUI_VISUAL_FINAL_ACCEPTANCE_20261118_KO.md)
