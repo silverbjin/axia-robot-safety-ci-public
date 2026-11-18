@@ -23,6 +23,21 @@ class Task03NumericEvidenceIntegrity(unittest.TestCase):
         self.assertIn(r'+"\n")',text)
         self.assertNotIn(r'+"\\n")',text)
 
+    def test_tail_only_repair_is_valid_json_and_exact_sha(self):
+        normalized=(ROOT/"d06/evidence/g07_task03/"
+                    "task03_positive_calibration_run_44215546368_normalized.json")
+        data=normalized.read_bytes()
+        obj=json.loads(data)
+        self.assertTrue(data.endswith(b"\n"))
+        self.assertFalse(data.endswith(b"\\n"))
+        self.assertEqual(hashlib.sha256(data).hexdigest(),
+                         "5abb8ad189f6bb109f910b7af2d044f09f81cb375037e7682d6f759f4098f2be")
+        self.assertEqual(obj["status"],"CONTACT_CALIBRATION_PROVEN_DISPOSABLE_ONLY")
+        self.assertEqual(obj["native_positive_contacts"],5346)
+        self.assertEqual(obj["native_observed_iterations"],21692)
+        self.assertEqual(obj["leaked_processes_count"],0)
+        self.assertFalse(obj["motion_goal_sent"])
+
     def test_actual_evidence_source_pinned_original_hash_and_repaired_only_tail(self):
         obj=json.loads(LEDGER.read_text(encoding="utf-8"))
         self.assertEqual(obj["original_run_id"],44215546368)
