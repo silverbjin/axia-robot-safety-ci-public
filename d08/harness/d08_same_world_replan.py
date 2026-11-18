@@ -119,7 +119,7 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
     from rclpy.qos import (qos_profile_sensor_data, QoSProfile,
                             ReliabilityPolicy, DurabilityPolicy)
     from rclpy.time import Time
-    from nav_msgs.msg import OccupancyGrid, Odometry, Path
+    from nav_msgs.msg import OccupancyGrid, Odometry, Path as NavPath
     from sensor_msgs.msg import LaserScan
     from nav2_msgs.action import ComputePathToPose
     from action_msgs.msg import GoalStatus
@@ -151,7 +151,7 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
          automatically_declare_parameters_from_overrides=True)
     # Display only the ORIGINAL official Nav2 Path in RViz; no planner,
     # controller or cmd_vel publisher is created by this observer.
-    path_pub=node.create_publisher(Path,"/axia/d08/official_path_readonly",
+    path_pub=node.create_publisher(NavPath,"/axia/d08/official_path_readonly",
         QoSProfile(depth=1,reliability=ReliabilityPolicy.RELIABLE,
                    durability=DurabilityPolicy.TRANSIENT_LOCAL))
     exe=MultiThreadedExecutor(num_threads=2)

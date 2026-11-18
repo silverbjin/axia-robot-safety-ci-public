@@ -30,7 +30,7 @@ def test_owner_gui_reuses_same_world_nav2_and_existing_3_path_obs():
 
 def test_official_action_path_is_published_only_to_readonly_rviz_topic():
     s=(ROOT/"d08/harness/d08_same_world_replan.py").read_text()
-    assert 'create_publisher(Path,"/axia/d08/official_path_readonly"' in s
+    assert 'create_publisher(NavPath,"/axia/d08/official_path_readonly"' in s
     assert "path_pub.publish(path)" in s
     assert "result.result.path" in s
     assert "cmd_vel" not in s or "cmd_vel_published" in s

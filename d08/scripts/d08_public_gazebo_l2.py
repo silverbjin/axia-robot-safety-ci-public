@@ -24,7 +24,7 @@ from d04_waffle_pi_rgb_preflight import _start,_stop_all,sync_ros_discovery_envi
 from d08_live_world import build_overlay,RGB_TOPIC,DEPTH_TOPIC
 from d08_live_readonly_probe import select_pair
 from d08_runtime_provenance import make_runtime_provenance
-from d08_one_world_official_nav2_launch import make_official_nav2_command
+from d08_one_world_official_nav2_launch import (make_official_nav2_command, create_official_rviz_path_overlay)
 from d08_scan_gap_trace import first_scan_receive_gap
 from p2_contact_discovery import resolve_g07_contact_topic
 from d08_contact_positive_contract import count_nonrobot_positive_contacts
@@ -514,8 +514,20 @@ def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=Fals
         if official_nav2:
             # Official Nav2 launch OWNS the only Gazebo server AND Waffle spawn.
             # Do not also call the native create service or start another gz sim.
+            owner_rviz=None
+            if owner_gui:
+                # Official nav2_bringup default uses /plan; point the
+                # existing RViz Path display at exactly our official
+                # ComputePathToPose result read-only topic. No fork.
+                official_rviz=(Path(get_package_share_directory("nav2_bringup"))
+                               /"rviz"/"nav2_default_view.rviz")
+                owner_rviz=create_official_rviz_path_overlay(
+                    official_rviz,out/"d08_owner_official_path.rviz")
+                result["owner_rviz_config"]=str(owner_rviz)
+                result["owner_rviz_path_topic"]="/axia/d08/official_path_readonly"
             command = make_official_nav2_command(
-                gz_world,gz_robot,owner_gui=owner_gui)
+                gz_world,gz_robot,owner_gui=owner_gui,
+                rviz_config_file=owner_rviz)
             simulator_command=(
                 command if owner_gui else
                 ['xvfb-run','-a','-s','-screen 0 1280x720x24']+command)
