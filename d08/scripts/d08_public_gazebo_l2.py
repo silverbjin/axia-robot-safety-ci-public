@@ -25,6 +25,7 @@ from d08_live_world import build_overlay,RGB_TOPIC,DEPTH_TOPIC
 from d08_live_readonly_probe import select_pair
 from d08_runtime_provenance import make_runtime_provenance
 from d08_scene_broadcaster import validate_d08_scene_world,validate_native_scene_reply
+from d08_world_startup import inspect_generated_world,wait_for_native_world
 from d08_one_world_official_nav2_launch import (make_official_nav2_command, create_official_rviz_path_overlay)
 from d08_scan_gap_trace import first_scan_receive_gap
 from p2_contact_discovery import resolve_g07_contact_topic
@@ -531,8 +532,19 @@ def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=Fals
         (out/'runtime_provenance.json').write_text(json.dumps(
             result['runtime_provenance'],indent=2,sort_keys=True)+'\n')
         if official_nav2:
-            # Official Nav2 launch OWNS the only Gazebo server AND Waffle spawn.
-            # Do not also call the native create service or start another gz sim.
+            # The Owner 2026-11-18 Gazebo exit255 was caused before sensor
+            # startup: official Nav2 races Xacro writing /tmp/nav2_*.sdf
+            # with gz sim reading it. D08 instead starts the preexpanded,
+            # checksum-verified World first and proves its NATIVE scene
+            # service before invoking official Nav2 with use_simulator:=False.
+            # The Nav2 Waffle spawn, AMCL, CM, planner and RViz are reused.
+            result['generated_world_preflight']=inspect_generated_world(gz_world)
+            sim=_start('gazebo_server',
+                ['gz','sim','-r','-s','-v3',str(gz_world)],env,out,processes)
+            result['startup_world']=wait_for_native_world(
+                sim,gz_world,env,evidence_path=out/'gazebo_startup.json')
+            result['gazebo_server_started_before_nav2']=True
+            print('D08_GAZEBO_WORLD_READY_BEFORE_NAV2_L2_PASS',flush=True)
             owner_rviz=None
             if owner_gui:
                 # Official nav2_bringup default uses /plan; point the
@@ -547,11 +559,16 @@ def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=Fals
             command = make_official_nav2_command(
                 gz_world,gz_robot,owner_gui=owner_gui,
                 rviz_config_file=owner_rviz)
-            simulator_command=(
-                command if (owner_gui or ci_owner_repro) else
-                ['xvfb-run','-a','-s','-screen 0 1280x720x24']+command)
-            sim=_start('d08_official_nav2_one_world',
-                simulator_command,env,out,processes)
+            # Official Nav2 no longer owns the simulator; keep its verified
+            # robot spawn and bringup untouched, and NEVER launch second gz.
+            nav2_proc=_start('d08_official_nav2_one_world',
+                command,env,out,processes)
+            if owner_gui:
+                # use_simulator=False suppresses official Gazebo GUI too.
+                # One GUI-only client connects to the already-ready server.
+                owner_gz_gui=_start('d08_owner_gazebo_gui',
+                    ['gz','sim','-g','-v4'],env,out,processes)
+                result['owner_gazebo_gui_requested']=True
             result['official_nav2_same_world_requested']=True
             (out/'native_create_ack.txt').write_text(
                 'OFFICIAL_NAV2_SPAWN_OWNS_CREATE; MANUAL_CREATE_NOT_REQUESTED\n')
@@ -786,7 +803,11 @@ def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=Fals
             try:
                 while True:
                     if sim.poll() is not None:
+                        raise RuntimeError('D08_OWNER_GUI_GAZEBO_SERVER_EXITED')
+                    if nav2_proc.poll() is not None:
                         raise RuntimeError('D08_OWNER_GUI_NAV2_PROCESS_EXITED')
+                    if owner_gz_gui.poll() is not None:
+                        raise RuntimeError('D08_OWNER_GUI_GAZEBO_CLIENT_EXITED')
                     cycle_dir=out/'owner_replan_cycles'/f'cycle_{cycle:04d}'
                     cycle_rc=run_physical_replan(
                         cycle_dir,env,checkout_sha)
