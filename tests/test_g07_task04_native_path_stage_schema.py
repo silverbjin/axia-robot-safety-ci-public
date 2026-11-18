@@ -10,11 +10,26 @@ import unittest
 
 ROOT=Path(__file__).resolve().parents[1]
 WORKFLOW=ROOT/".github/workflows/axia-g07-task04-public-native-gui-xvfb-l2-20261118.yml"
+STUDENT_SHA="01752add2e30c90c4d3286ef3a450f97746ecb55"
 STUDENT=ROOT.parent/"student/block_B/day07/h01_runtime/tools/d07_h01_path_visual.py"
 
 class RealOfficialPathSchema(unittest.TestCase):
     def test_pinned_public_official_path_has_stage_not_phase(self):
-        self.assertTrue(STUDENT.is_file())
+        # The generic public-unit job checks out only the CI repository.
+        # It MUST still check the native job's exact SHA and mandatory test.
+        workflow=WORKFLOW.read_text()
+        self.assertIn(f"ref: {STUDENT_SHA}",workflow)
+        self.assertIn('path: student',workflow)
+        self.assertIn(f'test "$(git -C student rev-parse HEAD)" = {STUDENT_SHA}',workflow)
+        self.assertIn(
+            'python3 -m unittest discover -s ci/tests -p test_g07_task04_native_path_stage_schema.py -v',
+            workflow)
+        if not STUDENT.is_file():
+            # In the native workflow ROOT is GITHUB_WORKSPACE/ci and a
+            # missing Student file is a hard failure, never a silent skip.
+            self.assertNotEqual(ROOT.name,"ci","NATIVE_PINNED_STUDENT_PATH_MISSING")
+            return
+        # Only the exact pinned native checkout exercises the real module.
         spec=importlib.util.spec_from_file_location("original_student_path_visual",STUDENT)
         module=importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
