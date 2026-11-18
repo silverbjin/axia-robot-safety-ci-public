@@ -46,6 +46,7 @@ jobs:
             d08/tests/test_d08_job_independence.py \
             d08/tests/test_d08_same_world_replan.py \
             d08/tests/test_d08_amcl_tf_subscription_order.py \
+            d08/tests/test_d08_static_amcl_witness.py \
             d08/tests/test_d08_live_person_range.py \
             d08/tests/test_d08_live_person_range_session.py \
             d08/tests/test_d08_roi_physical_trace.py \
