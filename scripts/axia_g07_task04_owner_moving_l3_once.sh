@@ -285,6 +285,26 @@ WATCH_PID=''
 echo "AXIA_G07_TASK04_OWNER_NATIVE_RUNNER_RC=$RUNNER_RC"
 if [[ "$RUNNER_RC" -ne 0 ]];then
   FIRST_FAILURE='NATIVE_RUNNER_FAILED_REVIEW_RAW'
+  # Preserve the FIRST upstream safety failure instead of masking it with
+  # the outer shell exception. The source wrote this file before raise.
+  ORIGINAL_FIRST_FAILURE=''
+  if [[ -s "$OUT/native/g07_ci_pregoal/pregoal_baseline.json" ]];then
+    ORIGINAL_FIRST_FAILURE="$(python3 - "$OUT/native/g07_ci_pregoal/pregoal_baseline.json" <<'PY_FIRST'
+import json,sys
+try:
+    with open(sys.argv[1],encoding="utf-8") as f:
+        record=json.load(f)
+    if record.get("status")=="BLOCKED":
+        print(record.get("first_failure",""))
+except (OSError,ValueError,TypeError):
+    pass
+PY_FIRST
+)" || ORIGINAL_FIRST_FAILURE=''
+    if [[ "$ORIGINAL_FIRST_FAILURE" =~ ^OWNER_PREGOAL_[A-Z0-9_]+$ ]];then
+      FIRST_FAILURE="$ORIGINAL_FIRST_FAILURE"
+      echo "AXIA_G07_TASK04_UPSTREAM_FIRST_FAILURE=$FIRST_FAILURE"
+    fi
+  fi
   [[ ! -r "$OUT/native/g07_ci_moving/ci_moving_goal_result.json" ]] || cp "$OUT/native/g07_ci_moving/ci_moving_goal_result.json" "$OUT/first_native_goal_result.json"
   hold "$FIRST_FAILURE"
 fi
