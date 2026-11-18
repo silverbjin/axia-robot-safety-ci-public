@@ -14,7 +14,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
-      - name: L0 RED prove malformed supplementary JSON in otherwise native Task03 PASS
+      - name: L0 GREEN validate original SHA pinned auxiliary tail-only normalization and future valid serializer
         shell: bash
         run: |
           set -Eeuo pipefail
