@@ -14,6 +14,44 @@ from collections import deque
 from pathlib import Path
 
 
+def spin_until_initial_pose_service_ready(
+    client, node, spin_once, *, timeout_sec=12.0, min_wait_sec=0.0,
+    monotonic=time.monotonic
+) -> dict:
+    """Wait for the official initial-pose service WITH sensor/TF callbacks.
+
+    rclpy Client.wait_for_service() sleeps in a polling loop (Jazzy source).
+    On this same single-thread observer node that starves Scan, Odom, Clock
+    and TF callbacks and produces an artificial >500ms receive hole. Spin
+    the already-existing observer node during discovery instead. No ROS
+    messages, safety publishers or simulator clock are fabricated.
+    """
+    if (not all(math.isfinite(v) for v in (timeout_sec,min_wait_sec)) or
+        timeout_sec<=0 or min_wait_sec<0 or min_wait_sec>=timeout_sec):
+        raise ValueError("D08_AMCL_SERVICE_DISCOVERY_TIMEOUT_INVALID")
+    started=monotonic()
+    deadline=started+timeout_sec
+    spins=0
+    while True:
+        # Explicit CI-only holdoff probes two seconds of real ROS callbacks.
+        # Never claim an actual native service was unavailable for that time.
+        if client.service_is_ready() and monotonic()-started>=min_wait_sec:
+            return {"ready":True,
+                    "service_wait_wall_sec":round(monotonic()-started,6),
+                    "spin_calls":spins,"spin_step_limit_sec":.05,
+                    "ci_holdoff_sec":min_wait_sec,
+                    "spin_loop_active_during_discovery":spins>0}
+        remaining=deadline-monotonic()
+        if remaining<=0:
+            return {"ready":False,
+                    "service_wait_wall_sec":round(monotonic()-started,6),
+                    "spin_calls":spins,"spin_step_limit_sec":.05,
+                    "ci_holdoff_sec":min_wait_sec,
+                    "spin_loop_active_during_discovery":spins>0}
+        spin_once(node,timeout_sec=min(.05,remaining))
+        spins+=1
+
+
 def inspect_free_map_pose(msg, x: float, y: float, radius_m=.12) -> dict:
     """Fail closed on unknown/outside/occupied cells around a fixed spawn."""
     info=msg.info
@@ -78,10 +116,14 @@ def summarize_actual_receive_history(streams, *, now, started_at):
     for topic in ("scan","odom","clock"):
         raw=list(streams.get(topic,()))
         gaps=[float(b[0])-float(a[0]) for a,b in zip(raw,raw[1:])]
+        source_deltas=[(int(b[1])-int(a[1]))/1e9
+                       for a,b in zip(raw,raw[1:])]
         sim_progress=((int(raw[-1][1])-int(raw[0][1]))/1e9) if len(raw)>1 else None
         host_progress=(float(raw[-1][0])-float(raw[0][0])) if len(raw)>1 else None
         sample={"callback_count":len(raw),
                 "max_host_receive_gap_sec":round(max(gaps),6) if gaps else None,
+                "max_source_stamp_delta_sec":round(max(source_deltas),6)
+                        if source_deltas else None,
                 "latest_receive_age_sec":round(now-float(raw[-1][0]),6) if raw else None,
                 "first_host_receive_sec":round(float(raw[0][0]),6) if raw else None,
                 "latest_host_receive_sec":round(float(raw[-1][0]),6) if raw else None,
@@ -282,6 +324,7 @@ def admit_actual_amcl(node, x: float, y: float, timeout_s=24.0, *, timing_out=No
     receive_history={k:deque(maxlen=200) for k in ("scan","odom","clock")}
     request_sent_at=[None]
     first_post_request_amcl=[None]
+    service_ready_probe=[None]
     def stamp_ns(msg):
         return int(msg.header.stamp.sec)*10**9+int(msg.header.stamp.nanosec)
     def recv(kind,msg):
@@ -362,8 +405,44 @@ def admit_actual_amcl(node, x: float, y: float, timeout_s=24.0, *, timing_out=No
         verdict["scan_stamp_ns"]=int(scan.header.stamp.sec)*10**9+int(scan.header.stamp.nanosec)
         # D07-H01 P0 uses this same official SetInitialPose service contract.
         cli=node.create_client(SetInitialPose,"/set_initial_pose")
-        if not cli.wait_for_service(timeout_sec=12):
+        # Keep the same rclpy node spinning while native ROS service
+        # discovery is pending: Scan/Odom/Clock/TF must NOT be starved.
+        counts_before={t:len(receive_history[t]) for t in (
+            "scan","odom","clock")}
+        service_wait_started_at=time.monotonic()
+        # Only exact public CI L2 adds a readiness-decision holdoff. It
+        # never pauses Gazebo publishers or generates synthetic ROS input.
+        ci_holdoff=(2.0 if os.environ.get("GITHUB_ACTIONS")=="true"
+            and os.environ.get("AXIA_D08_CI_AMCL_SERVICE_READY_DELAY_SEC")
+                =="2.0" else 0.0)
+        probe=spin_until_initial_pose_service_ready(
+            cli,node,rclpy.spin_once,timeout_sec=12.0,
+            min_wait_sec=ci_holdoff)
+        probe["callback_samples_during_wait"]={
+            t:len(receive_history[t])-counts_before[t]
+            for t in ("scan","odom","clock")}
+        probe["max_host_callback_gap_during_service_wait_sec"]={}
+        for topic in ("scan","odom","clock"):
+            events=list(receive_history[topic])
+            eligible=[b[0]-a[0] for a,b in zip(events,events[1:])
+                      if b[0]>=service_wait_started_at]
+            probe["max_host_callback_gap_during_service_wait_sec"][topic]=(
+                round(max(eligible),6) if eligible else None)
+        probe["first_receive_gaps_during_wait"]={
+            t:first_safety_gap.get(t) for t in ("scan","odom")}
+        probe["publisher_rmw_gap_measured"]=False
+        service_ready_probe[0]=probe
+        print("D08_AMCL_SERVICE_DISCOVERY_RX_SPIN "+json.dumps(
+            probe,sort_keys=True),flush=True)
+        if not probe["ready"]:
             raise RuntimeError("D08_AMCL_SET_INITIAL_POSE_SERVICE_MISSING")
+        # The pre-wait freshness check is not sufficient after a >0s
+        # discovery delay. No limit extension or warm-up gap discard.
+        now=time.monotonic()
+        if (now-latest["scan"][1]>.5 or now-latest["odom"][1]>.5):
+            raise RuntimeError(
+                "D08_AMCL_SCAN_ODOM_STALE_AFTER_SERVICE_DISCOVERY")
+        verdict["amcl_service_discovery"]=probe
         pose=PoseWithCovarianceStamped()
         pose.header.frame_id="map"
         pose.header.stamp=node.get_clock().now().to_msg()
@@ -478,6 +557,7 @@ def admit_actual_amcl(node, x: float, y: float, timeout_s=24.0, *, timing_out=No
             started_at=request_sent_at[0] or deadline-timeout_s)
         report["historical_first_receive_gaps"]=first_safety_gap
         report["first_amcl_pose_observed"]=first_post_request_amcl[0]
+        report["amcl_service_discovery"]=service_ready_probe[0]
         if timing_out is not None:
             Path(timing_out).write_text(json.dumps(
                 report,indent=2,sort_keys=True)+"\n")

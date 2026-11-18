@@ -309,6 +309,9 @@ jobs:
       DEBIAN_FRONTEND: noninteractive
       MAKEFLAGS: -j2
       AXIA_D08_CI_REAL_SUBSCRIBER_PAUSE_SEC: "0.65"
+      # CI-only two-second readiness-decision delay while real ROS sensor
+      # subscriptions/TF continue; this does NOT pause Gazebo publishers.
+      AXIA_D08_CI_AMCL_SERVICE_READY_DELAY_SEC: "2.0"
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -373,9 +376,23 @@ jobs:
           assert a['startup_gap_not_l3_safety_pass'] is True
           assert a['startup_gap_recovered_no_goal'] is True, a
           assert a['ci_executor_pause_injected_sec']==.65, a
+          discovery=a['amcl_service_discovery']
+          assert discovery['ready'] is True and discovery['ci_holdoff_sec']==2.0
+          assert discovery['service_wait_wall_sec']>=1.9,discovery
+          assert discovery['spin_calls']>=10,discovery
+          assert discovery['publisher_rmw_gap_measured'] is False
+          for topic in ('scan','odom','clock'):
+              assert discovery['callback_samples_during_wait'][topic]>=2,discovery
+              gap=discovery['max_host_callback_gap_during_service_wait_sec'][topic]
+              assert gap is not None and gap<.5,discovery
+          print('D08_REAL_AMCL_SERVICE_DISCOVERY_SPIN_SCAN_ODOM_CLOCK_L2_PASS')
           diag=json.loads(Path('results/d08-official-nav2-sameworld/amcl_receive_timing.json').read_text())
           assert diag['status']=='D08_REAL_RX_DIAGNOSTIC_NOT_SAFETY_PASS',diag
           assert diag['scan']['callback_count']>=6 and diag['clock']['callback_count']>=6
+          assert diag['amcl_service_discovery']['ci_holdoff_sec']==2.0
+          for topic in ('scan','odom','clock'):
+              assert diag[topic]['max_source_stamp_delta_sec'] is not None,diag
+          print('D08_REAL_SCAN_ODOM_CLOCK_HOST_VS_SIM_STAMP_TIMING_L2_PASS')
           assert diag['historical_first_receive_gaps'],diag
           if a['startup_gap_recovered_no_goal']:
               recovery=a['live_scan_odom_at_localization']['no_goal_pre_goal_recovery']
