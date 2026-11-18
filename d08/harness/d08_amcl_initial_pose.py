@@ -6,9 +6,12 @@ NavigateToPose, FollowPath or fabricated map→odom TF.
 """
 from __future__ import annotations
 import hashlib
+import json
 import math
+import os
 import time
 from collections import deque
+from pathlib import Path
 
 
 def inspect_free_map_pose(msg, x: float, y: float, radius_m=.12) -> dict:
@@ -58,6 +61,38 @@ def inspect_free_map_pose(msg, x: float, y: float, radius_m=.12) -> dict:
         "physical_spawn_from_one_world_launch":True,
         "localization_verified":False,
     }
+
+
+def summarize_actual_receive_history(streams, *, now, started_at):
+    """Read-only provenance of real ROS callbacks, never safety admission.
+
+    Scan/Odom/Clock host receive gaps and sampled sim-time progress are
+    distinct from unknown Gazebo publisher/bridge/RMW gaps. This evidence
+    survives first-boundary failure as amcl_receive_timing.json.
+    """
+    report={"status":"D08_REAL_RX_DIAGNOSTIC_NOT_SAFETY_PASS",
+            "control_published":False,"goal_sent":False,
+            "publisher_rmw_cadence_measured":False,
+            "scan_odom_age_limit_sec_unchanged":.5,
+            "observed_window_host_sec":round(now-started_at,6)}
+    for topic in ("scan","odom","clock"):
+        raw=list(streams.get(topic,()))
+        gaps=[float(b[0])-float(a[0]) for a,b in zip(raw,raw[1:])]
+        sim_progress=((int(raw[-1][1])-int(raw[0][1]))/1e9) if len(raw)>1 else None
+        host_progress=(float(raw[-1][0])-float(raw[0][0])) if len(raw)>1 else None
+        sample={"callback_count":len(raw),
+                "max_host_receive_gap_sec":round(max(gaps),6) if gaps else None,
+                "latest_receive_age_sec":round(now-float(raw[-1][0]),6) if raw else None,
+                "first_host_receive_sec":round(float(raw[0][0]),6) if raw else None,
+                "latest_host_receive_sec":round(float(raw[-1][0]),6) if raw else None,
+                "first_sim_stamp_ns":int(raw[0][1]) if raw else None,
+                "last_sim_stamp_ns":int(raw[-1][1]) if raw else None,
+                "observed_sim_time_progress_sec":round(sim_progress,6) if sim_progress is not None else None,
+                "actual_ros_receive_callbacks":True}
+        if topic=="clock":
+            sample["observed_rtf"]=round(sim_progress/host_progress,6) if host_progress and host_progress>0 else None
+        report[topic]=sample
+    return report
 
 
 def assess_pre_goal_receive_recovery(streams, *, started_at, now):
@@ -211,7 +246,7 @@ def assess_static_amcl_witness(witness:dict) -> dict:
             "first_amcl_pose_source_age_limit_sec":1.0}
 
 
-def admit_actual_amcl(node, x: float, y: float, timeout_s=24.0) -> dict:
+def admit_actual_amcl(node, x: float, y: float, timeout_s=24.0, *, timing_out=None) -> dict:
     """Require actual map, actual scan/odom, AMCL service ACK and map TF."""
     import rclpy
     from rclpy.qos import (
@@ -336,6 +371,14 @@ def admit_actual_amcl(node, x: float, y: float, timeout_s=24.0) -> dict:
         verdict["amcl_service_ack"]=True
         verdict["amcl_service"]="/set_initial_pose"
         verdict["localization_verified"]=False
+        # Exact CI-only real ROS Executor pause reproduces WSLg callback
+        # starvation without fabricating a message or changing publisher rate.
+        # This is an injected test disturbance, NOT a real GPU performance test.
+        if (os.environ.get("GITHUB_ACTIONS")=="true" and
+            os.environ.get("AXIA_D08_CI_REAL_SUBSCRIBER_PAUSE_SEC")=="0.65"):
+            print("D08_CI_REAL_SUBSCRIBER_EXECUTOR_PAUSE_BEGIN_SEC=0.65",flush=True)
+            time.sleep(.65)
+            verdict["ci_executor_pause_injected_sec"]=.65
         # An AMCL service ACK alone is NOT localization. Require one real
         # post-request, source-fresh AMCL Pose and the *current* real TF2
         # map→base_link chain, plus live fresh Scan/Odom and first gap.
@@ -415,5 +458,19 @@ def admit_actual_amcl(node, x: float, y: float, timeout_s=24.0) -> dict:
         print("D08_AMCL_REAL_FIRST_WITNESS_HOLD "+str(diagnostic),flush=True)
         raise RuntimeError("D08_AMCL_REAL_MAP_BASE_TF_NOT_READY:"+last_error)
     finally:
+        # Preserve actual callback counts/gaps even on a thrown first failure;
+        # nobody may promote these diagnostics to a navigation safety PASS.
+        report=summarize_actual_receive_history(
+            receive_history,now=time.monotonic(),
+            started_at=request_sent_at[0] or deadline-timeout_s)
+        report["historical_first_receive_gaps"]=first_safety_gap
+        report["first_amcl_pose_observed"]=first_post_request_amcl[0]
+        if timing_out is not None:
+            Path(timing_out).write_text(json.dumps(
+                report,indent=2,sort_keys=True)+"\n")
+        if any(report[t]["callback_count"]<6 for t in ("scan","odom","clock")):
+            print("D08_AMCL_REAL_RX_CADENCE_FIRST_FAILURE "+json.dumps(
+                {t:report[t] for t in ("scan","odom","clock")},sort_keys=True),
+                flush=True)
         for sub in subs:
             node.destroy_subscription(sub)
