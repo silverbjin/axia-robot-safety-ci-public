@@ -1,0 +1,30 @@
+# Isolated RED/GREEN regression: NO actual Goal allowed by this workflow.
+name: AXIA G07 Task03 Guard pre-motion age vs moving TTL public L0
+on:
+  push:
+    branches: ['fix/g07-task03-formal-public-l2-20261118']
+    paths:
+      - '.github/workflows/axia-g07-task03-guard-promotion-phase-l0-20261118.yml'
+permissions:
+  contents: read
+jobs:
+  guard-first-cm-age-l0:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: 93a9965933e71b84d014473e37b1902b4c0357e8
+          path: student
+          persist-credentials: false
+      - name: RED actual failure scenario Guard pre-move age 30s, post-move TTL150ms MUST NEVER relax
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C student rev-parse HEAD)" = 93a9965933e71b84d014473e37b1902b4c0357e8
+          cd student/block_B/day07/h01_runtime
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p test_g07_task03_formal_evidence.py -v
+          echo AXIA_G07_TASK03_GUARD_AGE_PHASE_RED_GREEN_L0_ONLY_NO_ROS_NO_GOAL
