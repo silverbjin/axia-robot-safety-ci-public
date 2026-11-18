@@ -1,0 +1,54 @@
+name: AXIA Block C D09 student guides public CI L0
+on:
+  push:
+    branches: ['feat/block-c-d09-teaching-guides-*']
+    paths: ['.github/workflows/block-c-d09-guides-public.yml']
+  pull_request:
+    paths: ['.github/workflows/block-c-d09-guides-public.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  d09-educational-guides:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: fd8d08c909a2e237d040e58a10e92962a5e247e2
+          path: student
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check pytest==8.3.5
+      - name: Exact SHA + fixture + student-only D09 guides + expected TODO RED
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p evidence
+          ACTUAL="$(git -C student rev-parse HEAD)"
+          test "$ACTUAL" = fd8d08c909a2e237d040e58a10e92962a5e247e2
+          echo "AXIA_D09_STUDENT_SOURCE_PIN_PASS=$ACTUAL" | tee evidence/provenance.log
+          python3 student/block_C/fixtures/generator.py --check --fixture-dir student/block_C/fixtures | tee evidence/fixture.log
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest -q student/block_C/tests/test_d09_guides_contract.py \
+            --junitxml=evidence/d09_guides.xml | tee evidence/guides.log
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest -q student/block_C/tests/test_block_c_scaffold_contract.py \
+            --junitxml=evidence/scaffold.xml | tee evidence/scaffold.log
+          set +e
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest -q student/block_C/tests/test_student_task_expected_red.py \
+            > evidence/todo_red.log 2>&1
+          rc=$?
+          set -e
+          test "$rc" -eq 1
+          grep -q "4 failed" evidence/todo_red.log
+          echo "AXIA_D09_TODO_EXPECTED_RED_4_CONFIRMED" | tee evidence/verdict.log
+          echo "AXIA_D09_PUBLIC_DOC_CONTRACT_L0_PASS ros=false gazebo=false private_checkout=false" | tee -a evidence/verdict.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: axia-d09-public-guides-evidence
+          path: evidence/
+          retention-days: 7
+          if-no-files-found: warn
