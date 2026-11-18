@@ -17,14 +17,14 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 93a9965933e71b84d014473e37b1902b4c0357e8
+          ref: 1bc16e4f8efa70fbb408edb95d74758213cdf68d
           path: student
           persist-credentials: false
-      - name: RED actual failure scenario Guard pre-move age 30s, post-move TTL150ms MUST NEVER relax
+      - name: GREEN actual Guard pre-motion age 30s excluded ONLY before ever_moved; all after-motion ticks 150ms unchanged
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C student rev-parse HEAD)" = 93a9965933e71b84d014473e37b1902b4c0357e8
+          test "$(git -C student rev-parse HEAD)" = 1bc16e4f8efa70fbb408edb95d74758213cdf68d
           cd student/block_B/day07/h01_runtime
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p test_g07_task03_formal_evidence.py -v
-          echo AXIA_G07_TASK03_GUARD_AGE_PHASE_RED_GREEN_L0_ONLY_NO_ROS_NO_GOAL
+          echo AXIA_G07_TASK03_GUARD_AGE_PHASE_GREEN_ONLY_NO_ROS_NO_GOAL
