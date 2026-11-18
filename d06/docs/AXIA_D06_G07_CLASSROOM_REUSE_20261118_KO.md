@@ -1,4 +1,4 @@
-# 2026-11-18 D06 최신 인계 — G07 Task04 실제 통합 CI GREEN 재발견 및 Owner 후보 연결
+> **2026-11-19 최신 갱신(기존 아래 기록을 대체하는 별도 결과):** D06 Owner `--live`는 G07 PR #169의 최신 실제 L2 성공 [#44268914763](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44268914763) / Student `d7ffec1ce73f0c4e672ea0fc51a1678139dc5a6f`로 갱신되었습니다. WSLg D3D12은 원본 G07 Gazebo/RViz GUI 자식에만 적용하며 물리/센서/안전 노드에는 전역 주입하지 않습니다. 새 공개 L0 [#44338101552](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44338101552) 15/15 PASS, 실제 D06 Wrapper WSL2 L3 NOT_RUN, MVP HOLD, main 미병합. 교육용 전체 RED→GREEN 보고서는 [AXIA_D06_G07_TASK04_WSLG_PIN_REFRESH_RED_GREEN_REPORT_20261119_KO.md](AXIA_D06_G07_TASK04_WSLG_PIN_REFRESH_RED_GREEN_REPORT_20261119_KO.md)를 참고하십시오.\n\n# 2026-11-18 D06 최신 인계 — G07 Task04 실제 통합 CI GREEN 재발견 및 Owner 후보 연결
 
 > 이 섹션은 아래 과거 D06 실험/출고 HOLD 기록보다 최신입니다. **G07 Task04의 실제 성공한 소스를 찾아 D06에 연결했지만, 강사 WSL2 Goal L3는 아직 실행되지 않았습니다.** ROS-free L0와 과거 동일 SHA 실제 L2 근거를 혼합하지 않습니다.
 
