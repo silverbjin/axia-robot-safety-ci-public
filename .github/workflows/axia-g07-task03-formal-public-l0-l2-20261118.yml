@@ -39,7 +39,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 1bc16e4f8efa70fbb408edb95d74758213cdf68d
+          ref: b53a5128cd7165f6465f2916b4c4554f9663798d
           path: student
           persist-credentials: false
       - name: NO GOAL 6 Guard contract plus 5 CM gate plus 5 simple TF immutable runtime L0
@@ -47,10 +47,11 @@ jobs:
         run: |
           set -Eeuo pipefail
           test "$(git -C ci rev-parse HEAD)" = "${{ github.sha }}"
-          test "$(git -C student rev-parse HEAD)" = '1bc16e4f8efa70fbb408edb95d74758213cdf68d'
+          test "$(git -C student rev-parse HEAD)" = 'b53a5128cd7165f6465f2916b4c4554f9663798d'
           export PYTHONPATH="$GITHUB_WORKSPACE/ci${PYTHONPATH:+:$PYTHONPATH}"
           cd student/block_B/day07/h01_runtime
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task03_formal_evidence.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task03_calibration_cleanup.py' -v
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task02_simple_tf.py' -v
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/d06/tests" -p 'test_g07_task02_public_strict_gate.py' -v
           bash -n scripts/p2_no_goal_smoke_ci.sh
@@ -79,7 +80,7 @@ jobs:
           test -s "$GITHUB_WORKSPACE/task03-native-build/libaxia_g07_s02_ecm_witness.so"
           sha256sum "$GITHUB_WORKSPACE/task03-native-build/libaxia_g07_s02_ecm_witness.so" > "$GITHUB_WORKSPACE/task03_witness_SHA256SUMS.txt"
           echo AXIA_G07_TASK03_NATIVE_GZ8_S02_READONLY_PLUGIN_BUILT_NO_GOAL
-      - name: Real disposable Gazebo NO GOAL positive Contact calibration same compiled binary
+      - name: Real disposable NO GOAL positive ECM, independently classify cleanup first boundary
         shell: bash
         run: |
           set -Eeuo pipefail
@@ -91,23 +92,56 @@ jobs:
           export AXIA_G07_TASK03_POSITIVE_ONLY=1
           export GZ_PARTITION="axia_p2_t03_positive_${{ github.run_id }}"
           cd student/block_B/day07/h01_runtime
+          set +e
           timeout --signal=TERM --kill-after=10s 900s bash scripts/p2_no_goal_smoke_ci.sh
-          python3 - <<'PY'
-          import json,os
-          path=os.environ["AXIA_G07_TASK03_WITNESS_REPORT"]
-          if not os.path.isfile(path):
-              stage=path+".status"
-              msg=open(stage).read().strip() if os.path.isfile(stage) else "PLUGIN_NOT_CONSTRUCTED"
-              print("AXIA_G07_TASK03_FIRST_ECM_WITNESS_BOUNDARY "+msg,flush=True)
-              raise SystemExit(3)
-          w=json.load(open(path))
-          stage=path+".status"
-          diag=open(stage).read().strip() if os.path.isfile(stage) else "NO_PLUGIN_STATUS"
-          print("AXIA_G07_TASK03_ECM_NATIVE_COMPONENT_STATE "+diag,flush=True)
-          assert w["report_complete"] is True and w["sensor_found"] is True
-          assert w["positive_contacts"]>0 and w["missing_iterations"]==0
-          print("AXIA_G07_TASK03_REAL_NATIVE_ECM_NO_GOAL_CONTACT_POSITIVE_PASS",
-                "frames",w["observed_iterations"],"contacts",w["positive_contacts"])
+          POS_RC=$?
+          set -e
+          python3 - "$POS_RC" <<'PY'
+          import json,os,sys
+          from pathlib import Path
+          sys.path.insert(0,str(Path("tools").resolve()))
+          from p2_g07_task03_calibration_cleanup import (
+              assess_calibration_teardown,actual_calibration_process_leaks)
+          root=Path(os.environ["AXIA_P2_SMOKE_RESULTS"])
+          witness=root/"s02_ecm_witness.json"
+          if not witness.is_file():
+              marker=witness.with_name(witness.name+".status")
+              detail=marker.read_text().strip() if marker.is_file() else "PLUGIN_NOT_CONSTRUCTED"
+              print("AXIA_G07_TASK03_FIRST_CONTACT_PROVENANCE_FAILURE "+detail,flush=True)
+              sys.exit(3)
+          w=json.loads(witness.read_text())
+          if w.get("source_sha")!=os.environ["AXIA_G07_TASK03_WITNESS_SHA256"]:
+              print("AXIA_G07_TASK03_BINARY_SHA_MISMATCH_NO_GOAL",flush=True)
+              sys.exit(3)
+          startup=json.loads((root/"startup_verdict.json").read_text())
+          shutdown=json.loads((root/"g07_ordered_shutdown.json").read_text())
+          teardown=(root/"teardown.txt").read_text()
+          leaks=actual_calibration_process_leaks(os.environ["GZ_PARTITION"])
+          result=assess_calibration_teardown(
+              w,startup,shutdown,teardown,int(sys.argv[1]),leaks)
+          print("AXIA_G07_TASK03_NO_GOAL_POSITIVE_CLEANUP_BOUNDARY "+json.dumps({
+              "status":result["status"],"cleanup_stage":result.get("cleanup_stage"),
+              "positive_contacts":w["positive_contacts"],
+              "native_frames":w["observed_iterations"],
+              "leaked_processes_count":len(leaks),
+              "native_nav2_l2_pass":result["native_nav2_l2_pass"]},sort_keys=True),
+              flush=True)
+          path=Path(os.environ["GITHUB_WORKSPACE"])/"public_evidence"
+          path.mkdir(exist_ok=True)
+          (path/"task03_positive_calibration.json").write_text(json.dumps({
+              "status":result["status"],"calibration_runner_rc":int(sys.argv[1]),
+              "cleanup_stage":result.get("cleanup_stage"),
+              "native_positive_contacts":w["positive_contacts"],
+              "native_observed_iterations":w["observed_iterations"],
+              "native_missing_iterations":w["missing_iterations"],
+              "sensor_found":w["sensor_found"],
+              "binary_sha256":w["source_sha"],
+              "leaked_processes_count":len(leaks),
+              "native_nav2_l2_pass":False,
+              "motion_goal_sent":False,"certified_estop":False},sort_keys=True,indent=2)+"\\n")
+          if result["status"]!="CONTACT_CALIBRATION_PROVEN_DISPOSABLE_ONLY":
+              sys.exit(3)
+          print("AXIA_G07_TASK03_CONTACT_POSITIVE_ONLY_PROVEN_NEW_GAZEBO_PARTITION_REQUIRED",flush=True)
           PY
       - name: Actual independent official Jazzy Gazebo ONE Goal, guard ever_moved TTL boundary, tracer OFF
         shell: bash
@@ -119,9 +153,12 @@ jobs:
           export AXIA_P2_SMOKE_RESULTS="$GITHUB_WORKSPACE/student/block_B/day07/h01_runtime/results/task03-real-moving"
           export AXIA_G07_TASK03_WITNESS_REPORT="$AXIA_P2_SMOKE_RESULTS/s02_ecm_witness.json"
           unset AXIA_G07_TASK03_POSITIVE_ONLY || true
+          # New ROS Domain and partition ensure no shutdown ambiguity from
+          # disposable NO_GOAL calibration can contaminate actual Goal L2.
+          export ROS_DOMAIN_ID='86'
           export GZ_PARTITION="axia_p2_t03_moving_${{ github.run_id }}"
           cd student/block_B/day07/h01_runtime
-          echo AXIA_G07_TASK03_REAL_ONE_GOAL_SOURCE_SHA=1bc16e4f8efa70fbb408edb95d74758213cdf68d
+          echo AXIA_G07_TASK03_REAL_ONE_GOAL_SOURCE_SHA=b53a5128cd7165f6465f2916b4c4554f9663798d
           env -u LD_PRELOAD -u AXIA_G07_TASK01_TF_AVAIL_PROBE timeout --signal=TERM --kill-after=10s 900s bash scripts/p2_no_goal_smoke_ci.sh
           echo AXIA_G07_TASK03_REAL_ONE_GOAL_ORIGINAL_RUNNER_RC0
       - name: Formal original S02 ECM, sqlite14, exact UUID terminal, Guard150 and CM120 post-Goal review
@@ -144,6 +181,7 @@ jobs:
           name: axia-task03-formal-public-numeric-${{ github.run_id }}
           path: |
             public_evidence/task03_formal_verdict.json
+            public_evidence/task03_positive_calibration.json
             task03_runtime_parity.json
             task03_witness_SHA256SUMS.txt
           retention-days: 30
