@@ -5,11 +5,11 @@ umask 077
 MODE=--compare
 if [[ $# -gt 0 ]]; then MODE="$1";fi
 [[ $# -le 1 && ( "$MODE" == --compare || "$MODE" == --self-check ) ]] || exit 2
-readonly OWNER_SHA='a6f6ebd8ee2352de6a6d53009ae9b739a8f64f93'
-readonly OWNER_BLOB='fa61de88205c54dc69e36e1722499af3b8e630af'
+readonly OWNER_SHA='3d2352286fa85293044b8fc94ebb951f77228606'
+readonly OWNER_BLOB='1b02be0cd0c99b38c79fa43b0e7d12d7b9d81f92'
 readonly ANALYZER_SHA='8875a02d53dee1e4346e20680b77b252e24d9ee7'
 readonly ANALYZER_BLOB='9314fd4c8f5354d82cbcb43ad43fcbc371197f61'
-readonly STUDENT_SHA='f541c36a3984aa65a13de03ef60861103718afb1'
+readonly STUDENT_SHA='41e77f1aa187abf041c1fd839c117e25d934bd8e'
 echo "AXIA_D06_GPU_RTF_PINNED_STUDENT=$STUDENT_SHA NO_GOAL_ONLY"
 if [[ "$MODE" == --self-check ]];then
   echo 'D06_GPU_RTF_STATIC_PASS NO_ROS_NO_GAZEBO_NO_GOAL'
