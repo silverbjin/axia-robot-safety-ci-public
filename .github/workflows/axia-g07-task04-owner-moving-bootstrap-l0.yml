@@ -1,0 +1,23 @@
+name: AXIA G07 Task04 Owner Moving Bootstrap L0
+on:
+  push:
+    branches: ['fix/g07-task04-owner-wsl2-public-pregate-20261118']
+    paths:
+      - '.github/workflows/axia-g07-task04-owner-moving-bootstrap-l0.yml'
+      - 'scripts/axia_g07_task04_owner_moving_l3_once.sh'
+      - 'tests/test_g07_task04_owner_moving_bootstrap.py'
+permissions:
+  contents: read
+jobs:
+  public-owner-bootstrap-l0:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Owner static source/CLI and fail-closed ROS-free L0
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest discover -s tests -p test_g07_task04_owner_moving_bootstrap.py -v
+          bash -n scripts/axia_g07_task04_owner_moving_l3_once.sh
