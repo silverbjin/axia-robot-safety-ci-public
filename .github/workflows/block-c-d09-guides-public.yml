@@ -1,7 +1,7 @@
 name: AXIA Block C D09 student guides public CI L0
 on:
   push:
-    branches: ['feat/block-c-d09-teaching-guides-*']
+    branches: ['feat/block-c-d09-*']
     paths: ['.github/workflows/block-c-d09-guides-public.yml']
   pull_request:
     paths: ['.github/workflows/block-c-d09-guides-public.yml']
@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: fd8d08c909a2e237d040e58a10e92962a5e247e2
+          ref: 8c9ef0ebdf2a1c9ec569435feaa9ce2876dd920d
           path: student
           persist-credentials: false
       - uses: actions/setup-python@v5
@@ -29,7 +29,7 @@ jobs:
           set -Eeuo pipefail
           mkdir -p evidence
           ACTUAL="$(git -C student rev-parse HEAD)"
-          test "$ACTUAL" = fd8d08c909a2e237d040e58a10e92962a5e247e2
+          test "$ACTUAL" = 8c9ef0ebdf2a1c9ec569435feaa9ce2876dd920d
           echo "AXIA_D09_STUDENT_SOURCE_PIN_PASS=$ACTUAL" | tee evidence/provenance.log
           python3 student/block_C/fixtures/generator.py --check --fixture-dir student/block_C/fixtures | tee evidence/fixture.log
           PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest -q student/block_C/tests/test_d09_guides_contract.py \
