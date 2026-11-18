@@ -63,3 +63,28 @@ MAIN_MERGED=false
 ## 5. 주니어 개발자용 문제 해결 프롬프트
 
 > 기존 WSLg NO_GOAL GUI 성공 실행기와 새로운 Moving Goal Owner 스크립트가 D3D12 환경변수를 어느 프로세스에 주입하는지 소스 기준으로 비교하라. 새 오류가 발생했다는 추측을 사실로 보고하지 말고, Gazebo 서버·LiDAR·Nav2 안전노드에 GPU GUI 전용 환경변수를 불필요하게 상속시키지 않도록 최소 RED 계약을 작성하라. GREEN에서는 기존 CI GUI와 Owner PID/TTY·Goal 경로를 재구현하지 말라. 동일 Student SHA로 공개 CI 실제 Gazebo L2를 확인한 뒤 출고 후보를 고정하고, WSL2 화면과 원본 증거 없이는 L3 PASS라고 보고하지 말라.
+
+## 6. 동일 출고 후보의 실제 공개 L2와 최종 Bootstrap 검증 (완료)
+
+초기 보고서의 미검증 항목을 **실제 실행 결과**로 확정한다.
+
+- 실제 공개 Gazebo Harmonic + ROS 2 Jazzy + 공식 Nav2 + TurtleBot3 Waffle + Gazebo/RViz Xvfb: [Run #44268914763](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44268914763), 공개 CI 워크플로 코드 SHA `08fef7f78459c915a29f15fe07a4a60b213b46d7`.
+- 실증 Student 전체 SHA `d7ffec1ce73f0c4e672ea0fc51a1678139dc5a6f`. **동일 실행의 29개 L0** 및 실제 Gazebo 통합 `runner_rc=0`, RViz=1, Gazebo GUI=1.
+- 판정기 최종 출력: `TASK04_REAL_GAZEBO_MOVING_GUI_L2_SCOPED_PASS`, `first_failure=NONE`.
+- 실제 수치 artifact ID `14411537039`, [공개 artifact](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44268914763/artifacts/14411537039).
+- artifact ZIP SHA256 `0d9b079a07db6134d2a918b5b9d839933f6bf0ef1d8d6a7212b9a191885fd73e`, 내부 판정 JSON SHA256 `3ac23a49035c7ba3db2508f9ea9cac703649b6990a907a426e89b73c64a8dc45`.
+- 실제 고유 Goal UUID `cec203878d5b4b848534a3950557d054`, 동일 Action UUID CANCELED(5) 판정 true.
+- CM 120ms source max **59.150441ms**, Observer max **98.922666ms**, 실제 RMW publisher pairs **438**; Guard 내부 CM age 최대 **19.597231ms**(150ms 이내).
+- 실제 odom 이동 **0.2087399687m**, 정지 odom ZERO 유지 **1.02447969s**. 실제 S02 native Contact 0건/25,987 frame.
+- SQLite 14개 토픽 유효, DB SHA256 `0bb0782e92048d97328a12e6abaf84c50df9fc30a4863fa9d669ec2e4c0e9b31`, metadata SHA256 `e4b99d8086664b29002da6fda6102e95b0edea313c9731140ffe38ec686a8d38`.
+- Navigation/Localization Lifecycle ACK 및 Collision Monitor child clean exit 모두 true. 최초 안전 타이밍 위반 NONE; unexpected guard latch false. H/W 인증 E-Stop 증명이 아님.
+
+**후속 출고 코드 검증:** GUI 환경 범위를 수정한 공개 Owner 원샷에 새로운 Student SHA와 L2 ID를 고정한 후, 공개 Bootstrap 최초 [#44269681043](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44269681043)은 테스트 내부에 이전 Run ID `44264236859`가 남아 있어 6개 중 1 FAIL. 이는 실행기 로직 실패가 아닌 **테스트 기대값 하드코딩**이다. 테스트를 `str(RUN)`으로 고친 최소 변경 커밋 `8a11485ed393ee80dadf0dc55aa21e2baf06fcd8`, [Run #44269770417](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44269770417) **6/6 L0 GREEN**.
+
+- 고정 출고용 공개 Owner 스크립트 경로: `scripts/axia_g07_task04_owner_moving_l3_once.sh`, 공개 CI 소스 `8a11485ed393ee80dadf0dc55aa21e2baf06fcd8`에 고정하여 사용.
+- 이전 가이드에서 제시했던 `e56bbad873e0e37c83f34ecbcc206cc8a648e63d` 원샷은 **신규 현장 실행용으로 사용하지 않음**. 이 시점에서 검증된 개선판 SHA로 교체.
+- 최종 상태: **공개 CI L2 PASS_SCOPED / Owner WSL2 L3 NOT_RUN / AXIA_MVP_DEMO_ACCEPTED=HOLD / CERTIFIED_ESTOP=false / MAIN_MERGED=false**. 공개 Xvfb와 Owner WSLg D3D12의 실제 성능이 일치한다는 주장 금지.
+
+## 7. 추가 코드 리뷰 결과
+
+`GITHUB_ACTIONS=true`, CI 전용 Goal 허가, 제3 프로세스 전역 kill, TTY 승인 자동입력은 추가되지 않았다. 기존 프로그램의 `admit_owner()`가 실제 Goal 전 SHA·TTY·Supervisor/CM/Guard 세 PID/세션 검사를 수행한다. 예기치 않은 GUI 프로세스 종료/Goal 취소 실패는 L3 PASS가 아니라 **원본을 보존한 HOLD**로 이어지도록 한다. 새로운 실제 현장 오류가 나오면 같은 오류 현장 재시도 금지, 먼저 공개 CI 재현 가능 경계를 RED로 추가한다.
