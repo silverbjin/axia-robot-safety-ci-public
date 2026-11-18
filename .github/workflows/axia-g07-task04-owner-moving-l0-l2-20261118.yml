@@ -16,16 +16,17 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: d95704b2600bcf461e266cf38407d6fa89161540
+          ref: 0fc79be43cdb8387571a3912d563f86c8f6b703d
           path: student
           persist-credentials: false
       - name: Exact Student SHA and ROS-free GREEN contract (Owner consent never simulated)
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C student rev-parse HEAD)" = 'd95704b2600bcf461e266cf38407d6fa89161540'
+          test "$(git -C student rev-parse HEAD)" = '0fc79be43cdb8387571a3912d563f86c8f6b703d'
           cd student/block_B/day07/h01_runtime
           bash -n scripts/p2_no_goal_smoke_ci.sh
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_owner_shell_contract.py' -v
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_owner_moving_entry.py' -v
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task02_simple_tf.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_pre_goal_odom_readiness.py' -v
