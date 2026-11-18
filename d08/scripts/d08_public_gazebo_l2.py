@@ -427,12 +427,15 @@ def positive_contact_once(out:Path,env:dict,contact_topic:str)->dict:
     return verdict
 
 
-def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=False,cm_cadence_l1:bool=False,official_nav2:bool=False,official_path_phases:bool=False,live_person_range:bool=False):
+def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=False,cm_cadence_l1:bool=False,official_nav2:bool=False,official_path_phases:bool=False,live_person_range:bool=False,owner_gui=False):
     out=Path(out).resolve()
     if official_path_phases and not official_nav2:
         raise ValueError('D08_PATH_PHASES_REQUIRE_SAME_WORLD_OFFICIAL_NAV2')
     if live_person_range and not (official_nav2 and official_path_phases):
         raise ValueError('D08_LIVE_RANGE_REQUIRES_SAME_WORLD_OFFICIAL_NAV2_3PATHS')
+    if owner_gui and not (official_nav2 and official_path_phases
+                          and live_person_range):
+        raise ValueError('D08_OWNER_GUI_REQUIRES_EXACT_SAME_WORLD_LIVE_E2E')
     if out.exists():raise ValueError('D08_EVIDENCE_EXISTS')
     out.mkdir(parents=True)
     result={'gate':'D08_ONE_WORLD_GAZEBO_RGBD_NO_GOAL',
@@ -444,8 +447,18 @@ def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=Fals
     env['ROS_DOMAIN_ID']='69'
     env['ROS_AUTOMATIC_DISCOVERY_RANGE']='LOCALHOST'
     env['GZ_PARTITION']='axia_d08_ci_'+str(os.getpid())
-    env['LIBGL_ALWAYS_SOFTWARE']='1'
-    env['GALLIUM_DRIVER']='llvmpipe'
+    if owner_gui:
+        # WSLg uses the user's actual GPU/Wayland/X11 environment.
+        # Never force CI's llvmpipe or Xvfb in an interactive Owner run.
+        if not env.get('DISPLAY'):
+            raise RuntimeError('D08_OWNER_WSLG_DISPLAY_NOT_AVAILABLE')
+        env.pop('LIBGL_ALWAYS_SOFTWARE',None)
+        env.pop('GALLIUM_DRIVER',None)
+        result['owner_gui_requested']=True
+        print('D08_OWNER_WSLG_REAL_GUI_REQUESTED',flush=True)
+    else:
+        env['LIBGL_ALWAYS_SOFTWARE']='1'
+        env['GALLIUM_DRIVER']='llvmpipe'
     env.pop('EGL_PLATFORM',None)
     sync_ros_discovery_environment(env)
     try:
@@ -501,10 +514,13 @@ def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=Fals
         if official_nav2:
             # Official Nav2 launch OWNS the only Gazebo server AND Waffle spawn.
             # Do not also call the native create service or start another gz sim.
-            command = make_official_nav2_command(gz_world,gz_robot)
+            command = make_official_nav2_command(
+                gz_world,gz_robot,owner_gui=owner_gui)
+            simulator_command=(
+                command if owner_gui else
+                ['xvfb-run','-a','-s','-screen 0 1280x720x24']+command)
             sim=_start('d08_official_nav2_one_world',
-                ['xvfb-run','-a','-s','-screen 0 1280x720x24']+command,
-                env,out,processes)
+                simulator_command,env,out,processes)
             result['official_nav2_same_world_requested']=True
             (out/'native_create_ack.txt').write_text(
                 'OFFICIAL_NAV2_SPAWN_OWNS_CREATE; MANUAL_CREATE_NOT_REQUESTED\n')
@@ -673,6 +689,34 @@ def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=Fals
         result['ros_actual']=True
         result['gazebo_actual']=True
         print('D08_REAL_GAZEBO_WAFFLE_RGBD_NO_GOAL_PASS',flush=True)
+        if owner_gui:
+            # Reuse EXACT same public no-Goal three-phase observer, same
+            # native Gazebo World/physical human/official Planner. Keep the
+            # live Gazebo+RViz2 windows open until Owner Ctrl+C.
+            from d08_same_world_replan import run as run_physical_replan
+            print('D08_OWNER_GUI_REPLAN_LOOP_READY Ctrl+C TO_STOP',flush=True)
+            cycle=0
+            try:
+                while True:
+                    if sim.poll() is not None:
+                        raise RuntimeError('D08_OWNER_GUI_NAV2_PROCESS_EXITED')
+                    cycle_dir=out/'owner_replan_cycles'/f'cycle_{cycle:04d}'
+                    cycle_rc=run_physical_replan(
+                        cycle_dir,env,checkout_sha)
+                    cycle_data=json.loads(
+                        (cycle_dir/'verdict.json').read_text())
+                    if cycle_rc!=0:
+                        raise RuntimeError(
+                            'D08_OWNER_GUI_REAL_PATH_CYCLE_FIRST_BOUNDARY:'+
+                            str(cycle_data.get('first_boundary','HOLD')))
+                    cycle+=1
+                    result['owner_completed_cycles']=cycle
+                    print('D08_OWNER_GUI_REAL_OFFICIAL_PATH_CYCLE_PASS '+str(
+                        cycle),flush=True)
+                    time.sleep(2)  # Classroom visual pause, not a TTL change
+            except KeyboardInterrupt:
+                result['owner_gui_user_stopped']=True
+                print('D08_OWNER_GUI_CTRLC_ACK',flush=True)
     except Exception as exc:
         result['blocker']=type(exc).__name__+':'+str(exc)[:500]
         print('D08_REAL_GAZEBO_L2_BLOCKED '+result['blocker'],flush=True)
@@ -702,6 +746,8 @@ if __name__=='__main__':
         help='Opt-in official Nav2 owns the same world/Waffle, no driving Goal')
     p.add_argument('--official-path-phases',action='store_true',
         help='Opt-in same-run actual far/intrusion/restore 3 official Paths, NO GOAL')
+    p.add_argument('--owner-gui',action='store_true',
+        help='WSLg Gazebo + RViz2 opt-in after exact same public NO_GOAL checks')
     p.add_argument('--live-person-range',action='store_true',
         help='Same-world pinned live C++ YOLO RGBD/D05 2 VALID + UNKNOWN read-only')
     p.add_argument('--positive-contact-once',action='store_true',
@@ -711,4 +757,5 @@ if __name__=='__main__':
                              lidar_pre_goal=a.lidar_pre_goal,cm_cadence_l1=a.cm_cadence_l1,
                              official_nav2=a.official_nav2,
                              official_path_phases=a.official_path_phases,
-                             live_person_range=a.live_person_range))
+                             live_person_range=a.live_person_range,
+                             owner_gui=a.owner_gui))

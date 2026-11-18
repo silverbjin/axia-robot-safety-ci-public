@@ -8,7 +8,7 @@ from pathlib import Path
 import xml.etree.ElementTree as ET
 
 
-def make_official_nav2_command(world_sdf: Path, robot_sdf: Path) -> list[str]:
+def make_official_nav2_command(world_sdf: Path, robot_sdf: Path, *, owner_gui=False) -> list[str]:
     world_sdf, robot_sdf = Path(world_sdf), Path(robot_sdf)
     for path in (world_sdf, robot_sdf):
         if not path.is_absolute() or not path.is_file() or path.is_symlink():
@@ -34,7 +34,8 @@ def make_official_nav2_command(world_sdf: Path, robot_sdf: Path) -> list[str]:
         raise ValueError("D08_OFFICIAL_NAV2_REAL_GPU_LIDAR_MISSING")
     return [
         "ros2", "launch", "nav2_bringup", "tb3_simulation_launch.py",
-        "headless:=True", "use_rviz:=False",
+        "headless:=False" if owner_gui else "headless:=True",
+        "use_rviz:=True" if owner_gui else "use_rviz:=False",
         "use_composition:=False", "use_respawn:=False",
         "autostart:=True", "use_sim_time:=True",
         "world:=" + str(world_sdf), "robot_sdf:=" + str(robot_sdf),

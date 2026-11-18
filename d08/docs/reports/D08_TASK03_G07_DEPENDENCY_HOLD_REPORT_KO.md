@@ -18,3 +18,11 @@
 
 ## 다음
 - Wait for a *new independently evidenced* full G07 moving strict source+observer+Guard+Goal/odom/Contact/shutdown PASS at one exact SHA, then separately authorize one moving Task03. No retries or TTL relaxation from D08.
+
+## 2026-11-18 최신 G07 공개 Task03 실증 범위 재대조 (Moving 보류 유지)
+
+- 기존 2026-11-18 문서의 G07 실패 사례는 **과거의 의도적 RED**. 최신 정확한 Public CI [Run #44223320904](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44223320904)의 `task03-public-one-formal-l2` job은 SUCCESS이며 raw artifact `axia-task03-formal-public-numeric-44223320904` #14391079934 `public_evidence/task03_formal_verdict.json`을 직접 재검토함.
+- 해당 G07 **범위 한정** 실제 numeric 결론: `TASK03_PUBLIC_L2_FORMAL_EVIDENCE_PASS_SCOPED`. CM RMW-source gap max **56.642455ms**, Observer gap max **71.462708ms**, Guard 내부 CM age max **53.971531ms**, 실제 Goal UUID `99e27f7a45b04e9890b17f81dc453f20` `EXACT_GOAL_UUID_TERMINAL_CANCELED_PASS`, Goal-window native ECM Contact 0, managed Nav2 lifecycle shutdown ACK, owner runner exit0, 14-topic SQLite custody. 물리 E-Stop 인증 아님.
+- **그러나 그 원본 verdict에 명시**: `axia_mvp_demo_accepted=false`, `task04_owner_wsl2_l3_accepted=false`. 실제 S02/G07 속도비·정지 dwell/새 D08 구성에 대한 **동일 moving run의** 모든 요구 항목, Owner WSL2 GUI L3 판정이 기록됐다고 볼 수 없음. 무엇보다 해당 G07 작업의 소스/런타임 World는 현 D08 기능 브랜치의 실시간 YOLO+registered RGBD+물리 Proxy World와 동일하지 않음. 다른 Run 수치를 이어 붙여 D08 Moving E2E로 승격 금지.
+- 따라서 선행 G07 공개 CI에서 scoped numeric 부분 PASS가 생겼음을 인정하되 D08 Task03은 **`D08_MOVING_E2E_HOLD_G07_DEPENDENCY`** 그대로. D08 Task01/02 NO_GOAL 출고를 막지 않고, 실제 Moving Goal·cmd_vel 테스트·CM TTL 우회는 추가하지 않음.
+- Task03 조건부 진입 시에는 별도 사용자 승인 후 이전 G07 owner one-shot과 동일한 실제 source/Guard/CM 증거, S02 감속 비율·정지 dwell·Contact·Goal UUID·종료 ACK를 다시 검증. 기존 scoped 수치를 이 출발점으로 재사용할 수 있지만 전체 PASS로 주장 불가.

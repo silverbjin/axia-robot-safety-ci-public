@@ -119,7 +119,7 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
     from rclpy.qos import (qos_profile_sensor_data, QoSProfile,
                             ReliabilityPolicy, DurabilityPolicy)
     from rclpy.time import Time
-    from nav_msgs.msg import OccupancyGrid, Odometry
+    from nav_msgs.msg import OccupancyGrid, Odometry, Path
     from sensor_msgs.msg import LaserScan
     from nav2_msgs.action import ComputePathToPose
     from action_msgs.msg import GoalStatus
@@ -149,6 +149,11 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
     node=Node("axia_d08_official_physical_replan_no_goal",
          parameter_overrides=[Parameter("use_sim_time",value=True)],
          automatically_declare_parameters_from_overrides=True)
+    # Display only the ORIGINAL official Nav2 Path in RViz; no planner,
+    # controller or cmd_vel publisher is created by this observer.
+    path_pub=node.create_publisher(Path,"/axia/d08/official_path_readonly",
+        QoSProfile(depth=1,reliability=ReliabilityPolicy.RELIABLE,
+                   durability=DurabilityPolicy.TRANSIENT_LOCAL))
     exe=MultiThreadedExecutor(num_threads=2)
     exe.add_node(node)
     thread=None
@@ -274,6 +279,8 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
         if path.header.frame_id!="map" or len(path.poses)<3 or _stamp(path)<=0:
             raise RuntimeError("D08_OFFICIAL_PATH_FRAME_STAMP_OR_LENGTH_INVALID")
         pts=[[float(p.pose.position.x),float(p.pose.position.y)] for p in path.poses]
+        path_pub.publish(path)  # actual result.result.path, unchanged source stamps
+        result["readonly_rviz_path_topic"]="/axia/d08/official_path_readonly"
         return {"poses":pts,"path_stamp":_stamp(path),
                 "path_distance_from_obstacle_m":round(_path_distance_to_point(pts,CANDIDATE_MAP),6)}
 

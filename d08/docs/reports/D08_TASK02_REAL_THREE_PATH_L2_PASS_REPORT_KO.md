@@ -45,3 +45,9 @@
 
 ## Next
 - Reuse official ONNX Runtime 1.20.0 and pinned C++ yolo_ros already built successfully in public CI without duplicating the engine. Integrate real ROS RGBD + DetectionArray + public D05 read-only ROI median into SAME Gazebo/Nav2 no-Goal run. Prove 2 distinct VALID distances and one actual UNKNOWN, and distinguish CM state/subscription/TTL evidence. Keep Owner WSL2 one final run only.
+
+## 공식 Jazzy Collision Monitor 읽기 전용 NO_GOAL 관측 계약 보완 (2026-11-18)
+
+- 재확인한 공식 Nav2 Jazzy `nav2_collision_monitor/src/collision_monitor_node.cpp` blob `41495890e0c268de98619bb17875a1efb25cc28b`의 L68–81: CM은 `cmd_vel_in_topic` 구독과 `cmd_vel_out_topic` Publisher를 설정하지만, `state_topic`을 명시적으로 설정한 경우에만 `nav2_msgs/msg/CollisionMonitorState` Publisher를 만듦. 기본 `state_topic`은 빈 문자열 (동일 파일 L255). L413–429의 polygon collision action은 수신한 Twist를 처리하는 경로이며, L650–656에서만 (활성화된 경우) state를 발행.
+- 따라서 D08 NO_GOAL에서 실제 `/scan`의 공식 CM subscription graph가 발견돼도 그것만으로 **CM_STATE_OBSERVED**나 `SLOW/STOP` 실제 출력·Guard TTL 준수를 주장할 수 없음. 구독 존재와 실제 수신 주기/활성된 Polygon state/output은 서로 다른 사실. 새 Twist·Go-to-Goal 발행을 추가하지 않는 본 교육용 MVP에서는 안전 상태는 **`CM_SUBSCRIBER_DISCOVERED` + `CM_OUTPUT_NOT_RUN`**으로 제한함.
+- D06 교육용 `bubble_policy()`의 거리 구간 설명은 예측/관찰 자료이며, 실제 공식 CM 내부 상태와 동일하지 않음. 안전 TTL, Cmd_vel 단일 최종 publisher, SW Stop와 인증 E-Stop 구분을 변경하지 않음.
