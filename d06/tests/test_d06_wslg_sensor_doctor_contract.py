@@ -47,7 +47,7 @@ class WslgDoctorSafety(unittest.TestCase):
         # in PATH. Previous runner checked ros2/rviz2 before source/setup.
         t=SCRIPT.read_text()
         source=t.index('source /opt/ros/jazzy/setup.bash')
-        post=t.index('for exe in ros2 gz rviz2;do')
+        post=t.index('for exe in ros2 gz rviz2 colcon;do')
         self.assertLess(source,post)
         self.assertNotIn('for exe in git bash python3 ros2 gz',t[:source])
 
