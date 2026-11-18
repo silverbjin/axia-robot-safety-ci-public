@@ -65,6 +65,16 @@ jobs:
         run: |
           set -Eeuo pipefail
           set +u;source /opt/ros/jazzy/setup.bash;set -u
+          if ! command -v Xvfb >/dev/null;then
+            apt-get update -qq
+            DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends xvfb
+          fi
+          export DISPLAY=:97
+          Xvfb :97 -screen 0 1600x900x24 -nolisten tcp > "$GITHUB_WORKSPACE/xvfb.log" 2>&1 &
+          xvfb_pid=$!
+          trap 'kill -TERM "$xvfb_pid" 2>/dev/null || true' EXIT
+          sleep 2
+          kill -0 "$xvfb_pid"
           export GZ_PARTITION="axia_p2_no_goal_sensor_$GITHUB_RUN_ID"
           export AXIA_P2_SMOKE_RESULTS="$GITHUB_WORKSPACE/native"
           cd "$GITHUB_WORKSPACE/student/block_B/day07/h01_runtime"
