@@ -1,0 +1,31 @@
+name: AXIA P2 G05 G06 read-only Owner archive integrity L0
+on:
+  push:
+    branches:
+      - feat/g05-g06-readonly-archive-audit-20261113
+    paths:
+      - 'tools/axia_p2_archive_integrity_audit.py'
+      - 'scripts/axia_p2_g05_g06_readonly_archive_once.sh'
+      - 'tests/test_axia_p2_archive_integrity_audit.py'
+      - 'tests/test_axia_p2_archive_owner_wrapper.py'
+      - '.github/workflows/axia-p2-g05-g06-archive-audit-l0.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  archive-integrity-l0:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Synthetic read-only archive integrity / no ROS no Goal no Fault
+        run: |
+          python3 -m unittest discover -s tests -p 'test_axia_p2_archive_integrity_audit.py' -v
+          python3 -m unittest discover -s tests -p 'test_axia_p2_archive_owner_wrapper.py' -v
+          bash -n scripts/axia_p2_g05_g06_readonly_archive_once.sh
+          bash scripts/axia_p2_g05_g06_readonly_archive_once.sh --self-check
+          echo "AXIA_P2_ARCHIVE_AUDIT_L0_PASS NO_REAL_OWNER_ARCHIVE NO_ROS NO_GOAL NO_FAULT"
