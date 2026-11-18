@@ -8,24 +8,26 @@
 |---|---|
 | 공개 CI PR | https://github.com/silverbjin/axia-robot-safety-ci-public/pull/169 |
 | Student PR | https://github.com/silverbjin/axia-robot-safety-student/pull/46 |
-| 단일 주행 소스 SHA | `486ec02e8e0762e9abefd3063b5d25b2ff5f1fb8` |
-| CI read-only 판정 소스 SHA | `860d647a79acdd7a36b77df9e9e8513208da7423` |
-| 실제 Gazebo Harmonic + Nav2 + Waffle + RViz Xvfb L2 | https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44264236859 |
-| 출고 Owner 원샷 Bootstrap L0 | https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44264980026 |
-| L2 원본 공개 수치·SHA256 artifact | https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44264236859/artifacts/14410070500 |
+| 단일 주행 소스 SHA | `d7ffec1ce73f0c4e672ea0fc51a1678139dc5a6f` |
+| CI read-only 판정 소스 SHA | `08fef7f78459c915a29f15fe07a4a60b213b46d7` |
+| 실제 Gazebo Harmonic + Nav2 + Waffle + RViz Xvfb L2 | https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44268914763 |
+| 출고 Owner 원샷 Bootstrap L0 | https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44269770417 |
+| L2 원본 공개 수치·SHA256 artifact | https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44268914763/artifacts/14411537039 |
 | 강사 실제 WSL2 L3 | **실행 전, 미검증** |
 | main | **병합 안 함** |
 
-사전 성공인 NO_GOAL GUI나 Task03 기존 L2는 다시 실행하지 않는다. 이번 출고 후보는 공개 CI Run #44264236859에서 **하나의 실제 Moving Goal+GUI 통합 실행**으로 안전수치·정확 UUID CANCELED·Native Contact0·SQLite14·Nav2 Lifecycle ACK와 CM clean exit 검증을 마쳤다. 다만 공개 Xvfb는 Owner WSLg D3D12가 아니므로 L3 승격 불가.
+사전 성공인 NO_GOAL GUI나 Task03 기존 L2는 다시 실행하지 않는다. 이번 출고 후보는 공개 CI Run #44268914763에서 **하나의 실제 Moving Goal+GUI 통합 실행**으로 안전수치·정확 UUID CANCELED·Native Contact0·SQLite14·Nav2 Lifecycle ACK와 CM clean exit 검증을 마쳤다. 다만 공개 Xvfb는 Owner WSLg D3D12가 아니므로 L3 승격 불가.
+
+기존 실행 명령에서 사용했던 원샷 커밋 `e56bbad873e0e37c83f34ecbcc206cc8a648e63d`은 WSLg D3D12 변수를 전역 export하는 이전 배포 후보이므로 **현장 신규 실행에 사용하지 않는다.** 새 고정 SHA는 동일 Student SHA의 공개 L2 및 원샷 Bootstrap L0를 통과했다.
 
 ## 강사 WSL2 복사·붙여넣기 명령 (하나의 블록)
 
-다음은 **이 시점의 실증 공개 원샷 SHA `e56bbad873e0e37c83f34ecbcc206cc8a648e63d`**를 고정한다. CI가 검증한 Student SHA는 내부에서 별도 확인한다. 무작위 main HEAD를 내려받지 않는다.
+다음은 **이 시점의 실증 공개 원샷 SHA `8a11485ed393ee80dadf0dc55aa21e2baf06fcd8`**를 고정한다. CI가 검증한 Student SHA는 내부에서 별도 확인한다. 무작위 main HEAD를 내려받지 않는다.
 
 ```bash
 (
   set -Eeuo pipefail
-  SOURCE_SHA='e56bbad873e0e37c83f34ecbcc206cc8a648e63d'
+  SOURCE_SHA='8a11485ed393ee80dadf0dc55aa21e2baf06fcd8'
   RUNNER="$(mktemp --suffix=.sh)"
   trap 'rm -f -- "$RUNNER"' EXIT
   curl -fLsS --retry 3 --max-time 90 \
@@ -37,7 +39,7 @@
 )
 ```
 
-강사 WSL2 Ubuntu 24.04에서 실행. 실행기는 고정된 Student와 공개 CI 코드의 SHA를 확인하고, 기존 Nav2 공식 overlay(자동 발견 또는 `AXIA_NAV2_OVERLAY_SETUP` 지정), ROS 2 Jazzy/Gazebo Harmonic, 공식 25개 package/5개 SHA, D3D12 GPU 렌더러를 확인한다. 필수 Gazebo 개발 헤더가 없는 경우에만 `sudo apt`의 빌드용 패키지 설치를 요청할 수 있다. 그 외 별도 ROS 노드 실행 명령이나 GUI 디버깅 터미널은 불필요.
+강사 WSL2 Ubuntu 24.04에서 실행. 실행기는 고정된 Student와 공개 CI 코드의 SHA를 확인하고, 기존 Nav2 공식 overlay(자동 발견 또는 `AXIA_NAV2_OVERLAY_SETUP` 지정), ROS 2 Jazzy/Gazebo Harmonic, 공식 25개 package/5개 SHA, D3D12 GPU 렌더러를 확인한다. **D3D12 어댑터 환경변수는 Gazebo·RViz GUI 자식 프로세스에만 적용하고, Gazebo 물리·센서 서버 및 ROS 안전 노드에는 전역 적용하지 않는다.** 필수 Gazebo 개발 헤더가 없는 경우에만 `sudo apt`의 빌드용 패키지 설치를 요청할 수 있다. 그 외 별도 ROS 노드 실행 명령이나 GUI 디버깅 터미널은 불필요.
 
 사전 준비가 끝나면 이미 정해진 ROS Domain/GZ Partition 안에 Gazebo 서버 **한 개**와 read-only GUI 클라이언트, RViz가 실행된다. 실물 로봇이 아닌 **시뮬레이션만** 대상이다.
 
@@ -48,7 +50,7 @@
 `--self-check` 성공은 ROS를 시작하지 않는 L0이다:
 
 ```text
-AXIA_G07_TASK04_OWNER_MOVING_BOOTSTRAP_L0_PASS student_sha=486ec02e8e0762e9abefd3063b5d25b2ff5f1fb8 l2_run=44264236859 NO_ROS_NO_GAZEBO_NO_GOAL
+AXIA_G07_TASK04_OWNER_MOVING_BOOTSTRAP_L0_PASS student_sha=d7ffec1ce73f0c4e672ea0fc51a1678139dc5a6f l2_run=44268914763 NO_ROS_NO_GAZEBO_NO_GOAL
 AXIA_G07_TASK04_OWNER_MOVING_L3=NOT_RUN
 AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false
 ```
@@ -56,7 +58,7 @@ AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false
 **현장에서 실제로 성공한 뒤 기대할 패턴 (아직 실행 증거가 아님):**
 
 ```text
-AXIA_G07_TASK04_STUDENT_SHA_VERIFIED=486ec02e8e0762e9abefd3063b5d25b2ff5f1fb8
+AXIA_G07_TASK04_STUDENT_SHA_VERIFIED=d7ffec1ce73f0c4e672ea0fc51a1678139dc5a6f
 AXIA_G07_TASK04_OWNER_CORE_PARITY_25_5_PASS
 AXIA_G07_TASK04_WSLG_D3D12_GPU_SELECTED=...
 AXIA_G07_TASK04_OWNER_MOVING_BEGIN student_sha=...
