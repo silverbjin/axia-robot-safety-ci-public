@@ -57,6 +57,14 @@ class OwnerMovingBootstrap(unittest.TestCase):
         self.assertIn("SHA256SUMS",s)
         self.assertIn("CORE_PARITY_PASS",s)
 
+    def test_small_separate_diagnostic_zip_without_raw_bag(self):
+        s=SCRIPT.read_text()
+        self.assertIn("AXIA_G07_TASK04_DIAGNOSTIC_ZIP=",s)
+        self.assertIn("zipfile.ZipFile",s)
+        self.assertIn("pregoal_baseline.json",s)
+        self.assertIn("SHA256SUMS",s)
+        self.assertIn("diagnostics.zip",s)
+
     def test_bad_argument_fails_without_any_goal(self):
         r=subprocess.run(["bash",str(SCRIPT),"--bad-mode"],
                          text=True,capture_output=True,timeout=8)
