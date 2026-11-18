@@ -117,7 +117,7 @@ def assess_pre_goal_receive_recovery(streams, *, started_at, now):
     global_begin=float(started_at)
     for topic in topics:
         raw=streams.get(topic)
-        if not isinstance(raw,(list,tuple)) or len(raw)<6:
+        if not isinstance(raw,(list,tuple,deque)) or len(raw)<6:
             blocked(topic.upper()+"_INSUFFICIENT_REAL_CALLBACKS")
         samples=[]
         for sample in raw:
@@ -246,6 +246,21 @@ def assess_static_amcl_witness(witness:dict) -> dict:
             "first_amcl_pose_source_age_limit_sec":1.0}
 
 
+def append_clock_sample(history, *, now, stamp_ns):
+    """Bounded real /clock samples spanning >=1s even at 300+ Hz.
+
+    Sample <=50Hz for readiness only; any long raw delivery loss remains
+    visible because the next accepted sample follows the last host sample.
+    No Clock is published or fabricated.
+    """
+    if stamp_ns<=0 or (history and stamp_ns<=history[-1][1]):
+        return False
+    if history and now-history[-1][0]<.02:
+        return False
+    history.append((now,stamp_ns))
+    return True
+
+
 def admit_actual_amcl(node, x: float, y: float, timeout_s=24.0, *, timing_out=None) -> dict:
     """Require actual map, actual scan/odom, AMCL service ACK and map TF."""
     import rclpy
@@ -302,9 +317,7 @@ def admit_actual_amcl(node, x: float, y: float, timeout_s=24.0, *, timing_out=No
     def receive_clock(msg):
         now=time.monotonic()
         ns=int(msg.clock.sec)*10**9+int(msg.clock.nanosec)
-        if ns>0 and (not receive_history["clock"]
-                     or ns>receive_history["clock"][-1][1]):
-            receive_history["clock"].append((now,ns))
+        append_clock_sample(receive_history["clock"],now=now,stamp_ns=ns)
     qos=QoSProfile(depth=1,reliability=ReliabilityPolicy.RELIABLE,
                    durability=DurabilityPolicy.TRANSIENT_LOCAL)
     subs=[
