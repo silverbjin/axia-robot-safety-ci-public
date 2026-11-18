@@ -49,3 +49,37 @@
 - 실제 GPU LiDAR 오류 개선이 관찰되더라도 실제 현장 Scanner TTL300ms 및 CM/Guard120/150ms, STOP, 종료 인수가 별도로 통과하지 않으면 Moving L3 인정 금지.
 - 읽기 전용 NO_GOAL A/B 스크립트 출고 전 새로운 타이밍 경계 공개 L2의 상태를 확인해야 하며, 미완료/실패 시 출고 후보 `HOLD`.
 - `main` 승인 전 병합 금지. 강사 정답은 private, 학생용 TODO는 별도 public. SW Stop은 인증 E-Stop 아님. `AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false`.
+
+
+## 6. 중단 지점 재개 결과 — 같은 소스의 최초 수신 실패와 분리된 Lifecycle 실패
+
+**재개 기준:** Student Draft PR #58 `fix/g07-wslg-lidar-vs-rtf-ab-20261118`, Public Draft PR #177 `fix/d06-wslg-lidar-vs-rtf-ci-20261118`; 최신 동일 Student SHA `e4c2007064bec2103bb743bd27cdbdf0955961b7`. 과거 성공한 정확히 같은 Goal 경로 #44308322188은 보존한다. 새로운 실패가 발견된 경우만 조사한다.
+
+### 6.1 재개한 두 실제 L2 (기존 완료를 임의 승격하지 않음)
+
+| 공개 실행 | 실제 최초 실패 | 정량적인 증거 | 판정 |
+|---|---|---|---|
+| [#44308300497](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44308300497) | Raw `/scan` 수신 idx6, 0.331547초 >300ms | 실제 Gazebo+RViz 2창, RTF 0.985450, 안전 Scan 0.122152초, front1.414888m/side2.519876m | NO_GOAL L2 **FAIL**, Raw 위반 보존 |
+| [#44308322188](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44308322188) | 없음 | 실제 Goal runner rc0, 두 GUI, `first_failure=NONE`; 원래 strict 21-gate 전부 | Moving G07 L2 **PASS**, WSLg 아님 |
+| [#44325953833](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44325953833) | Safety `/safety/scan` 수신 idx5, 0.356136초 >300ms | Raw Scan 최대0.124051초 정상, ROS Clock RTF0.982318 정상, front1.414063m/side2.520100m 정상 | NO_GOAL L2 **FAIL** |
+| [#44325984617](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44325984617) | Goal UUID 취소·0.2022m 주행·정지 dw 1.024s 이후 Nav2 Lifecycle `SERVICE_MISSING:/lifecycle_manager_navigation/get_parameters` | 실제 CLEAR/SLOW/STOP/Cancel과 raw scan 최대0.2124초는 확인, Navigation/Localization ACK는 거부 | Moving G07 L2 **FAIL** |
+
+**핵심:** 공개 Linux 환경에서도 ROS Clock RTF≈1인 상태에 Raw Scan 332ms 혹은 Safety Scan 356ms의 최초 수신 주기 위반이 발생했다. 이를 GPU 렌더러 오측정이나 낮은 RTF로 단정해서는 안 된다. 센서 계측 수신 경로가 Safety 전용 토픽 활성화 이전의 초기 transient인지 /scan subscriber 지연인지 비교하기 위해 read-only `correlate_first_raw_gap()` 계측을 추가하였다. **TTL 위반 자체는 여전히 FAIL**이며, 시연 GREEN으로 승격하지 않는다.
+
+Moving #44325984617은 **별도 Nav2 Lifecycle 종료 단계** 실패이다. 실제 Goal 취소 UUID `d980af17dbfa44129bc489df62e21fac`와 STOP 제어까지 확인돼도 Navigation/Localization ACK 및 CM clean exit0을 충족하지 못했으므로 **전체 시연 PASS 불가**. 이 문제는 Intel LiDAR 대 RTF 분리 범위를 넘어서는 독립 HOLD로 남기고, 초기에 성공한 전체 L2를 대체하지 않는다. 현장 신호 없이 CI 가끔 통과한다고 무작정 GREEN이라고 보고하지 않는다.
+
+### 6.2 한 가설씩 범위 고정한 회귀·계측
+
+1. **최초 수신 위반 분류 (진단 전용):** 새로운 Student 함수 `correlate_first_raw_gap()`가 Raw 첫 300ms 위반이 Safety 최초 header stamp보다 앞서는지, 양 토픽 동일 stamp 대응 구간인지 분류. 전달 원인 `*_SUSPECT`로만 기록한다. 기존 Sensor TTL300, CM120, Guard150, 0.75m/1.20m 및 raw/safety 양 토픽의 Fail-Closed는 불변.
+2. **실제 GPU 비교기 오류 RED→GREEN:** A/B 보고서는 전방/측면 *중앙값*만으로 거리 정상화를 인정하던 오류가 있었다. 60개 중 59개 CLEAR(1개 Unsafe)인 반례로 **공개 RED [#44326553167](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44326553167)** (AssertionError: True is not false) 재현. `d06/tools/axia_d06_lidar_rtf_compare.py`에서 `clear_count == count >= 20`을 요구, 없으면 `range_clear=false`로 차단. 동일 테스트 **공개 GREEN [#44327138409](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44327138409)**: Student 9 + Public A/B 7 + Runner 3 + Raw first-gap 1 = **20/20 PASS**. 소프트웨어 정지/Goal 조건 변화 없음.
+3. **기존 성공 보존:** 실제 Gazebo+RViz/Goal #44308322188, 이전 동일 소스 #44306470216 PASS는 각각 당시 SHA에 귀속해 보존한다. #44325984617 최신 L2 실패로 인해 최신 전체 시연 안정성은 미검증임을 명시한다.
+
+### 6.3 최신 경계·출고 판정
+
+- ROS2 Jazzy/Gazebo Harmonic Linux native Xvfb RTF 분리 수치: **실측** (예 #44325953833 RTF0.982318, 안전 Scan 첫 gap356.136ms). Host receive timestamp와 sim-time stamp를 별도로 수집한 실제 수치다.
+- Intel WSLg `D3D12 (Intel(R) Iris(R) Xe)` 거리 이상: **이전 현장 실측**, but RTF **UNMEASURED**. NVIDIA D3D12 Intel/NVIDIA 동일 월드 A/B **NOT_RUN**, GPU root cause **UNPROVEN**.
+- 최신 Raw/Safety Scan 300ms와 Navigation Lifecycle ACK는 **실제 L2 재현 실패**, 전체 시연 신뢰성 **HOLD**. 이미 확인한 별도 안전 결과를 결합해서 PASS라고 표기 금지.
+- `d06/scripts/axia_d06_g07_wslg_gpu_rtf_compare_once.sh`는 현재 **검증용 Draft 후보**로 고정. CPU/GPU A/B 실행 명령의 현장 출고는 안전 경계 및 소스 PIN의 공개 CI 검증 후에만 승인. 실제 Owner L3 주행 명령 배포는 금지.
+- 최종 `D06_GAZEBO_LIVE_RELEASE=HOLD`, `AXIA_MVP_DEMO_ACCEPTED=HOLD`, `CERTIFIED_ESTOP=false`; main 병합 안 함.
+
+**검증 스코프 기록:** 위 보고에서 PASS로 표기한 회귀는 ROS-free L0이며 Linux Gazebo L2 FAIL과 별개다. 실제 강사 WSL2/GPU A/B를 실행하지 않았으므로 현장 문제 해결을 선언하지 않는다.
