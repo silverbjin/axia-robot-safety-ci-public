@@ -1,0 +1,114 @@
+{
+  "schema": "axia.g07.task03.formal_public_l2_evidence_ledger_v1",
+  "date_kst": "2026-11-18",
+  "public_run_id": 44215546368,
+  "public_run_url": "https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44215546368",
+  "public_actual_gazebo_job_id": 134504345226,
+  "public_ci_workflow_sha": "c996a5f415ca90e9dac99d798944a56d6b70d8be",
+  "pinned_public_student_runtime_sha": "b53a5128cd7165f6465f2916b4c4554f9663798d",
+  "source_repository": "silverbjin/axia-robot-safety-student",
+  "runtime": "official ROS 2 Jazzy + Gazebo Harmonic + Nav2 + TurtleBot3 Waffle public CI one moving Goal; tracer OFF",
+  "original_public_numeric_artifact": {
+    "id": 14387738909,
+    "name": "axia-task03-formal-public-numeric-44215546368",
+    "zip_size_bytes": 3449,
+    "zip_sha256": "a0cb7e7a4c961c321e0f9c32fc0854e93b5b9137e72da5d21d9052a17d109cbe",
+    "task03_formal_verdict_sha256": "c02a77d45a72f771e7505f0798014c528c49fbe9d4ea77c6884265cb2ca28b86",
+    "task03_positive_calibration_sha256": "ef33d89b2c4a9c06f412c73a4d555fe5ae731af3399ecebcd6eabf5e60494bc6",
+    "runtime_parity_sha256": "94c089a022c1266fb4d1909168d0ff571d5f08dbff4fe423737454cde1ca44a7",
+    "witness_sha256_file_sha256": "d50170999fba36fab6e49f96d785f7cedfbe23ce53d906c5bda7617664682310"
+  },
+  "red_green_ci": {
+    "guard_premotion_red_run": 44213426629,
+    "guard_premotion_green_run": 44213715360,
+    "calibration_cleanup_red_run": 44214758294,
+    "calibration_cleanup_green_run": 44215229445,
+    "full_release_run": 44215546368,
+    "full_l0_test_groups": {
+      "task03_formal": 6,
+      "calibration_cleanup": 3,
+      "task02_simple_tf": 5,
+      "task02_strict_gate": 5
+    },
+    "full_l0_test_total": 19
+  },
+  "native_s02": {
+    "disposable_no_goal_witness_frames": 21692,
+    "positive_contact_events": 5346,
+    "no_goal_calibration_cleanup_stage": "NATIVE_NAV_LOCALIZATION_ACK_BOTH",
+    "no_goal_calibration_leaked_processes": 0,
+    "physical_sim_moving_witness_frames": 22724,
+    "physical_sim_moving_contact_events": 0,
+    "positive_same_binary_sha_required": true,
+    "full_native_physics_collision_for_all_entities_proven": false,
+    "actual_moving_goal_window_sim_nsec": {
+      "start": 38730000000,
+      "stop": 59121000000
+    },
+    "status": "S02_NATIVE_ECM_GOAL_WINDOW_CONTACT_ZERO_PASS"
+  },
+  "actual_moving_goal": {
+    "goal_uuid": "d5e8b10633f04f74a24186022082aaab",
+    "goal_terminal": "EXACT_GOAL_UUID_TERMINAL_CANCELED_PASS",
+    "clear_front_m": 2.0440948009490967,
+    "slow_front_m": 0.7405202984809875,
+    "stop_front_m": 0.39207690954208374,
+    "observed_physical_gazebo_clear_slow_stop": true,
+    "guard_no_first_latch": true,
+    "guard_native_cm_age_max_ms_after_first_forwarded_motion": 49.872948,
+    "guard_native_age_samples_after_first_forwarded_motion": 408,
+    "guard_internal_cm_age_limit_ms": 150,
+    "cm_rmw_consecutive_publisher_pairs": 412,
+    "cm_rmw_source_gap_max_ms": 52.513109,
+    "cm_observer_gap_max_ms": 67.913195,
+    "cm120_limit_ms": 120,
+    "actual_message_period_sec": {
+      "clock": 0.10316768700002399,
+      "cm": 0.06791319499998849,
+      "guard": 0.06888518000002364,
+      "odom": 0.13207587400000875,
+      "scan": 0.19617569400000434,
+      "source": 0.06889744900001915,
+      "supervisor": 0.06888770200001204
+    },
+    "original_runner_rc": 0,
+    "navigation_lifecycle_shutdown_ack": true,
+    "localization_lifecycle_shutdown_ack": true,
+    "cm_process_clean_exit": true
+  },
+  "bag14": {
+    "verification": "Actual read-only SQLite PRAGMA quick_check, 14 topic positive counts, SHA256 from ephemeral original same run",
+    "counts": {
+      "/axia/p2/base_guard": 1409,
+      "/axia/safety/state": 1359,
+      "/clock": 22659,
+      "/cmd_vel": 1409,
+      "/cmd_vel_pre_guard": 537,
+      "/cmd_vel_smoothed": 428,
+      "/cmd_vel_supervised": 1359,
+      "/map": 1,
+      "/navigate_to_pose/_action/status": 3,
+      "/odom": 1888,
+      "/safety/scan": 675,
+      "/scan": 680,
+      "/tf": 3364,
+      "/tf_static": 1
+    },
+    "metadata_sha256": "839362bfb174f3c0fe4c4174733985cacc426bd12e725e2a942e7eebb15a2bcd",
+    "original_sqlite_sha256": "b1975aa6e5dd55e599e60442a30ad01c656d4a72e960e3fe60c3c583110ff4d0",
+    "raw_rosbag_in_public_artifact": false,
+    "raw_rosbag_independent_offline_replay": "NOT_VERIFIED"
+  },
+  "verdict": {
+    "status": "TASK03_PUBLIC_L2_FORMAL_EVIDENCE_PASS_SCOPED",
+    "first_failure": "NONE",
+    "cm120_tracer_off_public_ci": "PASS_SCOPED",
+    "formal_sensor_and_command_delivery": "PASS_SCOPED",
+    "owner_wsl2_gui_l3": "NOT_RUN",
+    "whole_demo_accepted": false,
+    "certified_estop": false,
+    "hardware_safety_claim": false,
+    "student_main_merged": false,
+    "public_ci_main_merged": false
+  }
+}
