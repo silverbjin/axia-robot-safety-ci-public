@@ -16,14 +16,14 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 14cb3dbacd134d180e78778a0b75e6a4fbc8bd41
+          ref: 13153a104d8cda725a2bdab476130405d4fd4ba8
           path: student
           persist-credentials: false
       - name: Exact Student SHA and ROS-free GREEN contract (Owner consent never simulated)
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C student rev-parse HEAD)" = '14cb3dbacd134d180e78778a0b75e6a4fbc8bd41'
+          test "$(git -C student rev-parse HEAD)" = '13153a104d8cda725a2bdab476130405d4fd4ba8'
           cd student/block_B/day07/h01_runtime
           bash -n scripts/p2_no_goal_smoke_ci.sh
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_owner_shell_contract.py' -v
@@ -33,3 +33,4 @@ jobs:
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_shutdown_gui_order.py' -v
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_ecm_owner_scope.py' -v
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_localization_shutdown_evidence.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_native_cm_param_one_client.py' -v
