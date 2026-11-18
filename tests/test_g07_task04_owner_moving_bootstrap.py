@@ -4,8 +4,8 @@ import subprocess
 import unittest
 
 SCRIPT=Path(__file__).resolve().parents[1]/"scripts/axia_g07_task04_owner_moving_l3_once.sh"
-SHA="486ec02e8e0762e9abefd3063b5d25b2ff5f1fb8"
-RUN=44264236859
+SHA="d7ffec1ce73f0c4e672ea0fc51a1678139dc5a6f"
+RUN=44268914763
 
 class OwnerMovingBootstrap(unittest.TestCase):
     def test_static_self_check_instant_no_ros(self):
