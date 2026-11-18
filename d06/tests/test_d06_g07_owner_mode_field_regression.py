@@ -77,6 +77,19 @@ class FieldOwnerCIParityRegression(unittest.TestCase):
         self.assertIn('AXIA_G07_CI_SIM_GOAL_ALLOWED=0',owner)
         self.assertNotIn('export GITHUB_ACTIONS=true',owner)
 
+    def test_wsl2_owner_core_parity_is_checked_before_real_child_goal(self):
+        src = RUNNER.read_text()
+        scope = src.split("run_verified_owner() {",1)[1].split("\\nself_check >/dev/null",1)[0]
+        order = [
+            scope.index('export AXIA_P2_G07_OWNER_PARITY_CHECK=0'),
+            scope.index('p2_g07_owner_env_parity.py" --mode owner'),
+            scope.index('D06_G07_OWNER_CORE_PARITY_PASS_PACKAGES25_FILES5_WSL2'),
+            scope.index('D06_G07_OWNER_REAL_GAZEBO_RVIZ_MOVING_CANDIDATE_START'),
+            scope.index('bash scripts/p2_no_goal_smoke_ci.sh'),
+        ]
+        self.assertEqual(order, sorted(order),
+                         "Owner core parity and WSL2 platform check must precede any Goal")
+
     def test_no_false_success_after_pre_goal_error(self):
         src = RUNNER.read_text()
         self.assertIn('D06_G07_OWNER_RUNTIME_BLOCKED_RC_',src)
