@@ -87,7 +87,7 @@ jobs:
           PY
           fi
           if [[ "$rc" != 0 ]];then
-            for file in "$GITHUB_WORKSPACE/native/g07_owner_pregoal.log" "$GITHUB_WORKSPACE/native/staged_startup.log" "$GITHUB_WORKSPACE/public_evidence/runner.log";do
+            for file in "$GITHUB_WORKSPACE/native/launch.log" "$GITHUB_WORKSPACE/native/clock_diagnostics.json" "$GITHUB_WORKSPACE/native/staged_startup.log" "$GITHUB_WORKSPACE/native/g07_owner_pregoal.log" "$GITHUB_WORKSPACE/public_evidence/runner.log";do
               if [[ -f "$file" ]];then echo "=== ${file##*/} ===";tail -n 45 "$file";fi
             done
             echo AXIA_G07_PREG0AL_REAL_NATIVE_L2_HOLD_NO_GOAL
@@ -118,6 +118,7 @@ jobs:
             native/g07_owner_pregoal/owner_pregoal_l2.json
             native/g07_owner_pregoal/gz_pose_*.log
             native/g07_owner_pregoal.log
+            native/clock_diagnostics.json
             native/g07_owner_pregoal/g07_preloaded_pose_ack.log
           if-no-files-found: warn
           retention-days: 14
