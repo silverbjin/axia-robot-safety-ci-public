@@ -114,3 +114,72 @@ def diagnose_first_receive_boundary(first_boundary, independent,
         "native_source_gap_not_measured":True,
         "observer_entry_gap_measured":bool(observer_first_callback),
     }
+
+
+def compare_native_scan_first_gap(first_boundary, native_events):
+    """First ROS /scan gap, native Gazebo Transport *receive* comparison.
+
+    The stamps must match EXACTLY. Transport receive is not Gazebo sensor
+    publication, nor ros_gz_bridge/RMW send. Candidate only, never cause PASS.
+    All host monotonic clocks are from the same Linux OS instance.
+    """
+    verdict = {
+        "cause": "UNDETERMINED",
+        "candidate": "NO_ROS_FIRST_GAP",
+        "native_pair_matched": False,
+        "native_receive_gap_sec": None,
+        "publisher_send_timing_proven": False,
+        "bridge_dds_send_measured": False,
+        "first_scan_violation_retained": False,
+        "native_transport_receive_measured": False,
+    }
+    b = first_boundary if isinstance(first_boundary, dict) else {}
+    try:
+        ros_gap = float(b["receive_gap_sec"])
+        before_ns = int(b["previous_ros_stamp_ns"])
+        after_ns = int(b["current_ros_stamp_ns"])
+        old_ros = float(b["previous_host_monotonic_sec"])
+        new_ros = float(b["current_host_monotonic_sec"])
+    except (KeyError, TypeError, ValueError, OverflowError):
+        return verdict
+    if ros_gap <= .5 or after_ns <= before_ns or new_ros <= old_ros:
+        return verdict
+    verdict["first_scan_violation_retained"] = True
+    verdict["candidate"] = "NATIVE_SOURCE_STAMP_PAIR_UNAVAILABLE"
+
+    def match(stamp_ns):
+        # The actual bridge should preserve LaserScan header source timestamps.
+        # If it does not, neither the cadence nor the causal layer is proven.
+        if not isinstance(native_events, (list, tuple)):
+            return None
+        for event in native_events:
+            if not isinstance(event, dict):
+                continue
+            try:
+                source = int(event["source_stamp_ns"])
+                host = float(event["host_monotonic_sec"])
+            except (KeyError, TypeError, ValueError, OverflowError):
+                continue
+            if source == stamp_ns and host == host and abs(host) < 1e12:
+                return host
+        return None
+
+    old_native, new_native = match(before_ns), match(after_ns)
+    if old_native is None or new_native is None or new_native <= old_native:
+        return verdict
+    # Independent native transport callbacks can lag the bridge (different
+    # subscriber queue/thread). Never infer causation from inverted ordering.
+    if old_native > old_ros + .05 or new_native > new_ros + .05:
+        verdict["candidate"] = "NATIVE_CLOCK_ORDER_NOT_VERIFIED"
+        return verdict
+    gap = round(new_native - old_native, 6)
+    verdict.update({
+        "native_pair_matched": True,
+        "native_transport_receive_measured": True,
+        "native_receive_gap_sec": gap,
+        "native_to_ros_old_sec": round(old_ros - old_native, 6),
+        "native_to_ros_new_sec": round(new_ros - new_native, 6),
+        "candidate": ("AT_OR_BEFORE_NATIVE_TRANSPORT_RX"
+                      if gap > .5 else "AFTER_NATIVE_TRANSPORT_RX"),
+    })
+    return verdict
