@@ -17,12 +17,13 @@ RUNTIME = Path(os.environ.get(
 sys.path.insert(0, str(RUNTIME / "tools"))
 
 if (RUNTIME / "tools" / "p2_g07_owner_pregoal_l2.py").is_file():
-    from p2_g07_owner_pregoal_l2 import build_pregoal_baseline, save_pregoal_baseline
+    from p2_g07_owner_pregoal_l2 import build_pregoal_baseline, save_pregoal_baseline, parse_gz_model_pose
 else:
     # Public generic pytest does NOT checkout the Student repository.
     # The dedicated Owner contract workflow checks the exact Student SHA.
     build_pregoal_baseline = None
     save_pregoal_baseline = None
+    parse_gz_model_pose = None
 
 
 @unittest.skipUnless(build_pregoal_baseline is not None,
@@ -58,6 +59,21 @@ class FirstOwnerPregoalFailureL0(unittest.TestCase):
             (1.10,1.21,"CLEAR")):
             with self.subTest(front=front,side=side):
                 self.assertEqual(self._record(front,side)["status"],expected)
+
+    def test_native_gz_model_pose_parse_or_unknown(self):
+        model_output = """Requesting state for world [default]...
+Model: [18]
+- Name: turtlebot3_waffle
+- Pose [ XYZ (m) ] [ RPY (rad) ]:
+[-2.000000 | -0.500000 | 0.100000]
+[0.000000 | 0.000000 | 1.570796]
+"""
+        self.assertEqual(parse_gz_model_pose(model_output),
+                         {"x": -2.0, "y": -.5, "z": .1, "roll": 0.0,
+                          "pitch": 0.0, "yaw": 1.570796})
+        self.assertIsNone(parse_gz_model_pose("no model"))
+        self.assertIsNone(parse_gz_model_pose(
+            model_output.replace("-2.000000", "nan")))
 
     def test_unknown_poses_are_not_invented(self):
         record=self._record(.527,.630)
