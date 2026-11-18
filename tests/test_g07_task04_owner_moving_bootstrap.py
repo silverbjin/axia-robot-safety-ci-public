@@ -37,6 +37,13 @@ class OwnerMovingBootstrap(unittest.TestCase):
         self.assertIn("OWNER_CONTROLLING_TTY_REQUIRED",s)
         self.assertNotIn("setsid timeout",s)
 
+    def test_wslg_gpu_env_is_only_assigned_to_verified_gui_children(self):
+        s=SCRIPT.read_text()
+        self.assertIn('AXIA_G07_TASK04_GUI_D3D12_ADAPTER',s)
+        self.assertIn('unset GALLIUM_DRIVER MESA_D3D12_DEFAULT_ADAPTER_NAME',s)
+        self.assertNotIn('export GALLIUM_DRIVER=d3d12',s)
+        self.assertIn('MESA_D3D12_DEFAULT_ADAPTER_NAME="$adapter"',s)
+
     def test_pinned_source_and_private_evidence_archive(self):
         s=SCRIPT.read_text()
         self.assertIn(SHA,s)
