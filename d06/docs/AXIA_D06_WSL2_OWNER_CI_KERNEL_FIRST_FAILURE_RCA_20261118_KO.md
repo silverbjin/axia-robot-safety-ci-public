@@ -38,7 +38,8 @@ fi
 2. **RED 공개 CI [#44260328678](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44260328678)**: 기존 14/14 PASS, 신규 4개 중 3 PASS / **1 FAIL**: `test_d06_owner_selects_validated_owner_mode_not_ci_only_gate`에서 전 래퍼 `AXIA_P2_G07_OWNER_PARITY_CHECK=1` 확인. 사전 검사 L0이며 ROS/Goal 실행 없음.
 3. 최소 수정: 위 D06 Owner 플래그 및 Owner 25/5 검증 불변조건. 다른 원본 소스 변경 없음.
 4. **GREEN 공개 CI [#44260462052](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44260462052)**, source commit `3ae9a29911580a3bc4354a9ef6993878165fe523`: `Ran 14 tests ... OK`, `Ran 4 tests ... OK`, 총 **18/18 PASS**, `D06_G07_CLASSROOM_PUBLIC_L0_PASS FOURTEEN_PLUS_FOUR_OWNER_PARITY_TESTS NO_ROS_NO_GAZEBO_NO_GOAL`. 실제 Linux CI에서 WSL2 커널 스냅샷을 **모의**하여 해당 모드 분기를 검증했으며 WSLg 실제 물리 화면은 별도.
-5. 재확인: 3개 G07 원본 CI Run/SHA 정확 일치·bad SHA 거부·진짜 TTY 필수·Owner `--mode owner` preflight·원본 TAR/SHA256·코드 문법·Guard 내부 age checker Python 문법 모두 기존 L0 회귀 범위 유지.
+5. **REFACTOR/최종 GREEN:** Owner `--mode owner`의 전체 25/5 검증과 수동 Goal 명령 호출 사이의 실행 순서를 고정하는 회귀 1개를 추가. [공개 CI #44261246196](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44261246196), commit `50892d6026674a8563e8ebdc377abc9303179218`, **기존 14/14 + 신규 5/5 = 19/19 PASS**. 실제 로그 `Ran 14 tests ... OK`, `Ran 5 tests ... OK`, `D06_G07_CLASSROOM_PUBLIC_L0_PASS FOURTEEN_PLUS_FIVE_OWNER_PARITY_TESTS NO_ROS_NO_GAZEBO_NO_GOAL`. 새 테스트는 실제 고정 Student 코드를 checkout, CI/Owner 커널 분기 부정·긍정, 선행 순서, CLI 권한 거부, 초도 SHA custody를 검증.
+6. 최종 재확인: 3개 G07 원본 CI Run/SHA 정확 일치·bad SHA 거부·진짜 TTY 필수·Owner `--mode owner` preflight·원본 TAR/SHA256·코드 문법·Guard 내부 age checker Python 문법 모두 기존 L0 회귀 범위 유지. **강사 실행은 `--live` 단일 인수만** 부여하면 내부 `check_run`과 source SHA/Owner parity 검증을 자동 수행함; `--ci-status` 반복은 필요 없음.
 
 ## 5. 과거 D06 주행/시각화 브랜치 조사
 
@@ -52,7 +53,7 @@ fi
 
 ## 6. 검증 및 출고의 경계
 
-- L0 **18/18 GREEN**는 실제 사용자 WSL2 원본을 모델화한 패리티 모드 회귀 검증. G07 Task04 **기존 L2 GREEN**은 실제 Linux Xvfb Gazebo+RViz+Goal·안전 TTL·Nav2/CM 종료.
+- L0 **19/19 GREEN**는 실제 사용자 WSL2 원본을 모델화한 패리티 모드 회귀 검증. G07 Task04 **기존 L2 GREEN**은 실제 Linux Xvfb Gazebo+RViz+Goal·안전 TTL·Nav2/CM 종료.
 - 이번 수정은 D06 Owner wrapper 분기에만 적용되므로 원형 G07 Task04 CI L2를 재실행할 이유가 없음. 다만 **동일 WSL2 환경의 새 Owner L3 성공까지 보장하는 것은 아님**. 사용자 강사 WSL2 최초 확인은 로봇 Goal 1회만 수행, 첫 실패 증거 TAR/SHA256 보관, 문제 발생 시 CI regression 선행.
 - 본 원본에서는 Goal이 나가지 않았으므로 **지난 실행을 주행 실패나 Guard 안전 위반으로 카운트하지 않음**. 새 Owner 주행이 실제 진행된 뒤에만 Guard 150ms/Scan300ms/RMW120ms 판단.
 - Docker CI와 WSL2/WSLg GPU·CPU scheduler의 동일성은 미증명. `AXIA_MVP_DEMO_ACCEPTED=HOLD`, 인증 E-Stop 아님, main 미병합.
