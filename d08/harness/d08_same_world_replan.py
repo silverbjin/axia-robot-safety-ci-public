@@ -8,7 +8,8 @@ D07-H01 L2 world/map coordinates are *candidates*, not evidence for D08.
 from __future__ import annotations
 
 from collections import deque
-from d08_scan_gap_trace import first_scan_receive_gap, diagnose_first_receive_boundary
+from d08_scan_gap_trace import (first_scan_receive_gap, diagnose_first_receive_boundary,
+                                compare_native_scan_first_gap)
 import json
 import math
 from pathlib import Path
@@ -427,9 +428,30 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
         return {"poses":pts,"path_stamp":_stamp(path),
                 "path_distance_from_obstacle_m":round(_path_distance_to_point(pts,CANDIDATE_MAP),6)}
 
+    native_trace=out/"native_gz_scan_rx.jsonl"
+    native_enabled=env.get("AXIA_D08_NATIVE_RX_PROBE")=="1"
+    native_proc=None
+    native_log=None
+
     try:
         until(lambda:bool(snapshot()[0] and snapshot()[1] and snapshot()[2]),
               "SCAN_COSTMAP_ODOM_MISSING",25)
+        if native_enabled:
+            # CI-only, separate-process Gazebo Transport Rx; no publisher.
+            native_log=(out/"native_gz_scan_rx.log").open("w")
+            native_proc=subprocess.Popen([
+                "/usr/bin/python3", "-u",
+                str(Path(__file__).with_name("d08_gz_native_scan_probe.py")),
+                "--topic", "/scan",
+                "--out", str(native_trace),
+                "--max-events", "1024",
+            ],env=env,stdin=subprocess.DEVNULL,stdout=native_log,
+              stderr=subprocess.STDOUT)
+            def native_has_samples():
+                if native_proc.poll() is not None:
+                    raise RuntimeError("D08_NATIVE_GZ_SCAN_PROBE_EARLY_EXIT")
+                return native_trace.exists() and native_trace.stat().st_size>0
+            until(native_has_samples,"NATIVE_GZ_SCAN_RX_NOT_READY",9)
         # This information is discovery only: it does not prove a CM callback period.
         pubs=node.get_publishers_info_by_topic("/scan")
         consumers=node.get_subscriptions_info_by_topic("/scan")
@@ -548,6 +570,47 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
             except Exception as exc:
                 result["cleanup_error"]=str(exc)[:180]
         result.setdefault("three_phases",rows)
+        if native_proc is not None:
+            native_proc.terminate()
+            try:
+                native_proc.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                native_proc.kill()
+                native_proc.wait(timeout=2)
+        if native_log is not None:
+            native_log.close()
+        if native_enabled:
+            events=[]
+            try:
+                if native_trace.is_file():
+                    events=[json.loads(line) for line in native_trace.read_text().splitlines()
+                            if line.strip()]
+            except (OSError, ValueError) as exc:
+                result["native_scan_read_error"]=str(exc)[:200]
+            stamps=[x.get("source_stamp_ns") for x in events]
+            gaps=[b["host_monotonic_sec"]-a["host_monotonic_sec"]
+                  for a,b in zip(events,events[1:])]
+            first=result.get("first_scan_timing_boundary")
+            result["native_scan_transport_rx"]={
+                "enabled":True,
+                "sample_count":len(events),
+                "source_stamp_ns_count":len(set(stamps)),
+                "max_host_receive_gap_sec":round(max(gaps),6) if gaps else None,
+                "history_complete":len(events)<1024,
+                "source":"gz.transport13 native LaserScan subscriber",
+                "publisher_send_timing_proven":False,
+                "bridge_dds_send_measured":False,
+                "first_violation_cause":"UNDETERMINED",
+                "first_gap_crosscheck":compare_native_scan_first_gap(first,events),
+            }
+            if (len(events)<8 or len(set(stamps))<8 or len(events)>=1024):
+                result["status"]="HOLD"
+                result.setdefault("first_boundary","D08_NATIVE_GZ_SCAN_RX_EVIDENCE_INCOMPLETE")
+            print("D08_NATIVE_GZ_SCAN_RX_WITNESS "
+                  +json.dumps({k:result["native_scan_transport_rx"][k] for k in
+                       ("sample_count","max_host_receive_gap_sec",
+                        "history_complete","first_violation_cause")}),
+                  flush=True)
         # No synthetic /scan or arbitrary ROS cmd_vel publisher is created here.
         (out/"verdict.json").write_text(json.dumps(result,indent=2,sort_keys=True)+"\n")
         independent_executor.shutdown(timeout_sec=2)
