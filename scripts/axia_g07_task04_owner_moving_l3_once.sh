@@ -217,7 +217,7 @@ echo 'Original ROS logs and rosbag remain in a PRIVATE HOME evidence directory.'
 # Foreground is intentional: controlling TTY must reach the real ROS runner.
 # Each Gazebo/Nav2 process and GUI is managed by the original Student shell.
 RUNNER_RC=0
-(cd "$RUNTIME" && timeout --signal=TERM --kill-after=25s 1100s bash scripts/p2_no_goal_smoke_ci.sh) > "$OUT/native_runner.log" 2>&1 || RUNNER_RC=$?
+(cd "$RUNTIME" && timeout --foreground --signal=TERM --kill-after=25s 1100s bash scripts/p2_no_goal_smoke_ci.sh) > "$OUT/native_runner.log" 2>&1 || RUNNER_RC=$?
 if [[ -n "$WATCH_PID" ]] && kill -0 "$WATCH_PID" 2>/dev/null;then
   kill -TERM "$WATCH_PID" 2>/dev/null || true
 fi
