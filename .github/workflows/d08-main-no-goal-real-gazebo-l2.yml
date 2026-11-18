@@ -354,7 +354,7 @@ jobs:
             apt-get update -qq -o APT::Update::Error-Mode=any -o Acquire::Retries=1
             apt-get install -y -qq --no-install-recommends --no-upgrade \
               python3-gz-transport13 python3-gz-msgs10
-            /usr/bin/python3 -c 'from gz.transport13 import Node; from gz.msgs10.laserscan_pb2 import LaserScan; print("D08_NATIVE_PYTHON_APT_IMPORT_L2_PASS")'
+            /usr/bin/python3 -c 'from gz.transport13 import Node; from gz.msgs10.laserscan_pb2 import LaserScan; from gz.msgs10.clock_pb2 import Clock; print("D08_NATIVE_PYTHON_APT_IMPORT_L2_PASS")'
           fi
       - name: Validate fixed SHA public human visual geometry
         shell: bash
@@ -433,6 +433,11 @@ jobs:
               assert native['enabled'] is True,cycle
               assert native['sample_count']>=8,native
               assert native['source_stamp_ns_count']>=8,native
+              assert native['clock_sample_count']>=8,native
+              assert native['clock_history_complete'] is True,native
+              assert native['clock_max_host_receive_gap_sec'] is not None,native
+              assert native['clock_max_host_receive_gap_sec']<=.5,native
+              assert native['first_gap_clock_layer']['timing_layer']=='NO_REAL_FIRST_ROS_GAP',native
               assert native['first_violation_cause']=='UNDETERMINED',native
               assert native['publisher_send_timing_proven'] is False,native
               for topic in ('scan','odom','clock'):
