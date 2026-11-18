@@ -3,7 +3,7 @@
 
 Standalone process: its Python GIL / event loop is separate from rclpy.
 Native transport subscriber *receive* timing is NOT Gazebo source publish
-or DDS/ros_gz_bridge send timing. Never publish messages or cmd_vel.
+or DDS/ros_gz_bridge send timing. Never publish messages or control instructions.
 """
 from __future__ import annotations
 
