@@ -266,6 +266,25 @@ summary["native_readonly_witness_handoff_ack"]=bool(
     and handoff_ack.read_text(encoding="utf-8").strip()=="G07_READONLY_WITNESSES_STOPPED"
 )
 
+# Distinguish real Student Scan 20s CLEAR from a read-only native
+# gz-transport subscriber aborting during handoff. Preserve the *first*
+# native process error instead of mislabelling it as an initial Scan failure.
+rx_exit=next((re.search(r"D06_G07_RX_WITNESS_EXIT\\s+ros=(-?\\d+)\\s+native=(-?\\d+)",row)
+              for row in owner if "D06_G07_RX_WITNESS_EXIT" in row),None)
+summary["native_ros_witness_exit_code"]=int(rx_exit.group(1)) if rx_exit else None
+summary["native_gz_witness_exit_code"]=int(rx_exit.group(2)) if rx_exit else None
+native_errors=(out/"native_render_errors_excerpt.txt").read_text(
+    encoding="utf-8",errors="replace").splitlines() if (
+    out/"native_render_errors_excerpt.txt").is_file() else []
+summary["native_gz_witness_first_error"]=next(
+    (row.strip()[:180] for row in native_errors
+     if "terminate called without an active exception" in row),
+    None)
+summary["native_witness_clean"]=(
+    summary["native_ros_witness_exit_code"]==0
+    and summary["native_gz_witness_exit_code"]==0
+    and summary["native_readonly_witness_handoff_ack"]
+)
 # The entire shutdown is clean ONLY if each native child has positive
 # exit0 evidence. A ros2 launch group exit marker never proves Gazebo clean.
 gz_clean=any("[gz-" in row and "process has finished cleanly" in row for row in log)
