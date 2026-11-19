@@ -127,6 +127,8 @@ if source_archive:
                 "g07_ordered_shutdown.json":("native_nav2_ordered_shutdown.json",16000),
                 "g07_shutdown_audit.json":("native_cm_shutdown_audit.json",16000),
                 "g07_ordered_shutdown.log":("native_nav2_ordered_shutdown.log",22000),
+                "g07_witness_probe_complete.signal":("native_witness_probe_completed.txt",256),
+                "g07_witness_stopped.ack":("native_witness_handoff_ack.txt",256),
                 # Exactly the D08 native/ROS receiver stamps for same-session
                 # correlation; bounded traces, no giant ROS logs or SDF.
                 "d06_g07_scan_delivery_layer.json":("d06_g07_scan_delivery_layer.json",25000),
@@ -203,6 +205,16 @@ if native_verified:
     except (OSError,ValueError): pass
 summary["native_no_goal_navigation_ack"]=nav.get("navigation_ack")
 summary["native_no_goal_localization_ack"]=nav.get("localization_ack")
+handoff_probe=out/"native_witness_probe_completed.txt"
+handoff_ack=out/"native_witness_handoff_ack.txt"
+summary["native_readonly_witness_handoff_ack"]=bool(
+    native_verified
+    and handoff_probe.is_file()
+    and handoff_ack.is_file()
+    and handoff_probe.read_text(encoding="utf-8").strip()=="G07_READONLY_SENSOR_PROBE_FINISHED"
+    and handoff_ack.read_text(encoding="utf-8").strip()=="G07_READONLY_WITNESSES_STOPPED"
+)
+
 # The entire shutdown is clean ONLY if each native child has positive
 # exit0 evidence. A ros2 launch group exit marker never proves Gazebo clean.
 gz_clean=any("[gz-" in row and "process has finished cleanly" in row for row in log)
@@ -260,6 +272,8 @@ print("D06_FORENSIC_FIRST_SENSOR_FAILURE="+first,flush=True)
 print("D06_FORENSIC_PROCESS_CRASH="+(",".join(crashes) if crashes else "NONE_OBSERVED"),flush=True)
 print("D06_FORENSIC_RTF="+str(report.get("rtf_diagnostics",{}).get("ros_clock_rtf","UNMEASURED")),flush=True)
 print("D06_FORENSIC_SCOPE=NO_GOAL_MOVING_L3_HOLD",flush=True)
+print("D06_FORENSIC_READONLY_WITNESS_HANDOFF="+str(summary["native_readonly_witness_handoff_ack"])+
+      " BEFORE_NAV2_SHUTDOWN_EVIDENCE_ONLY",flush=True)
 print("D06_FORENSIC_NO_GOAL_NAV2_ACK="+str(
     summary.get("native_no_goal_navigation_ack"))+"/"+str(
     summary.get("native_no_goal_localization_ack"))+
