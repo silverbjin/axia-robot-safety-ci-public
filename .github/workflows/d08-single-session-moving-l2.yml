@@ -27,14 +27,14 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 8f5e262151f570e02d23646487504dafaa169b63
+          ref: 0890f9717439c839a6fcb7c3d2a931ba10cbf528
           path: student
           persist-credentials: false
       - name: Build exact public native S02 witness away from moving OS
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C student rev-parse HEAD)" = 8f5e262151f570e02d23646487504dafaa169b63
+          test "$(git -C student rev-parse HEAD)" = 0890f9717439c839a6fcb7c3d2a931ba10cbf528
           if ! command -v c++ >/dev/null || ! test -f /usr/include/gz/sim8/gz/sim/System.hh; then
             apt-get update -qq -o APT::Update::Error-Mode=any -o Acquire::Retries=1
             DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends cmake g++ libgz-sim8-dev
@@ -76,10 +76,12 @@ jobs:
       AXIA_G07_TASK03_ECM_WITNESS: '1'
       AXIA_G07_TASK04_CI_GUI_MOVING: '1'
       AXIA_D08_G07_SINGLE_SESSION: '1'
+      AXIA_G07_TASK02_SIMPLE_TF_CANDIDATE: '1'
+      AXIA_D08_G07_CM_TF_WAIT_CANDIDATE: '1'
       AXIA_D08_G07_ADAPTER_SCRIPT: ${{ github.workspace }}/ci/d08/harness/d08_g07_same_world_adapter.py
       AXIA_D08_G07_PERSON_MESH: ${{ github.workspace }}/public_evidence/walk.dae
       AXIA_D08_G07_EXPECTED_PUBLIC_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-      AXIA_D08_G07_EXPECTED_STUDENT_SHA: 8f5e262151f570e02d23646487504dafaa169b63
+      AXIA_D08_G07_EXPECTED_STUDENT_SHA: 0890f9717439c839a6fcb7c3d2a931ba10cbf528
       PYTHONPATH: ${{ github.workspace }}/review:${{ github.workspace }}/ci
       QT_QPA_PLATFORM: xcb
       QT_X11_NO_MITSHM: '1'
@@ -93,7 +95,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 8f5e262151f570e02d23646487504dafaa169b63
+          ref: 0890f9717439c839a6fcb7c3d2a931ba10cbf528
           path: student
           persist-credentials: false
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -111,7 +113,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C student rev-parse HEAD)" = '8f5e262151f570e02d23646487504dafaa169b63'
+          test "$(git -C student rev-parse HEAD)" = '0890f9717439c839a6fcb7c3d2a931ba10cbf528'
           test "$(git -C ci rev-parse HEAD)" = "$AXIA_D08_G07_EXPECTED_PUBLIC_SHA"
           test "$(git -C review rev-parse HEAD)" = 71b85c42ea474276fedd9f345521317b8c348b4e
           test -s review/d06/diagnostic/g07_task02_strict_gate.py
@@ -238,7 +240,7 @@ jobs:
             exit 3
           fi
           windows_count=$((rviz_seen+gazebo_seen))
-          python3 tools/p2_g07_task04_moving_review.py             --motion-root "$GITHUB_WORKSPACE/native"             --witness "$GITHUB_WORKSPACE/native/s02_ecm_witness.json"             --source-sha '8f5e262151f570e02d23646487504dafaa169b63'             --gui-windows "$windows_count"             --output "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"
+          python3 tools/p2_g07_task04_moving_review.py             --motion-root "$GITHUB_WORKSPACE/native"             --witness "$GITHUB_WORKSPACE/native/s02_ecm_witness.json"             --source-sha '0890f9717439c839a6fcb7c3d2a931ba10cbf528'             --gui-windows "$windows_count"             --output "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"
           sha256sum "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"             > "$GITHUB_WORKSPACE/public_evidence/task04_moving_verdict.sha256"
           echo 'D08_G07_REAL_MOVING_RGBD_WORLD_L2_PASS_YOLO_D05_NOT_RUN'
           echo 'AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false'
