@@ -424,5 +424,57 @@ class ForensicOneShot(unittest.TestCase):
         self.assertNotIn("YES-P2-G07-GOAL", s)
 
 
+    def test_r6_actual_first_scan_gate_is_not_outer_archive_phase_and_gz_crash_has_no_stack(self):
+        """Exact 2026-11-19 WSLg r6YhIvPx numeric facts, no real ROS/Gazebo.
+        This is a regression contract, NOT a simulated performance recovery.
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            d=fake_record(Path(tmp))
+            verdict=json.loads((d/"nvidia.g07_wslg_sensor_truth.json").read_text())
+            verdict["reasons"]=["SAFETY_RECEIPT_TTL_300MS_BLOCKED"]
+            verdict["metrics"]["raw"].update({
+                "count":151,"max_receipt_gap_sec":.297708,
+                "first_receipt_ttl_breach_at_index":None})
+            verdict["metrics"]["safety"].update({
+                "count":150,"clear_count":150,"max_receipt_gap_sec":.303153,
+                "first_receipt_ttl_breach_at_index":129})
+            verdict["rtf_diagnostics"]["ros_clock_rtf"]=.752343
+            verdict["scan_receipts_compact"]={
+                "raw":None,"safety":{
+                    "before":{"host_monotonic_sec":7964.014425,
+                              "source_stamp_ns":68901000000},
+                    "after":{"host_monotonic_sec":7964.317578,
+                             "source_stamp_ns":69000000000},
+                    "gap_sec":.303153}}
+            (d/"nvidia.g07_wslg_sensor_truth.json").write_text(
+                json.dumps(verdict))
+            (d/"nvidia.launch.log").write_text(
+                "[INFO] [collision_monitor-16]: process has finished cleanly [pid 222]\\n"
+                "[ERROR] [gz-21]: process has died [pid 111, exit code -11]\\n")
+            (d/"attempt_state.txt").write_text(
+                "phase=NATIVE_ARCHIVE_VALIDATION\\nowner_rc=3\\nouter_rc=3\\nmode=--nvidia-causal\\n")
+            run=subprocess.run(["bash",str(SCRIPT),"--analyze-existing"],
+                env={"PATH":os.environ["PATH"],"HOME":str(Path(tmp)),
+                     "GITHUB_ACTIONS":"true"},
+                capture_output=True,text=True,timeout=15)
+            self.assertEqual(run.returncode,0,(run.stdout,run.stderr))
+            arc=d.parent/("d06-forensic-"+d.name+".tar.gz")
+            with tarfile.open(arc,"r:gz") as tar:
+                report=json.load(tar.extractfile("forensic/summary.json"))
+            self.assertEqual(report["first_failure_stage"],
+                             "NATIVE_ARCHIVE_VALIDATION")
+            self.assertEqual(report["first_actionable_safety_gate"],
+                             "SAFETY_RECEIPT_TTL_300MS_BLOCKED")
+            self.assertEqual(report["native_shutdown_first_crash"],
+                             "GAZEBO_SERVER")
+            self.assertEqual(report["gazebo_server_crash_stack"],
+                             "NOT_CAPTURED")
+            self.assertFalse(report["causal_root_confirmed"])
+            self.assertAlmostEqual(
+                report["safety"]["max_receipt_gap_sec"],.303153)
+            self.assertEqual(report["native_no_goal_gazebo_server_exit_code"],-11)
+            self.assertFalse(report["no_goal_acceptance"])
+
+
 if __name__ == "__main__":
     unittest.main()
