@@ -412,6 +412,11 @@ def compare(a: dict, b: dict) -> dict:
     if get(a, "sensor_profile", "rgbd_hz_disk_candidate") != \
             get(b, "sensor_profile", "rgbd_hz_disk_candidate"):
         conditions.append("rgbd_hz_disk_candidate")
+    if get(a, "sensor_profile", "rgb_camera_hz_disk_candidate") != \
+            get(b, "sensor_profile", "rgb_camera_hz_disk_candidate"):
+        conditions.append("rgb_camera_hz_disk_candidate")
+    if get(a, "sensor_profile", "status") != get(b, "sensor_profile", "status"):
+        conditions.append("sensor_profile_scope")
     if get(a, "gui", "gpu_env") != get(b, "gui", "gpu_env"):
         conditions.append("gazebo_gui_gpu_env")
     if get(a, "renderer_profiles", "inherited", "renderer") != \
