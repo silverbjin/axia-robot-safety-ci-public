@@ -25,6 +25,19 @@ class NoGoalCMShutdownRegression(unittest.TestCase):
                         cleanup.index('kill -INT -- "-$LAUNCH_PID"'))
         self.assertIn('G07_NO_GOAL_NATIVE_NAV2_ORDERED_SHUTDOWN_ACK',cleanup)
         self.assertIn('G07_NO_GOAL_NATIVE_NAV2_ORDERED_SHUTDOWN_BLOCKED',cleanup)
+    def test_opt_in_gazebo_world_pause_precedes_launch_sigint_without_ttl_change(self):
+        s=SRC.read_text()
+        self.assertIn("AXIA_G07_NO_GOAL_GZ_PAUSE_BEFORE_SIGINT",s)
+        self.assertIn("gz service -l",s)
+        self.assertIn("gz service -s",s)
+        chunk=s[s.index('cleanup() {'):s.index('trap cleanup EXIT')]
+        self.assertLess(chunk.index("gz service -s"),
+                        chunk.index('kill -INT -- "-$LAUNCH_PID"'))
+        self.assertIn("G07_NO_GOAL_GAZEBO_PAUSE_ACK_BEFORE_SIGINT",chunk)
+        self.assertIn("G07_NO_GOAL_GAZEBO_PAUSE_FAILED_HOLD",chunk)
+        self.assertIn("NO_GOAL_ORDERED",chunk)
+        self.assertNotIn("AXIA_SCAN_TTL_SEC=.5",chunk)
+
     def test_requires_both_ack_and_actual_cm_child_exit_zero(self):
         s=SRC.read_text()
         self.assertIn('tools/p2_g07_owner_shutdown_audit.py',s)
