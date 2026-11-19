@@ -117,6 +117,22 @@ else
   echo 'AXIA_G07_CV2_WINDOWS_HOST_MONITOR_UNAVAILABLE_INTEROP'
 fi
 
+# Do not spend the *single* Owner Gazebo attempt with no independent host
+# metrics: Windows/WSL UNC and PowerShell interop must prove working first.
+HOST_READY=0
+for ((i=0;i<40;i++));do
+  if [[ -s "$OUT/windows_host.jsonl" ]];then HOST_READY=1;break;fi
+  if [[ -z "$HOST_PID" ]] || ! kill -0 "$HOST_PID" 2>/dev/null;then break;fi
+  sleep .2
+done
+if [[ "$HOST_READY" != 1 ]];then
+  echo 'AXIA_G07_CV2_HOST_SAMPLER_PRECHECK_FAILED_NO_OWNER_RUN' >&2
+  tail -n 15 "$OUT/windows_monitor.log" 2>/dev/null || true
+  echo "AXIA_G07_CV2_PRECHECK_LOGS=$OUT"
+  exit 3
+fi
+echo 'AXIA_G07_CV2_WINDOWS_HOST_MONITOR_READY'
+
 # Run exactly ONE unchanged pinned Owner scenario; the manual /dev/tty read
 # stays in the original Owner script even while stdout is privately tee'd.
 set +e
