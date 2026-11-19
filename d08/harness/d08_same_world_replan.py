@@ -15,7 +15,9 @@ from d08_scan_gap_trace import (first_scan_receive_gap, diagnose_first_receive_b
                                 compare_worst_scan_pair_receivers,
                                 scan_gap_operation_overlaps,
                                 analyze_process_heartbeat_gap,
-                                classify_executor_stack_frames)
+                                classify_executor_stack_frames,
+                                diagnose_spin_once_during_scan_gap,
+                                spin_trace_window_proof)
 import json
 import math
 from pathlib import Path
@@ -155,6 +157,27 @@ def new_independent_rx_buffers():
             for k in ("scan","odom","clock","tf")}
 
 
+SPIN_ONCE_HISTORY_LIMIT = 4096
+
+
+def new_spin_once_event_buffer():
+    """Bounded per-cycle spin trace, sampled without changing spin behavior."""
+    return deque(maxlen=SPIN_ONCE_HISTORY_LIMIT)
+
+
+def append_sampled_spin_event(trace, last_recorded_at, event):
+    """Store at most 1 event per executor/50ms, plus every >=75ms overrun."""
+    label=event["executor"]
+    end=float(event["end_sec"])
+    start=float(event["start_sec"])
+    if (end-last_recorded_at.get(label,float("-inf"))>=.05
+            or end-start>=.075):
+        trace.append(event)
+        last_recorded_at[label]=end
+        return True
+    return False
+
+
 def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
     import rclpy
     from rclpy.action import ActionClient
@@ -207,12 +230,29 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
     exe=SingleThreadedExecutor()
     exe.add_node(node)
 
+    spin_once_events=new_spin_once_event_buffer()
+    last_spin_event_recorded_at={}
+
     def bounded_spin(executor):
-        # Read-only L2 A/B: wake the rclpy wait-set at most every 50ms.
-        # This is not a change to sensor/CM/Guard safety TTL.
+        # Record wall vs THREAD CPU duration. A 50ms timeout limits the
+        # configured wait; it cannot guarantee OS/GIL wake-up latency.
+        label=("observer" if executor is exe else "same_process_ros")
         try:
             while rclpy.ok():
-                executor.spin_once(timeout_sec=.05)
+                wall_start=time.monotonic()
+                cpu_start=time.thread_time()
+                try:
+                    executor.spin_once(timeout_sec=.05)
+                finally:
+                    wall_end=time.monotonic()
+                    append_sampled_spin_event(
+                        spin_once_events,last_spin_event_recorded_at,{
+                            "executor":label,
+                            "start_sec":round(wall_start,6),
+                            "end_sec":round(wall_end,6),
+                            "thread_cpu_sec":round(
+                                max(0.,time.thread_time()-cpu_start),6),
+                        })
         except (ShutdownException, ExternalShutdownException):
             return
 
@@ -799,8 +839,18 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
                 n2=int(round(after["stamp"]*1e9))
                 if n1 in available and n2 in available:
                     pairs.append((after["at"]-before["at"],before,after,n1,n2))
-            if pairs:
-                biggest,before,after,n1,n2=max(pairs,key=lambda x:x[0])
+            # If a FIRST >500ms violation exists, its exact source pair
+            # takes priority over a later, possibly larger/recovered gap.
+            first_boundary=result.get("first_scan_timing_boundary")
+            if first_boundary:
+                matching=[p for p in pairs
+                    if p[3]==first_boundary.get("previous_ros_stamp_ns")
+                    and p[4]==first_boundary.get("current_ros_stamp_ns")]
+                selected=matching[0] if matching else None
+            else:
+                selected=max(pairs,key=lambda x:x[0]) if pairs else None
+            if selected:
+                biggest,before,after,n1,n2=selected
                 pair={"previous_ros_stamp_ns":n1,
                       "current_ros_stamp_ns":n2,
                       "previous_host_monotonic_sec":round(before["at"],6),
@@ -814,6 +864,33 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
                     pair,operation_spans)
                 cmp["process_heartbeat"]=analyze_process_heartbeat_gap(
                     pair,list(process_heartbeat_samples))
+                spin_events=list(spin_once_events)
+                cmp["executor_spin_once_worst_gap"]=(
+                    diagnose_spin_once_during_scan_gap(pair,spin_events))
+                result["executor_spin_once_trace_summary"]={
+                    "sample_count":len(spin_events),
+                    "history_complete":len(spin_events)<SPIN_ONCE_HISTORY_LIMIT,
+                    "max_observer_spin_once_wall_sec":round(max(
+                        (x["end_sec"]-x["start_sec"] for x in spin_events
+                         if x["executor"]=="observer"),default=0.),6),
+                    "max_same_process_spin_once_wall_sec":round(max(
+                        (x["end_sec"]-x["start_sec"] for x in spin_events
+                         if x["executor"]=="same_process_ros"),default=0.),6),
+                }
+                result["executor_spin_once_gap_evidence"]=[
+                    x for x in spin_events
+                    if x["end_sec"]>=pair["previous_host_monotonic_sec"]-.06
+                    and x["start_sec"]<=pair["current_host_monotonic_sec"]+.06
+                ][:32]
+                cmp["executor_spin_once_pair_proof"]=spin_trace_window_proof(
+                    first_boundary,pair,
+                    cmp["executor_spin_once_worst_gap"],
+                    result["executor_spin_once_trace_summary"]["history_complete"],
+                    cmp["source_pair_matched"])
+                if not cmp["executor_spin_once_pair_proof"]["proven"]:
+                    result["status"]="HOLD"
+                    result.setdefault("first_boundary",
+                        "D08_EXECUTOR_SPIN_ONCE_FIRST_GAP_PAIR_UNVERIFIED")
                 scoped_stacks=[item for item in executor_stall_stack_samples
                     if pair["previous_host_monotonic_sec"]<=
                        item["host_monotonic_sec"]<=

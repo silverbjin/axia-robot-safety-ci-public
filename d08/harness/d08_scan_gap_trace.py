@@ -585,3 +585,102 @@ def classify_executor_stack_frames(frames):
     else:
         verdict["candidate"]="UNKNOWN_EXECUTOR_PYTHON_STACK"
     return verdict
+
+
+def diagnose_spin_once_during_scan_gap(scan_pair, events):
+    """Read-only rclpy spin_once wall-time vs first Scan receive gap.
+
+    A slow spin_once includes wait, callback, Python scheduling and OS
+    descheduling; this function does NOT identify which subcomponent is
+    causally responsible. Only the same-host time interval is compared.
+    """
+    output={
+        "bracketed":False,
+        "candidate":"INSUFFICIENT_SPIN_TRACE",
+        "root_cause":"UNDETERMINED",
+        "max_spin_wall_sec":{"observer":None,"same_process_ros":None},
+        "max_spin_thread_cpu_sec":{"observer":None,"same_process_ros":None},
+        "spin_calls_in_gap":{"observer":0,"same_process_ros":0},
+        "configured_wait_sec":0.05,
+    }
+    if not isinstance(scan_pair,dict) or not isinstance(events,(list,tuple)):
+        return output
+    import math
+    try:
+        left=float(scan_pair["previous_host_monotonic_sec"])
+        right=float(scan_pair["current_host_monotonic_sec"])
+    except (TypeError,KeyError,ValueError,OverflowError):
+        return output
+    if not all(math.isfinite(x) for x in (left,right)) or right<=left:
+        return output
+    for which in ("observer","same_process_ros"):
+        valid=[]
+        for event in events:
+            if not isinstance(event,dict) or event.get("executor")!=which:
+                continue
+            try:
+                a=float(event["start_sec"])
+                b=float(event["end_sec"])
+                c=float(event["thread_cpu_sec"])
+            except (TypeError,KeyError,ValueError,OverflowError):
+                continue
+            if not all(math.isfinite(x) for x in (a,b,c)) or b<a or c<0:
+                continue
+            if min(right,b)-max(left,a)>0:
+                valid.append((b-a,c))
+        if valid:
+            output["max_spin_wall_sec"][which]=round(max(v[0] for v in valid),6)
+            output["max_spin_thread_cpu_sec"][which]=round(max(v[1] for v in valid),6)
+            output["spin_calls_in_gap"][which]=len(valid)
+    a=output["max_spin_wall_sec"]["observer"]
+    b=output["max_spin_wall_sec"]["same_process_ros"]
+    if a is None or b is None:
+        return output
+    output["bracketed"]=True
+    if a>.12 and b>.12:
+        output["candidate"]="BOTH_EXECUTORS_SPIN_ONCE_OVERRUN"
+    elif a>.12 or b>.12:
+        output["candidate"]="ONE_EXECUTOR_SPIN_ONCE_OVERRUN"
+    else:
+        output["candidate"]="SPIN_PROGRESS_BUT_SCAN_CALLBACK_DELAYED"
+    return output
+
+
+def spin_trace_window_proof(first_gap, selected_pair, spin_diagnosis,
+                            history_complete, source_pair_matched):
+    """Fail closed on the first REAL safety violation, not unrelated old logs.
+
+    Global circular history may wrap without losing the EXACT selected
+    source-stamp pair. If a first >500ms violation exists, that specific
+    pair must match; never substitute a later recovered/better callback.
+    """
+    verdict={
+        "proven":False,
+        "scope":"SOURCE_PAIR_NOT_MATCHED",
+        "history_complete":bool(history_complete),
+        "root_cause":"UNDETERMINED",
+    }
+    if not source_pair_matched or not isinstance(selected_pair,dict):
+        return verdict
+    if not isinstance(spin_diagnosis,dict) or not spin_diagnosis.get("bracketed"):
+        verdict["scope"]="SPIN_WINDOW_UNBRACKETED"
+        return verdict
+    if first_gap is not None:
+        if not isinstance(first_gap,dict):
+            verdict["scope"]="FIRST_SAFETY_GAP_SOURCE_MISMATCH"
+            return verdict
+        try:
+            first_pair=(int(first_gap["previous_ros_stamp_ns"]),
+                        int(first_gap["current_ros_stamp_ns"]))
+            observed_pair=(int(selected_pair["previous_ros_stamp_ns"]),
+                           int(selected_pair["current_ros_stamp_ns"]))
+        except (KeyError,ValueError,TypeError,OverflowError):
+            verdict["scope"]="FIRST_SAFETY_GAP_SOURCE_MISMATCH"
+            return verdict
+        if first_pair != observed_pair:
+            verdict["scope"]="FIRST_SAFETY_GAP_SOURCE_MISMATCH"
+            return verdict
+        verdict.update({"proven":True,"scope":"FIRST_SAFETY_GAP_EXACT_SOURCE_PAIR"})
+        return verdict
+    verdict.update({"proven":True,"scope":"MATCHED_CURRENT_SOURCE_PAIR_ONLY"})
+    return verdict
