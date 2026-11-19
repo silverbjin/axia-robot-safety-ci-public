@@ -60,7 +60,9 @@ class WslgABOneShotSafety(unittest.TestCase):
         self.assertIn("D06_GZ_NATIVE_RX_UNSUBSCRIBE_BEFORE_NAV2_SHUTDOWN_PASS",o)
         self.assertIn("export AXIA_G07_NO_GOAL_GZ_STOP_BEFORE_SIGINT=1",o)
         self.assertIn("112f2ac6aaed3123e2d38ccec7b9f7429fd02af9",o)
-        self.assertIn("ca4af428c59716b46b9bc6bde6f25ea47d6d4e68",o)
+        # Frozen Student smoke CI-only nice branch changed its blob.
+        # Keep the hash pinned to the actual source, not the obsolete one.
+        self.assertIn("9b0cbc348a48784c29e042a55b549d08dd9c57a7",o)
         self.assertNotIn("D08_RECEIVER_BLOB",o)
         probe=ROOT/"d06/tools/d06_gz_native_scan_probe_safe.py"
         check=subprocess.run(["git","hash-object",str(probe)],capture_output=True,text=True,check=True)
