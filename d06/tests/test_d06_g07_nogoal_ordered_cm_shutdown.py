@@ -66,7 +66,7 @@ class NoGoalCMShutdownRegression(unittest.TestCase):
         self.assertIn('g07_witness_stopped.ack',w)
         self.assertIn('kill -TERM "$native_rx_pid" "$ros_rx_pid"',w)
         self.assertIn('G07_READONLY_WITNESSES_STOPPED',w)
-        self.assertIn('assert witness_handoff_done==1',w)
+        self.assertIn('[[ "$witness_handoff_done" == 1 ]]',w)
 
     def test_real_l2_requires_full_20s_dual_topic_safe_gate_not_just_cm_exit0(self):
         w=(ROOT/".github/workflows/axia-d06-g07-native-nogoal-cm-clean-l2-20261119.yml").read_text()
