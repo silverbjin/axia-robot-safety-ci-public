@@ -44,3 +44,25 @@ jobs:
           GOTOOLCHAIN=local timeout 120s go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 \
             .github/workflows/d08-main-no-goal-real-gazebo-l2.yml
           echo D08_MAIN_ACTIONLINT_GITHUB_SEMANTIC_PASS
+
+  d08-host-x11-binary-inventory:
+    # Pure host capability probe, NO apt, Gazebo, Goal or safety changes.
+    if: github.event_name == 'pull_request' && github.head_ref == 'feat/d08-d04-d07-single-session-20261119'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Verify available host Xvfb/xwininfo executables and dependencies
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          for tool in Xvfb xwininfo rviz2;do
+            if command -v "$tool" >/dev/null;then
+              bin="$(command -v "$tool")"
+              echo "D08_HOST_X11_EXISTS_$tool=$bin"
+              ldd "$bin" | grep -F 'not found' && exit 2 || true
+              dpkg-query -S "$bin" | head -n 1 || true
+            else
+              echo "D08_HOST_X11_MISSING_$tool"
+            fi
+          done
+          echo D08_HOST_X11_INVENTORY_COMPLETE_NOT_GAZEBO
