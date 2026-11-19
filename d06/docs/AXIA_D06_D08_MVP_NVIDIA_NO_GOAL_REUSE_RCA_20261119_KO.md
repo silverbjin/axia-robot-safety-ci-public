@@ -64,3 +64,60 @@ D06_GPU_RTF_NVIDIA_ONLY_FIRST_BLOCK=NONE  # 실제 20초 충족시에만
 D06_GPU_RTF_NVIDIA_SENSOR_CANDIDATE_NOT_ACCEPTED
 D06_GAZEBO_LIVE_RELEASE=HOLD CERTIFIED_ESTOP=false
 ```
+
+---
+
+## 5. 2026-11-19 Owner NVIDIA 실측 첫 실패 분석 및 **단일 명령 자동 증거 번들** (후속 개발 사이클)
+
+### 5.1 Owner 실측 (동일 세션의 원본 출력; 새 재실행 아님)
+
+- 기존 로컬 세션: `~/axia_d06_g07_gpu_rtf_evidence/ab-no-goal-yBT9gFbJ`.
+- NVIDIA 전용 `NO_GOAL`, `ros_clock_rtf=0.913157` (`RTF_NORMAL`), LiDAR source `9.999441Hz`, host safety `9.131648Hz`.
+- **거리 정상화 후보:** Safety Scan `180/180 CLEAR`, front median `1.414687m`, side median `2.520466m`, all-azimuths-near false.
+- **가장 먼저 검증된 차단 항목:** Safety `max_receipt_gap_sec=0.421172` (첫 위반 index 6), Raw `0.427761` (첫 위반 index 11). 첫 Raw host gap `0.390708`, 매칭 Safety `0.387036` (`BOTH_TOPIC_ACTIVE`). 두 토픽 공통의 수신 지연 후보이지만 Gazebo native 송신/DDS executor 원인은 원본 요약만으로 확정하지 않음.
+- **별도 치명 종료 증거:** 기존 `nvidia.launch.log` 427번째 줄 `collision_monitor exit code -11`, 428번째 `gz sim -r -s exit code -11`. `P2_L2_GRACEFUL_TEARDOWN` 마커는 정상 자식 종료를 증명하지 못함.
+- `goal_sent=false`; 충돌 모니터/서버 segfault의 백트레이스는 미확보. **전체 Moving/CM120/Guard150/종료는 HOLD**.
+- **중요 진단 개선:** 기존 실행기는 `SENSOR_EXIT=3` 이후 종료 SIGSEGV 검사로 즉시 종료하므로 실제 센서 `reasons`를 요약 출력하지 못했음. 새 실행기는 첫 Safety/Raw TTL 차단 사유·첫 index/거리·RTF를 SIGSEGV 검사 **이전**에 출력하고, 실제 `-11`과 단순 Python `Traceback`을 구별.
+
+### 5.2 추가 코드는 진단/증거 수집에만 한정
+
+**변경 파일:** `d06/scripts/axia_d06_g07_wslg_gpu_rtf_compare_once.sh`; 신규 회귀 `d06/tests/test_d06_forensic_bundle_once.py`.
+
+- `--analyze-existing` 옵션: 기존 가장 최근 NVIDIA NO_GOAL 원본에서 자동 분석. **ROS/Gazebo/Goal/추가 GPU 실험 실행 0**, `GITHUB_ACTIONS=true`/DISPLAY 없는 격리 L0 테스트에서도 오프라인 기능 시험.
+- `--nvidia-only` 및 기존 `--compare`의 추후 실행: **성공 또는 실패 EXIT 모두** `collect_and_package`가 작은 증거 TAR+SHA256 생성. 원래 종료 코드를 유지하고 미검증을 PASS로 바꾸지 않음.
+- 출력: `D06_FORENSIC_FIRST_SENSOR_FAILURE`, `D06_FORENSIC_PROCESS_CRASH`, `D06_FORENSIC_RTF`, `D06_FORENSIC_ARCHIVE`, `D06_FORENSIC_SHA256`.
+- 압축에 포함: `summary.json`, 첫 Safety STOP 및 첫 시간 위반 전후 excerpt, SIGINT 및 `-11` 프로세스 종료 문맥, Owner NO_GOAL 요약, 렌더러, 로컬 원본 SHA 목록.
+- 원래 Owner TAR 경로가 `nvidia.run.log`에 있으면 **해당 TAR의 SHA256 sidecar를 검사한 후** `clock_diagnostics.json`, `p2_graph_diagnostics.json`, `startup_verdict.json`, RViz/Gazebo GUI 렌더 오류 excerpt 및 `teardown.txt`를 소량 포함. 유효한 원본 TAR가 없다면 `source_archive_sha256_verified=false`로 기록하며 증거를 위조하거나 가정하지 않음.
+- 거대 원본 `launch.log`·SDF·전체 원본 TAR은 작은 압축 안에 복사하지 않음. **원본은 기존 로컬 폴더에 보존**, 핵심 파일만 SHA 목록과 함께 봉인.
+- 새 native Gazebo publisher나 센서/Goal/CM/Guard 기능 구현 없음; `Scan300ms`, `CM120ms`, `Guard150ms`, CLEAR 거리 임계값 모두 유지.
+
+### 5.3 RED → GREEN → REVIEW → COMMIT 실측 CI 이력
+
+| 단계 | 커밋/Actions | 실제 결과 |
+|---|---|---|
+| RED-1: 기존 원본 한 번에 분석·패키징 미지원 | [`34ef0ede`](https://github.com/silverbjin/axia-robot-safety-ci-public/commit/34ef0ede2426918386c00ebea0186025cb39a253), [#44429176804](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44429176804) | 신규 3건 예상 FAIL, 원인 기능 누락 |
+| GREEN 후보: 내장 증거 수집 및 판정 순서 | `cc588949`→`dc106822` | 기능 추가, 기존 셸 가드가 HOME 미설정 시 먼저 실패하는 회귀 발견 |
+| GREEN-1: 기존 CI 가드 유지 | [`36426e92`](https://github.com/silverbjin/axia-robot-safety-ci-public/commit/36426e924420de2ef5e64c9204a0420ecc182004), [#44429988242](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44429988242) | L0 SUCCESS |
+| RED-2: 원래 Owner TAR의 추가 원인 문맥 | [`b0a4ea6b`](https://github.com/silverbjin/axia-robot-safety-ci-public/commit/b0a4ea6bf2130fb133be8bc7e34c2c91cc310dc0), [#44430293395](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44430293395) | 추가 실패 재현 |
+| GREEN-2: SHA 검증한 native 핵심 로그 포함 | [`bef5189a`](https://github.com/silverbjin/axia-robot-safety-ci-public/commit/bef5189ac8a75aa685eabb109df13dcab65b8781), [#44430425020](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44430425020) | **L0 25/25 PASS** (9+7+5+3+1); 오프라인 실제 tarfile fixture + checksum/아카이브 콘텐츠 검증. 실제 ROS/Gazebo는 실행하지 않음 |
+
+### 5.4 Owner WSL2 한 번의 명령 (기존 증거 재사용)
+
+최종 공개 CI가 통과한 **정확한 HEAD와 Git blob**을 확인한 뒤, 이 스크립트 한 개를 내려받아 다음 옵션으로 실행합니다.
+
+```bash
+bash <SHA256/GIT-BLOB-verified-public-script.sh> --analyze-existing
+```
+
+기대 출력:
+```text
+D06_FORENSIC_EXISTING_NO_SIM_REPLAY=<실존 로컬 증거 디렉터리>
+D06_FORENSIC_FIRST_SENSOR_FAILURE=SAFETY_RECEIPT_TTL_300MS_BLOCKED
+D06_FORENSIC_PROCESS_CRASH=collision_monitor,gazebo_server
+D06_FORENSIC_RTF=0.913157
+D06_FORENSIC_ARCHIVE=<실제 로컬 경로>.tar.gz
+D06_FORENSIC_SHA256=<실제 로컬 경로>.tar.gz.sha256
+D06_GAZEBO_LIVE_RELEASE=HOLD CERTIFIED_ESTOP=false
+```
+
+**이제 강사에게 동일 시뮬레이션을 재시도하거나 수동 로그 추출 명령을 여러 번 요청하지 않습니다.** 새로운 WSLg 물리 실행이 필요해질 경우에도 원샷의 실패 시 자동 증거 보존을 유지하고 원인별 공개 CI 회귀를 먼저 수정합니다. Git main 병합 없음.
