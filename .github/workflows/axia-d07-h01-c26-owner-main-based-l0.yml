@@ -1,0 +1,43 @@
+# Public-only static test of new pinned Owner WSL2 launcher. NO ROS/Gazebo/Goal.
+name: AXIA D07 Cycle26 Owner P4-shutdown pinned one-shot L0
+on:
+  push:
+    branches: [fix/d07-h01-owner-p4-teardown-c26-20261117]
+    paths: ['.github/workflows/axia-d07-h01-c26-owner-main-based-l0.yml']
+permissions:
+  contents: read
+jobs:
+  owner-static:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Exact vetted artifact hashes, public-only tests and self-check
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git hash-object scripts/axia_d07_h01_gpu_gui_owner_wsl2_once.sh)" = b69a40abe81358af9f6b437ed9b1088901a18720
+          test "$(git hash-object tests/test_axia_d07_gpu_gui_owner_contract.py)" = 75ad39b47a02245a6d1937526078502bc6274b78
+          bash -n scripts/axia_d07_h01_gpu_gui_owner_wsl2_once.sh
+          python3 - <<'PY'
+          import sys,unittest
+          sys.path.insert(0,'tests')
+          from test_axia_d07_gpu_gui_owner_contract import OwnerGpuTrialContract
+          names=(
+            'test_owner_pins_real_shared_l2_and_does_not_enable_ci_xvfb',
+            'test_owner_scene_runtime_contract_precedes_visual_hold',
+            'test_bootstrap_l0_executes_without_gazebo',
+            'test_gui_gpu_backend_scoped_without_bashrc_global_exports',
+            'test_gpu_trial_failclosed_pre_ros_and_baseline_not_promoted',
+          )
+          out=unittest.TextTestRunner(verbosity=2).run(unittest.TestSuite(OwnerGpuTrialContract(n) for n in names))
+          if not out.wasSuccessful(): raise SystemExit(2)
+          print('AXIA_D07_C26_OWNER_PUBLIC_FIVE_CONTRACT_PASS')
+          PY
+          bash scripts/axia_d07_h01_gpu_gui_owner_wsl2_once.sh --self-check
+          grep -Fq 'a2ea5bbebf7c24137353773f88984dd4cf6d9383' scripts/axia_d07_h01_gpu_gui_owner_wsl2_once.sh
+          grep -Fq '43994275942' scripts/axia_d07_h01_gpu_gui_owner_wsl2_once.sh
+          ! grep -Fq 'AXIA_MVP_DEMO_ACCEPTED=PASS' scripts/axia_d07_h01_gpu_gui_owner_wsl2_once.sh
+          echo AXIA_D07_C26_OWNER_MAIN_BASED_L0_PASS_NO_ROS_NO_GAZEBO_NO_GOAL
