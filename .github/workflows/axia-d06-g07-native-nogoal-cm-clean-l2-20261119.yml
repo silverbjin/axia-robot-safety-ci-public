@@ -33,6 +33,8 @@ jobs:
     env:
       ROS_DOMAIN_ID: '89'
       ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+      # CI-only supported alternate RMW; Owner WSLg default unchanged.
+      RMW_IMPLEMENTATION: rmw_cyclonedds_cpp
       GZ_PARTITION: axia_p2_nogoal_ordered_shutdown
       AXIA_P0_SIM_ONLY: '1'
       AXIA_P2_G07_PHYSICAL_PREFLIGHT: '1'
@@ -107,6 +109,17 @@ jobs:
             apt-get update -qq -o Acquire::Retries=2 -o Acquire::http::Timeout=20
             DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends --no-upgrade xvfb x11-utils ros-jazzy-rviz2
           fi
+          # CI_ONLY_RMW_CYCLONEDDS_L2_NO_GOAL:
+          # Use the exact same world, Nav2, LiDAR, scan TTL and shutdown.
+          # Install the signed official ROS Jazzy RMW if absent, in this
+          # disposable Linux container only. Never alter WSL2 Owner or QoS.
+          if ! dpkg-query -W -f='${Status}' ros-jazzy-rmw-cyclonedds-cpp 2>/dev/null |
+               grep -Fxq 'install ok installed';then
+            apt-get update -qq -o Acquire::Retries=2 -o Acquire::http::Timeout=20
+            DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends --no-upgrade ros-jazzy-rmw-cyclonedds-cpp
+          fi
+          test -r /opt/ros/jazzy/lib/librmw_cyclonedds_cpp.so
+          echo "CI_ONLY_RMW_CYCLONEDDS_L2_NO_GOAL requested=${RMW_IMPLEMENTATION}"
           export DISPLAY=:96
           export GZ_PARTITION="axia_p2_nogoal_ordered_shutdown_${GITHUB_RUN_ID}_$$"
           export AXIA_P2_SMOKE_RESULTS="$GITHUB_WORKSPACE/native"
@@ -309,6 +322,11 @@ jobs:
           # Previous runs silently passed the shutdown-only L2 while the
           # original Raw/Safety Scan300 safety window was HOLD. This
           # integrated NO_GOAL candidate MUST pass both, without changing TTL.
+          # Exact source RMW response in Nav2 ordered-shutdown JSON,
+          # not just an environment variable claim or apt install status.
+          assert nav["rmw_implementation_identifier"]=="rmw_cyclonedds_cpp",(
+            "C10_ACTUAL_RMW_MISMATCH",nav.get("rmw_implementation_identifier"))
+          print("AXIA_D06_C10_RMW_CYCLONEDDS_ACTUAL_L2_VERIFIED")
           assert rc==0, ("REAL_NO_GOAL_SMOKE_RC",rc,sensor.get("reasons"))
           assert sensor["status"]=="NO_GOAL_SENSOR_WINDOW_CLEAR_CANDIDATE",sensor
           assert not sensor["reasons"],sensor["reasons"]
