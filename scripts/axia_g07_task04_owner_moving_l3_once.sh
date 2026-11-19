@@ -70,6 +70,7 @@ root=Path(sys.argv[1])
 dest=Path(sys.argv[2])
 names=[
     'first_failure.txt','manifest.txt','gui_windows.txt',
+    'startup_timing.tsv','native_witness_build_profile.json',
     'task04_owner_verdict.json','task04_owner_numeric_review.json',
     'task04_mvp_visual_verdict.json',
     'owner_numeric_review.log','owner_parity.json',
@@ -137,7 +138,7 @@ source /etc/os-release
 [[ "$ID" == ubuntu && "$VERSION_ID" == 24.04 ]] || hold UBUNTU_2404_REQUIRED
 [[ -r /opt/ros/jazzy/setup.bash ]] || hold ROS_JAZZY_REQUIRED
 [[ -n "${DISPLAY:-}" && -n "${XDG_RUNTIME_DIR:-}" ]] || hold WSLG_GUI_REQUIRED
-for cmd in git bash python3 gz glxinfo xwininfo tar sha256sum timeout setsid colcon;do
+for cmd in git bash python3 gz glxinfo xwininfo tar sha256sum timeout setsid colcon flock dpkg-query;do
   command -v "$cmd" >/dev/null 2>&1 || hold "MISSING_COMMAND_$cmd"
 done
 
@@ -167,6 +168,15 @@ mkdir -p "$BASE" && chmod 700 "$BASE"
 OUT="$(mktemp -d "$BASE/owner-moving-XXXXXXXX")" || hold EVIDENCE_DIRECTORY_FAILED
 chmod 700 "$OUT"
 printf 'student_sha=%s\nci_review_sha=%s\nci_l2_run=%s\ndomain=%s\npartition=%s\n' "$STUDENT_SHA" "$REVIEW_SHA" "$CI_L2_RUN" "$ROS_DOMAIN_ID" "$GZ_PARTITION" > "$OUT/manifest.txt"
+# Observation only, never a startup gate. Host clock time-to-GUI evidence.
+STARTUP_T0_MS="$(date +%s%3N)"
+printf 'phase\telapsed_ms\tutc_epoch_ms\n' > "$OUT/startup_timing.tsv"
+startup_mark() {
+  local now
+  now="$(date +%s%3N)"
+  printf '%s\t%s\t%s\n' "$1" "$((now-STARTUP_T0_MS))" "$now" >> "$OUT/startup_timing.tsv"
+}
+startup_mark owner_evidence_ready
 
 set +u
 source /opt/ros/jazzy/setup.bash
@@ -212,6 +222,7 @@ STUDENT_CACHE="$HOME/.cache/axia/g07_task04_moving_student/$STUDENT_SHA"
 REVIEW_CACHE="$HOME/.cache/axia/g07_task04_moving_ci/$REVIEW_SHA"
 fetch_pinned "$STUDENT_REPO" "$STUDENT_SHA" "$STUDENT_CACHE" STUDENT
 fetch_pinned "$REVIEW_REPO" "$REVIEW_SHA" "$REVIEW_CACHE" PUBLIC_CI
+startup_mark pinned_source_verified
 RUNTIME="$STUDENT_CACHE/block_B/day07/h01_runtime"
 [[ -r "$RUNTIME/scripts/p2_no_goal_smoke_ci.sh" && -r "$RUNTIME/tools/p2_g07_task04_moving_review.py" ]] || hold RUNTIME_FILES_MISSING
 bash -n "$RUNTIME/scripts/p2_no_goal_smoke_ci.sh" || hold STUDENT_SHELL_SYNTAX
@@ -228,6 +239,7 @@ assert r.get("checked_packages")==25 and r.get("checked_official_files")==5
 assert r.get("wsl_detected") is True
 print("AXIA_G07_TASK04_OWNER_CORE_PARITY_25_5_PASS")
 PY
+startup_mark owner_core_parity_ready
 
 # WSLg D3D12 genuine adapter. No long NO_GOAL demo rerun.
 GPU=''
@@ -247,13 +259,83 @@ unset GALLIUM_DRIVER MESA_D3D12_DEFAULT_ADAPTER_NAME || true
 # only gz sim -g / rviz2 GUI children explicitly opt out for D3D12 GPU.
 export LIBGL_ALWAYS_SOFTWARE=1
 echo "AXIA_G07_TASK04_WSLG_D3D12_GPU_SELECTED=$GPU"
+startup_mark wslg_gpu_verified
 
-# Read-only native Gazebo8 contact witness, identical source and build path to CI.
-cmake -S "$RUNTIME/tools/native_s02_public" -B "$OUT/native_build" -DCMAKE_BUILD_TYPE=Release > "$OUT/native_build_config.log" 2>&1 || hold NATIVE_WITNESS_CONFIG_FAILED
-cmake --build "$OUT/native_build" --parallel 2 > "$OUT/native_build.log" 2>&1 || hold NATIVE_WITNESS_BUILD_FAILED
+# Read-only Gazebo8 contact witness. Cold configure was 116.4s on Owner
+# 8ULG28b7 because every evidence run used a NEW CMake build directory.
+# Use a private persistent binary cache keyed by the exact pinned source
+# and Gazebo/compiler ABI. Never reuse a binary after any of these change.
+NATIVE_BUILD_CACHE_ROOT="$HOME/.cache/axia/g07_task04_native_witness"
+mkdir -p "$NATIVE_BUILD_CACHE_ROOT" || hold NATIVE_CACHE_CREATE_FAILED
+[[ ! -L "$NATIVE_BUILD_CACHE_ROOT" ]] || hold NATIVE_CACHE_SYMLINK_DENIED
+NATIVE_ABI_PACKAGES="$(dpkg-query -W -f='${Package}=${Version}\n' \
+  libgz-sim8-dev libgz-sim8 libgz-transport13 libgz-msgs10 libsdformat14)" \
+    || hold NATIVE_CACHE_ABI_PACKAGES_UNAVAILABLE
+NATIVE_BUILD_CACHE_KEY="$(
+  {
+    printf 'student=%s\nsource=%s\narch=%s\n' "$STUDENT_SHA" \
+      "$RUNTIME/tools/native_s02_public" "$(uname -m)"
+    sha256sum "$RUNTIME/tools/native_s02_public/CMakeLists.txt" \
+              "$RUNTIME/tools/native_s02_public/s02_witness.cc"
+    printf '%s\n' "$NATIVE_ABI_PACKAGES"
+    c++ -dumpfullversion -dumpversion
+    cmake --version
+  } | sha256sum | cut -d ' ' -f1
+)"
+[[ "$NATIVE_BUILD_CACHE_KEY" =~ ^[0-9a-f]{64}$ ]] || hold NATIVE_CACHE_KEY_INVALID
+NATIVE_BUILD_DIR="$NATIVE_BUILD_CACHE_ROOT/$NATIVE_BUILD_CACHE_KEY"
+mkdir -p "$NATIVE_BUILD_DIR" || hold NATIVE_CACHE_DIRECTORY_FAILED
+[[ ! -L "$NATIVE_BUILD_DIR" ]] || hold NATIVE_CACHE_BUILD_SYMLINK_DENIED
+# One cache writer. Never lock, clean, or signal any other Gazebo instance.
+exec {NATIVE_CACHE_LOCK_FD}> "$NATIVE_BUILD_DIR/.build.lock"
+flock -x "$NATIVE_CACHE_LOCK_FD" || hold NATIVE_CACHE_LOCK_FAILED
+NATIVE_T0_MS="$(date +%s%3N)"
+NATIVE_BUILD_CACHE_STATUS=MISS
+CACHED_WITNESS="$NATIVE_BUILD_DIR/libaxia_g07_s02_ecm_witness.so"
+if [[ -s "$CACHED_WITNESS" && -f "$NATIVE_BUILD_DIR/.witness.sha256" ]] \
+   && (cd "$NATIVE_BUILD_DIR" && sha256sum --status -c .witness.sha256); then
+  NATIVE_BUILD_CACHE_STATUS=HIT
+  printf '%s\n' 'AXIA_G07_NATIVE_WITNESS_CONFIG_REUSED_SAME_PINNED_ABI' > "$OUT/native_build_config.log"
+  printf '%s\n' 'AXIA_G07_NATIVE_WITNESS_COMPILE_REUSED_SAME_PINNED_ABI' > "$OUT/native_build.log"
+else
+  # Missing/corrupted binary cannot become a stale cache HIT.
+  rm -f "$CACHED_WITNESS" "$NATIVE_BUILD_DIR/.witness.sha256"
+  cmake -S "$RUNTIME/tools/native_s02_public" -B "$NATIVE_BUILD_DIR" \
+    -DCMAKE_BUILD_TYPE=Release > "$OUT/native_build_config.log" 2>&1 \
+      || hold NATIVE_WITNESS_CONFIG_FAILED
+  cmake --build "$NATIVE_BUILD_DIR" --parallel 2 > "$OUT/native_build.log" 2>&1 \
+      || hold NATIVE_WITNESS_BUILD_FAILED
+  [[ -s "$CACHED_WITNESS" ]] || hold NATIVE_WITNESS_MISSING
+  (cd "$NATIVE_BUILD_DIR" && sha256sum libaxia_g07_s02_ecm_witness.so > .witness.sha256) \
+      || hold NATIVE_CACHE_CHECKSUM_WRITE_FAILED
+fi
+NATIVE_T1_MS="$(date +%s%3N)"
+mkdir -p "$OUT/native_build"
+# Keep the *per-run* evidence binary and its SHA, not the shared CMake cache.
+cp "$CACHED_WITNESS" "$OUT/native_build/libaxia_g07_s02_ecm_witness.so" \
+  || hold NATIVE_WITNESS_COPY_FAILED
 WITNESS="$OUT/native_build/libaxia_g07_s02_ecm_witness.so"
 [[ -s "$WITNESS" ]] || hold NATIVE_WITNESS_MISSING
 sha256sum "$WITNESS" > "$OUT/native_witness.sha256"
+NATIVE_SHA256="$(sha256sum "$WITNESS" | cut -d ' ' -f1)"
+python3 - "$OUT/native_witness_build_profile.json" "$STUDENT_SHA" \
+  "$NATIVE_BUILD_CACHE_STATUS" "$NATIVE_BUILD_CACHE_KEY" \
+  "$((NATIVE_T1_MS-NATIVE_T0_MS))" "$NATIVE_SHA256" <<'PY_CACHE_PROFILE'
+import json,sys
+from pathlib import Path
+record=dict(schema="axia.g07.owner.native_witness_build_cache_v1",
+            pinned_student_sha=sys.argv[2],cache_status=sys.argv[3],
+            abi_cache_key=sys.argv[4],
+            build_phase_wall_sec=round(int(sys.argv[5])/1000,3),
+            output_binary_sha256=sys.argv[6],
+            safety_ttl_changed=False,goal_sent=False)
+Path(sys.argv[1]).write_text(json.dumps(record,sort_keys=True,indent=2)+"\n")
+PY_CACHE_PROFILE
+flock -u "$NATIVE_CACHE_LOCK_FD"
+exec {NATIVE_CACHE_LOCK_FD}>&-
+echo "AXIA_G07_NATIVE_WITNESS_CACHE_STATUS=$NATIVE_BUILD_CACHE_STATUS"
+echo "AXIA_G07_NATIVE_WITNESS_CACHE_WALL_SEC=$((NATIVE_T1_MS-NATIVE_T0_MS))ms"
+startup_mark native_witness_ready
 export GZ_SIM_SYSTEM_PLUGIN_PATH="$OUT/native_build${GZ_SIM_SYSTEM_PLUGIN_PATH:+:$GZ_SIM_SYSTEM_PLUGIN_PATH}"
 export AXIA_G07_TASK03_WITNESS_SHA256="$(sha256sum "$WITNESS" | cut -d ' ' -f1)"
 export AXIA_P2_SMOKE_RESULTS="$OUT/native"
@@ -267,13 +349,20 @@ mkdir -p "$OUT/native"
   trap 'printf "rviz=%s\ngazebo=%s\n" "$rv" "$gz" > "$OUT/gui_windows.txt"' EXIT
   for ((i=0;i<360;i++));do
     tree="$(timeout 3s xwininfo -root -tree 2>/dev/null || true)"
-    if grep -Eiq RViz <<< "$tree";then rv=1;fi
-    if grep -Eiq Gazebo <<< "$tree";then gz=1;fi
+    if [[ "$rv" == 0 ]] && grep -Eiq RViz <<< "$tree";then
+      rv=1
+      startup_mark first_rviz_window_detected
+    fi
+    if [[ "$gz" == 0 ]] && grep -Eiq Gazebo <<< "$tree";then
+      gz=1
+      startup_mark first_gazebo_window_detected
+    fi
     if [[ "$rv" == 1 && "$gz" == 1 ]];then break;fi
     sleep 2
   done
 ) &
 WATCH_PID=$!
+startup_mark owner_runner_start
 echo "AXIA_G07_TASK04_OWNER_MOVING_BEGIN student_sha=$STUDENT_SHA public_l2=$CI_L2_RUN"
 echo 'Gazebo and RViz open automatically; one YES-P2-G07-GOAL consent is requested on YOUR /dev/tty only after safety readiness.'
 echo 'Original ROS logs and rosbag remain in a PRIVATE HOME evidence directory.'
@@ -282,6 +371,7 @@ echo 'Original ROS logs and rosbag remain in a PRIVATE HOME evidence directory.'
 # Each Gazebo/Nav2 process and GUI is managed by the original Student shell.
 RUNNER_RC=0
 (cd "$RUNTIME" && timeout --foreground --signal=TERM --kill-after=25s 1100s bash scripts/p2_no_goal_smoke_ci.sh) > "$OUT/native_runner.log" 2>&1 || RUNNER_RC=$?
+startup_mark owner_runner_completed
 if [[ -n "$WATCH_PID" ]] && kill -0 "$WATCH_PID" 2>/dev/null;then
   kill -TERM "$WATCH_PID" 2>/dev/null || true
 fi
