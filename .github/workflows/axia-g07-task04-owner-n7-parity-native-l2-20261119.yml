@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: bcebc5d1f3a7d00860a541507e263dd05b27a9a3
+          ref: 6579e2eef7e99691da558cd2de1964fd26a04621
           path: student
           persist-credentials: false
       - name: Build unmodified native Gazebo8 contact witness in disposable builder
@@ -74,14 +74,14 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: bcebc5d1f3a7d00860a541507e263dd05b27a9a3
+          ref: 6579e2eef7e99691da558cd2de1964fd26a04621
           path: student
           persist-credentials: false
       - name: Exact public Student source and minimum L0 before physical run
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C student rev-parse HEAD)" = 'bcebc5d1f3a7d00860a541507e263dd05b27a9a3'
+          test "$(git -C student rev-parse HEAD)" = '6579e2eef7e99691da558cd2de1964fd26a04621'
           test "$(git -C ci rev-parse HEAD)" = "$GITHUB_SHA"
           cd student/block_B/day07/h01_runtime
           bash -n scripts/p2_no_goal_smoke_ci.sh
@@ -99,6 +99,10 @@ jobs:
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_owner_sensor_renderer_parity.py' -v
           cd "$GITHUB_WORKSPACE"
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -v -s student/block_B/tests -p test_g07_task04_world_xacro_order.py
+          cd "$GITHUB_WORKSPACE/student/block_B/day07/h01_runtime/tools"
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest -v test_g07_task04_localization_isolated_client test_g07_task03_localization_shutdown_budget
+          cd "$GITHUB_WORKSPACE/student/block_B/day07/h01_runtime"
+          echo 'AXIA_G07_TASK04_LOCALIZATION_ISOLATED_CLIENT_L0_INCLUDED_IN_L2'
           echo 'AXIA_G07_TASK04_PUBLIC_WORLD_XACRO_ORDER_INCLUDED_IN_L2'
           echo 'AXIA_G07_TASK04_PUBLIC_NATIVE_MOVING_L0_PASS=29'
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
@@ -191,7 +195,7 @@ jobs:
             exit 3
           fi
           windows_count=$((rviz_seen+gazebo_seen))
-          python3 tools/p2_g07_task04_moving_review.py             --motion-root "$GITHUB_WORKSPACE/native"             --witness "$GITHUB_WORKSPACE/native/s02_ecm_witness.json"             --source-sha 'bcebc5d1f3a7d00860a541507e263dd05b27a9a3'             --gui-windows "$windows_count"             --output "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"
+          python3 tools/p2_g07_task04_moving_review.py             --motion-root "$GITHUB_WORKSPACE/native"             --witness "$GITHUB_WORKSPACE/native/s02_ecm_witness.json"             --source-sha '6579e2eef7e99691da558cd2de1964fd26a04621'             --gui-windows "$windows_count"             --output "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"
           sha256sum "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"             > "$GITHUB_WORKSPACE/public_evidence/task04_moving_verdict.sha256"
           echo 'AXIA_G07_TASK04_NATIVE_MOVING_GUI_XVFB_L2_PASS_OWNER_WSL2_NOT_RUN'
           echo 'AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false'
