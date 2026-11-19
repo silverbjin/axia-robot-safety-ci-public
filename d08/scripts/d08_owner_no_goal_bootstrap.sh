@@ -68,6 +68,7 @@ required=(
  ros-jazzy-ros-gz ros-jazzy-ros-gz-image ros-jazzy-xacro
  ros-jazzy-nav2-collision-monitor ros-jazzy-nav2-bringup
  ros-jazzy-navigation2 ros-jazzy-rviz2 libgl1-mesa-dri libglx-mesa0 mesa-utils
+ ros-jazzy-ros2trace lttng-tools babeltrace
 )
 missing=()
 for pkg in "${required[@]}"; do
@@ -97,15 +98,38 @@ fi
 echo "D08_OWNER_WSLG_NVIDIA_D3D12_VERIFIED=$GPU_RENDERER"
 printf '%s\n' "$GPU_INFO" > "$RUN_DIR/owner_gpu_probe.txt"
 
-# This SHA must be reachable from public PR #166, never a mutable branch tip.
+# Exact public Owner diagnostic branch fetched for immutable SHA checkout;
+# preserve older PR #166 successful evidence without using its obsolete tip.
 SRC="$RUN_DIR/src"
 git clone -q --filter=blob:none \
   https://github.com/silverbjin/axia-robot-safety-ci-public.git "$SRC"
-git -C "$SRC" fetch -q origin refs/pull/166/head
+git -C "$SRC" fetch -q origin refs/heads/fix/d08-owner-rmw-one-shot-20261119
 git -C "$SRC" checkout -q --detach "$SHA"
 [[ "$(git -C "$SRC" rev-parse HEAD)" == "$SHA" ]] || {
   echo D08_OWNER_SOURCE_SHA_MISMATCH >&2; exit 2; }
 echo "D08_OWNER_EXACT_SOURCE_SHA_VERIFIED=$SHA"
+
+# Reuse existing CI-tested native Gazebo / independent ROS Scan observers.
+# Fail closed rather than silently running without one causal layer.
+if ! /usr/bin/python3 -c 'from gz.transport13 import Node; from gz.msgs10.laserscan_pb2 import LaserScan; from gz.msgs10.clock_pb2 import Clock' >/dev/null 2>&1; then
+  if ! apt-cache show python3-gz-transport13 >/dev/null 2>&1; then
+    curl -fLsS --retry 2 --connect-timeout 15 --max-time 60 \
+      https://packages.osrfoundation.org/gazebo.gpg \
+      -o "$RUN_DIR/gazebo-package-key.gpg"
+    sudo install -m 0644 "$RUN_DIR/gazebo-package-key.gpg" \
+      /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg
+    printf 'deb [arch=%s signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] https://packages.osrfoundation.org/gazebo/ubuntu-stable noble main\n' \
+      "$(dpkg --print-architecture)" | \
+      sudo tee /etc/apt/sources.list.d/axia-d08-gazebo-stable.list >/dev/null
+    sudo apt-get update -qq
+  fi
+  sudo apt-get install -y -qq --no-install-recommends --no-upgrade \
+    python3-gz-transport13 python3-gz-msgs10
+fi
+/usr/bin/python3 -c 'from gz.transport13 import Node; from gz.msgs10.laserscan_pb2 import LaserScan; from gz.msgs10.clock_pb2 import Clock' || {
+  echo D08_OWNER_NATIVE_GZ_RX_PRECHECK_BLOCKED >&2; exit 2;
+}
+echo D08_OWNER_NATIVE_GZ_ROS_RX_PROBES_AVAILABLE
 
 ASSETS="$RUN_DIR/assets"
 mkdir -p "$ASSETS"
@@ -195,14 +219,73 @@ cat > "$PARAMS" <<YAML
       cameras: ["cam0"]
 YAML
 
+# One WSL2 run, bounded 120-second (configurable <=180s) tracing.
+# Trace begins before existing YOLO and Gazebo child ROS nodes, so the
+# publisher, original Observer, and independent subscriber are identifiable.
+export AXIA_D08_NATIVE_RX_PROBE=1
+export AXIA_D08_ROS_ISOLATED_RX_PROBE=1
+export AXIA_D08_TRACE_OUT="$RUN_DIR/rmw_trace"
+export AXIA_D08_TRACE_SESSION="axia_d08_owner_$"
+AXIA_D08_TRACE_CAPTURE_MAX_S="${AXIA_D08_TRACE_CAPTURE_MAX_S:-120}"
+if [[ ! "$AXIA_D08_TRACE_CAPTURE_MAX_S" =~ ^[0-9]+$ ]] ||
+   ((AXIA_D08_TRACE_CAPTURE_MAX_S<60 || AXIA_D08_TRACE_CAPTURE_MAX_S>180)); then
+  echo D08_OWNER_TRACE_DURATION_RANGE_60_TO_180_REQUIRED >&2; exit 2
+fi
+TRACE_SCRIPT="$SRC/d08/scripts/d08_ros_trace_live_ci.sh"
+TRACE_STARTED=0
+TRACE_WATCH_PID=""
 YOLO_GROUP=""
 cleanup() {
+  local original_rc="$?"
+  local trace_rc=0
+  trap - EXIT
   if [[ -n "$YOLO_GROUP" ]]; then
     kill -- "-$YOLO_GROUP" 2>/dev/null || true
   fi
+  if [[ -n "$TRACE_WATCH_PID" ]]; then
+    kill "$TRACE_WATCH_PID" 2>/dev/null || true
+    wait "$TRACE_WATCH_PID" 2>/dev/null || true
+  fi
+  if ((TRACE_STARTED)); then
+    if ! bash "$TRACE_SCRIPT" stop > "$RUN_DIR/rmw_trace_stop.log" 2>&1; then
+      trace_rc=2
+      echo D08_OWNER_RMW_TRACE_STOP_OR_SUMMARY_BLOCKED >&2
+      tail -n 30 "$RUN_DIR/rmw_trace_stop.log" >&2 || true
+    fi
+  else
+    trace_rc=2
+  fi
+  if ! python3 "$SRC/d08/scripts/d08_owner_rmw_first_gap.py" \
+       --phase finalize --run "$RUN_DIR" \
+       --rows "$AXIA_D08_TRACE_OUT/rmw_source_rows.jsonl" \
+       --trace-summary "$AXIA_D08_TRACE_OUT/summary.json" \
+       --out "$AXIA_D08_TRACE_OUT/owner_first_gap_verdict.json"; then
+    trace_rc=2
+    echo D08_OWNER_FIRST_BOUNDARY_RMW_CLASSIFIER_BLOCKED >&2
+  fi
+  echo "D08_OWNER_FIRST_BOUNDARY_RMW_VERDICT=$AXIA_D08_TRACE_OUT/owner_first_gap_verdict.json"
+  # A real first >500ms violation with missing/expired RMW trace is HOLD,
+  # even if the separate no-Goal GUI code exited zero.
+  if ! python3 - "$AXIA_D08_TRACE_OUT/owner_first_gap_verdict.json" <<'PY'
+import json,sys
+from pathlib import Path
+p=Path(sys.argv[1])
+if not p.is_file():
+    sys.exit(2)
+x=json.loads(p.read_text())
+if (x.get("first_500ms_violation_retained")
+    and x.get("candidate")=="EVIDENCE_INCOMPLETE"
+    and (x.get("first_observer_gap") or {}).get("scope")
+        != "initial_amcl_pregoal_recovery"):
+    sys.exit(2)
+PY
+  then
+    trace_rc=2
+    echo D08_OWNER_FIRST_SCAN_CAPTURE_INCOMPLETE_HOLD >&2
+  fi
   # Always create a bounded PRIVATE diagnostics ZIP on Owner GUI exit,
-  # including Ctrl+C and fail-closed timing violations. Never archive
-  # checkout, .git, build, model assets or the full run directory.
+  # including Ctrl+C and first timing failures. Raw CTF, JSONL, .git,
+  # models, binaries, full run logs are NEVER in the outgoing ZIP.
   if [[ -f "$SRC/d08/scripts/d08_compact_evidence.py" ]]; then
     local compact="${RUN_DIR}.diagnostics.zip"
     if python3 "$SRC/d08/scripts/d08_compact_evidence.py" \
@@ -212,11 +295,31 @@ cleanup() {
       echo "D08_OWNER_COMPACT_EVIDENCE_SHA256=$(cut -d' ' -f1 "${compact}.sha256")"
       echo D08_OWNER_RAW_RUN_RETAINED_LOCALLY_NOT_ARCHIVED
     else
+      trace_rc=2
       echo D08_OWNER_COMPACT_EVIDENCE_FAILED >&2
     fi
   fi
+  if ((trace_rc!=0)); then
+    echo D08_OWNER_RMW_EVIDENCE_HOLD_NOT_L3_ACCEPTED >&2
+    ((original_rc==0)) && original_rc=2
+  fi
+  echo D08_OWNER_FIRST_BOUNDARY_RMW_CAUSE_UNDETERMINED
+  exit "$original_rc"
 }
 trap cleanup EXIT
+if ! bash "$TRACE_SCRIPT" start; then
+  echo D08_OWNER_RMW_TRACE_START_BLOCKED_NOT_L3_ACCEPTED >&2
+  exit 2
+fi
+TRACE_STARTED=1
+(
+  sleep "$AXIA_D08_TRACE_CAPTURE_MAX_S"
+  bash "$TRACE_SCRIPT" stop > "$RUN_DIR/rmw_trace_watchdog.log" 2>&1 ||
+    echo D08_OWNER_RMW_TRACE_WATCHDOG_STOP_BLOCKED >> "$RUN_DIR/rmw_trace_watchdog.log"
+) &
+TRACE_WATCH_PID="$!"
+echo "D08_OWNER_RMW_TRACE_CAPTURE_MAX_S=$AXIA_D08_TRACE_CAPTURE_MAX_S"
+echo D08_OWNER_RMW_TRACE_STARTED_BEFORE_YOLO_AND_GAZEBO
 setsid ros2 launch yolo_bringup yolo.launch.py \
   "params_file:=$PARAMS" > "$RUN_DIR/yolo_native.log" 2>&1 &
 YOLO_GROUP="$!"

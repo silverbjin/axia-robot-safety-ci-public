@@ -63,6 +63,7 @@ jobs:
             d08/tests/test_d08_rmw_source_stamp_message_join.py \
             d08/tests/test_d08_rmw_scan_receiver_node_identity.py \
             d08/tests/test_d08_planner_lifecycle_action_ready.py \
+            d08/tests/test_d08_owner_rmw_one_shot.py \
             d08/tests/test_d08_first_ros_input_gate_custody.py \
             d08/tests/test_d08_ros_cross_process_arrival_order.py \
             d08/tests/test_d08_native_probe_apt_contract.py \
@@ -107,7 +108,7 @@ jobs:
           echo D08_PUBLIC_MAIN_NO_GOAL_L0_PASS
   gazebo-contact-positive-once:
     needs: l0-human-proxy-red-green
-    if: github.head_ref != 'diag/d08-live-rcl-publish-take-20261119' && github.head_ref != 'fix/d08-first-scan-gap-boundary-20261119' && github.head_ref != 'fix/d08-native-scan-first-gap-20261119' && github.head_ref != 'fix/d08-scan-independent-ros-process-20261119' && github.head_ref != 'fix/d08-executor-spin-timing-20261119' && github.head_ref != 'diag/d08-ros-trace-preflight-20261119'
+    if: (github.head_ref != 'diag/d08-live-rcl-publish-take-20261119' && github.head_ref != 'fix/d08-owner-rmw-one-shot-20261119') && github.head_ref != 'fix/d08-first-scan-gap-boundary-20261119' && github.head_ref != 'fix/d08-native-scan-first-gap-20261119' && github.head_ref != 'fix/d08-scan-independent-ros-process-20261119' && github.head_ref != 'fix/d08-executor-spin-timing-20261119' && github.head_ref != 'diag/d08-ros-trace-preflight-20261119'
     runs-on: ubuntu-24.04
     timeout-minutes: 22
     container:
@@ -329,7 +330,7 @@ jobs:
     # skipped Nav2/AMCL here even while the overall public workflow was GREEN.
     # On this exact PR, one real official Nav2 same-world job is REQUIRED.
     # Other branches retain their existing manual diagnostic scope.
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && (github.head_ref == 'feat/d08-unified-sensor-cm-path-20261118' || github.head_ref == 'fix/d08-first-scan-gap-boundary-20261119' || github.head_ref == 'fix/d08-native-scan-first-gap-20261119' || github.head_ref == 'fix/d08-scan-independent-ros-process-20261119' || github.head_ref == 'fix/d08-executor-spin-timing-20261119' || (github.head_ref == 'diag/d08-ros-trace-preflight-20261119' || github.head_ref == 'diag/d08-live-rcl-publish-take-20261119')))
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && (github.head_ref == 'feat/d08-unified-sensor-cm-path-20261118' || github.head_ref == 'fix/d08-first-scan-gap-boundary-20261119' || github.head_ref == 'fix/d08-native-scan-first-gap-20261119' || github.head_ref == 'fix/d08-scan-independent-ros-process-20261119' || github.head_ref == 'fix/d08-executor-spin-timing-20261119' || (github.head_ref == 'diag/d08-ros-trace-preflight-20261119' || (github.head_ref == 'diag/d08-live-rcl-publish-take-20261119' || github.head_ref == 'fix/d08-owner-rmw-one-shot-20261119'))))
     runs-on: ubuntu-24.04
     timeout-minutes: 22
     container:
@@ -341,9 +342,9 @@ jobs:
       # CI-only two-second readiness-decision delay while real ROS sensor
       # subscriptions/TF continue; this does NOT pause Gazebo publishers.
       AXIA_D08_CI_AMCL_SERVICE_READY_DELAY_SEC: "2.0"
-      AXIA_D08_NATIVE_RX_PROBE: ${{ (github.head_ref == 'fix/d08-native-scan-first-gap-20261119' || (github.head_ref == 'fix/d08-scan-independent-ros-process-20261119' || github.head_ref == 'fix/d08-executor-spin-timing-20261119' || (github.head_ref == 'diag/d08-ros-trace-preflight-20261119' || github.head_ref == 'diag/d08-live-rcl-publish-take-20261119'))) && '1' || '0' }}
-      AXIA_D08_ROS_ISOLATED_RX_PROBE: ${{ (github.head_ref == 'fix/d08-scan-independent-ros-process-20261119' || github.head_ref == 'fix/d08-executor-spin-timing-20261119' || (github.head_ref == 'diag/d08-ros-trace-preflight-20261119' || github.head_ref == 'diag/d08-live-rcl-publish-take-20261119')) && '1' || '0' }}
-      AXIA_D08_ROS_TRACE_PREFLIGHT: ${{ (github.head_ref == 'diag/d08-ros-trace-preflight-20261119' || github.head_ref == 'diag/d08-live-rcl-publish-take-20261119') && '1' || '0' }}
+      AXIA_D08_NATIVE_RX_PROBE: ${{ (github.head_ref == 'fix/d08-native-scan-first-gap-20261119' || (github.head_ref == 'fix/d08-scan-independent-ros-process-20261119' || github.head_ref == 'fix/d08-executor-spin-timing-20261119' || (github.head_ref == 'diag/d08-ros-trace-preflight-20261119' || (github.head_ref == 'diag/d08-live-rcl-publish-take-20261119' || github.head_ref == 'fix/d08-owner-rmw-one-shot-20261119')))) && '1' || '0' }}
+      AXIA_D08_ROS_ISOLATED_RX_PROBE: ${{ (github.head_ref == 'fix/d08-scan-independent-ros-process-20261119' || github.head_ref == 'fix/d08-executor-spin-timing-20261119' || (github.head_ref == 'diag/d08-ros-trace-preflight-20261119' || (github.head_ref == 'diag/d08-live-rcl-publish-take-20261119' || github.head_ref == 'fix/d08-owner-rmw-one-shot-20261119'))) && '1' || '0' }}
+      AXIA_D08_ROS_TRACE_PREFLIGHT: ${{ (github.head_ref == 'diag/d08-ros-trace-preflight-20261119' || (github.head_ref == 'diag/d08-live-rcl-publish-take-20261119' || github.head_ref == 'fix/d08-owner-rmw-one-shot-20261119')) && '1' || '0' }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -381,7 +382,7 @@ jobs:
             /usr/bin/python3 -c 'from gz.transport13 import Node; from gz.msgs10.laserscan_pb2 import LaserScan; from gz.msgs10.clock_pb2 import Clock; print("D08_NATIVE_PYTHON_APT_IMPORT_L2_PASS")'
           fi
       - name: CI-only official Jazzy ROS userspace tracing preflight
-        if: (github.head_ref == 'diag/d08-ros-trace-preflight-20261119' || github.head_ref == 'diag/d08-live-rcl-publish-take-20261119')
+        if: (github.head_ref == 'diag/d08-ros-trace-preflight-20261119' || (github.head_ref == 'diag/d08-live-rcl-publish-take-20261119' || github.head_ref == 'fix/d08-owner-rmw-one-shot-20261119'))
         shell: bash
         run: |
           set -eo pipefail
@@ -390,7 +391,7 @@ jobs:
             ros-jazzy-ros2trace lttng-tools babeltrace
           bash d08/scripts/d08_ros_trace_preflight.sh
       - uses: actions/upload-artifact@v4
-        if: always() && (github.head_ref == 'diag/d08-ros-trace-preflight-20261119' || github.head_ref == 'diag/d08-live-rcl-publish-take-20261119')
+        if: always() && (github.head_ref == 'diag/d08-ros-trace-preflight-20261119' || (github.head_ref == 'diag/d08-live-rcl-publish-take-20261119' || github.head_ref == 'fix/d08-owner-rmw-one-shot-20261119'))
         with:
           name: d08-ros-trace-preflight
           path: results/d08-ros-trace-preflight/
@@ -432,7 +433,7 @@ jobs:
           print('D08_REAL_GAZEBO_TEMPFILE_RED_REPRODUCED exit=255 NOT_SAFETY_PASS')
           PY
       - name: Start REAL L2 rcl publish/take trace before Gazebo/ROS bridge
-        if: github.head_ref == 'diag/d08-live-rcl-publish-take-20261119'
+        if: (github.head_ref == 'diag/d08-live-rcl-publish-take-20261119' || github.head_ref == 'fix/d08-owner-rmw-one-shot-20261119')
         shell: bash
         run: |
           set -euo pipefail
@@ -572,13 +573,50 @@ jobs:
           print('D08_OFFICIAL_NAV2_SAME_WORLD_FIRST_PATH_L2_PASS_NO_GOAL')
           PY
       - name: Stop REAL L2 rcl trace even when first Scan gap blocked
-        if: always() && github.head_ref == 'diag/d08-live-rcl-publish-take-20261119'
+        if: always() && (github.head_ref == 'diag/d08-live-rcl-publish-take-20261119' || github.head_ref == 'fix/d08-owner-rmw-one-shot-20261119')
         shell: bash
         run: |
           set -euo pipefail
           bash d08/scripts/d08_ros_trace_live_ci.sh stop
+      - name: Contract check Owner first-gap classifier using same-run real Gazebo RMW evidence
+        if: success() && github.head_ref == 'fix/d08-owner-rmw-one-shot-20261119'
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n d08/scripts/d08_owner_no_goal_bootstrap.sh
+          bash -n d08/scripts/d08_ros_trace_live_ci.sh
+          test -s results/d08-ros-trace-live/rmw_source_rows.jsonl
+          python3 - <<'PY'
+          from pathlib import Path
+          import shutil
+          source=Path('results/d08-official-nav2-sameworld')
+          dest=Path('results/d08-owner-rmw-real-ci-contract')/'live_evidence'
+          dest.mkdir(parents=True,exist_ok=True)
+          shutil.copytree(source/'ci_owner_replan_cycles',dest/'owner_replan_cycles')
+          shutil.copytree(source/'official_path_phases',dest/'official_path_phases')
+          shutil.copy2(source/'official_nav2_before_path.json',dest/'official_nav2_before_path.json')
+          PY
+          python3 d08/scripts/d08_owner_rmw_first_gap.py \
+            --phase finalize --run results/d08-owner-rmw-real-ci-contract \
+            --rows results/d08-ros-trace-live/rmw_source_rows.jsonl \
+            --trace-summary results/d08-ros-trace-live/summary.json \
+            --out results/d08-owner-rmw-real-ci-contract/owner_first_gap_verdict.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          path=Path('results/d08-owner-rmw-real-ci-contract/owner_first_gap_verdict.json')
+          report=json.loads(path.read_text())
+          summary=json.loads(Path('results/d08-ros-trace-live/summary.json').read_text())
+          assert summary['rmw_scan_source_stamp_join']['matched_unique_pairs']>0,summary
+          assert report['cause']=='UNDETERMINED',report
+          assert report['owner_wsl2_accepted'] is False,report
+          assert report['trace_event_count']>0,report
+          assert report['certified_estop'] is False,report
+          assert report['cm_internal_receive_ttl_verified'] is False,report
+          print('D08_OWNER_RMW_PUBLIC_L2_OFFLINE_CONTRACT_PASS_NOT_WSL2')
+          PY
       - uses: actions/upload-artifact@v4
-        if: always() && github.head_ref == 'diag/d08-live-rcl-publish-take-20261119'
+        if: always() && (github.head_ref == 'diag/d08-live-rcl-publish-take-20261119' || github.head_ref == 'fix/d08-owner-rmw-one-shot-20261119')
         with:
           name: d08-real-rcl-publish-take-trace
           path: |
@@ -589,6 +627,7 @@ jobs:
             results/d08-ros-trace-live/raw-trace-sha256.txt
             results/d08-ros-trace-live/raw-archive-verdict.txt
             results/d08-ros-trace-live/summary.json
+            results/d08-owner-rmw-real-ci-contract/owner_first_gap_verdict.json
             results/d08-ros-trace-live/ctf-small.tar.gz
           retention-days: 7
           if-no-files-found: warn

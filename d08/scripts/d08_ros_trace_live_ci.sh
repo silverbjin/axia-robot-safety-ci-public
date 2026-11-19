@@ -6,13 +6,18 @@ set -Eeo pipefail
 source /opt/ros/jazzy/setup.bash
 set -u
 MODE="$1"
-OUT="$PWD/results/d08-ros-trace-live"
+OUT="${AXIA_D08_TRACE_OUT:-$PWD/results/d08-ros-trace-live}"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 export ROS_TRACE_DIR="$OUT/trace"
-SESSION='axia_d08_real_rcl'
+SESSION="${AXIA_D08_TRACE_SESSION:-axia_d08_real_rcl}"
 LOG="$OUT/session.log"
 mkdir -p "$OUT" "$ROS_TRACE_DIR"
 case "$MODE" in
 start)
+  if [[ -e "$OUT/stop.success" ]]; then
+    echo D08_BRIDGE_RCL_TRACE_ALREADY_FINISHED >&2
+    exit 2
+  fi
   if ! timeout 20s ros2 run tracetools status > "$OUT/tracetools-status.txt" 2>&1; then
     echo D08_BRIDGE_RCL_TRACE_STATUS_BLOCKED; exit 2
   fi
@@ -38,6 +43,14 @@ PY
   echo D08_BRIDGE_RCL_TRACE_REAL_SESSION_STARTED
   ;;
 stop)
+  # Watchdog and EXIT trap can reach stop concurrently; only one may stop
+  # and parse the real session. No false pass when a session never started.
+  exec 9>"$OUT/.stop.lock"
+  flock -x 9
+  if [[ -s "$OUT/stop.success" && -s "$OUT/summary.json" ]]; then
+    echo D08_BRIDGE_RCL_TRACE_ALREADY_STOPPED_WITH_EVIDENCE
+    exit 0
+  fi
   if ! timeout 35s ros2 trace stop "$SESSION" >> "$LOG" 2>&1; then
     echo D08_BRIDGE_RCL_TRACE_STOP_BLOCKED; exit 2
   fi
@@ -51,7 +64,10 @@ stop)
   # The resulting rcl_publish / rcl_take inter-event gaps are only
   # candidates: per-Scan message identity and RMW internals are UNDETERMINED.
   if ! timeout 150s babeltrace "$SESSION_PATH" |
-      python3 d08/scripts/d08_rcl_trace_summary.py --clock-anchor "$OUT/clock_anchor.json" --out "$OUT/summary.json"; then
+      python3 "$SCRIPT_DIR/d08_rcl_trace_summary.py" \
+        --clock-anchor "$OUT/clock_anchor.json" \
+        --rmw-rows-out "$OUT/rmw_source_rows.jsonl" \
+        --out "$OUT/summary.json"; then
     echo D08_BRIDGE_RCL_TRACE_PARSE_BLOCKED; exit 2
   fi
   test -s "$OUT/summary.json"
@@ -67,6 +83,7 @@ stop)
   else
     echo D08_BRIDGE_RCL_TRACE_RAW_TOO_LARGE_SUMMARY_ONLY > "$OUT/raw-archive-verdict.txt"
   fi
+  echo D08_BRIDGE_RCL_TRACE_STOP_COMPLETE > "$OUT/stop.success"
   echo D08_BRIDGE_RCL_TRACE_CAPTURED_CAUSE_UNDETERMINED
   ;;
 *) echo 'Usage: bash d08/scripts/d08_ros_trace_live_ci.sh start|stop' >&2; exit 2 ;;

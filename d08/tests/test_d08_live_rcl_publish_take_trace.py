@@ -14,7 +14,9 @@ def test_actual_l2_trace_start_before_ros_process_and_stop_after_failure():
     assert SCRIPT.is_file(), "D08_LIVE_RCL_TRACE_RED_NO_REAL_SESSION_WRAPPER"
     assert "d08/scripts/d08_ros_trace_live_ci.sh start" in workflow
     assert "d08/scripts/d08_ros_trace_live_ci.sh stop" in workflow
-    assert "if: always() && github.head_ref == 'diag/d08-live-rcl-publish-take-20261119'" in workflow
+    assert "if: always() &&" in workflow
+    assert "diag/d08-live-rcl-publish-take-20261119" in workflow
+    assert "fix/d08-owner-rmw-one-shot-20261119" in workflow
     start_at = workflow.index("d08/scripts/d08_ros_trace_live_ci.sh start")
     # The workflow deliberately has an earlier independent contact-only
     # Gazebo job; compare positions only inside the official Nav2 job.
