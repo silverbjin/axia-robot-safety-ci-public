@@ -86,6 +86,57 @@ class NoGoalCMShutdownRegression(unittest.TestCase):
         self.assertIn("g07_gz_server_stop.log",wf)
         self.assertIn("G07_NO_GOAL_GAZEBO_SERVER_STOP_ACK",wf)
 
+    def test_real_l2_localization_timeout_isolation_reuses_prior_task04_fix(self):
+        # Actual L2 #44476730420: Scan300 20s good, native RX=0, CM=0,
+        # Gazebo server=0, Navigation ACK but localization response TIMEOUT.
+        # Reuse already-developed G07 Task04 isolated manager client rather
+        # than retry SHUTDOWN or extend CM/Guard/Sensor safety TTL.
+        src=(STUDENT/"tools/p2_g07_ordered_shutdown.py").read_text()
+        self.assertIn("def _call_isolated_stage(",src)
+        self.assertIn('rclpy.create_node("axia_g07_shutdown_"+manager',src)
+        self.assertIn("node.destroy_node()",src)
+        self.assertIn("ack=_call_isolated_stage(rclpy, manager=key,",src)
+        self.assertIn('stages[key+"_response_elapsed_sec"]=ack.get("elapsed_sec")',src)
+        self.assertIn('stages[key+"_service_request_sent"]=ack.get("request_sent",False)',src)
+        self.assertIn('stages[key+"_service_status"]=ack.get("status")',src)
+        self.assertIn('if ack["status"]!="ACK":',src)
+        self.assertIn('status="BLOCKED_LIFECYCLE_',src.replace('"+"+key.upper()+"_"+ack["status"]','_'))
+        self.assertIn("max(0.01, remaining_sec)",src)
+        self.assertNotIn("retry_shutdown",src)
+
+    def test_isolated_client_real_call_uses_new_node_per_manager(self):
+        import sys
+        sys.path.insert(0,str(STUDENT/"tools"))
+        spec=importlib.util.spec_from_file_location(
+            "axia_lifecycle_stage",STUDENT/"tools/p2_g07_ordered_shutdown.py")
+        m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+        class FakeNode:
+            def __init__(self,label):self.label=label;self.destroyed=False
+            def destroy_node(self):self.destroyed=True
+        class FakeRclpy:
+            def __init__(self):self.nodes=[]
+            def create_node(self,label,enable_rosout=False):
+                node=FakeNode(label);self.nodes.append(node);return node
+        fake=FakeRclpy()
+        original=m.call_native_manage
+        calls=[]
+        def manage(node,*,manager,command,timeout_sec):
+            calls.append((node.label,manager,command,timeout_sec))
+            return {"status":"ACK","elapsed_sec":1.25,"request_sent":True}
+        try:
+            m.call_native_manage=manage
+            nav=m._call_isolated_stage(fake,manager="navigation",timeout_sec=29)
+            loc=m._call_isolated_stage(fake,manager="localization",timeout_sec=20)
+        finally:
+            m.call_native_manage=original
+        self.assertEqual(nav["status"],"ACK")
+        self.assertEqual(loc["status"],"ACK")
+        self.assertEqual([n.label for n in fake.nodes],
+                         ["axia_g07_shutdown_navigation","axia_g07_shutdown_localization"])
+        self.assertTrue(all(n.destroyed for n in fake.nodes))
+        self.assertEqual(len(calls),2)
+        self.assertEqual([c[2] for c in calls],["shutdown","shutdown"])
+
     def test_real_l2_requires_full_20s_dual_topic_safe_gate_not_just_cm_exit0(self):
         w=(ROOT/".github/workflows/axia-d06-g07-native-nogoal-cm-clean-l2-20261119.yml").read_text()
         self.assertIn('assert rc==0',w)
