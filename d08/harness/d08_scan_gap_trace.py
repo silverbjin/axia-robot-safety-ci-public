@@ -644,3 +644,43 @@ def diagnose_spin_once_during_scan_gap(scan_pair, events):
     else:
         output["candidate"]="SPIN_PROGRESS_BUT_SCAN_CALLBACK_DELAYED"
     return output
+
+
+def spin_trace_window_proof(first_gap, selected_pair, spin_diagnosis,
+                            history_complete, source_pair_matched):
+    """Fail closed on the first REAL safety violation, not unrelated old logs.
+
+    Global circular history may wrap without losing the EXACT selected
+    source-stamp pair. If a first >500ms violation exists, that specific
+    pair must match; never substitute a later recovered/better callback.
+    """
+    verdict={
+        "proven":False,
+        "scope":"SOURCE_PAIR_NOT_MATCHED",
+        "history_complete":bool(history_complete),
+        "root_cause":"UNDETERMINED",
+    }
+    if not source_pair_matched or not isinstance(selected_pair,dict):
+        return verdict
+    if not isinstance(spin_diagnosis,dict) or not spin_diagnosis.get("bracketed"):
+        verdict["scope"]="SPIN_WINDOW_UNBRACKETED"
+        return verdict
+    if first_gap is not None:
+        if not isinstance(first_gap,dict):
+            verdict["scope"]="FIRST_SAFETY_GAP_SOURCE_MISMATCH"
+            return verdict
+        try:
+            first_pair=(int(first_gap["previous_ros_stamp_ns"]),
+                        int(first_gap["current_ros_stamp_ns"]))
+            observed_pair=(int(selected_pair["previous_ros_stamp_ns"]),
+                           int(selected_pair["current_ros_stamp_ns"]))
+        except (KeyError,ValueError,TypeError,OverflowError):
+            verdict["scope"]="FIRST_SAFETY_GAP_SOURCE_MISMATCH"
+            return verdict
+        if first_pair != observed_pair:
+            verdict["scope"]="FIRST_SAFETY_GAP_SOURCE_MISMATCH"
+            return verdict
+        verdict.update({"proven":True,"scope":"FIRST_SAFETY_GAP_EXACT_SOURCE_PAIR"})
+        return verdict
+    verdict.update({"proven":True,"scope":"MATCHED_CURRENT_SOURCE_PAIR_ONLY"})
+    return verdict
