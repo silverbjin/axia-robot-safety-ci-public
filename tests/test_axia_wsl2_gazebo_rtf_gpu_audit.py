@@ -237,3 +237,26 @@ def test_workload_profile_counts_only_target_partition():
     assert m.count_target_roles(procs, "A") == {
         "gazebo_server_candidate": 1, "gazebo_gui": 1, "rviz2": 1}
     assert m.count_target_roles(procs, "B") == {"yolo": 1, "image_view": 1}
+
+
+def test_comparison_reports_d04_rgb_camera_vs_g07_lidar_only_workload():
+    m = module()
+    a = {
+        "rtf": {"interval_rtf_percent": 90.0},
+        "sensor_profile": {"status": "NOT_APPLICABLE_TO_G07_SCENARIO",
+                           "rgb_camera_hz_disk_candidate": None},
+        "active_process_roles": {"gazebo_server_candidate": 1, "gazebo_gui": 1},
+    }
+    b = {
+        "rtf": {"interval_rtf_percent": 20.0},
+        "sensor_profile": {"status": "DISK_ONLY_NOT_PROVEN_ACTIVE",
+                           "rgb_camera_hz_disk_candidate": 30.0},
+        "active_process_roles": {"gazebo_server_candidate": 1, "gazebo_gui": 2,
+                                 "yolo": 2, "image_view": 2},
+    }
+    out = m.compare(a, b)
+    assert out["rtf_gap_percentage_points"] == -70.0
+    assert "active_process_roles" in out["changed_conditions"]
+    assert "rgb_camera_hz_disk_candidate" in out["changed_conditions"]
+    assert "sensor_profile_scope" in out["changed_conditions"]
+    assert out["root_cause_confirmed"] is False
