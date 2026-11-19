@@ -72,6 +72,7 @@ dest=Path(sys.argv[2])
 names=[
     'first_failure.txt','manifest.txt','gui_windows.txt',
     'startup_timing.tsv','native_witness_build_profile.json',
+    'domain_selection.json','domain_selection.log',
     'task04_owner_verdict.json','task04_owner_numeric_review.json',
     'task04_mvp_visual_verdict.json',
     'owner_numeric_review.log','owner_parity.json',
@@ -139,7 +140,7 @@ source /etc/os-release
 [[ "$ID" == ubuntu && "$VERSION_ID" == 24.04 ]] || hold UBUNTU_2404_REQUIRED
 [[ -r /opt/ros/jazzy/setup.bash ]] || hold ROS_JAZZY_REQUIRED
 [[ -n "${DISPLAY:-}" && -n "${XDG_RUNTIME_DIR:-}" ]] || hold WSLG_GUI_REQUIRED
-for cmd in git bash python3 gz glxinfo xwininfo tar sha256sum timeout setsid colcon flock dpkg-query;do
+for cmd in git bash python3 gz glxinfo xwininfo tar sha256sum timeout setsid colcon flock dpkg-query curl;do
   command -v "$cmd" >/dev/null 2>&1 || hold "MISSING_COMMAND_$cmd"
 done
 
@@ -156,11 +157,9 @@ export AXIA_G07_TASK03_ECM_WITNESS=1
 export AXIA_NAV2_USE_COMPOSITION=False
 unset AXIA_G07_TASK03_FORMAL_CI AXIA_G07_TASK03_POSITIVE_ONLY AXIA_D07_H01_GUI_NO_GOAL AXIA_G07_TASK04_CI_GUI_MOVING || true
 unset AXIA_G07_OWNER_COMMON_RUNNER_AUTHORIZED AXIA_P2_OWNER_PINNED_SHA || true
-export ROS_DOMAIN_ID="${AXIA_G07_TASK04_DOMAIN_ID:-86}"
-[[ "$ROS_DOMAIN_ID" =~ ^[0-9]+$ ]] && ((ROS_DOMAIN_ID<=101)) || hold BAD_ROS_DOMAIN
+# Jazzy DDS isolation is chosen AFTER ROS is sourced, by a read-only ROS
+# endpoint probe. Do not reuse the stale fixed ROS_DOMAIN_ID=86.
 export ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
-export GZ_PARTITION="axia_p2_task04_${ROS_DOMAIN_ID}_${BASHPID}_$(date -u +%s)"
-[[ "$GZ_PARTITION" =~ ^[A-Za-z0-9_]+$ ]] || hold BAD_GZ_PARTITION
 export QT_QPA_PLATFORM=xcb
 unset LIBGL_ALWAYS_SOFTWARE || true
 
@@ -168,7 +167,7 @@ BASE="$HOME/axia_g07_task04_owner_moving"
 mkdir -p "$BASE" && chmod 700 "$BASE"
 OUT="$(mktemp -d "$BASE/owner-moving-XXXXXXXX")" || hold EVIDENCE_DIRECTORY_FAILED
 chmod 700 "$OUT"
-printf 'student_sha=%s\nci_review_sha=%s\nci_l2_run=%s\ndomain=%s\npartition=%s\n' "$STUDENT_SHA" "$REVIEW_SHA" "$CI_L2_RUN" "$ROS_DOMAIN_ID" "$GZ_PARTITION" > "$OUT/manifest.txt"
+# Domain/partition manifest is written after verified DDS graph preflight.
 # Observation only, never a startup gate. Host clock time-to-GUI evidence.
 STARTUP_T0_MS="$(date +%s%3N)"
 printf 'phase\telapsed_ms\tutc_epoch_ms\n' > "$OUT/startup_timing.tsv"
@@ -189,6 +188,46 @@ elif [[ -r "$HOME/axia_p1_abc_verification/results/p1-nav2-official-overlay/inst
 fi
 set -u
 [[ "${ROS_DISTRO:-}" == jazzy ]] || hold ROS_DISTRO_MISMATCH
+
+# Field 99PX1WNS/8ULG28b7: two disjoint /clock sources alternated within
+# same ROS_DOMAIN_ID=86, while GZ_PARTITION was already unique. ROS DDS graph
+# isolation must be checked BEFORE launching a Gazebo /clock bridge or Goal.
+# Exact reviewed helper is pinned to its immutable Git blob and cached.
+readonly DOMAIN_HELPER_COMMIT='d04bb8e1be0f7ef50f0968a77a9f00cce8777f12'
+readonly DOMAIN_HELPER_GIT_BLOB='571882893d02603534b81e687c6be78e2d4d8578'
+DOMAIN_HELPER_CACHE="$HOME/.cache/axia/g07_task04_domain_helper"
+mkdir -p "$DOMAIN_HELPER_CACHE" || hold DOMAIN_HELPER_CACHE_DIRECTORY_FAILED
+[[ ! -L "$DOMAIN_HELPER_CACHE" ]] || hold DOMAIN_HELPER_CACHE_SYMLINK_DENIED
+DOMAIN_HELPER="$DOMAIN_HELPER_CACHE/$DOMAIN_HELPER_GIT_BLOB.py"
+if [[ ! -r "$DOMAIN_HELPER" ]] || [[ "$(git hash-object "$DOMAIN_HELPER" 2>/dev/null)" != "$DOMAIN_HELPER_GIT_BLOB" ]];then
+  tmpdomain="$(mktemp "$DOMAIN_HELPER_CACHE/.download-XXXXXXXX")" || hold DOMAIN_HELPER_TEMP_FAILED
+  if ! curl -fsSL --retry 3 --max-time 60 \
+       "https://raw.githubusercontent.com/$REVIEW_REPO/$DOMAIN_HELPER_COMMIT/scripts/axia_g07_task04_select_free_domain.py" \
+       -o "$tmpdomain";then
+    rm -f "$tmpdomain";hold DOMAIN_HELPER_DOWNLOAD_FAILED
+  fi
+  if [[ "$(git hash-object "$tmpdomain")" != "$DOMAIN_HELPER_GIT_BLOB" ]];then
+    rm -f "$tmpdomain";hold DOMAIN_HELPER_BLOB_MISMATCH
+  fi
+  mv "$tmpdomain" "$DOMAIN_HELPER"
+  chmod 600 "$DOMAIN_HELPER"
+fi
+if ! selected_domain="$(python3 "$DOMAIN_HELPER" \
+       --output "$OUT/domain_selection.json" \
+       --requested "${AXIA_G07_TASK04_DOMAIN_ID:-}" 2>"$OUT/domain_selection.log")";then
+  echo 'AXIA_G07_TASK04_FOREIGN_CLOCK_DOMAIN_PROBE_BLOCKED' >&2
+  hold FOREIGN_CLOCK_DOMAIN_OR_DISCOVERY_REJECTED
+fi
+[[ "$selected_domain" =~ ^[0-9]+$ ]] && ((selected_domain<=101)) \
+  || hold DOMAIN_PROBE_RETURN_INVALID
+export ROS_DOMAIN_ID="$selected_domain"
+export GZ_PARTITION="axia_p2_task04_${ROS_DOMAIN_ID}_${BASHPID}_$(date -u +%s)"
+[[ "$GZ_PARTITION" =~ ^[A-Za-z0-9_]+$ ]] || hold BAD_GZ_PARTITION
+printf 'student_sha=%s\nci_review_sha=%s\nci_l2_run=%s\ndomain=%s\npartition=%s\n' \
+ "$STUDENT_SHA" "$REVIEW_SHA" "$CI_L2_RUN" "$ROS_DOMAIN_ID" "$GZ_PARTITION" > "$OUT/manifest.txt"
+echo "AXIA_G07_TASK04_ROS_DOMAIN_SELECTED=$ROS_DOMAIN_ID CLOCK_PUBLISHERS_BEFORE_LAUNCH=0"
+startup_mark clean_ros_domain_verified
+
 for pkg in nav2_bringup nav2_minimal_tb3_sim ros_gz_sim;do
   ros2 pkg prefix "$pkg" >> "$OUT/official_packages.txt" 2>&1 || hold "OFFICIAL_PACKAGE_$pkg"
 done
