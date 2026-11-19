@@ -165,6 +165,66 @@ def classify(native, raw, safety, limit=TTL, native_clock=None,
     return r
 
 
+def classify_student_first(native, truth, limit=TTL):
+    """Match the Student's *actual* first unsafe receipt pair to Gazebo native.
+
+    Host monotonic seconds and exact source stamp integers are both required.
+    No inference from unrelated pre-startup /scan witness first gaps.
+    """
+    result={
+        "student_first_candidate":"STUDENT_FIRST_PAIR_UNAVAILABLE",
+        "student_first_stamp_pair_verified":False,
+        "student_first_topic":None,"student_first_native_gap_sec":None,
+        "student_first_host_gap_sec":None,
+        "publisher_send_timing_proven":False,
+        "cause":"UNDETERMINED","release":"HOLD","goal_allowed":False,
+    }
+    pairs=truth.get("scan_receipts_compact",{}) if isinstance(truth,dict) else {}
+    if not isinstance(pairs,dict):return result
+    candidate=[]
+    for topic in ("safety","raw"):
+        part=pairs.get(topic)
+        if not isinstance(part,dict):continue
+        before=part.get("before",{})
+        after=part.get("after",{})
+        if not isinstance(before,dict) or not isinstance(after,dict):continue
+        t0,t1=before.get("host_monotonic_sec"),after.get("host_monotonic_sec")
+        s0,s1=before.get("source_stamp_ns"),after.get("source_stamp_ns")
+        if (not isinstance(t0,(float,int)) or not isinstance(t1,(float,int))
+            or not math.isfinite(t0) or not math.isfinite(t1) or t1-t0<=limit
+            or not isinstance(s0,int) or not isinstance(s1,int) or s1<=s0):
+            continue
+        candidate.append((t1,topic,t0,s0,s1,t1-t0))
+    if not candidate:return result
+    candidate.sort(key=lambda z:(z[0],z[1]))
+    _,topic,recv0,stamp0,stamp1,host_gap=candidate[0]
+    result.update({
+        "student_first_topic":topic,
+        "student_first_host_gap_sec":round(host_gap,6),
+        "student_first_source_stamp_ns":[stamp0,stamp1],
+        "student_first_candidate":"STUDENT_NATIVE_SOURCE_STAMP_PAIR_UNAVAILABLE",
+    })
+    index={}
+    for obj in native:
+        if not isinstance(obj,dict):continue
+        stamp=obj.get("source_stamp_ns")
+        host=obj.get("host_monotonic_sec")
+        if stamp in (stamp0,stamp1) and isinstance(host,(float,int)) and math.isfinite(host):
+            index.setdefault(stamp,float(host))
+    if stamp0 not in index or stamp1 not in index:
+        return result
+    native_gap=index[stamp1]-index[stamp0]
+    if (native_gap<=0 or index[stamp0]>recv0+.05 or index[stamp1]>candidate[0][0]+.05):
+        return result
+    result["student_first_stamp_pair_verified"]=True
+    result["student_first_native_gap_sec"]=round(native_gap,6)
+    result["student_first_candidate"]=(
+        "AT_OR_BEFORE_NATIVE_TRANSPORT_RX" if native_gap>limit
+        else "AFTER_NATIVE_TRANSPORT_RX"
+    )
+    return result
+
+
 def read_jsonl(path, max_lines=4096):
     p=Path(path)
     if not p.is_file():return []
@@ -236,6 +296,7 @@ def main():
     p.add_argument("--native-jsonl",type=Path)
     p.add_argument("--native-clock-jsonl",type=Path)
     p.add_argument("--startup-verdict",type=Path)
+    p.add_argument("--student-truth",type=Path)
     p.add_argument("--output",type=Path)
     a=p.parse_args()
     if a.self_check:
@@ -258,6 +319,17 @@ def main():
     report["observer_safety_count"]=len(safe)
     report["native_count"]=len(native)
     report["original_student_first_gap_same_pair_proven"]=False
+    if a.student_truth:
+        try:
+            student=json.loads(a.student_truth.read_text(encoding="utf-8"))
+        except (OSError,ValueError):
+            student={}
+        student_first=classify_student_first(native,student)
+        report["student_first_ttl"]=student_first
+        print("D06_G07_STUDENT_FIRST_TTL="+student_first["student_first_candidate"]+
+              " native_gap="+str(student_first["student_first_native_gap_sec"])+
+              " topic="+str(student_first["student_first_topic"])+
+              " release=HOLD",flush=True)
     if a.startup_verdict:
         proxy={"scope":"POST_NAV2_READY_PROXY",
                "candidate":"NAV2_READY_TIMESTAMP_NOT_VERIFIED",
