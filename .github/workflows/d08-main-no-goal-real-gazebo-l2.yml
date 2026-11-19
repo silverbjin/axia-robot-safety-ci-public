@@ -459,6 +459,13 @@ jobs:
               assert paired['native_gap_sec'] is not None,(i,paired)
               assert paired['isolated_ros_gap_sec'] is not None,(i,paired)
               assert paired['same_python_gap_sec'] is not None,(i,paired)
+              heartbeat=paired['process_heartbeat']
+              assert heartbeat['bracketed'] is True,(i,heartbeat)
+              assert heartbeat['max_heartbeat_gap_sec'] is not None,(i,heartbeat)
+              assert heartbeat['root_cause']=='UNDETERMINED',(i,heartbeat)
+              hb=cycle['process_heartbeat_summary']
+              assert hb['enabled'] is True and hb['sample_count']>=20,(i,hb)
+              assert hb['history_complete'] is True,(i,hb)
               assert native['first_violation_cause']=='UNDETERMINED',native
               assert native['publisher_send_timing_proven'] is False,native
               for topic in ('scan','odom','clock'):
