@@ -19,7 +19,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: f1d45310efab8d1cfbd37b946cdfc62a42a0e391
+          ref: 0f96cb15a85d99308f62b7ec4f8480926b6c8260
           path: student
           persist-credentials: false
       - name: Reproduce race with Student original Owner scope
