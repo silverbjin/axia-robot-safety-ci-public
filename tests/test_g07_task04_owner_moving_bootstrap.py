@@ -4,9 +4,9 @@ import subprocess
 import unittest
 
 SCRIPT=Path(__file__).resolve().parents[1]/"scripts/axia_g07_task04_owner_moving_l3_once.sh"
-SHA="c4cc2a7adc0309d9107e35f31d8f3dd95fa8dac2"
-RUN=44359652805
-REVIEW_SHA='2b4cd883e9a61286c8bf0e85295a72024c42485e'
+SHA="2ca257c80fa12f35d801ca525cb16bebbaaa0c8f"
+RUN=44468919246
+REVIEW_SHA='d60beed5e18d8104b254f17476d47f1d1917a7eb'
 
 class OwnerMovingBootstrap(unittest.TestCase):
     def test_static_self_check_instant_no_ros(self):
@@ -72,6 +72,15 @@ class OwnerMovingBootstrap(unittest.TestCase):
         self.assertIn('ORIGINAL_FIRST_FAILURE',s)
         self.assertIn('FIRST_FAILURE="$ORIGINAL_FIRST_FAILURE"',s)
         self.assertIn('hold "$FIRST_FAILURE"',s)
+
+    def test_mvp_visual_fallback_remains_explicitly_formal_hold(self):
+        s=SCRIPT.read_text()
+        self.assertIn("axia_g07_mvp_visual_verdict.py",s)
+        self.assertIn("MVP_OWNER_NUMERICAL_CANDIDATE_FORMAL_SHUTDOWN_HOLD",s)
+        self.assertIn("FORMAL_LOCALIZATION_SHUTDOWN_TIMEOUT_AFTER_DEMO",s)
+        self.assertIn('"owner_moving_l3_accepted":False',s)
+        self.assertIn('"axia_mvp_demo_accepted":False',s)
+        self.assertIn('"certified_estop":False',s)
 
     def test_bad_argument_fails_without_any_goal(self):
         r=subprocess.run(["bash",str(SCRIPT),"--bad-mode"],
