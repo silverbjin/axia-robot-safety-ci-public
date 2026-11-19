@@ -105,7 +105,7 @@ def collect_first_scan_boundary(run_dir):
 def _stream_bracket(events,start,end):
     rows=sorted(events,key=lambda e:float(e["host_monotonic_sec"]))
     before=[r for r in rows if float(r["host_monotonic_sec"])<=start]
-    after=[r for r in rows if float(r["host_monotonic_sec"])>=end]
+    after=[r for r in rows if float(r["host_monotonic_sec"])>=end-1e-6]
     if not before or not after:
         return {"bracketed":False,"gap_sec":None,"samples":len(rows)}
     a=float(before[-1]["host_monotonic_sec"])
