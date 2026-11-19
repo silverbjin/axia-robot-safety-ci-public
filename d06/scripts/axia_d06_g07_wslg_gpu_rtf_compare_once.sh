@@ -12,8 +12,8 @@ if [[ "$MODE" == --nvidia-only || "$MODE" == --nvidia-causal ]];then
   adapters=(NVIDIA)
   echo 'D06_GPU_RTF_NVIDIA_ONLY_NO_GOAL OWNER_L3_NOT_ACCEPTED'
 fi
-readonly OWNER_SHA='181101b70bed9f33ed1289c8ef5196852e251929'
-readonly OWNER_BLOB='693225799d035d13840dba2bdfbc9bd0cac1f445'
+readonly OWNER_SHA='5bd585eb04e428dcdea4538679617ca30e115f19'
+readonly OWNER_BLOB='cb66013b1324dce0b7fadabf4c7574b182f9db3d'
 readonly ANALYZER_SHA='615bcd81b8f74a478daa2baeaf9f27ca02c94f11'
 readonly ANALYZER_BLOB='171aad7ce8abe97c93a42f19787042619c06b65e'
 readonly STUDENT_SHA='835a5285c49300a8d9943d2e19d0c07f3fa06901'
@@ -156,6 +156,16 @@ try:
 except (OSError,ValueError):
     causal={}
 summary["same_session_native_ros_candidate"]=causal.get("candidate","NOT_MEASURED")
+# Full-run first callback delay is NOT the same as the post-READY proxy.
+# Preserve both, while making it explicit the Student's exact source pairs
+# were not captured by that Student process in this run.
+post_ready=causal.get("post_ready_proxy",{})
+summary["whole_session_first_gap_scope"]=causal.get("scope","WHOLE_SESSION_UNVERIFIED")
+summary["post_ready_proxy_candidate"]=post_ready.get("candidate","NOT_MEASURED")
+summary["post_ready_proxy_native_gap_sec"]=post_ready.get("native_gap_sec")
+summary["post_ready_proxy_clock_rtf"]=post_ready.get("native_clock_window_rtf")
+summary["post_ready_proxy_student_pair_proven"]=False
+
 summary["source_pair_causality_proven"]=False
 summary["native_transport_rx_observed"]=bool(causal.get("native_count",0)>0)
 summary["ros_rx_observed"]=bool(causal.get("observer_raw_count",0)>0)
@@ -186,7 +196,7 @@ summary["native_no_goal_cm_clean_candidate"]=(
 
 (out/"summary.json").write_text(
     json.dumps(summary,indent=2,sort_keys=True,ensure_ascii=False)+"\n",encoding="utf-8")
-markers=re.compile("G07_WSLG_NO_GOAL_SENSOR_|AXIA_G07_WSLG_NO_GOAL_SENSOR_TRUTH|D06_WSLG_NO_GOAL_SENSOR_|D06_GAZEBO_LIVE_RELEASE|D06_WSLG_NO_GOAL_RAW_ARCHIVE|D06_G07_NATIVE|D06_G07_RX_WITNESS|D06_G07_FIRST_SCAN_TTL_HOLD")
+markers=re.compile("G07_WSLG_NO_GOAL_SENSOR_|AXIA_G07_WSLG_NO_GOAL_SENSOR_TRUTH|D06_WSLG_NO_GOAL_SENSOR_|D06_GAZEBO_LIVE_RELEASE|D06_WSLG_NO_GOAL_RAW_ARCHIVE|D06_G07_NATIVE|D06_G07_RX_WITNESS|D06_G07_FIRST_SCAN_TTL_HOLD|D06_G07_POST_READY_PROXY")
 (out/"owner_verdict_excerpt.txt").write_text("\n".join(
     f"{i+1}: {row[:3500]}" for i,row in enumerate(owner) if markers.search(row))[-30000:]+"\n",encoding="utf-8")
 renderer=[]
