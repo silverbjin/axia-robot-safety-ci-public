@@ -136,6 +136,10 @@ class ForensicOneShot(unittest.TestCase):
                 self.assertEqual(summary["native_no_goal_localization_ack"], True)
                 self.assertEqual(summary["native_no_goal_cm_exit_code"], 0)
                 self.assertEqual(summary["native_no_goal_cm_clean_candidate"], False)  # launch exit -11 overrides self-reported audit
+                self.assertEqual(summary["native_no_goal_gazebo_server_exit_code"],-11)
+                self.assertFalse(summary["native_no_goal_gazebo_server_clean"])
+                self.assertFalse(summary["native_no_goal_whole_teardown_clean"])
+                self.assertEqual(summary["first_native_crash_layer"],"GAZEBO_OR_CM_SHUTDOWN")
                 self.assertFalse(any("native_full" in m or ".sdf.xacro" in m
                                      for m in members))
 
@@ -157,8 +161,31 @@ class ForensicOneShot(unittest.TestCase):
             self.assertTrue(v["native_no_goal_localization_ack"])
             self.assertEqual(v["native_no_goal_cm_exit_code"],0)
             self.assertTrue(v["native_no_goal_cm_clean_candidate"])
+            self.assertEqual(v["native_no_goal_gazebo_server_exit_code"],0)
+            self.assertTrue(v["native_no_goal_gazebo_server_clean"])
+            self.assertTrue(v["native_no_goal_whole_teardown_clean"])
             self.assertIn("SAFETY_RECEIPT_TTL_300MS_BLOCKED",v["all_sensor_reasons"])
             self.assertFalse(v["no_goal_acceptance"])
+
+    def test_real_zoa_cm_clean_but_gazebo_server_minus11_blocks_whole_shutdown(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d=fake_record(Path(tmp))
+            (d/"nvidia.launch.log").write_text(
+                "[INFO] [collision_monitor-16]: process has finished cleanly [pid 3574]\\n"
+                "[ERROR] [gz-21]: process has died [pid 3623, exit code -11, cmd 'gz sim -r -s /tmp/nav2_5wtxcwad.sdf']\\n"
+            )
+            result=subprocess.run(["bash",str(SCRIPT),"--analyze-existing"],
+                env={"PATH":os.environ["PATH"],"HOME":str(Path(tmp)),"GITHUB_ACTIONS":"true"},
+                capture_output=True,text=True,timeout=15)
+            self.assertEqual(result.returncode,0,(result.stdout,result.stderr))
+            arc=d.parent/("d06-forensic-"+d.name+".tar.gz")
+            with tarfile.open(arc,"r:gz") as tar:
+                v=json.load(tar.extractfile("forensic/summary.json"))
+            self.assertEqual(v["process_crashes"],["gazebo_server"])
+            self.assertTrue(v["native_no_goal_cm_clean_candidate"])
+            self.assertEqual(v["native_no_goal_gazebo_server_exit_code"],-11)
+            self.assertFalse(v["native_no_goal_whole_teardown_clean"])
+            self.assertEqual(v["first_native_crash_layer"],"GAZEBO_SERVER")
 
     def test_absent_real_evidence_fails_without_simulation(self):
         with tempfile.TemporaryDirectory() as tmp:
