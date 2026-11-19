@@ -25,6 +25,7 @@ on:
       - 'd06/tests/test_d06_localization_manager_callback_probe.py'
       - 'd06/tests/test_d06_student_scan_clock_executor_isolation.py'
       - 'd06/tests/test_d06_c06_two_executor_scan_receipt.py'
+      - 'd06/tests/test_d06_c07_navigation_manager_service_liveness.py'
       - 'd06/tests/test_d06_l2_apt_https_bootstrap.py'
       - 'd06/tests/test_d06_ci_only_gui_nice.py'
       - '.github/workflows/axia-d06-g07-native-nogoal-cm-clean-l2-20261119.yml'
@@ -110,6 +111,7 @@ jobs:
           python3 -m unittest discover -s d06/tests -p 'test_d06_localization_manager_callback_probe.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_student_scan_clock_executor_isolation.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_c06_two_executor_scan_receipt.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_c07_navigation_manager_service_liveness.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_l2_apt_https_bootstrap.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_ci_only_gui_nice.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_g07_no_goal_manager_discovery.py' -v
