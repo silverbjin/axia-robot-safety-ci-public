@@ -247,7 +247,9 @@ class ExactStudentPairGazeboBoundary(unittest.TestCase):
 
     def test_r6_exact_stamp_clock_and_ros_peer_decomposition(self):
         """Owner r6YhIvPx SHA db6c130...; exact synchronized host trace, no ROS runtime."""
-        m=load()
+        witness=ROOT/'d06/tools/d06_g07_scan_rx_witness.py'
+        spec=importlib.util.spec_from_file_location('r6_native_witness',witness)
+        m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
         s0,s1=68901000000,69000000000
         def packet(stamp,at,topic=None):
             v={"source_stamp_ns":stamp,"host_monotonic_sec":at}
@@ -275,7 +277,9 @@ class ExactStudentPairGazeboBoundary(unittest.TestCase):
         self.assertFalse(v["goal_allowed"])
 
     def test_r6_mismatched_clock_must_not_fake_instantaneous_rtf(self):
-        m=load()
+        witness=ROOT/'d06/tools/d06_g07_scan_rx_witness.py'
+        spec=importlib.util.spec_from_file_location('r6_native_witness',witness)
+        m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
         def p(s,t):return {"source_stamp_ns":s,"host_monotonic_sec":t}
         truth={"scan_receipts_compact":{"safety":{
             "before":p(68901000000,10.01),
