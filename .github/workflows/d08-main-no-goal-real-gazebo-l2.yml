@@ -466,6 +466,10 @@ jobs:
               assert heartbeat['bracketed'] is True,(i,heartbeat)
               assert heartbeat['max_heartbeat_gap_sec'] is not None,(i,heartbeat)
               assert heartbeat['root_cause']=='UNDETERMINED',(i,heartbeat)
+              spin=paired['executor_spin_once_worst_gap']
+              assert spin['bracketed'] is True,(i,spin)
+              assert spin['root_cause']=='UNDETERMINED',(i,spin)
+              assert cycle['executor_spin_once_trace_summary']['history_complete'] is True,(i,spin)
               stack=paired['executor_stack_at_first_gap']
               assert stack['root_cause']=='UNDETERMINED',(i,stack)
               if paired['first_500ms_violation']:
