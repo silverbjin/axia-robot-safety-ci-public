@@ -178,6 +178,30 @@ def append_sampled_spin_event(trace, last_recorded_at, event):
     return False
 
 
+def diagnose_initial_ros_gate(original, independent, raw_callback_counts, now):
+    """Small first-failure-only snapshot; no ROS graph/TTL changes."""
+    labels=("scan","costmap","odom")
+    snapshots=dict(zip(labels,original))
+    accepted={name:len(snapshots.get(name) or []) for name in labels}
+    last_ages={}
+    for name in labels:
+        values=snapshots.get(name) or []
+        last_ages[name]=(round(max(0.,now-values[-1]["at"]),6)
+                         if values else None)
+    return {
+        "ready":all(accepted.values()),
+        "missing_inputs":[name for name in labels if not accepted[name]],
+        "accepted_counts":accepted,
+        "raw_callback_counts":{name:int(raw_callback_counts.get(name,0))
+                               for name in labels},
+        "independent_ros_counts":{
+            name:len((independent or {}).get(name) or [])
+            for name in ("scan","odom","clock","tf")},
+        "last_host_age_sec":last_ages,
+        "publisher_rmw_gap_measured":False,
+    }
+
+
 def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
     import rclpy
     from rclpy.action import ActionClient
@@ -218,6 +242,7 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
     costmap_rows=deque(maxlen=250)
     odom_rows=deque(maxlen=250)
     callbacks_lock=threading.Lock()
+    raw_callback_counts={"scan":0,"costmap":0,"odom":0}
     rclpy.init()
     node=Node("axia_d08_official_physical_replan_no_goal",
          parameter_overrides=[Parameter("use_sim_time",value=True)],
@@ -310,6 +335,7 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
             })
 
     def on_scan(msg):
+        raw_callback_counts["scan"]+=1
         entry_at=time.monotonic()  # callback entry, before per-range CPU work
         if _stamp(msg)<=0:return
         bearing=math.atan2(CANDIDATE_MAP[1]-START_MAP[1],
@@ -325,6 +351,7 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
                  "frame":msg.header.frame_id})
 
     def on_grid(msg):
+        raw_callback_counts["costmap"]+=1
         if _stamp(msg)<=0:return
         try: count=_lethal_near(msg)
         except (ValueError,IndexError):return
@@ -333,6 +360,7 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
                                  "lethal_near":count,"frame":msg.header.frame_id})
 
     def on_odom(msg):
+        raw_callback_counts["odom"]+=1
         if _stamp(msg)<=0:return
         with callbacks_lock:
             odom_rows.append({"at":time.monotonic(),"stamp":_stamp(msg),
@@ -593,8 +621,21 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
         thread.start()
         independent_thread.start()
         result["observer_executor_started_at_monotonic_sec"]=round(time.monotonic(),6)
-        until(lambda:bool(snapshot()[0] and snapshot()[1] and snapshot()[2]),
-              "SCAN_COSTMAP_ODOM_MISSING",25)
+        try:
+            until(lambda:bool(snapshot()[0] and snapshot()[1] and snapshot()[2]),
+                  "SCAN_COSTMAP_ODOM_MISSING",25)
+        except RuntimeError:
+            result["initial_gate_diagnostics"]=diagnose_initial_ros_gate(
+                snapshot(),independent_snapshot(),raw_callback_counts,
+                time.monotonic())
+            result["initial_gate_diagnostics"]["executor_threads_alive"]={
+                "observer":thread.is_alive(),
+                "same_process_ros":independent_thread.is_alive(),
+            }
+            print("D08_INITIAL_ROS_INPUT_GATE_FIRST_FAILURE "+
+                  json.dumps(result["initial_gate_diagnostics"],sort_keys=True),
+                  flush=True)
+            raise
         # This information is discovery only: it does not prove a CM callback period.
         graph_start=time.monotonic()
         pubs=node.get_publishers_info_by_topic("/scan")
