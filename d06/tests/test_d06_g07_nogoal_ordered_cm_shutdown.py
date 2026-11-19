@@ -100,7 +100,7 @@ class NoGoalCMShutdownRegression(unittest.TestCase):
         self.assertIn('stages[key+"_service_request_sent"]=ack.get("request_sent",False)',src)
         self.assertIn('stages[key+"_service_status"]=ack.get("status")',src)
         self.assertIn('if ack["status"]!="ACK":',src)
-        self.assertIn('status="BLOCKED_LIFECYCLE_',src.replace('"+"+key.upper()+"_"+ack["status"]','_'))
+        self.assertIn('"BLOCKED_LIFECYCLE_"+key.upper()+"_"+ack["status"]',src)
         self.assertIn("max(0.01, remaining_sec)",src)
         self.assertNotIn("retry_shutdown",src)
 
