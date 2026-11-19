@@ -494,3 +494,69 @@ def scan_gap_operation_overlaps(parent_pair, spans):
     verdict["status"]="OBSERVED_OVERLAP_NOT_CAUSE"
     verdict["overlaps"]=result[:16]
     return verdict
+
+
+def analyze_process_heartbeat_gap(scan_pair, heartbeats):
+    """Compare read-only Python process heartbeat with real Scan callback gap.
+
+    Caller timestamps must use Linux time.monotonic(). Periodic heartbeat
+    reveals process-level scheduling/GIL stalls vs rclpy callback dispatch.
+    It CANNOT independently distinguish a GIL holder from an OS deschedule.
+    """
+    result={
+        "candidate":"HEARTBEAT_WINDOW_UNBRACKETED",
+        "root_cause":"UNDETERMINED",
+        "bracketed":False,
+        "max_heartbeat_gap_sec":None,
+        "process_cpu_progress_sec":None,
+        "process_cpu_per_host_sec":None,
+    }
+    if not isinstance(scan_pair,dict) or not isinstance(heartbeats,(list,tuple)):
+        return result
+    import math
+    try:
+        start=float(scan_pair["previous_host_monotonic_sec"])
+        end=float(scan_pair["current_host_monotonic_sec"])
+    except (KeyError,TypeError,ValueError,OverflowError):
+        return result
+    if not math.isfinite(start) or not math.isfinite(end) or end<=start:
+        return result
+    rows=[]
+    for item in heartbeats:
+        if not isinstance(item,dict):
+            continue
+        try:
+            t=float(item["host_monotonic_sec"])
+            cpu=float(item["process_cpu_sec"])
+        except (KeyError,TypeError,ValueError,OverflowError):
+            continue
+        if math.isfinite(t) and math.isfinite(cpu) and cpu>=0:
+            rows.append((t,cpu))
+    rows.sort(key=lambda x:x[0])
+    before=[(i,v) for i,v in enumerate(rows) if v[0]<=start]
+    after=[(i,v) for i,v in enumerate(rows) if v[0]>=end]
+    if not before or not after:
+        return result
+    i=before[-1][0]
+    j=after[0][0]
+    window=rows[i:j+1]
+    if len(window)<3 or window[-1][0]<=window[0][0]:
+        return result
+    gaps=[b[0]-a[0] for a,b in zip(window,window[1:])]
+    if not gaps or min(gaps)<0:
+        return result
+    max_gap=max(gaps)
+    elapsed=window[-1][0]-window[0][0]
+    cpu_progress=window[-1][1]-window[0][1]
+    result.update({
+        "bracketed":True,
+        "max_heartbeat_gap_sec":round(max_gap,6),
+        "process_cpu_progress_sec":round(cpu_progress,6)
+            if cpu_progress>=0 else None,
+        "process_cpu_per_host_sec":round(cpu_progress/elapsed,4)
+            if cpu_progress>=0 else None,
+        "candidate":(
+            "PROCESS_THREAD_OR_GIL_SCHEDULING_STALL"
+            if max_gap>=.12 else "ROS_EXECUTOR_DISPATCH_OR_RMW_DELAY"),
+    })
+    return result
