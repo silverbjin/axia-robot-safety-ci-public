@@ -140,20 +140,20 @@ from gz.msgs10.laserscan_pb2 import LaserScan
 from gz.msgs10.clock_pb2 import Clock
 PY
   # Exact D08 and D06 immutable commits and git blobs.
-  D08_RECEIVER_SHA='30fad621f7916dd8a320489beb46fff8ae0ccf43'
-  D08_RECEIVER_BLOB='7d5f18c5fd6255c83100e29d651b6f4d52ed000d'
+  D06_GZ_SAFE_RECEIVER_SHA='7b4b6b553d13c07dd8fc60f4f9a065500cf1cb9a'
+  D06_GZ_SAFE_RECEIVER_BLOB='653ec644e80eb832f32c4db6ed46a5a0db02b60d'
   D06_RECEIVER_SHA='baf2ee907757ff248e45a9f02e62b40de40a3aed'
   D06_RECEIVER_BLOB='d55bce65cefe41ea046503445511b68e916607c2'
   RX_TOOL="$GIT_ROOT/d06_g07_scan_rx_witness.py"
-  GZ_TOOL="$GIT_ROOT/d08_gz_native_scan_probe.py"
+  GZ_TOOL="$GIT_ROOT/d06_gz_native_scan_probe_safe.py"
   curl -fLsS --retry 3 --max-time 90 \
     "https://raw.githubusercontent.com/silverbjin/axia-robot-safety-ci-public/$D06_RECEIVER_SHA/d06/tools/d06_g07_scan_rx_witness.py" \
     -o "$RX_TOOL"
   curl -fLsS --retry 3 --max-time 90 \
-    "https://raw.githubusercontent.com/silverbjin/axia-robot-safety-ci-public/$D08_RECEIVER_SHA/d08/harness/d08_gz_native_scan_probe.py" \
+    "https://raw.githubusercontent.com/silverbjin/axia-robot-safety-ci-public/$D06_GZ_SAFE_RECEIVER_SHA/d06/tools/d06_gz_native_scan_probe_safe.py" \
     -o "$GZ_TOOL"
   [[ "$(git hash-object "$RX_TOOL")" == "$D06_RECEIVER_BLOB" &&
-     "$(git hash-object "$GZ_TOOL")" == "$D08_RECEIVER_BLOB" ]] || {
+     "$(git hash-object "$GZ_TOOL")" == "$D06_GZ_SAFE_RECEIVER_BLOB" ]] || {
        echo D06_G07_NATIVE_RX_BLOB_MISMATCH_NO_GOAL >&2;exit 3;
      }
   python3 -m py_compile "$RX_TOOL" "$GZ_TOOL"
@@ -192,7 +192,9 @@ if [[ "$RX_WITNESS" == 1 ]];then
       wait "$RX_PID" || RX_RC=$?
       wait "$GZ_PID" || GZ_RC=$?
       RX_PID='';GZ_PID=''
-      if [[ "$RX_RC" == 0 && "$GZ_RC" == 0 ]];then
+      if [[ "$RX_RC" == 0 && "$GZ_RC" == 0 ]] &&
+         grep -Fq 'D06_GZ_NATIVE_SUBSCRIPTIONS_RELEASED' "$RUN_DIR/native/d06_gz_scan_rx.log";then
+        echo 'D06_GZ_NATIVE_RX_UNSUBSCRIBE_BEFORE_NAV2_SHUTDOWN_PASS'
         echo 'G07_READONLY_WITNESSES_STOPPED' > "$RUN_DIR/native/g07_witness_stopped.ack"
         HANDOFF_DONE=1
         echo 'D06_G07_WSLG_READONLY_WITNESS_HANDOFF_DONE_BEFORE_SHUTDOWN'
