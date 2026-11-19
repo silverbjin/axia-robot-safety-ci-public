@@ -25,7 +25,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: dcd1299c03bf702712631dc025b868335cadd1c6
+          ref: bcebc5d1f3a7d00860a541507e263dd05b27a9a3
           path: student
           persist-credentials: false
       - name: Native source scope, replayed n7 clock step and Guard read-only evidence tests
