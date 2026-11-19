@@ -25,7 +25,10 @@ SUB = re.compile(r"\bsubscription_handle\s*=\s*(0x[0-9a-fA-F]+|\d+)")
 RMW_PUB = re.compile(r"\brmw_publisher_handle\s*=\s*(0x[0-9a-fA-F]+|\d+)")
 RMW_SUB = re.compile(r"\brmw_subscription_handle\s*=\s*(0x[0-9a-fA-F]+|\d+)")
 TAKEN_TRUE = re.compile(r"\btaken\s*=\s*1\b")
-SOURCE_TS = re.compile(r"\b(?:source_timestamp|timestamp)\s*=\s*[1-9][0-9]*\b")
+SOURCE_TS = re.compile(r"\\b(?:source_timestamp|timestamp)\\s*=\\s*[1-9][0-9]*\\b")
+PUB_SOURCE_STAMP = re.compile(r"\\btimestamp\\s*=\\s*(\\d+)")
+TAKE_SOURCE_STAMP = re.compile(r"\\bsource_timestamp\\s*=\\s*(\\d+)")
+MAX_SCAN_RMW_TRACE_EVENTS = 12000
 
 
 def _host_monotonic_from_trace_time(t, clock_anchor):
@@ -54,6 +57,8 @@ def parse_events(lines, clock_anchor=None):
     streams = {"publish": {}, "take": {}}
     processes = {}
     parsed = 0
+    rmw_scan_events = []
+    rmw_scan_event_overflow = False
     for line in lines:
         match = EVENT.search(line)
         if not match:
@@ -95,6 +100,15 @@ def parse_events(lines, clock_anchor=None):
         hh,mm,ss,us = m_time.groups()
         t = int(hh)*3600+int(mm)*60+int(ss)+float("0."+us)
         parsed += 1
+        if kind in ("rmw_publish", "rmw_take"):
+            stamp_match = (PUB_SOURCE_STAMP if kind == "rmw_publish"
+                           else TAKE_SOURCE_STAMP).search(line)
+            stamp = int(stamp_match.group(1)) if stamp_match else 0
+            if stamp > 0:
+                if len(rmw_scan_events) < MAX_SCAN_RMW_TRACE_EVENTS:
+                    rmw_scan_events.append((direction,pid,m_handle.group(1),stamp,t))
+                else:
+                    rmw_scan_event_overflow = True
         key = (pid,m_handle.group(1),kind)
         row = streams[direction].setdefault(key,{"last":None,"count":0,"max":0.0,
                                                  "max_window":None,"large":[],"source_ts":0})
@@ -135,7 +149,51 @@ def parse_events(lines, clock_anchor=None):
                 "largest_gaps_over_300ms_sec":row["large"],
                 "message_identity_correlated":False})
     result_streams.sort(key=lambda v:(v["direction"],v["pid"],v["event_type"]))
+    # Publisher/take source timestamps come from RMW tracing, NOT a
+    # LaserScan.header.stamp comparison. Repeated/missing timestamps must
+    # never be treated as a unique causal message identity.
+    publishes = collections.defaultdict(list)
+    takes = collections.defaultdict(list)
+    for direction,pid,handle,stamp,at in rmw_scan_events:
+        if direction == "publish":
+            publishes[stamp].append((pid,handle,at))
+        else:
+            takes[(pid,handle,stamp)].append(at)
+    duplicate_pub = sum(len(v)-1 for v in publishes.values() if len(v)>1)
+    matched = []
+    unmatched = 0
+    ambiguous = 0
+    for (pid,handle,stamp),vals in takes.items():
+        candidates=publishes.get(stamp,())
+        if len(candidates)!=1 or len(vals)!=1:
+            if len(candidates)>1 or len(vals)>1: ambiguous += 1
+            else: unmatched += 1
+            continue
+        sent=candidates[0][2]
+        latency=vals[0]-sent
+        if latency < 0 or latency > 10:
+            unmatched += 1
+            continue
+        matched.append((round(latency,6),pid,stamp,round(sent,6),round(vals[0],6)))
+    worst=max(matched,key=lambda x:x[0]) if matched else None
+    joined={
+        "state":("SOURCE_TIMESTAMP_JOIN_ONLY"
+                 if len(matched)>=2 and not rmw_scan_event_overflow
+                 else "UNDETERMINED"),
+        "matched_unique_pairs":len(matched),
+        "max_publish_to_take_sec":worst[0] if worst else None,
+        "max_pair":({"receiver_pid":worst[1], "source_timestamp":worst[2],
+                     "publish_time_of_day_sec":worst[3], "take_time_of_day_sec":worst[4]}
+                    if worst else None),
+        "duplicate_publisher_source_timestamps":duplicate_pub,
+        "ambiguous_subscription_timestamp_groups":ambiguous,
+        "unmatched_subscription_timestamp_groups":unmatched,
+        "bounded_capture_complete":not rmw_scan_event_overflow,
+        "identical_laserscan_header_stamp_verified":False,
+        "cm_internal_safety_ttl_verified":False,
+        "scope":"single-host RMW source_timestamp correspondence, not DDS-only or safety cause"}
     return {
+        "rmw_scan_source_stamp_join":joined,
         "status":"DIAGNOSTIC_ONLY_CAUSE_UNDETERMINED",
         "trace_event_counts":dict(sorted(counts.items())),
         "parseable_time_event_count":parsed,
