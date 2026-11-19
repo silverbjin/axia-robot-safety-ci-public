@@ -12,7 +12,7 @@ def test_same_exact_source_sha_in_public_pr_ci_and_owner_checkout():
     workflow=W.read_text()
     exact="${{ github.event.pull_request.head.sha || github.sha }}"
     # Original four plus the new exact-HEAD G07 official-source job.
-    assert workflow.count("ref: "+exact)==5
+    assert workflow.count("ref: "+exact)==6
     assert "g07-official-source-sdf-adapter-l1:" in workflow
     assert "AXIA_D08_EXACT_SOURCE_SHA: "+exact in workflow
     runner=RUNNER.read_text()
