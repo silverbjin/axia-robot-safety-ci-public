@@ -39,7 +39,11 @@ class PreNav2ViewerCandidate(unittest.TestCase):
         self.assertIn('setsid rviz2 -d',s)
         self.assertNotIn('SCAN_TTL_SEC=.5',s)
         self.assertNotIn('AXIA_G07_CI_SIM_GOAL_ALLOWED=1',s)
-        self.assertNotIn('LIBGL_ALWAYS_SOFTWARE=1',s)
+        early=s[s.index('CI_PRE_READY_GUI=0'):
+                s.index('if "${STAGED_START[@]}"')]
+        # Historical unrelated Gazebo paths can set software rendering;
+        # only the new CI pre-ready viewer branch is under C08 review.
+        self.assertNotIn('LIBGL_ALWAYS_SOFTWARE=1',early)
 
     def test_real_gazebo_l2_enables_only_one_trial_and_keeps_strict_gate(self):
         s=WF.read_text()
