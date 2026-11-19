@@ -25,7 +25,7 @@ if [[ "$MODE" == --self-check ]];then
 fi
 # Both --analyze-existing and future run failures produce ONE small archive.
 # No ROS/Gazebo launched in --analyze-existing.
-ROOT="$HOME/axia_d06_g07_gpu_rtf_evidence"
+ROOT="${HOME:-/nonexistent}/axia_d06_g07_gpu_rtf_evidence"
 collect_and_package() {
   local d="$1" origin="${2:-FUTURE_RUN_SAME_SESSION}" archive
   [[ -d "$d" ]] || return 3
