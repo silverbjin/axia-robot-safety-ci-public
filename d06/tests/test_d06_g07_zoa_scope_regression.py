@@ -76,10 +76,10 @@ class ActualZoaScope(unittest.TestCase):
             root=pathlib.Path(td)
             for fn,rec in (("gz.jsonl",d["native"]),
                            ("clock.jsonl",d["clock"])):
-                (root/fn).write_text("\\n".join(json.dumps(x) for x in rec)+"\\n")
+                (root/fn).write_text(chr(10).join(json.dumps(x) for x in rec)+chr(10))
             arr=d["raw"]+d["safety"]
             arr.sort(key=lambda x:x["host_monotonic_sec"])
-            (root/"ros.jsonl").write_text("\\n".join(json.dumps(x) for x in arr)+"\\n")
+            (root/"ros.jsonl").write_text(chr(10).join(json.dumps(x) for x in arr)+chr(10))
             (root/"startup.json").write_text(json.dumps({"status":"SMOKE_READY",
                 "stages":[{"gate":"NAV2_ACTION_READY","wall_monotonic_s":
                 d["nav2_action_ready_host_monotonic_sec"]}]}))
