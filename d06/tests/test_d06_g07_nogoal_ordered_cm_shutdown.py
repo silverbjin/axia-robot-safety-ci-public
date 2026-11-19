@@ -137,6 +137,24 @@ class NoGoalCMShutdownRegression(unittest.TestCase):
         self.assertEqual(len(calls),2)
         self.assertEqual([c[2] for c in calls],["shutdown","shutdown"])
 
+    def test_localization_30s_no_ack_probes_readonly_service_without_retry(self):
+        # Actual Gazebo #44491751936: nav ACK, localization request_sent,
+        # manager response absent after 30s. This must remain HOLD while one
+        # separate GetParameters query checks service liveness (<=3s total).
+        # NEVER resend SHUTDOWN or relax the 60s / Scan300 / CM120 / Guard150.
+        src=(STUDENT/"tools/p2_g07_ordered_shutdown.py").read_text()
+        self.assertIn("def probe_localization_parameter_service(",src)
+        self.assertIn('"/lifecycle_manager_localization/get_parameters"',src)
+        self.assertIn("GetParameters.Request()",src)
+        self.assertIn("timeout_sec=0.5",src)
+        self.assertIn("timeout_sec=2.0",src)
+        self.assertIn('if key=="localization" and ack["status"]=="SERVICE_TIMEOUT":',src)
+        self.assertIn('stages["localization_parameter_probe"]=',src)
+        self.assertIn('stages[key+"_service_request_sent"]=ack.get("request_sent",False)',src)
+        self.assertIn('if ack["status"]!="ACK":',src)
+        self.assertEqual(src.count('command="shutdown"'),1)
+        self.assertIn('return result("BLOCKED_LIFECYCLE_"+key.upper()',src)
+
     def test_real_l2_requires_full_20s_dual_topic_safe_gate_not_just_cm_exit0(self):
         w=(ROOT/".github/workflows/axia-d06-g07-native-nogoal-cm-clean-l2-20261119.yml").read_text()
         self.assertIn('assert rc==0',w)
