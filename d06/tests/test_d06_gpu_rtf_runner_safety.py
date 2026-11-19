@@ -43,13 +43,25 @@ class WslgABOneShotSafety(unittest.TestCase):
     def test_pin_source_commit_and_git_blobs(self):
         s=SCRIPT.read_text()
         self.assertIn("8e19742fd7bd80db73a37dc7b1d798768dc33e2a",s)
-        self.assertIn("28788ea5bf4076286f02637905e5f7b9f66dddd7",s)
+        self.assertIn("4fa705782c5fd29e310825c85db0f3d717172b88",s)
         self.assertIn("171aad7ce8abe97c93a42f19787042619c06b65e",s)
         self.assertIn('git hash-object "$TMP/owner.sh"',s)
         self.assertIn('git hash-object "$TMP/compare.py"',s)
         o=OWNER.read_text()
         self.assertIn("8e19742fd7bd80db73a37dc7b1d798768dc33e2a",o)
         self.assertIn("cb38a2b288b9bf9db80def7b1fe37d975db2cdfa",o)
+
+    def test_fr1_native_gz_witness_pinned_unsubscribe_and_proven_before_nav2(self):
+        o=OWNER.read_text()
+        self.assertIn("D06_GZ_SAFE_RECEIVER_SHA='7b4b6b553d13c07dd8fc60f4f9a065500cf1cb9a'",o)
+        self.assertIn("D06_GZ_SAFE_RECEIVER_BLOB='653ec644e80eb832f32c4db6ed46a5a0db02b60d'",o)
+        self.assertIn("d06/tools/d06_gz_native_scan_probe_safe.py",o)
+        self.assertIn("D06_GZ_NATIVE_SUBSCRIPTIONS_RELEASED",o)
+        self.assertIn("D06_GZ_NATIVE_RX_UNSUBSCRIBE_BEFORE_NAV2_SHUTDOWN_PASS",o)
+        self.assertNotIn("D08_RECEIVER_BLOB",o)
+        probe=ROOT/"d06/tools/d06_gz_native_scan_probe_safe.py"
+        check=subprocess.run(["git","hash-object",str(probe)],capture_output=True,text=True,check=True)
+        self.assertEqual(check.stdout.strip(),"653ec644e80eb832f32c4db6ed46a5a0db02b60d")
 
     def test_tcljt2qc_student_source_probe_hash_matches_actual_checkout(self):
         """Regression: TCljt2Qc first error was frozen source blob mismatch.
