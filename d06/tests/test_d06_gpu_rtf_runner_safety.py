@@ -43,13 +43,13 @@ class WslgABOneShotSafety(unittest.TestCase):
     def test_pin_source_commit_and_git_blobs(self):
         s=SCRIPT.read_text()
         self.assertIn("8e19742fd7bd80db73a37dc7b1d798768dc33e2a",s)
-        self.assertIn("8fa030fd2e87907b758075c7a88b61caa8b9bb42",s)
+        self.assertIn("28788ea5bf4076286f02637905e5f7b9f66dddd7",s)
         self.assertIn("171aad7ce8abe97c93a42f19787042619c06b65e",s)
         self.assertIn('git hash-object "$TMP/owner.sh"',s)
         self.assertIn('git hash-object "$TMP/compare.py"',s)
         o=OWNER.read_text()
         self.assertIn("8e19742fd7bd80db73a37dc7b1d798768dc33e2a",o)
-        self.assertIn("f7534b191b78cba4f20aac55e9d227268504a25f",o)
+        self.assertIn("cb38a2b288b9bf9db80def7b1fe37d975db2cdfa",o)
 
     def test_tcljt2qc_student_source_probe_hash_matches_actual_checkout(self):
         """Regression: TCljt2Qc first error was frozen source blob mismatch.
