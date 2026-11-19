@@ -73,8 +73,9 @@ def test_original_owner_one_shot_starts_trace_and_archives_small_first_boundary(
     assert "AXIA_D08_ROS_ISOLATED_RX_PROBE" in script
     assert "AXIA_D08_TRACE_CAPTURE_MAX_S" in script
     assert "refs/heads/fix/d08-owner-rmw-one-shot-20261119" in script
-    assert "rmw_trace/owner_first_gap_verdict.json" in compact
-    assert "rmw_trace/summary.json" in compact
+    assert "'owner_first_gap_verdict.json'" in compact
+    assert "'summary.json'" in compact
+    assert "'rmw_trace'/f" in compact
     assert "AXIA_D08_TRACE_OUT" in trace
     assert "D08_OWNER_FIRST_BOUNDARY_RMW_CAUSE_UNDETERMINED" in script
     assert "500ms/CM/Guard criterion UNCHANGED" in trace
