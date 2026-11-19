@@ -7,7 +7,7 @@ MODE="${1:---run}"
   echo 'D06_WSLG_SENSOR_USAGE=--self-check|--run' >&2;exit 2;
 }
 readonly STUDENT_SHA='8e19742fd7bd80db73a37dc7b1d798768dc33e2a'
-readonly PROBE_BLOB='f7534b191b78cba4f20aac55e9d227268504a25f'
+readonly PROBE_BLOB='cb38a2b288b9bf9db80def7b1fe37d975db2cdfa'
 readonly SMOKE_BLOB='9cb5baf6c766a79cf6fd5134707981e32bb23e85'
 readonly LAUNCH_BLOB='b2886cdf509d99ea62528cd013669258764b05e0'
 readonly REPO='https://github.com/silverbjin/axia-robot-safety-student.git'
