@@ -165,7 +165,7 @@ def classify(native, raw, safety, limit=TTL, native_clock=None,
     return r
 
 
-def classify_student_first(native, truth, limit=TTL):
+def classify_student_first(native, truth, limit=TTL, ros_observer=None):
     """Match the Student's *actual* first unsafe receipt pair to Gazebo native.
 
     Host monotonic seconds and exact source stamp integers are both required.
@@ -176,6 +176,10 @@ def classify_student_first(native, truth, limit=TTL):
         "student_first_stamp_pair_verified":False,
         "student_first_topic":None,"student_first_native_gap_sec":None,
         "student_first_host_gap_sec":None,
+        "student_first_ros_peer_pair_verified":False,
+        "student_first_ros_peer_gap_sec":None,
+        "student_first_ros_peer_to_student_after_sec":None,
+        "student_first_boundary":"NOT_MEASURED",
         "publisher_send_timing_proven":False,
         "cause":"UNDETERMINED","release":"HOLD","goal_allowed":False,
     }
@@ -222,6 +226,32 @@ def classify_student_first(native, truth, limit=TTL):
         "AT_OR_BEFORE_NATIVE_TRANSPORT_RX" if native_gap>limit
         else "AFTER_NATIVE_TRANSPORT_RX"
     )
+    # Compare the exact same source-stamp pair against the independent ROS
+    # witness, not just Gazebo Transport. All four receives are monotonic on
+    # this host. The first Student callback may be late while the DDS/bridge
+    # already delivered the source pair promptly to a different ROS node.
+    if ros_observer is not None:
+        peer={}
+        for item in ros_observer:
+            if not isinstance(item,dict) or item.get("topic")!=topic:
+                continue
+            stamp=item.get("source_stamp_ns")
+            host=item.get("host_monotonic_sec")
+            if (stamp in (stamp0,stamp1)
+                and isinstance(host,(int,float)) and math.isfinite(host)):
+                peer.setdefault(stamp,float(host))
+        if stamp0 in peer and stamp1 in peer:
+            peer_gap=peer[stamp1]-peer[stamp0]
+            peer_after_to_student=candidate[0][0]-peer[stamp1]
+            if (peer_gap>0 and peer[stamp0]<=recv0+.05
+                and peer[stamp1]<=candidate[0][0]+.05):
+                result["student_first_ros_peer_pair_verified"]=True
+                result["student_first_ros_peer_gap_sec"]=round(peer_gap,6)
+                result["student_first_ros_peer_to_student_after_sec"]=round(
+                    peer_after_to_student,6)
+                result["student_first_boundary"]=(
+                    "AFTER_INDEPENDENT_ROS_RECEIPT" if peer_gap<=limit
+                    else "AT_OR_BEFORE_INDEPENDENT_ROS_RECEIPT")
     return result
 
 
@@ -324,7 +354,7 @@ def main():
             student=json.loads(a.student_truth.read_text(encoding="utf-8"))
         except (OSError,ValueError):
             student={}
-        student_first=classify_student_first(native,student)
+        student_first=classify_student_first(native,student,ros_observer=scans)
         report["student_first_ttl"]=student_first
         print("D06_G07_STUDENT_FIRST_TTL="+student_first["student_first_candidate"]+
               " native_gap="+str(student_first["student_first_native_gap_sec"])+
