@@ -269,7 +269,7 @@ summary["native_readonly_witness_handoff_ack"]=bool(
 # Distinguish real Student Scan 20s CLEAR from a read-only native
 # gz-transport subscriber aborting during handoff. Preserve the *first*
 # native process error instead of mislabelling it as an initial Scan failure.
-rx_exit=next((re.search(r"D06_G07_RX_WITNESS_EXIT\\s+ros=(-?\\d+)\\s+native=(-?\\d+)",row)
+rx_exit=next((re.search(r"D06_G07_RX_WITNESS_EXIT\s+ros=(-?\d+)\s+native=(-?\d+)",row)
               for row in owner if "D06_G07_RX_WITNESS_EXIT" in row),None)
 summary["native_ros_witness_exit_code"]=int(rx_exit.group(1)) if rx_exit else None
 summary["native_gz_witness_exit_code"]=int(rx_exit.group(2)) if rx_exit else None
