@@ -52,5 +52,48 @@ class StudentFirstHostGap(unittest.TestCase):
         self.assertIsNone(v["scan_receipts_compact"]["raw"])
         self.assertEqual(v["status"],"NO_GOAL_SENSOR_WINDOW_CLEAR_CANDIDATE")
 
+class ExactStudentPairGazeboBoundary(unittest.TestCase):
+    def test_actual_first_student_breach_matched_to_native(self):
+        witness=ROOT/"d06/tools/d06_g07_scan_rx_witness.py"
+        spec=importlib.util.spec_from_file_location("g07_first_student_witness",witness)
+        m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+        def sample(stamp,t):
+            return {"source_stamp_ns":stamp,"host_monotonic_sec":t}
+        truth={"scan_receipts_compact":{"schema":"axia.g07.first_ttl_host_pair.v1",
+            "raw":{"before":sample(51100000000,100.1),
+                   "after":sample(51200000000,100.45),"gap_sec":.35},
+            "safety":{"before":sample(51100000000,100.12),
+                      "after":sample(51200000000,100.46),"gap_sec":.34}}}
+        native=[sample(51100000000,100.08),sample(51200000000,100.42)]
+        result=m.classify_student_first(native,truth)
+        self.assertTrue(result["student_first_stamp_pair_verified"])
+        self.assertEqual(result["student_first_topic"],"raw")
+        self.assertEqual(result["student_first_candidate"],"AT_OR_BEFORE_NATIVE_TRANSPORT_RX")
+        self.assertAlmostEqual(result["student_first_native_gap_sec"],.34)
+        self.assertEqual(result["release"],"HOLD")
+        self.assertFalse(result["goal_allowed"])
+
+    def test_native_fast_student_raw_callback_slow_stays_after_native(self):
+        witness=ROOT/"d06/tools/d06_g07_scan_rx_witness.py"
+        spec=importlib.util.spec_from_file_location("g07_first_student_witness2",witness)
+        m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+        raw={"before":{"source_stamp_ns":10100000000,"host_monotonic_sec":100.0},
+             "after":{"source_stamp_ns":10200000000,"host_monotonic_sec":100.41},"gap_sec":.41}
+        v=m.classify_student_first([
+          {"source_stamp_ns":10100000000,"host_monotonic_sec":99.99},
+          {"source_stamp_ns":10200000000,"host_monotonic_sec":100.09},
+        ],{"scan_receipts_compact":{"raw":raw,"safety":None}})
+        self.assertEqual(v["student_first_candidate"],"AFTER_NATIVE_TRANSPORT_RX")
+        self.assertTrue(v["student_first_stamp_pair_verified"])
+
+    def test_without_student_ttl_pair_dont_fake_first_cause(self):
+        witness=ROOT/"d06/tools/d06_g07_scan_rx_witness.py"
+        spec=importlib.util.spec_from_file_location("g07_first_student_witness3",witness)
+        m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+        result=m.classify_student_first([],{"scan_receipts_compact":{"raw":None,"safety":None}})
+        self.assertEqual(result["student_first_candidate"],"STUDENT_FIRST_PAIR_UNAVAILABLE")
+        self.assertFalse(result["student_first_stamp_pair_verified"])
+
+
 if __name__=="__main__":
     unittest.main()
