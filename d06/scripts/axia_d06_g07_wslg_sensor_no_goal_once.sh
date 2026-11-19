@@ -135,8 +135,8 @@ PY
   # Exact D08 and D06 immutable commits and git blobs.
   D08_RECEIVER_SHA='30fad621f7916dd8a320489beb46fff8ae0ccf43'
   D08_RECEIVER_BLOB='7d5f18c5fd6255c83100e29d651b6f4d52ed000d'
-  D06_RECEIVER_SHA='7913d95c8e03f50c151e7ebf46bf4c96166f72db'
-  D06_RECEIVER_BLOB='5ff6d1609325fb87b82530dd0f8bae96e7d2828b'
+  D06_RECEIVER_SHA='2bda8cb5208da8765e2667ae18c6f032be7a95c2'
+  D06_RECEIVER_BLOB='199eba87bb17754bd4efb506be37e80e7fa56017'
   RX_TOOL="$GIT_ROOT/d06_g07_scan_rx_witness.py"
   GZ_TOOL="$GIT_ROOT/d08_gz_native_scan_probe.py"
   curl -fLsS --retry 3 --max-time 90 \
@@ -186,6 +186,7 @@ if [[ "$RX_WITNESS" == 1 ]];then
       --ros-jsonl "$RUN_DIR/native/d06_ros_scan_receipts.jsonl" \
       --native-jsonl "$RUN_DIR/native/d06_gz_scan_receipts.jsonl" \
       --native-clock-jsonl "$RUN_DIR/native/d06_gz_clock_receipts.jsonl" \
+      --startup-verdict "$RUN_DIR/native/startup_verdict.json" \
       --output "$RUN_DIR/native/d06_g07_scan_delivery_layer.json" \
       > "$RUN_DIR/native/d06_g07_scan_delivery_layer.log" 2>&1;then
     echo D06_G07_NATIVE_SCAN_LAYER_NOT_MEASURED_NO_GOAL >&2
