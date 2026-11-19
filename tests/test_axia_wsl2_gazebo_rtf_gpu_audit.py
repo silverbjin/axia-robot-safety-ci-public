@@ -145,3 +145,54 @@ def test_owner_wsl2_copy_paste_download_command_is_syntax_checked():
     assert "--seconds 20" in cmd
     assert "python3" in text and "--compare" in text
     assert "sudo " not in cmd and "pkill " not in cmd and "git reset" not in cmd
+
+
+def test_auto_selects_unique_server_with_matching_gui_despite_orphan_servers():
+    """Regression from Owner ZIP A: two server partitions, only current has GUI."""
+    m = module()
+    processes = [
+        {"pid": 5805, "role": "gazebo_server_candidate",
+         "env": {"GZ_PARTITION": "axia_p2_task04_old"}},
+        {"pid": 13700, "role": "gazebo_server_candidate",
+         "env": {"GZ_PARTITION": "axia_p2_task04_current"}},
+        {"pid": 14492, "role": "gazebo_gui",
+         "env": {"GZ_PARTITION": "axia_p2_task04_current"}},
+        {"pid": 14493, "role": "rviz2",
+         "env": {"GZ_PARTITION": "axia_p2_task04_current"}},
+    ]
+    chosen, partition, status = m.choose_server(processes, None, None)
+    assert chosen["pid"] == 13700
+    assert partition == "axia_p2_task04_current"
+    assert status == "AUTO_PAIRED_SERVER_GUI_PARTITION"
+
+
+def test_auto_selects_d04_session_not_leftover_g07_when_gui_has_two_wrappers():
+    """Regression from Owner ZIP B: old G07, D04 server and two D04 GUI wrappers."""
+    m = module()
+    processes = [
+        {"pid": 5805, "role": "gazebo_server_candidate",
+         "env": {"GZ_PARTITION": "axia_p2_task04_old"}},
+        {"pid": 15603, "role": "gazebo_server_candidate",
+         "env": {"GZ_PARTITION": "axia_d04_student_current"}},
+        {"pid": 15604, "role": "gazebo_gui",
+         "env": {"GZ_PARTITION": "axia_d04_student_current"}},
+        {"pid": 15606, "role": "gazebo_gui",
+         "env": {"GZ_PARTITION": "axia_d04_student_current"}},
+    ]
+    chosen, partition, status = m.choose_server(processes, None, None)
+    assert chosen["pid"] == 15603
+    assert partition == "axia_d04_student_current"
+    assert status == "AUTO_PAIRED_SERVER_GUI_PARTITION"
+
+
+def test_auto_refuses_two_simultaneous_matching_gazebo_gui_sessions():
+    m = module()
+    processes = [
+        {"pid": 1, "role": "gazebo_server_candidate", "env": {"GZ_PARTITION": "a"}},
+        {"pid": 2, "role": "gazebo_gui", "env": {"GZ_PARTITION": "a"}},
+        {"pid": 3, "role": "gazebo_server_candidate", "env": {"GZ_PARTITION": "b"}},
+        {"pid": 4, "role": "gazebo_gui", "env": {"GZ_PARTITION": "b"}},
+    ]
+    chosen, partition, status = m.choose_server(processes, None, None)
+    assert chosen is None and partition is None
+    assert status == "MULTIPLE_ACTIVE_GAZEBO_GUI_SESSIONS"
