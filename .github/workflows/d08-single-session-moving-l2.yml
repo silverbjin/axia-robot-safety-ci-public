@@ -11,7 +11,46 @@ concurrency:
   group: d08-g07-moving-${{ github.ref }}
   cancel-in-progress: false
 jobs:
+  build-native-witness:
+    # Disposable build job may install OSRF development headers. Never upgrade
+    # the G07 moving runtime's locked libgz-transport13=13.6.0-1~noble.
+    if: github.head_ref == 'feat/d08-d04-d07-single-session-20261119' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: 8f5e262151f570e02d23646487504dafaa169b63
+          path: student
+          persist-credentials: false
+      - name: Build exact public native S02 witness away from moving OS
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C student rev-parse HEAD)" = 8f5e262151f570e02d23646487504dafaa169b63
+          if ! command -v c++ >/dev/null || ! test -f /usr/include/gz/sim8/gz/sim/System.hh; then
+            apt-get update -qq -o APT::Update::Error-Mode=any -o Acquire::Retries=1
+            DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends cmake g++ libgz-sim8-dev
+          fi
+          cmake -S student/block_B/day07/h01_runtime/tools/native_s02_public -B witness_build -DCMAKE_BUILD_TYPE=Release
+          cmake --build witness_build --parallel 2
+          test -s witness_build/libaxia_g07_s02_ecm_witness.so
+          (cd witness_build && sha256sum libaxia_g07_s02_ecm_witness.so > witness.sha256)
+          echo D08_G07_NATIVE_WITNESS_DISPOSABLE_BUILD_PASS_NOT_MOVING
+      - uses: actions/upload-artifact@v4
+        with:
+          name: d08-g07-witness-${{ github.run_id }}
+          path: |
+            witness_build/libaxia_g07_s02_ecm_witness.so
+            witness_build/witness.sha256
+          retention-days: 7
+          if-no-files-found: error
+
   one-real-gazebo-moving-gui:
+    needs: build-native-witness
     if: github.head_ref == 'feat/d08-d04-d07-single-session-20261119' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
@@ -59,6 +98,10 @@ jobs:
           ref: 71b85c42ea474276fedd9f345521317b8c348b4e
           path: review
           persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: d08-g07-witness-${{ github.run_id }}
+          path: ${{ github.workspace }}/task04-native-build
       # This is the preexisting G07 strict CM120ms oracle, not a copy or a new validator.
       - name: Exact public Student source and minimum L0 before physical run
         shell: bash
@@ -93,19 +136,25 @@ jobs:
             apt-get update -qq
             DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends --no-upgrade xvfb x11-utils ros-jazzy-rviz2
           fi
-          if ! command -v c++ >/dev/null || ! test -f /usr/include/gz/sim8/gz/sim/System.hh;then
-            apt-get update -qq
-            DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends cmake g++ libgz-sim8-dev
-          fi
+          # Exact G07 Owner lock: never allow OSRF development headers to
+          # silently upgrade the runtime package from 13.6 to 13.7.
+          actual="$(dpkg-query -W -f='${Version}' libgz-transport13)"
+          test "$actual" = '13.6.0-1~noble' || {
+            echo "D08_G07_MOVING_RUNTIME_TRANSPORT_VERSION_BLOCKED=$actual" >&2; exit 2;
+          }
+          echo D08_G07_MOVING_RUNTIME_GZ_TRANSPORT13_6_LOCK_PRESERVED
           mkdir -p "$GITHUB_WORKSPACE/public_evidence"
           curl -fLsS --retry 3 --connect-timeout 15 --max-time 100 \
             'https://fuel.gazebosim.org/1.0/Mingfei/models/actor/tip/files/meshes/walk.dae' \
             -o "$GITHUB_WORKSPACE/public_evidence/walk.dae"
           echo '49af0df3a319d1cb8ca2cebf02dbd00f625e5d5bec820bc5e109925b18b65c6e  '"$GITHUB_WORKSPACE/public_evidence/walk.dae" | sha256sum -c -
           echo D08_G07_PERSON_MESH_SHA_VERIFIED
-          cmake -S student/block_B/day07/h01_runtime/tools/native_s02_public -B "$GITHUB_WORKSPACE/task04-native-build" -DCMAKE_BUILD_TYPE=Release
-          cmake --build "$GITHUB_WORKSPACE/task04-native-build" --parallel 2
           test -s "$GITHUB_WORKSPACE/task04-native-build/libaxia_g07_s02_ecm_witness.so"
+          (cd "$GITHUB_WORKSPACE/task04-native-build" && sha256sum -c witness.sha256)
+          if ldd "$GITHUB_WORKSPACE/task04-native-build/libaxia_g07_s02_ecm_witness.so" | grep -Fq 'not found';then
+            echo D08_G07_WITNESS_DEPENDENCY_UNRESOLVED >&2; exit 2
+          fi
+          test "$(dpkg-query -W -f='${Version}' libgz-transport13)" = '13.6.0-1~noble'
           sha256sum "$GITHUB_WORKSPACE/task04-native-build/libaxia_g07_s02_ecm_witness.so" > "$GITHUB_WORKSPACE/task04_witness_SHA256SUMS.txt"
           echo 'AXIA_G07_TASK04_NATIVE_GZ8_WITNESS_BUILT_NO_GOAL'
       - name: Exactly one native Gazebo Moving Goal and RViz/Gazebo GUI Xvfb session
