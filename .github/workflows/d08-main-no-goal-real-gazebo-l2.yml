@@ -57,6 +57,7 @@ jobs:
             d08/tests/test_d08_spin_once_sparse_evidence.py \
             d08/tests/test_d08_ros_trace_preflight.py \
             d08/tests/test_d08_live_rcl_publish_take_trace.py \
+            d08/tests/test_d08_rcl_trace_summary.py \
             d08/tests/test_d08_first_ros_input_gate_custody.py \
             d08/tests/test_d08_ros_cross_process_arrival_order.py \
             d08/tests/test_d08_native_probe_apt_contract.py \
@@ -323,7 +324,7 @@ jobs:
     # skipped Nav2/AMCL here even while the overall public workflow was GREEN.
     # On this exact PR, one real official Nav2 same-world job is REQUIRED.
     # Other branches retain their existing manual diagnostic scope.
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && (github.head_ref == 'feat/d08-unified-sensor-cm-path-20261118' || github.head_ref == 'fix/d08-first-scan-gap-boundary-20261119' || github.head_ref == 'fix/d08-native-scan-first-gap-20261119' || github.head_ref == 'fix/d08-scan-independent-ros-process-20261119' || github.head_ref == 'fix/d08-executor-spin-timing-20261119' || github.head_ref == 'diag/d08-ros-trace-preflight-20261119'))
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && (github.head_ref == 'feat/d08-unified-sensor-cm-path-20261118' || github.head_ref == 'fix/d08-first-scan-gap-boundary-20261119' || github.head_ref == 'fix/d08-native-scan-first-gap-20261119' || github.head_ref == 'fix/d08-scan-independent-ros-process-20261119' || github.head_ref == 'fix/d08-executor-spin-timing-20261119' || (github.head_ref == 'diag/d08-ros-trace-preflight-20261119' || github.head_ref == 'diag/d08-live-rcl-publish-take-20261119')))
     runs-on: ubuntu-24.04
     timeout-minutes: 22
     container:
@@ -335,9 +336,9 @@ jobs:
       # CI-only two-second readiness-decision delay while real ROS sensor
       # subscriptions/TF continue; this does NOT pause Gazebo publishers.
       AXIA_D08_CI_AMCL_SERVICE_READY_DELAY_SEC: "2.0"
-      AXIA_D08_NATIVE_RX_PROBE: ${{ (github.head_ref == 'fix/d08-native-scan-first-gap-20261119' || (github.head_ref == 'fix/d08-scan-independent-ros-process-20261119' || github.head_ref == 'fix/d08-executor-spin-timing-20261119' || github.head_ref == 'diag/d08-ros-trace-preflight-20261119')) && '1' || '0' }}
-      AXIA_D08_ROS_ISOLATED_RX_PROBE: ${{ (github.head_ref == 'fix/d08-scan-independent-ros-process-20261119' || github.head_ref == 'fix/d08-executor-spin-timing-20261119' || github.head_ref == 'diag/d08-ros-trace-preflight-20261119') && '1' || '0' }}
-      AXIA_D08_ROS_TRACE_PREFLIGHT: ${{ github.head_ref == 'diag/d08-ros-trace-preflight-20261119' && '1' || '0' }}
+      AXIA_D08_NATIVE_RX_PROBE: ${{ (github.head_ref == 'fix/d08-native-scan-first-gap-20261119' || (github.head_ref == 'fix/d08-scan-independent-ros-process-20261119' || github.head_ref == 'fix/d08-executor-spin-timing-20261119' || (github.head_ref == 'diag/d08-ros-trace-preflight-20261119' || github.head_ref == 'diag/d08-live-rcl-publish-take-20261119'))) && '1' || '0' }}
+      AXIA_D08_ROS_ISOLATED_RX_PROBE: ${{ (github.head_ref == 'fix/d08-scan-independent-ros-process-20261119' || github.head_ref == 'fix/d08-executor-spin-timing-20261119' || (github.head_ref == 'diag/d08-ros-trace-preflight-20261119' || github.head_ref == 'diag/d08-live-rcl-publish-take-20261119')) && '1' || '0' }}
+      AXIA_D08_ROS_TRACE_PREFLIGHT: ${{ (github.head_ref == 'diag/d08-ros-trace-preflight-20261119' || github.head_ref == 'diag/d08-live-rcl-publish-take-20261119') && '1' || '0' }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -375,7 +376,7 @@ jobs:
             /usr/bin/python3 -c 'from gz.transport13 import Node; from gz.msgs10.laserscan_pb2 import LaserScan; from gz.msgs10.clock_pb2 import Clock; print("D08_NATIVE_PYTHON_APT_IMPORT_L2_PASS")'
           fi
       - name: CI-only official Jazzy ROS userspace tracing preflight
-        if: github.head_ref == 'diag/d08-ros-trace-preflight-20261119'
+        if: (github.head_ref == 'diag/d08-ros-trace-preflight-20261119' || github.head_ref == 'diag/d08-live-rcl-publish-take-20261119')
         shell: bash
         run: |
           set -eo pipefail
@@ -384,7 +385,7 @@ jobs:
             ros-jazzy-ros2trace lttng-tools babeltrace
           bash d08/scripts/d08_ros_trace_preflight.sh
       - uses: actions/upload-artifact@v4
-        if: always() && github.head_ref == 'diag/d08-ros-trace-preflight-20261119'
+        if: always() && (github.head_ref == 'diag/d08-ros-trace-preflight-20261119' || github.head_ref == 'diag/d08-live-rcl-publish-take-20261119')
         with:
           name: d08-ros-trace-preflight
           path: results/d08-ros-trace-preflight/
@@ -425,6 +426,12 @@ jobs:
               assert 'Unable to find or download file' in output,output[-1000:]
           print('D08_REAL_GAZEBO_TEMPFILE_RED_REPRODUCED exit=255 NOT_SAFETY_PASS')
           PY
+      - name: Start REAL L2 rcl publish/take trace before Gazebo/ROS bridge
+        if: github.head_ref == 'diag/d08-live-rcl-publish-take-20261119'
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash d08/scripts/d08_ros_trace_live_ci.sh start
       - name: Real ONE Gazebo World + Waffle RGBD and official AMCL/ComputePathToPose
         shell: bash
         run: |
@@ -559,6 +566,27 @@ jobs:
           print('D08_OFFICIAL_SAME_WORLD_THREE_PHASE_PATHS_L2_PASS_NO_GOAL')
           print('D08_OFFICIAL_NAV2_SAME_WORLD_FIRST_PATH_L2_PASS_NO_GOAL')
           PY
+      - name: Stop REAL L2 rcl trace even when first Scan gap blocked
+        if: always() && github.head_ref == 'diag/d08-live-rcl-publish-take-20261119'
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash d08/scripts/d08_ros_trace_live_ci.sh stop
+      - uses: actions/upload-artifact@v4
+        if: always() && github.head_ref == 'diag/d08-live-rcl-publish-take-20261119'
+        with:
+          name: d08-real-rcl-publish-take-trace
+          path: |
+            results/d08-ros-trace-live/session.log
+            results/d08-ros-trace-live/tracetools-status.txt
+            results/d08-ros-trace-live/clock_anchor.json
+            results/d08-ros-trace-live/trace-size-bytes.txt
+            results/d08-ros-trace-live/raw-trace-sha256.txt
+            results/d08-ros-trace-live/raw-archive-verdict.txt
+            results/d08-ros-trace-live/summary.json
+            results/d08-ros-trace-live/ctf-small.tar.gz
+          retention-days: 7
+          if-no-files-found: warn
       - name: Upload unaltered real Nav2 World/AMCL/Path and first failure evidence
         if: always()
         uses: actions/upload-artifact@v4
