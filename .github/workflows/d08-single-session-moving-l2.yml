@@ -9,7 +9,7 @@ permissions:
   contents: read
 concurrency:
   group: d08-g07-moving-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   build-native-witness:
     # Disposable build job may install OSRF development headers. Never upgrade
