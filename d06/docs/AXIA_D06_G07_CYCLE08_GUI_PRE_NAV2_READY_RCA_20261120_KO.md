@@ -41,3 +41,19 @@
 `AXIA_MVP_DEMO_ACCEPTED=HOLD`
 `CERTIFIED_ESTOP=false`
 `MAIN_MERGED=false`
+
+## 5. C08 실제 Gazebo L2 완료 — Strict FAIL, 후단 Student 콜백 지연 확인
+
+[Run #44563618730](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44563618730), 소스 SHA `92aed23ef5fccdf5a582ede22c2671956e9bdc23`; artifact #14550112638.
+
+- `D06_CI_L2_GUI_PRE_NAV2_STARTED`가 Nav2 READY보다 앞서고 같은 GUI PID를 나중에 재사용함. 별도 Gazebo server 두 번째 실행 없음.
+- Nav2 READY host monotonic169.103초 이후 20초 native/ROS Scan300 첫 위반 **NO_ROS_TTL_VIOLATION_WITNESSED**. 이는 해당 구간 관측만의 결과이며 GUI 선기동이 모든 환경에서 해결책이라는 인과 증거는 아님.
+- 이후 Student 20.031초 window의 Raw201 중 최초 위반, 최대 **414.828ms**; Safety200 중 최초 위반, 최대 **414.021ms**. 안전 판정 `NO_GOAL_SENSOR_UNSAFE_HOLD`. 소스 시각 48.201→48.300초의 Student 첫 Safety 수신 간격 **403.214ms**.
+- 정확히 동일한 stamp pair에서 Gazebo native **89.281ms**, 독립 ROS Safety **86.495ms**; 두 번째 Student Safety callback은 peer보다 **315.142ms 뒤**. 원인 경계 `AFTER_INDEPENDENT_ROS_RECEIPT`; GPU LiDAR publisher와 bridge를 403ms 지연 원인으로 단정 불가.
+- Student global /clock receipt RTF 약0.998593, Safety 거리 200/200 CLEAR. 거리 CLEAR ≠ Scan TTL CLEAR.
+- Navigation SHUTDOWN **ACK 1.858822초**, Localization **ACK 0.253673초**, CM/Gazebo server exit0 (Guard/Supervisor 정상 종료). 안전 종료는 Scoped PASS이나 Sensor TTL FAIL로 **전체 L2 FAIL**.
+- 이번 변경은 CI-only Xvfb 실행 순서 실험. 강사 WSLg D3D12/Gazebo SIGSEGV 해결 및 owner L3 증거가 아님.
+
+**다음 단일 개발 후보:** Student `scan_callback`이 최초 수신 host-monotonic을 기록한 다음 동기적으로 LaserScan 전방·측면·near-ring 기하 계산을 수행하는 경계를 줄인다. 동일 수치/거리 판정·300ms TTL을 유지하면서 메시지 수신 기록만 즉시 저장하고, 나머지 순수 계산은 관측 종료 후 수행한다. 원본 정확한 stamp pair 회귀 먼저 RED; 수정 GREEN 이후 실제 Jazzy/Harmonic L2 재검증. 인과 입증 전 추가 CPU/GPU 최적화 확대 금지.
+
+`D06_GAZEBO_LIVE_RELEASE=HOLD`, `AXIA_MVP_DEMO_ACCEPTED=HOLD`, `CERTIFIED_ESTOP=false`.
