@@ -5,6 +5,8 @@ on:
     paths:
       - '.github/workflows/axia-d06-g07-native-nogoal-cm-clean-l2-20261119.yml'
       - 'd06/tests/test_d06_g07_nogoal_ordered_cm_shutdown.py'
+      - 'd06/tools/d06_gz_native_scan_probe_safe.py'
+      - 'd06/tests/test_d06_gz_native_witness_teardown.py'
   workflow_dispatch:
 permissions:
   contents: read
@@ -111,12 +113,13 @@ jobs:
             apt-get update -qq
             DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends python3-gz-transport13 python3-gz-msgs10
           fi
-          curl -fLsS --retry 3 --max-time 80 \
-            "https://raw.githubusercontent.com/silverbjin/axia-robot-safety-ci-public/30fad621f7916dd8a320489beb46fff8ae0ccf43/d08/harness/d08_gz_native_scan_probe.py" \
-            -o "$GITHUB_WORKSPACE/native/d08_gz_native_scan_probe.py"
-          test "$(git hash-object "$GITHUB_WORKSPACE/native/d08_gz_native_scan_probe.py")" = '7d5f18c5fd6255c83100e29d651b6f4d52ed000d'
-          /usr/bin/python3 -m py_compile "$GITHUB_WORKSPACE/native/d08_gz_native_scan_probe.py" "$GITHUB_WORKSPACE/ci/d06/tools/d06_g07_scan_rx_witness.py"
-          /usr/bin/python3 -u "$GITHUB_WORKSPACE/native/d08_gz_native_scan_probe.py" \
+          # Reuse D08 native receipt schema; only Gazebo Transport13
+          # shutdown has been scoped to explicit unsubscribe-before-destroy.
+          cp "$GITHUB_WORKSPACE/ci/d06/tools/d06_gz_native_scan_probe_safe.py" \
+            "$GITHUB_WORKSPACE/native/d06_gz_native_scan_probe_safe.py"
+          test "$(git hash-object "$GITHUB_WORKSPACE/native/d06_gz_native_scan_probe_safe.py")" = '653ec644e80eb832f32c4db6ed46a5a0db02b60d'
+          /usr/bin/python3 -m py_compile "$GITHUB_WORKSPACE/native/d06_gz_native_scan_probe_safe.py" "$GITHUB_WORKSPACE/ci/d06/tools/d06_g07_scan_rx_witness.py"
+          /usr/bin/python3 -u "$GITHUB_WORKSPACE/native/d06_gz_native_scan_probe_safe.py" \
             --topic /scan --out "$GITHUB_WORKSPACE/native/d06_gz_scan_receipts.jsonl" \
             --clock-out "$GITHUB_WORKSPACE/native/d06_gz_clock_receipts.jsonl" \
             > "$GITHUB_WORKSPACE/native/d06_gz_scan_rx.log" 2>&1 &
@@ -172,6 +175,13 @@ jobs:
             native_rx_pid='';ros_rx_pid=''
           fi
           echo "AXIA_D06_G07_WITNESS_EXIT native=$native_rx_rc ros=$ros_rx_rc"
+          if [[ "$native_rx_rc" == 0 ]];then
+            grep -Fq 'D06_GZ_NATIVE_SUBSCRIPTIONS_RELEASED' \
+              "$GITHUB_WORKSPACE/native/d06_gz_scan_rx.log" || {
+              echo 'D06_GZ_NATIVE_UNSUBSCRIBE_PROOF_MISSING_HOLD' >&2; exit 3;
+            }
+            echo 'D06_GZ_NATIVE_RX_UNSUBSCRIBE_BEFORE_GAZEBO_SHUTDOWN_PASS'
+          fi
           [[ "$witness_handoff_done" == 1 ]] || {
             echo 'AXIA_D06_G07_READONLY_WITNESS_HANDOFF_NOT_COMPLETED' >&2;exit 3;
           }
