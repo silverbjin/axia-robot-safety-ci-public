@@ -256,6 +256,11 @@ if native_verified:
     except (OSError,ValueError): pass
 summary["native_no_goal_navigation_ack"]=nav.get("navigation_ack")
 summary["native_no_goal_localization_ack"]=nav.get("localization_ack")
+# First unacknowledged localization shutdown: probe ROS service liveliness
+# without repeating SHUTDOWN; null if the failure did not occur.
+summary["native_no_goal_localization_parameter_probe"]=nav.get("localization_parameter_probe")
+summary["native_no_goal_localization_response_elapsed_sec"]=nav.get("localization_response_elapsed_sec")
+summary["native_no_goal_localization_request_sent"]=nav.get("localization_service_request_sent")
 handoff_probe=out/"native_witness_probe_completed.txt"
 handoff_ack=out/"native_witness_handoff_ack.txt"
 summary["native_readonly_witness_handoff_ack"]=bool(
@@ -342,6 +347,11 @@ print("D06_FORENSIC_FIRST_SENSOR_FAILURE="+first,flush=True)
 print("D06_FORENSIC_PROCESS_CRASH="+(",".join(crashes) if crashes else "NONE_OBSERVED"),flush=True)
 print("D06_FORENSIC_RTF="+str(report.get("rtf_diagnostics",{}).get("ros_clock_rtf","UNMEASURED")),flush=True)
 print("D06_FORENSIC_SCOPE=NO_GOAL_MOVING_L3_HOLD",flush=True)
+print("D06_FORENSIC_LOCALIZATION_FIRST_TIMEOUT_PROBE="+
+      str(summary.get("native_no_goal_localization_parameter_probe"))+
+      " ACK="+str(summary.get("native_no_goal_localization_ack"))+
+      " SERVICE_REQUEST_SENT="+str(summary.get("native_no_goal_localization_request_sent")),
+      flush=True)
 print("D06_FORENSIC_READONLY_WITNESS_HANDOFF="+str(summary["native_readonly_witness_handoff_ack"])+
       " BEFORE_NAV2_SHUTDOWN_EVIDENCE_ONLY",flush=True)
 print("D06_FORENSIC_NO_GOAL_NAV2_ACK="+str(
