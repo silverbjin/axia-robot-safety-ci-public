@@ -206,6 +206,71 @@ class ForensicOneShot(unittest.TestCase):
             self.assertFalse(v["native_no_goal_whole_teardown_clean"])
             self.assertEqual(v["first_native_crash_layer"],"GAZEBO_SERVER")
 
+    def test_tcljt2qc_early_failure_preserves_first_owner_log_line_and_stage(self):
+        # TCljt2Qc original user archive was 1.3KB and had only summary +
+        # original nvidia.run.log SHA256. The actual log bytes were NOT
+        # uploaded. A synthetic log exercises that confirmed custody gap,
+        # not an invented real-world root cause.
+        with tempfile.TemporaryDirectory() as tmp:
+            home=Path(tmp); d=fake_record(home)
+            (d/"nvidia.g07_wslg_sensor_truth.json").unlink()
+            (d/"nvidia.launch.log").unlink()
+            (d/"nvidia.run.log").write_text(
+                "D06_WSLG_NO_GOAL_REAL_SETUP_BEGIN\n"
+                "D06_G07_NATIVE_PROBE_IMPORT_MISSING_NO_GOAL\n"
+                "D06_WSLG_NO_GOAL_SENSOR_HOLD_NATIVE_RC_3\n")
+            (d/"attempt_state.txt").write_text(
+                "phase=OWNER_FINISHED\nowner_rc=3\nouter_rc=3\nmode=--nvidia-causal\n")
+            env={"PATH":os.environ["PATH"],"HOME":str(home),
+                 "GITHUB_ACTIONS":"true"}
+            run=subprocess.run(["bash",str(SCRIPT),"--analyze-existing"],
+                env=env,capture_output=True,text=True,timeout=15)
+            self.assertEqual(run.returncode,0,(run.stdout,run.stderr))
+            archive=d.parent/("d06-forensic-"+d.name+".tar.gz")
+            with tarfile.open(archive,"r:gz") as tf:
+                summary=json.load(tf.extractfile("forensic/summary.json"))
+                detail=tf.extractfile("forensic/first_preflight_or_owner_failure.txt").read().decode()
+                state=tf.extractfile("forensic/attempt_state.txt").read().decode()
+            self.assertEqual(summary["first_sensor_failure"],"EVIDENCE_INCOMPLETE")
+            self.assertFalse(summary["source_archive_sha256_verified"])
+            self.assertEqual(summary["first_failure_stage"],"OWNER_FINISHED")
+            self.assertEqual(summary["first_owner_failure_marker"],
+                             "D06_G07_NATIVE_PROBE_IMPORT_MISSING_NO_GOAL")
+            self.assertEqual(summary["owner_exit_code"],3)
+            self.assertIn("D06_G07_NATIVE_PROBE_IMPORT_MISSING_NO_GOAL",detail)
+            self.assertIn("owner_rc=3",state)
+            self.assertLess(len(detail),18000)
+            self.assertFalse(summary["no_goal_acceptance"])
+
+    def test_tcljt2qc_missing_log_reports_missing_not_fake_root_cause(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d=fake_record(Path(tmp))
+            (d/"nvidia.g07_wslg_sensor_truth.json").unlink()
+            (d/"nvidia.run.log").unlink()
+            (d/"nvidia.launch.log").unlink()
+            env={"PATH":os.environ["PATH"],"HOME":str(Path(tmp)),
+                 "GITHUB_ACTIONS":"true"}
+            run=subprocess.run(["bash",str(SCRIPT),"--analyze-existing"],
+                env=env,capture_output=True,text=True,timeout=15)
+            self.assertEqual(run.returncode,0,(run.stdout,run.stderr))
+            archive=d.parent/("d06-forensic-"+d.name+".tar.gz")
+            with tarfile.open(archive,"r:gz") as tf:
+                summary=json.load(tf.extractfile("forensic/summary.json"))
+                excerpt=tf.extractfile("forensic/first_preflight_or_owner_failure.txt").read().decode()
+            self.assertEqual(summary["first_owner_failure_marker"],
+                             "ORIGINAL_OWNER_LOG_UNAVAILABLE")
+            self.assertIn("ORIGINAL_OWNER_LOG_UNAVAILABLE",excerpt)
+            self.assertIsNone(summary["owner_exit_code"])
+            self.assertFalse(summary["no_goal_acceptance"])
+
+    def test_launch_trap_records_original_failure_phase_before_archive(self):
+        source=SCRIPT.read_text()
+        self.assertIn("D06_STAGE=GPU_PREFLIGHT",source)
+        self.assertIn("D06_STAGE=OWNER_RUNNING",source)
+        self.assertIn("D06_STAGE=OWNER_FINISHED",source)
+        self.assertIn('printf "phase=%s\\nowner_rc=%s\\nouter_rc=%s\\nmode=%s\\n"',source)
+        self.assertIn("first_preflight_or_owner_failure.txt",source)
+
     def test_absent_real_evidence_fails_without_simulation(self):
         with tempfile.TemporaryDirectory() as tmp:
             env = {"PATH": os.environ["PATH"], "HOME": tmp,
