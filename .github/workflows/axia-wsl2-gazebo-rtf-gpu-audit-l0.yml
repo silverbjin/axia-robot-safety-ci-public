@@ -1,0 +1,20 @@
+name: AXIA WSL2 Gazebo RTF GPU audit L0
+on:
+  pull_request:
+    paths:
+      - 'scripts/axia_wsl2_gazebo_rtf_gpu_audit.py'
+      - 'tests/test_axia_wsl2_gazebo_rtf_gpu_audit.py'
+      - '.github/workflows/axia-wsl2-gazebo-rtf-gpu-audit-l0.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate source and read-only offline behavior
+        run: |
+          python3 -m pip install --disable-pip-version-check -q pytest==8.3.5
+          python3 -m pytest -q tests/test_axia_wsl2_gazebo_rtf_gpu_audit.py
