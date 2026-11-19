@@ -28,7 +28,7 @@ class ScopedCiGuiPriority(unittest.TestCase):
         self.assertNotIn('renice -n -',gui_only)
         self.assertNotIn('taskset -c',gui_only)
         self.assertNotIn('nice -n -',gui_only)
-        self.assertIn('  else\n     setsid gz sim -g',gui_only)
+        self.assertIn('  else\n    setsid gz sim -g',gui_only)
 
     def test_actual_l2_explicitly_opts_in_nice_without_safety_change(self):
         w=WF.read_text()
