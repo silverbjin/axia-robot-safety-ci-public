@@ -69,13 +69,13 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 8e19742fd7bd80db73a37dc7b1d798768dc33e2a
+          ref: 64de9dc02e9073dc1c2898b14c973e38c664ba6e
           path: student
           persist-credentials: false
       - name: Verify immutable Student SHA and six independent geometry/RTF cases
         run: |
           set -Eeuo pipefail
-          test "$(git -C student rev-parse HEAD)" = 8e19742fd7bd80db73a37dc7b1d798768dc33e2a
+          test "$(git -C student rev-parse HEAD)" = 64de9dc02e9073dc1c2898b14c973e38c664ba6e
           python3 -m unittest discover -s student/block_B/day07/h01_runtime/tools -p 'test_g07_lidar_rtf_separation.py' -v
           python3 -m unittest discover -s student/block_B/day07/h01_runtime/tools -p 'test_g07_wslg_no_goal_sensor_probe.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_lidar_rtf_field_evidence.py' -v
