@@ -382,6 +382,7 @@ def compare_worst_scan_pair_receivers(pair, native, isolated_ros,
         "cause":"UNDETERMINED",
         "candidate":"SOURCE_PAIR_INCOMPLETE",
         "source_pair_matched":False,
+        "cross_receiver_order_consistent":False,
         "first_500ms_violation":False,
         "observer_gap_sec":None,
         "native_gap_sec":None,
@@ -422,26 +423,29 @@ def compare_worst_scan_pair_receivers(pair, native, isolated_ros,
             return None
         for a in sorted(by_stamp[old_ns]):
             for b in sorted(by_stamp[new_ns]):
-                # Do NOT apply a 500ms matching tolerance here: the
-                # very first incident can delay the Observer >500ms.
-                # Same unique source stamps and causal ordering are enough
-                # to match a delayed receiver to earlier real observations.
-                if (b>a and a<=old_parent+.05 and
-                    b<=new_parent+.05):
-                    return round(b-a,6)
+                # Cross-process callbacks are NOT globally ordered.
+                # Match the exact source stamps with ordering only within
+                # THIS receiver. Flag inter-receiver ordering separately.
+                if b>a:
+                    return (round(b-a,6),a,b)
         return None
 
     values=[matched_gap(x) for x in (native,isolated_ros,same_python_ros)]
     if any(x is None for x in values):
         return verdict
-    n,iso,same=values
+    n,iso,same=(v[0] for v in values)
+    order_ok=all(a<=old_parent+.05 and b<=new_parent+.05
+                 for _gap,a,b in values)
     verdict.update({
         "source_pair_matched":True,
+        "cross_receiver_order_consistent":order_ok,
         "native_gap_sec":n,
         "isolated_ros_gap_sec":iso,
         "same_python_gap_sec":same,
     })
-    if parent_gap-n<.12:
+    if not order_ok:
+        verdict["candidate"]="CROSS_RECEIVER_ORDER_UNCERTAIN"
+    elif parent_gap-n<.12:
         verdict["candidate"]="NO_LARGE_RELATIVE_RX_DELAY"
     elif same>=parent_gap-.08 and iso<=n+.08:
         verdict["candidate"]="SAME_PYTHON_PROCESS_DELAY_CANDIDATE"
