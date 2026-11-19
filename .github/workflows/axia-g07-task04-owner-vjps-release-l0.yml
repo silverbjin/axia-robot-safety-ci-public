@@ -1,0 +1,27 @@
+name: AXIA G07 vJpsc6Wy Owner scoped release L0
+on:
+  push:
+    branches: ['fix/g07-vjpsc6wy-owner-release-20261120']
+    paths:
+      - 'scripts/axia_g07_task04_owner_moving_l3_once.sh'
+      - 'tests/test_g07_task04_owner_moving_bootstrap.py'
+      - '.github/workflows/axia-g07-task04-owner-vjps-release-l0.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  pinned-owner-release-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Owner immutable pin, performance cache and clean DDS scope
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          bash -n scripts/axia_g07_task04_owner_moving_l3_once.sh
+          python3 -m unittest discover -s tests -p 'test_g07_task04_owner_moving_bootstrap.py' -v
+          python3 -m unittest discover -s tests -p 'test_g07_task04_owner_startup_performance.py' -v
+          python3 -m unittest discover -s tests -p 'test_g07_task04_owner_native_cache_runtime.py' -v
+          python3 -m unittest discover -s tests -p 'test_g07_task04_foreign_clock_domain.py' -v
+          bash scripts/axia_g07_task04_owner_moving_l3_once.sh --self-check
