@@ -44,6 +44,8 @@ def synthetic_session(where,cycles=2,goal=False,teardown="P2_L2_GRACEFUL_TEARDOW
                     "certified_estop":False,
                 })+"\n")
     (root/"native/evidence/teardown.txt").write_text(teardown+"\n")
+    (root/"native/evidence/launch.log").write_text(
+        "[INFO] [collision_monitor-16]: process has finished cleanly [pid 4079]\n")
     (root/"native/evidence/d07_h01_teaching_loop.log").write_text(
         "D07_H01_TEACHING_CTRL_C_STOP OPERATOR\n")
     (root/"windows-gazebo-rviz.txt").write_text(
@@ -172,6 +174,32 @@ class D07H01InstructorL3Contract(unittest.TestCase):
             r=verify(folder)
             self.assertEqual(r.returncode,3)
             self.assertIn("OPERATOR_CTRL_C_STOP_NOT_PROVEN",r.stdout)
+
+
+    def test_native_child_crash_blocks_ready_even_with_graceful_marker(self):
+        # Owner lQkNadLW: 5 cycles and GRACEFUL marker, but actual ROS children
+        # exited with SIGSEGV (-11) and RCLError (1) after operator SIGINT.
+        with tempfile.TemporaryDirectory() as folder:
+            synthetic_session(folder)
+            launch=Path(folder)/"native/evidence/launch.log"
+            launch.write_text(
+                "[INFO] [rclcpp]: signal_handler(SIGINT/SIGTERM)\\n"
+                "[ERROR] [p2_base_guard_node-20]: process has died "
+                "[pid 4083, exit code 1, cmd '/fake/base_guard']\\n"
+                "[ERROR] [collision_monitor-16]: process has died "
+                "[pid 4079, exit code -11, cmd '/fake/collision_monitor']\\n"
+            )
+            r=verify(folder)
+            self.assertEqual(r.returncode,3,r.stdout+r.stderr)
+            self.assertIn("NATIVE_CHILD_UNCLEAN_EXIT",r.stdout)
+
+    def test_native_launch_log_missing_is_hold(self):
+        with tempfile.TemporaryDirectory() as folder:
+            synthetic_session(folder)
+            (Path(folder)/"native/evidence/launch.log").unlink()
+            r=verify(folder)
+            self.assertEqual(r.returncode,3,r.stdout+r.stderr)
+            self.assertIn("NATIVE_LAUNCH_LOG_MISSING",r.stdout)
 
 
 if __name__=="__main__":
