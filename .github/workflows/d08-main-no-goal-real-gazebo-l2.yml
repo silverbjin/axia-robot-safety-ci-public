@@ -464,6 +464,10 @@ jobs:
               assert heartbeat['bracketed'] is True,(i,heartbeat)
               assert heartbeat['max_heartbeat_gap_sec'] is not None,(i,heartbeat)
               assert heartbeat['root_cause']=='UNDETERMINED',(i,heartbeat)
+              stack=paired['executor_stack_at_first_gap']
+              assert stack['root_cause']=='UNDETERMINED',(i,stack)
+              if paired['first_500ms_violation']:
+                  assert stack['sample_count']>=1,(i,stack)
               hb=cycle['process_heartbeat_summary']
               assert hb['enabled'] is True and hb['sample_count']>=20,(i,hb)
               assert hb['history_complete'] is True,(i,hb)
