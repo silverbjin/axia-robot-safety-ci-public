@@ -21,6 +21,23 @@ def load():
     return m
 
 class StudentFirstHostGap(unittest.TestCase):
+    def test_scan_host_receipt_timestamp_precedes_geometry_work(self):
+        # Actual same-stamp L2 first breach was 385ms Student vs 112ms peer.
+        # Existing Student observer captured host time only *after* computing
+        # distance sectors, so it did not measure callback entry correctly.
+        source=SRC.read_text()
+        callback=source.split("    def scan_callback(msg, kind):",1)[1]
+        callback=callback.split("    def on_odom(msg):",1)[0]
+        self.assertLess(callback.index("now = time.monotonic()"),
+                        callback.index("front = ["))
+        self.assertLess(callback.index("now = time.monotonic()"),
+                        callback.index("side = sector_min(msg)"))
+        self.assertLess(callback.index("now = time.monotonic()"),
+                        callback.index("near, beams = near_ring_fraction(msg)"))
+        self.assertIn("SCAN_TTL_SEC = .300",source)
+        self.assertIn('"goal_sent": False',source)
+        self.assertIn('"certified_estop": False',source)
+
     def test_source_header_and_host_clock_first_ttl_same_pair(self):
         m=load()
         def row(recv,stamp):
