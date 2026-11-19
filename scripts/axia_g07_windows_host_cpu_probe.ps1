@@ -26,7 +26,7 @@ public static class AxiaCpuTimes {
 '@
 $parent=[System.IO.Path]::GetDirectoryName($OutputPath)
 [System.IO.Directory]::CreateDirectory($parent) | Out-Null
-$writer=New-Object System.IO.StreamWriter($OutputPath,$false,(New-Object System.Text.UTF8Encoding($false)))
+$writer=[System.IO.StreamWriter]::new($OutputPath,$false,[System.Text.UTF8Encoding]::new($false))
 $writer.AutoFlush=$true
 $sw=[System.Diagnostics.Stopwatch]::StartNew()
 $lastElapsed=0.0
@@ -39,9 +39,9 @@ try {
     $elapsed=$sw.Elapsed.TotalMilliseconds
     $gap=$elapsed-$lastElapsed
     $lastElapsed=$elapsed
-    $idle=New-Object AxiaCpuTimes+FT
-    $kernel=New-Object AxiaCpuTimes+FT
-    $user=New-Object AxiaCpuTimes+FT
+    $idle=[AxiaCpuTimes+FT]::new()
+    $kernel=[AxiaCpuTimes+FT]::new()
+    $user=[AxiaCpuTimes+FT]::new()
     $ok=[AxiaCpuTimes]::GetSystemTimes([ref]$idle,[ref]$kernel,[ref]$user)
     $cpuPct=$null
     if ($ok) {
