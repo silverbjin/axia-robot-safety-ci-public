@@ -10,7 +10,7 @@ SOURCE=(Path(__file__).resolve().parents[1]/"harness/d08_same_world_replan.py").
 def test_readonly_observer_does_not_schedule_one_group_on_two_pool_workers():
     assert "exe=SingleThreadedExecutor()" in SOURCE
     assert "exe=MultiThreadedExecutor(num_threads=2)" not in SOURCE
-    assert "Thread(target=exe.spin" in SOURCE
+    assert "bounded_spin(exe)" in SOURCE
     assert "independent_executor=SingleThreadedExecutor()" in SOURCE
 
 def test_single_executor_must_not_erase_the_first_500ms_violation():
