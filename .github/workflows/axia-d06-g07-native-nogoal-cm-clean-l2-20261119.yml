@@ -1,0 +1,165 @@
+name: AXIA D06 G07 real Jazzy Harmonic NO_GOAL CM ordered teardown L2
+on:
+  push:
+    branches: ['fix/d06-wslg-lidar-vs-rtf-ci-20261118']
+    paths:
+      - '.github/workflows/axia-d06-g07-native-nogoal-cm-clean-l2-20261119.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: axia-d06-g07-native-nogoal-cm-clean-l2
+  cancel-in-progress: false
+jobs:
+  native-ordered-shutdown-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 32
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+    env:
+      ROS_DOMAIN_ID: '89'
+      ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+      GZ_PARTITION: axia_p2_nogoal_ordered_shutdown
+      AXIA_P0_SIM_ONLY: '1'
+      AXIA_P2_G07_PHYSICAL_PREFLIGHT: '1'
+      AXIA_G07_OWNER_STARTUP_PARITY: '1'
+      AXIA_P2_G07_RELOCATED_OBSTACLE: '1'
+      AXIA_G07_OWNER_SENSOR_TRUTH_NO_GOAL: '1'
+      AXIA_G07_CI_SENSOR_TRUTH_NO_GOAL: '1'
+      AXIA_G07_NO_GOAL_ORDERED_SHUTDOWN: '1'
+      AXIA_G07_CI_SIM_GOAL_ALLOWED: '0'
+      AXIA_G07_TASK04_OWNER_MOVING_L3: '0'
+      AXIA_G07_TASK04_CI_GUI_MOVING: '0'
+      AXIA_G07_CI_OWNER_BAG_PARITY: '0'
+      AXIA_G07_TASK02_SIMPLE_TF_CANDIDATE: '0'
+      AXIA_D07_H01_GUI_NO_GOAL: '0'
+      AXIA_WSLG_SENSOR_PROBE_DURATION_SEC: '20'
+      QT_QPA_PLATFORM: offscreen
+      LIBGL_ALWAYS_SOFTWARE: '1'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          path: ci
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: 835a5285c49300a8d9943d2e19d0c07f3fa06901
+          path: student
+          persist-credentials: false
+      - name: Exact public Student and official lifecycle offline contract
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C ci rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git -C student rev-parse HEAD)" = '835a5285c49300a8d9943d2e19d0c07f3fa06901'
+          cd student/block_B/day07/h01_runtime
+          set +u; source /opt/ros/jazzy/setup.bash;set -u
+          bash -n scripts/p2_no_goal_smoke_ci.sh
+          python3 -m py_compile tools/p2_g07_ordered_shutdown.py tools/p2_g07_owner_shutdown_audit.py
+          python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/d06/tests" -p 'test_d06_g07_nogoal_ordered_cm_shutdown.py' -v
+          echo 'AXIA_D06_G07_ORDERED_SHUTDOWN_SOURCE_L0_PASS_NO_GOAL'
+      - name: Actual same-world Gazebo and official Nav2 CM NO_GOAL teardown
+        shell: bash
+        timeout-minutes: 25
+        run: |
+          set -Eeuo pipefail
+          set +u; source /opt/ros/jazzy/setup.bash;set -u
+          if ! command -v Xvfb >/dev/null || ! command -v rviz2 >/dev/null || ! command -v xwininfo >/dev/null;then
+            apt-get update -qq
+            DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends --no-upgrade xvfb x11-utils ros-jazzy-rviz2
+          fi
+          export DISPLAY=:96
+          export GZ_PARTITION="axia_p2_nogoal_ordered_shutdown_${GITHUB_RUN_ID}_$$"
+          export AXIA_P2_SMOKE_RESULTS="$GITHUB_WORKSPACE/native"
+          mkdir -p "$GITHUB_WORKSPACE/native"
+          Xvfb :96 -screen 0 1600x900x24 -nolisten tcp > "$GITHUB_WORKSPACE/xvfb.log" 2>&1 &
+          xvfb_pid=$!
+          runner_pid=''
+          cleanup() {
+            trap - EXIT
+            set +e
+            if [[ -n "$runner_pid" ]] && kill -0 "$runner_pid" 2>/dev/null;then
+              kill -INT -- "-$runner_pid" 2>/dev/null || true
+              sleep 1
+              kill -TERM -- "-$runner_pid" 2>/dev/null || true
+              wait "$runner_pid" 2>/dev/null || true
+            fi
+            kill -TERM "$xvfb_pid" 2>/dev/null || true
+            wait "$xvfb_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+          sleep 2
+          kill -0 "$xvfb_pid"
+          cd "$GITHUB_WORKSPACE/student/block_B/day07/h01_runtime"
+          setsid timeout --signal=TERM --kill-after=8s 960s \
+            bash scripts/p2_no_goal_smoke_ci.sh \
+            > "$GITHUB_WORKSPACE/no_goal_stdout.log" 2>&1 &
+          runner_pid=$!
+          rviz_seen=0;gazebo_seen=0
+          for ((i=0;i<730;i++));do
+            kill -0 "$runner_pid" 2>/dev/null || break
+            windows="$(timeout 3s xwininfo -root -tree 2>/dev/null || true)"
+            grep -Eiq 'RViz' <<< "$windows" && rviz_seen=1
+            grep -Eiq 'Gazebo' <<< "$windows" && gazebo_seen=1
+            sleep 1
+          done
+          set +e; wait "$runner_pid"; smoke_rc=$?;set -e
+          runner_pid=''
+          echo "AXIA_D06_G07_NATIVE_SHUTDOWN_SMOKE_RC=$smoke_rc RVIZ=$rviz_seen GAZEBO=$gazebo_seen"
+          python3 - "$GITHUB_WORKSPACE/native" "$smoke_rc" "$rviz_seen" "$gazebo_seen" <<'PY'
+          import json,sys,re
+          from pathlib import Path
+          root=Path(sys.argv[1]);rc=int(sys.argv[2]);rv=int(sys.argv[3]);gz=int(sys.argv[4])
+          required=["startup_verdict.json","g07_wslg_sensor_truth.json",
+                    "g07_ordered_shutdown.json","g07_shutdown_audit.json",
+                    "launch.log","teardown.txt"]
+          missing=[x for x in required if not (root/x).is_file()]
+          assert not missing,("FIRST_MISSING_EVIDENCE",missing,rc)
+          start=json.loads((root/"startup_verdict.json").read_text())
+          sensor=json.loads((root/"g07_wslg_sensor_truth.json").read_text())
+          nav=json.loads((root/"g07_ordered_shutdown.json").read_text())
+          audit=json.loads((root/"g07_shutdown_audit.json").read_text())
+          log=(root/"launch.log").read_text(errors="replace")
+          teardown=(root/"teardown.txt").read_text()
+          print("AXIA_D06_L2_FIRST_SENSOR_STATUS="+str(sensor.get("status"))+
+                " reasons="+repr(sensor.get("reasons")))
+          print("AXIA_D06_L2_NAV2_SHUTDOWN="+str(nav.get("status"))+
+                " nav_ack="+str(nav.get("navigation_ack"))+
+                " loc_ack="+str(nav.get("localization_ack")))
+          print("AXIA_D06_L2_CM_PROCESS_AUDIT="+str(audit.get("status"))+
+                " cm_exit_code="+str(audit.get("cm_exit_code")))
+          print("AXIA_D06_L2_TEARDOWN="+teardown.strip().replace("\n","|"))
+          assert start["status"]=="SMOKE_READY" and start["goal_sent"] is False
+          assert sensor["goal_sent"] is False and sensor["fixture_moved"] is False
+          assert sensor["metrics"]["raw"]["count"]>=20
+          assert sensor["metrics"]["safety"]["count"]>=20
+          assert nav["status"]=="NAV2_LIFECYCLE_SHUTDOWN_ACK"
+          assert nav["cm_managed_by_navigation"] is True
+          assert nav["navigation_ack"] is True and nav["localization_ack"] is True
+          assert audit["status"]=="SHUTDOWN_CLEAN_CANDIDATE"
+          assert audit["cm_exit_code"]==0
+          assert rv==1 and gz==1
+          assert "FORCED" not in teardown and "GRACEFUL" in teardown
+          assert not re.search(r"\[collision_monitor-\d+\].*exit code -11",log)
+          assert not re.search(r"\[gz-\d+\].*exit code -11",log)
+          print("AXIA_D06_G07_ACTUAL_NAV2_CM_CHILD_EXIT0_L2_PASS_NO_GOAL_SENSOR_TTL_INDEPENDENT")
+          print("D06_GAZEBO_LIVE_RELEASE=HOLD CERTIFIED_ESTOP=false OWNER_WSLG_L3_NOT_RUN")
+          PY
+      - name: First-failure numeric and process evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: axia-d06-g07-nogoal-cm-ordered-l2-${{ github.run_id }}
+          path: |
+            native/startup_verdict.json
+            native/g07_wslg_sensor_truth.json
+            native/g07_ordered_shutdown.json
+            native/g07_ordered_shutdown.log
+            native/g07_shutdown_audit.json
+            native/teardown.txt
+            native/teardown_processes.txt
+            native/launch.log
+            no_goal_stdout.log
+          retention-days: 14
+          if-no-files-found: warn
