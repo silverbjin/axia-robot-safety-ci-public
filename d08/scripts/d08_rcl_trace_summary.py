@@ -12,6 +12,7 @@ import collections
 import json
 import re
 import sys
+import time
 from pathlib import Path
 
 EVENT = re.compile(r"\bros2:(rcl_publisher_init|rcl_subscription_init|rcl_publish|rcl_take|rmw_publish|rmw_take):")
@@ -27,7 +28,26 @@ TAKEN_TRUE = re.compile(r"\btaken\s*=\s*1\b")
 SOURCE_TS = re.compile(r"\b(?:source_timestamp|timestamp)\s*=\s*[1-9][0-9]*\b")
 
 
-def parse_events(lines):
+def _host_monotonic_from_trace_time(t, clock_anchor):
+    """Approximate same-host monotonic using local trace time and anchor.
+
+    Window intersection only, NOT an identical-message correlation.
+    """
+    if clock_anchor is None:
+        return None
+    sod=clock_anchor.get("local_seconds_of_day")
+    if sod is None:
+        wall=clock_anchor["wall_ns"]/1e9
+        local=time.localtime(wall)
+        sod=(local.tm_hour*3600 + local.tm_min*60 +
+             local.tm_sec + (wall%1))
+    delta=t-float(sod)
+    if delta < -43200: delta+=86400
+    if delta > 43200: delta-=86400
+    return round(clock_anchor["monotonic_ns"]/1e9+delta,6)
+
+
+def parse_events(lines, clock_anchor=None):
     rcl_owner = {"publish": {}, "take": {}}
     rmw_owner = {"publish": {}, "take": {}}
     counts = collections.Counter()
@@ -77,13 +97,21 @@ def parse_events(lines):
         parsed += 1
         key = (pid,m_handle.group(1),kind)
         row = streams[direction].setdefault(key,{"last":None,"count":0,"max":0.0,
-                                                 "large":[],"source_ts":0})
+                                                 "max_window":None,"large":[],"source_ts":0})
         if row["last"] is not None:
             gap = t - row["last"]
             if gap < -80000:
                 gap += 86400
             if gap >= 0:
-                row["max"] = max(row["max"],gap)
+                if gap > row["max"]:
+                    row["max"] = gap
+                    row["max_window"] = {
+                        "gap_sec":round(gap,6),
+                        "start_trace_time_of_day_sec":round(row["last"],6),
+                        "end_trace_time_of_day_sec":round(t,6),
+                        "start_host_monotonic_sec":_host_monotonic_from_trace_time(row["last"],clock_anchor),
+                        "end_host_monotonic_sec":_host_monotonic_from_trace_time(t,clock_anchor),
+                        "matched_same_laserscan_header_stamp":False}
                 if gap > .3:
                     row["large"].append(round(gap,6))
                     row["large"].sort(reverse=True)
@@ -103,6 +131,7 @@ def parse_events(lines):
                 "max_consecutive_rcl_event_gap_sec":gap,
                 "max_consecutive_trace_event_gap_sec":gap,
                 "nonzero_source_timestamp_events":row["source_ts"],
+                "max_gap_window":row["max_window"],
                 "largest_gaps_over_300ms_sec":row["large"],
                 "message_identity_correlated":False})
     result_streams.sort(key=lambda v:(v["direction"],v["pid"],v["event_type"]))
@@ -124,8 +153,10 @@ def parse_events(lines):
 def main():
     ap=argparse.ArgumentParser()
     ap.add_argument("--out",type=Path,required=True)
+    ap.add_argument("--clock-anchor",type=Path)
     args=ap.parse_args()
-    result=parse_events(sys.stdin)
+    anchor=json.loads(args.clock_anchor.read_text()) if args.clock_anchor else None
+    result=parse_events(sys.stdin,clock_anchor=anchor)
     args.out.parent.mkdir(parents=True,exist_ok=True)
     args.out.write_text(json.dumps(result,indent=2,sort_keys=True)+"\n")
     print("D08_BRIDGE_RCL_TRACE_EVENTS="+json.dumps(result["trace_event_counts"],sort_keys=True))
