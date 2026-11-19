@@ -1,0 +1,72 @@
+"""CV2U3T4v owner WSL2 CPU scheduling hypothesis: no-ROS diagnostic contract.
+
+RED before implementing the new standalone diagnostic. Intentional failure on
+missing diagnostic code must yield GitHub Actions FAILURE (no false green).
+"""
+import json
+from pathlib import Path
+import subprocess
+import tempfile
+import unittest
+
+ROOT=Path(__file__).resolve().parents[1]
+ENTRY=ROOT/"scripts/axia_g07_wsl2_cpu_preemption_once.sh"
+GUEST=ROOT/"scripts/axia_g07_wsl2_sched_probe.py"
+HOST=ROOT/"scripts/axia_g07_windows_host_cpu_probe.ps1"
+
+class TestWSL2CpuPreemptionDiagnostic(unittest.TestCase):
+    def test_three_source_files_exist_and_are_valid(self):
+        for file in [ENTRY,GUEST,HOST]:
+            with self.subTest(path=file.name):
+                self.assertTrue(file.is_file())
+        subprocess.run(["bash","-n",str(ENTRY)],check=True)
+        subprocess.run(["python3","-m","py_compile",str(GUEST)],check=True)
+
+    def test_exact_owner_scenario_is_not_modified_or_autoconsented(self):
+        s=ENTRY.read_text()
+        self.assertIn("cd8c23c52588f5efd6295b6904e15b1aa54496e7",s)
+        self.assertIn("axia_g07_task04_owner_moving_l3_once.sh",s)
+        self.assertIn("--self-check",s)
+        self.assertIn("--run",s)
+        self.assertNotIn("echo YES-P2-G07-GOAL",s)
+        self.assertNotIn("pkill -f",s)
+
+    def test_monitor_selftest_contains_synthetic_guest_pause_and_no_host_proof(self):
+        p=subprocess.run(["python3",str(GUEST),"selftest"],text=True,
+                         capture_output=True,timeout=15)
+        self.assertEqual(p.returncode,0,p.stdout+p.stderr)
+        self.assertIn("SIMULATED_350MS_GAP_FOUND",p.stdout)
+        self.assertIn("HOST_CPU_PREEMPTION_UNCONFIRMED",p.stdout)
+
+    def test_sampler_creates_bounded_valid_samples_with_no_ros(self):
+        with tempfile.TemporaryDirectory() as d:
+            out=Path(d)/"guest.jsonl"
+            stop=Path(d)/"done"
+            p=subprocess.Popen(["python3",str(GUEST),"monitor",
+                 "--output",str(out),"--stop",str(stop),
+                 "--interval-ms","40"],stdout=subprocess.PIPE,
+                 stderr=subprocess.PIPE,text=True)
+            try:
+                import time
+                time.sleep(0.4)
+                stop.touch()
+                stdout,stderr=p.communicate(timeout=5)
+            finally:
+                if p.poll() is None:
+                    p.kill();p.wait()
+            self.assertEqual(p.returncode,0,stderr)
+            lines=[json.loads(line) for line in out.read_text().splitlines()]
+            self.assertGreaterEqual(len(lines),4)
+            self.assertTrue(all("mono_ns" in x and "realtime_ns" in x
+                                and "gap_ms" in x for x in lines))
+
+    def test_analyst_does_not_claim_hypervisor_preemption_from_guest_only(self):
+        s=GUEST.read_text()
+        self.assertIn("HOST_CPU_PREEMPTION_UNCONFIRMED",s)
+        self.assertIn("sched_wait_ns",s)
+        self.assertIn("steal_jiffies",s)
+        self.assertIn("first_timing_violation",s)
+        self.assertIn("clock",s.lower())
+        self.assertIn("Scan",s)
+
+if __name__=="__main__":unittest.main()
