@@ -29,6 +29,49 @@ def assess_path(poses,goal=GOAL_MAP):
             'start_xy':list(pts[0]),'end_xy':list(pts[-1]),
             'goal_xy':list(goal)}
 
+def assess_planner_lifecycle_observation(states):
+    """Real GetState ACTIVE is required; Action server discovery is insufficient."""
+    if not states or states[-1] != 'active':
+        raise RuntimeError('D08_PLANNER_LIFECYCLE_NOT_ACTIVE')
+    return {'official_planner_active':True,'observed_states':list(states),
+            'action_server_discovery_is_not_lifecycle_admission':True}
+
+
+def wait_for_planner_active(node,timeout_s=25.0):
+    """Query existing official Planner GetState; bounded, read-only and no Goal."""
+    import rclpy
+    from lifecycle_msgs.srv import GetState
+    states=[]
+    started=time.monotonic()
+    deadline=started+max(0.0,float(timeout_s))
+    cli=node.create_client(GetState,'/planner_server/get_state')
+    try:
+        while time.monotonic()<deadline:
+            if not cli.service_is_ready():
+                rclpy.spin_once(node,timeout_sec=.05)
+                continue
+            future=cli.call_async(GetState.Request())
+            remaining=deadline-time.monotonic()
+            rclpy.spin_until_future_complete(node,future,timeout_sec=min(2.0,max(.01,remaining)))
+            if not future.done() or future.exception() is not None:
+                raise RuntimeError('D08_PLANNER_LIFECYCLE_GET_STATE_NO_ACK')
+            response=future.result()
+            state=str(response.current_state.label)
+            if len(states)<30 or state!=states[-1]:
+                states.append(state)
+            if state=='active':
+                result=assess_planner_lifecycle_observation(states)
+                result['wait_wall_sec']=round(time.monotonic()-started,6)
+                result['native_service']='/planner_server/get_state'
+                print('D08_OFFICIAL_PLANNER_LIFECYCLE_ACTIVE_NO_GOAL '+json.dumps(
+                    result,sort_keys=True),flush=True)
+                return result
+            rclpy.spin_once(node,timeout_sec=.1)
+        raise RuntimeError('D08_PLANNER_LIFECYCLE_NOT_ACTIVE:'+str(states[-5:]))
+    finally:
+        node.destroy_client(cli)
+
+
 def run(out:Path,timeout_s=25,*,initialize_amcl=False,spawn_xy=None):
     import rclpy
     from rclpy.action import ActionClient
@@ -76,6 +119,7 @@ def run(out:Path,timeout_s=25,*,initialize_amcl=False,spawn_xy=None):
                 raise RuntimeError('D08_AMCL_INITIAL_POSE_ACK_NOT_LOCALIZATION')
             print('D08_OFFICIAL_AMCL_REAL_TF_READY_NO_GOAL '+json.dumps(
                 verdict['real_amcl_and_tf'],sort_keys=True),flush=True)
+        verdict['planner_lifecycle']=wait_for_planner_active(node,timeout_s=timeout_s)
         goal=ComputePathToPose.Goal()
         goal.goal.header.frame_id='map'
         goal.goal.header.stamp=node.get_clock().now().to_msg()
