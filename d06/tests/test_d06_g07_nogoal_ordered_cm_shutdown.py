@@ -155,6 +155,75 @@ class NoGoalCMShutdownRegression(unittest.TestCase):
         self.assertEqual(src.count('command="shutdown"'),1)
         self.assertIn('return result("BLOCKED_LIFECYCLE_"+key.upper()',src)
 
+    def test_localization_probe_get_parameters_never_resends_shutdown(self):
+        import sys, types
+        sys.path.insert(0,str(STUDENT/"tools"))
+        spec=importlib.util.spec_from_file_location(
+            "axia_localization_readonly",STUDENT/"tools/p2_g07_ordered_shutdown.py")
+        m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+        class Request:
+            def __init__(self):self.names=[]
+        class GetParameters:
+            Request=Request if False else None
+        GetParameters.Request=Request
+        module=types.ModuleType("rcl_interfaces")
+        srv=types.ModuleType("rcl_interfaces.srv")
+        srv.GetParameters=GetParameters
+        old={k:sys.modules.get(k) for k in ("rcl_interfaces","rcl_interfaces.srv")}
+        sys.modules["rcl_interfaces"]=module
+        sys.modules["rcl_interfaces.srv"]=srv
+        class Future:
+            def done(self):return True
+            def result(self):return types.SimpleNamespace(values=[1])
+        class Client:
+            def __init__(self):self.calls=0
+            def wait_for_service(self,timeout_sec):
+                self.wait_timeout=timeout_sec;return True
+            def call_async(self,request):
+                self.calls+=1
+                assert request.names==["node_names"]
+                return Future()
+        class Node:
+            def __init__(self):self.client=Client()
+            def create_client(self,kind,name):
+                assert kind is GetParameters
+                assert name=="/lifecycle_manager_localization/get_parameters"
+                return self.client
+            def destroy_client(self,c):self.destroyed=True
+            def destroy_node(self):self.node_destroyed=True
+        class Fake:
+            def __init__(self):self.nodes=[]
+            def create_node(self,name,enable_rosout):
+                node=Node();self.nodes.append(node);return node
+            def spin_until_future_complete(self,node,future,timeout_sec):
+                assert timeout_sec<=2
+        fake=Fake()
+        try:
+            verdict=m.probe_localization_parameter_service(fake,timeout_sec=3.0)
+        finally:
+            for key,value in old.items():
+                if value is None:sys.modules.pop(key,None)
+                else:sys.modules[key]=value
+        self.assertEqual(verdict["status"],"PARAMETER_SERVICE_RESPONSIVE")
+        self.assertTrue(verdict["request_sent"])
+        self.assertEqual(fake.nodes[0].client.calls,1)
+        self.assertTrue(fake.nodes[0].destroyed)
+        self.assertTrue(fake.nodes[0].node_destroyed)
+        self.assertFalse(verdict.get("shutdown_ack",False))
+
+    def test_readonly_localization_probe_does_not_run_when_deadline_expired(self):
+        import sys
+        sys.path.insert(0,str(STUDENT/"tools"))
+        spec=importlib.util.spec_from_file_location(
+            "axia_localization_no_extra",STUDENT/"tools/p2_g07_ordered_shutdown.py")
+        m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+        class Fake:
+            def create_node(self,*args,**kwargs):
+                raise AssertionError("NO_EXTRA_DISCOVERY_AFTER_DEADLINE")
+        verdict=m.probe_localization_parameter_service(Fake(),timeout_sec=0)
+        self.assertEqual(verdict["status"],"NOT_RUN_DEADLINE_EXPIRED")
+        self.assertFalse(verdict["request_sent"])
+
     def test_real_l2_requires_full_20s_dual_topic_safe_gate_not_just_cm_exit0(self):
         w=(ROOT/".github/workflows/axia-d06-g07-native-nogoal-cm-clean-l2-20261119.yml").read_text()
         self.assertIn('assert rc==0',w)
