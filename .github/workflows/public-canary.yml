@@ -15,3 +15,28 @@ jobs:
           echo AXIA_PUBLIC_RUNNER_CANARY_OK
           uname -a
           python3 --version
+
+  d08-yaml-diagnostic:
+    if: github.event_name == 'pull_request' && github.head_ref == 'feat/d08-d04-d07-single-session-20261119'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Analyze exact D08 workflow syntax without running Gazebo
+        run: |
+          set -Eeuo pipefail
+          python3 -m pip install -q PyYAML==6.0.2
+          python3 - <<'PY'
+          from pathlib import Path
+          import yaml
+          p=Path(".github/workflows/d08-main-no-goal-real-gazebo-l2.yml")
+          d=yaml.safe_load(p.read_text())
+          jobs=d["jobs"]
+          assert len(jobs)==len(set(jobs)), "D08_DUPLICATE_JOB_NAMES"
+          assert "build-native-witness" in jobs, list(jobs)
+          assert "one-real-gazebo-moving-gui" in jobs, list(jobs)
+          print("D08_MAIN_WORKFLOW_YAML_PARSE_PASS",len(jobs))
+          PY
