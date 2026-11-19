@@ -110,6 +110,14 @@ if source_archive:
                 "task04_rviz.log":("rviz",30000),
                 "task04_gazebo_gui.log":("gazebo_gui",30000),
                 "teardown.txt":("native_teardown_marker.txt",5000),
+                # Exactly the D08 native/ROS receiver stamps for same-session
+                # correlation; bounded traces, no giant ROS logs or SDF.
+                "d06_g07_scan_delivery_layer.json":("d06_g07_scan_delivery_layer.json",25000),
+                "d06_gz_scan_receipts.jsonl":("d06_gz_scan_receipts.jsonl",400000),
+                "d06_ros_scan_receipts.jsonl":("d06_ros_scan_receipts.jsonl",800000),
+                "d06_gz_clock_receipts.jsonl":("d06_gz_clock_receipts.jsonl",400000),
+                "d06_gz_scan_rx.log":("gz_scan",12000),
+                "d06_ros_scan_rx.log":("ros_scan",12000),
             }
             render_errors=[]
             with tarfile.open(src,"r:gz") as tg:
@@ -123,7 +131,7 @@ if source_archive:
                     if len(payload)>desired[name][1]:continue
                     value=payload.decode("utf-8",errors="replace")
                     dest=desired[name][0]
-                    if dest in ("rviz","gazebo_gui"):
+                    if dest in ("rviz","gazebo_gui","gz_scan","ros_scan"):
                         selected=[x[:700] for x in value.splitlines()
                                   if re.search(r"error|exception|shader|GLSL|render|OpenGL|D3D12|"
                                                r"message filter|queue is full|ogre|EGL",x,re.I)]
@@ -139,6 +147,16 @@ if source_archive:
     except (OSError,ValueError,tarfile.TarError,IndexError):
         native_verified=False
 summary["source_archive_sha256_verified"]=native_verified
+layer_file=out/"d06_g07_scan_delivery_layer.json"
+try:
+    causal=json.loads(layer_file.read_text(encoding="utf-8")) if layer_file.exists() else {}
+except (OSError,ValueError):
+    causal={}
+summary["same_session_native_ros_candidate"]=causal.get("candidate","NOT_MEASURED")
+summary["source_pair_causality_proven"]=False
+summary["native_transport_rx_observed"]=bool(causal.get("native_count",0)>0)
+summary["ros_rx_observed"]=bool(causal.get("observer_raw_count",0)>0)
+summary["no_goal_acceptance"]=False
 (out/"summary.json").write_text(
     json.dumps(summary,indent=2,sort_keys=True,ensure_ascii=False)+"\n",encoding="utf-8")
 markers=re.compile("G07_WSLG_NO_GOAL_SENSOR_|AXIA_G07_WSLG_NO_GOAL_SENSOR_TRUTH|D06_WSLG_NO_GOAL_SENSOR_|D06_GAZEBO_LIVE_RELEASE|D06_WSLG_NO_GOAL_RAW_ARCHIVE")
