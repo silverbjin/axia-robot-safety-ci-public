@@ -16,7 +16,8 @@ from d08_scan_gap_trace import (first_scan_receive_gap, diagnose_first_receive_b
                                 scan_gap_operation_overlaps,
                                 analyze_process_heartbeat_gap,
                                 classify_executor_stack_frames,
-                                diagnose_spin_once_during_scan_gap)
+                                diagnose_spin_once_during_scan_gap,
+                                spin_trace_window_proof)
 import json
 import math
 from pathlib import Path
@@ -823,8 +824,18 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
                 n2=int(round(after["stamp"]*1e9))
                 if n1 in available and n2 in available:
                     pairs.append((after["at"]-before["at"],before,after,n1,n2))
-            if pairs:
-                biggest,before,after,n1,n2=max(pairs,key=lambda x:x[0])
+            # If a FIRST >500ms violation exists, its exact source pair
+            # takes priority over a later, possibly larger/recovered gap.
+            first_boundary=result.get("first_scan_timing_boundary")
+            if first_boundary:
+                matching=[p for p in pairs
+                    if p[3]==first_boundary.get("previous_ros_stamp_ns")
+                    and p[4]==first_boundary.get("current_ros_stamp_ns")]
+                selected=matching[0] if matching else None
+            else:
+                selected=max(pairs,key=lambda x:x[0]) if pairs else None
+            if selected:
+                biggest,before,after,n1,n2=selected
                 pair={"previous_ros_stamp_ns":n1,
                       "current_ros_stamp_ns":n2,
                       "previous_host_monotonic_sec":round(before["at"],6),
@@ -856,11 +867,15 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
                     if x["end_sec"]>=pair["previous_host_monotonic_sec"]-.06
                     and x["start_sec"]<=pair["current_host_monotonic_sec"]+.06
                 ][:32]
-                if len(spin_events)>=SPIN_ONCE_HISTORY_LIMIT or not cmp[
-                        "executor_spin_once_worst_gap"]["bracketed"]:
+                cmp["executor_spin_once_pair_proof"]=spin_trace_window_proof(
+                    first_boundary,pair,
+                    cmp["executor_spin_once_worst_gap"],
+                    result["executor_spin_once_trace_summary"]["history_complete"],
+                    cmp["source_pair_matched"])
+                if not cmp["executor_spin_once_pair_proof"]["proven"]:
                     result["status"]="HOLD"
                     result.setdefault("first_boundary",
-                        "D08_EXECUTOR_SPIN_ONCE_TRACE_INCOMPLETE")
+                        "D08_EXECUTOR_SPIN_ONCE_FIRST_GAP_PAIR_UNVERIFIED")
                 scoped_stacks=[item for item in executor_stall_stack_samples
                     if pair["previous_host_monotonic_sec"]<=
                        item["host_monotonic_sec"]<=
