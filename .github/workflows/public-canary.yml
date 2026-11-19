@@ -66,3 +66,28 @@ jobs:
             fi
           done
           echo D08_HOST_X11_INVENTORY_COMPLETE_NOT_GAZEBO
+      - name: Preserve exact Ubuntu24 runner Xvfb and dynamic dependencies
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          stage="$RUNNER_TEMP/d08-host-xvfb-payload"
+          mkdir -p "$stage" "$RUNNER_TEMP/d08-host-xvfb-artifact"
+          test -x /usr/bin/Xvfb
+          cp -L --parents /usr/bin/Xvfb "$stage"
+          ldd /usr/bin/Xvfb | awk '
+            /=> \\// {print $3}
+            /^[[:space:]]*\\// {print $1}
+          ' | sort -u | while IFS= read -r library;do
+            test -f "$library" || exit 2
+            cp -L --parents "$library" "$stage"
+          done
+          tar -C "$stage" -czf "$RUNNER_TEMP/d08-host-xvfb-artifact/xvfb-ubuntu24.tgz" .
+          (cd "$RUNNER_TEMP/d08-host-xvfb-artifact" && sha256sum xvfb-ubuntu24.tgz > SHA256SUMS)
+          du -h "$RUNNER_TEMP/d08-host-xvfb-artifact/xvfb-ubuntu24.tgz"
+          echo D08_HOST_XVFB_EXACT_UBUNTU24_DEPS_ARCHIVED_NO_GAZEBO
+      - uses: actions/upload-artifact@v4
+        with:
+          name: d08-host-xvfb-ubuntu24-${{ github.run_id }}
+          path: ${{ runner.temp }}/d08-host-xvfb-artifact/
+          retention-days: 7
+          if-no-files-found: error
