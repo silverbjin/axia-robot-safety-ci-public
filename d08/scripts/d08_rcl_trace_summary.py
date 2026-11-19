@@ -52,7 +52,7 @@ def _host_monotonic_from_trace_time(t, clock_anchor):
     return round(clock_anchor["monotonic_ns"]/1e9+delta,6)
 
 
-def parse_events(lines, clock_anchor=None):
+def parse_events(lines, clock_anchor=None, rows_out=None):
     rcl_owner = {"publish": {}, "take": {}}
     rmw_owner = {"publish": {}, "take": {}}
     counts = collections.Counter()
@@ -60,6 +60,7 @@ def parse_events(lines, clock_anchor=None):
     processes = {}
     node_names = {}
     receiver_node_handles = {}
+    publisher_node_handles = {}
     parsed = 0
     rmw_scan_events = []
     rmw_scan_event_overflow = False
@@ -89,10 +90,12 @@ def parse_events(lines, clock_anchor=None):
                 rcl_owner[direction][(pid,m_rcl.group(1))] = m_topic.group(1)
             if m_topic and m_rmw:
                 rmw_owner[direction][(pid,m_rmw.group(1))] = m_topic.group(1)
-            if direction == "take" and m_rmw:
+            if m_rmw:
                 node_handle=NODE_HANDLE.search(line)
                 if node_handle:
-                    receiver_node_handles[(pid,m_rmw.group(1))]=node_handle.group(1)
+                    mapping=(receiver_node_handles if direction=="take"
+                             else publisher_node_handles)
+                    mapping[(pid,m_rmw.group(1))]=node_handle.group(1)
             continue
 
         if kind == "rcl_take":
@@ -192,6 +195,18 @@ def parse_events(lines, clock_anchor=None):
     worst=max(matched,key=lambda x:x[0]) if matched else None
     receiver_node=(node_names.get((worst[1],receiver_node_handles.get((worst[1],worst[5]))))
                    if worst else None)
+    if rows_out is not None:
+        for direction,pid,handle,stamp,at in rmw_scan_events:
+            handles=(receiver_node_handles if direction=="take"
+                     else publisher_node_handles)
+            name=node_names.get((pid,handles.get((pid,handle))))
+            process=processes.get(pid)
+            if not name and direction=="publish" and process in ("parameter_bridg","parameter_bridge"):
+                name="parameter_bridge"
+            rows_out.append({
+                "direction":direction, "pid":pid,"handle":handle,
+                "node":name,"process":process,"source_timestamp":stamp,
+                "host_monotonic_sec":_host_monotonic_from_trace_time(at,clock_anchor)})
     joined={
         "state":("SOURCE_TIMESTAMP_JOIN_ONLY"
                  if len(matched)>=2 and not rmw_scan_event_overflow
@@ -231,9 +246,16 @@ def main():
     ap=argparse.ArgumentParser()
     ap.add_argument("--out",type=Path,required=True)
     ap.add_argument("--clock-anchor",type=Path)
+    ap.add_argument("--rmw-rows-out",type=Path)
     args=ap.parse_args()
     anchor=json.loads(args.clock_anchor.read_text()) if args.clock_anchor else None
-    result=parse_events(sys.stdin,clock_anchor=anchor)
+    source_rows=[] if args.rmw_rows_out else None
+    result=parse_events(sys.stdin,clock_anchor=anchor,rows_out=source_rows)
+    if args.rmw_rows_out:
+        args.rmw_rows_out.parent.mkdir(parents=True,exist_ok=True)
+        with args.rmw_rows_out.open("w") as output:
+            for row in source_rows:
+                output.write(json.dumps(row,sort_keys=True)+"\n")
     args.out.parent.mkdir(parents=True,exist_ok=True)
     args.out.write_text(json.dumps(result,indent=2,sort_keys=True)+"\n")
     print("D08_BRIDGE_RCL_TRACE_EVENTS="+json.dumps(result["trace_event_counts"],sort_keys=True))
