@@ -263,6 +263,42 @@ class ForensicOneShot(unittest.TestCase):
             self.assertIsNone(summary["owner_exit_code"])
             self.assertFalse(summary["no_goal_acceptance"])
 
+    def test_tcljt2qc_exact_existing_directory_selected_not_unrelated_newer_run(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home=Path(tmp)
+            previous=fake_record(home)
+            target=previous.parent/"ab-no-goal-TCljt2Qc"
+            target.mkdir()
+            (target/"nvidia.run.log").write_text(
+                "D06_G07_NATIVE_PROBE_IMPORT_MISSING_NO_GOAL\n")
+            (target/"attempt_state.txt").write_text(
+                "phase=OWNER_FINISHED\nowner_rc=3\nouter_rc=3\nmode=--nvidia-causal\n")
+            env={"PATH":os.environ["PATH"],"HOME":str(home),
+                 "GITHUB_ACTIONS":"true",
+                 "AXIA_D06_FORENSIC_TARGET":"ab-no-goal-TCljt2Qc"}
+            run=subprocess.run(["bash",str(SCRIPT),"--analyze-existing"],
+                env=env,capture_output=True,text=True,timeout=15)
+            self.assertEqual(run.returncode,0,(run.stdout,run.stderr))
+            self.assertIn("ab-no-goal-TCljt2Qc",run.stdout)
+            archive=target.parent/"d06-forensic-ab-no-goal-TCljt2Qc.tar.gz"
+            with tarfile.open(archive,"r:gz") as tf:
+                summary=json.load(tf.extractfile("forensic/summary.json"))
+            self.assertEqual(summary["first_owner_failure_marker"],
+                             "D06_G07_NATIVE_PROBE_IMPORT_MISSING_NO_GOAL")
+            self.assertEqual(summary["sensor_status"],"UNMEASURED")
+            self.assertFalse(summary["source_archive_sha256_verified"])
+
+    def test_replay_target_path_traversal_denied_before_archive(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home=Path(tmp);fake_record(home)
+            env={"PATH":os.environ["PATH"],"HOME":str(home),
+                 "GITHUB_ACTIONS":"true",
+                 "AXIA_D06_FORENSIC_TARGET":"../another_directory"}
+            run=subprocess.run(["bash",str(SCRIPT),"--analyze-existing"],
+                env=env,capture_output=True,text=True,timeout=15)
+            self.assertEqual(run.returncode,3,(run.stdout,run.stderr))
+            self.assertIn("D06_FORENSIC_INVALID_TARGET_NO_GOAL",run.stderr)
+
     def test_launch_trap_records_original_failure_phase_before_archive(self):
         source=SCRIPT.read_text()
         self.assertIn("D06_STAGE=GPU_PREFLIGHT",source)
