@@ -57,6 +57,7 @@ jobs:
             d08/tests/test_d08_spin_once_sparse_evidence.py \
             d08/tests/test_d08_ros_trace_preflight.py \
             d08/tests/test_d08_first_ros_input_gate_custody.py \
+            d08/tests/test_d08_ros_cross_process_arrival_order.py \
             d08/tests/test_d08_native_probe_apt_contract.py \
             d08/tests/test_d08_independent_clock_evidence_history.py \
             d08/tests/test_d08_yolo_archive_gate.py \
