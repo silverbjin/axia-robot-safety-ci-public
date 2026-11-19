@@ -180,6 +180,14 @@ jobs:
               echo "=== FIRST NATIVE MOVING EVIDENCE === ${f##*/}"
               tail -n 90 "$f"
             done
+            echo '=== FIRST LOCALIZATION LIFECYCLE TRANSITION ==='
+            if [[ -f "$GITHUB_WORKSPACE/native/launch.log" ]];then
+              grep -En 'lifecycle_manager_localization|\[amcl-|\[map_server-' "$GITHUB_WORKSPACE/native/launch.log" | tail -n 100 || true
+              grep -En 'AXIA_G07_WORLD_(SDF_VALID|XACRO_FIRST_FAILURE)' "$GITHUB_WORKSPACE/native/launch.log" | tail -n 8 || true
+            fi
+            if [[ -f "$GITHUB_WORKSPACE/native/g07_ordered_shutdown.json" ]];then
+              head -c 2600 "$GITHUB_WORKSPACE/native/g07_ordered_shutdown.json"
+            fi
             exit 3
           fi
           windows_count=$((rviz_seen+gazebo_seen))
