@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 72f58fd67fe57a808ec11100c5f6c04e3a8de4cc
+          ref: efff0fb8bf941de74572336d1988dfb0005e11f7
           path: student
           persist-credentials: false
       - name: Check actual PTY accept deny timeout EOF and Owner first failure, no ROS
@@ -34,9 +34,11 @@ jobs:
           cd "$GITHUB_WORKSPACE/student/block_B/day07/h01_runtime/tools"
           PYTHONDONTWRITEBYTECODE=1 timeout 45s python3 -m unittest -v test_g07_task04_owner_tty_pty
           STUDENT_RC=$?
+          PYTHONDONTWRITEBYTECODE=1 timeout 20s python3 -m unittest -v test_g07_task04_owner_shell_contract
+          SHELL_RC=$?
           set -e
-          echo "AXIA_G07_HFBM_PTY_L0_TEST_RESULTS ci_rc=$CI_RC student_rc=$STUDENT_RC"
-          if (( CI_RC != 0 || STUDENT_RC != 0 ));then
+          echo "AXIA_G07_HFBM_PTY_L0_TEST_RESULTS ci_rc=$CI_RC student_rc=$STUDENT_RC shell_rc=$SHELL_RC"
+          if (( CI_RC != 0 || STUDENT_RC != 0 || SHELL_RC != 0 ));then
             echo 'AXIA_G07_HFBM_PTY_L0_RED_REPRODUCED' >&2
             exit 1
           fi
