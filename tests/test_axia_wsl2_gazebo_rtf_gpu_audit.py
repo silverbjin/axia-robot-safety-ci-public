@@ -102,3 +102,28 @@ def test_cli_self_check_and_offline_artifacts(tmp_path):
         assert "summary.json" in z.namelist()
         assert "SHA256SUMS" in z.namelist()
         assert all("environ" not in name for name in z.namelist())
+
+
+def test_two_partition_servers_fail_closed_and_single_partition_is_selected():
+    m = module()
+    servers = [
+        {"pid": 101, "role": "gazebo_server_candidate",
+         "env": {"GZ_PARTITION": "axia_a"}},
+        {"pid": 102, "role": "gazebo_server_candidate",
+         "env": {"GZ_PARTITION": "axia_b"}},
+    ]
+    chosen, partition, status = m.choose_server(servers, None, None)
+    assert chosen is None and partition is None
+    assert status == "MULTIPLE_OR_UNIDENTIFIED_GAZEBO_PARTITIONS"
+    chosen, partition, status = m.choose_server(servers, 102, None)
+    assert chosen["pid"] == 102 and partition == "axia_b"
+    chosen, partition, status = m.choose_server(servers, 102, "axia_a")
+    assert chosen is None and status == "SERVER_PID_PARTITION_MISMATCH"
+
+
+def test_server_and_gui_roles_are_not_conflated():
+    m = module()
+    assert m.process_role(["gz", "sim", "-s", "-r"], "gz") == "gazebo_server_candidate"
+    assert m.process_role(["gz", "sim", "-g", "-v", "4"], "gz") == "gazebo_gui"
+    assert m.process_role(["rviz2", "-d", "config.rviz"], "rviz2") == "rviz2"
+    assert m.process_role(["bash"], "bash") is None
