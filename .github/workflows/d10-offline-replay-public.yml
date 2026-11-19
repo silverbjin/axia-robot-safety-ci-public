@@ -1,0 +1,57 @@
+name: AXIA D10 recorded replay public UI contract L0
+on:
+  push:
+    branches: ['feat/d10-live-replay-*']
+    paths: ['d10/replay/**', '.github/workflows/d10-offline-replay-public.yml']
+  pull_request:
+    paths: ['d10/replay/**', '.github/workflows/d10-offline-replay-public.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  replay-public-l0:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          path: public
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: d82060d36f86ed0f033d691ad418652594013ac1
+          path: student
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - name: Immutable student synthetic C01 fixture
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p evidence
+          ACTUAL="$(git -C student rev-parse HEAD)"
+          test "$ACTUAL" = d82060d36f86ed0f033d691ad418652594013ac1
+          echo "D10_PUBLIC_REPLAY_STUDENT_PIN=$ACTUAL" | tee evidence/pin.log
+          python3 student/block_C/fixtures/generator.py --check \
+            --fixture-dir student/block_C/fixtures | tee evidence/fixture.log
+      - name: D10 recorded-replay public L0 regression (NO teacher checkout)
+        shell: bash
+        env:
+          AXIA_D10_PUBLIC_FIXTURE_DIR: student/block_C/fixtures
+        run: |
+          set -Eeuo pipefail
+          node --version | tee evidence/node_version.log
+          PYTHONPATH=public/d10/replay python3 -m unittest discover \
+            -s public/d10/replay -p test_replay.py -v 2>&1 | tee evidence/replay_tests.log
+          bash -n public/d10/replay/owner_one_shot.sh
+          python3 -m py_compile public/d10/replay/build_replay.py
+          echo D10_REPLAY_PUBLIC_L0_PASS_TESTS_6_NO_PRIVATE_CHECKOUT_ROS_GAZEBO_NOT_RUN | tee evidence/verdict.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: axia-d10-replay-public-evidence
+          path: evidence/
+          retention-days: 7
+          if-no-files-found: warn
