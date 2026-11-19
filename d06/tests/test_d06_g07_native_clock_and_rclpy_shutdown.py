@@ -85,6 +85,22 @@ class ActualNativeFirstBreach(unittest.TestCase):
         self.assertEqual(called["try"],1)
         self.assertEqual(called["shutdown"],0)
 
+    def test_owner_cm_only_segv_and_300ms_hard_ttl_are_independent_blocks(self):
+        d=json.loads(FIX.read_text());m=load()
+        result=m.historical_verdict({
+            "raw":{"max_host_gap_sec":d["owner"]["raw_max_gap_sec"]},
+            "safety":{"max_host_gap_sec":d["owner"]["safety_max_gap_sec"]},
+            "process_crashes":d["owner"]["process_crashes"],
+        })
+        self.assertEqual(result["process_crashes"],["collision_monitor"])
+        self.assertEqual(result["reasons"],[
+            "SAFETY_RECEIPT_TTL_300MS_BLOCKED",
+            "RAW_RECEIPT_TTL_300MS_BLOCKED",
+            "NATIVE_CHILD_EXIT_MINUS_11",
+        ])
+        self.assertEqual(result["release"],"HOLD")
+        self.assertFalse(result["goal_allowed"])
+
     def test_actual_owner_cm_crash_remains_hold_after_clock_diagnosis(self):
         d=json.loads(FIX.read_text());self.assertEqual(d["owner"]["process_crashes"],["collision_monitor"])
         self.assertEqual(d["owner"]["teardown"],"P2_L2_FORCED_TEARDOWN")
