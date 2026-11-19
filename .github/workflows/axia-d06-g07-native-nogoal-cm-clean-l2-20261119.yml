@@ -50,7 +50,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: ad86587c30e41a2bbc291c0418bdddd6dcea974f
+          ref: df911a88f88f70a7e622170b55678ee821423d8f
           path: student
           persist-credentials: false
       - name: Exact public Student and official lifecycle offline contract
@@ -58,7 +58,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           test "$(git -C ci rev-parse HEAD)" = "$GITHUB_SHA"
-          test "$(git -C student rev-parse HEAD)" = 'ad86587c30e41a2bbc291c0418bdddd6dcea974f'
+          test "$(git -C student rev-parse HEAD)" = 'df911a88f88f70a7e622170b55678ee821423d8f'
           cd student/block_B/day07/h01_runtime
           set +u; source /opt/ros/jazzy/setup.bash;set -u
           bash -n scripts/p2_no_goal_smoke_ci.sh
@@ -217,6 +217,10 @@ jobs:
           teardown=(root/"teardown.txt").read_text()
           print("AXIA_D06_L2_FIRST_SENSOR_STATUS="+str(sensor.get("status"))+
                 " reasons="+repr(sensor.get("reasons")))
+          # First boundary evidence when Localization SHUTDOWN was sent,
+          # response timed out: classify manager parameter-service liveness.
+          print("AXIA_D06_L2_LOCALIZATION_FIRST_TIMEOUT_PROBE="+
+                str(nav.get("localization_parameter_probe","NOT_TRIGGERED")))
           print("AXIA_D06_L2_NAV2_SHUTDOWN="+str(nav.get("status"))+
                 " nav_ack="+str(nav.get("navigation_ack"))+
                 " loc_ack="+str(nav.get("localization_ack")))
