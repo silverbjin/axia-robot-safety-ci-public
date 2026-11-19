@@ -52,11 +52,14 @@ def probe_rclpy(domain_id):
         name="axia_g07_domain_probe_"+str(os.getpid())
         node=rclpy.create_node(name,context=ctx,enable_rosout=False,
                                use_global_arguments=False)
-        # Actual DDS endpoint discovery, not cached 'ros2 daemon' results.
-        # Bounded at ~1.8s per candidate; CI with an occupied graph must
-        # reject the candidate instead of hoping a stale /clock goes away.
+        # DDS endpoint discovery runs in RMW's background participant threads.
+        # No subscriptions, callbacks or Executor are needed here. Using
+        # rclpy.spin_once() with a custom Context can select the GLOBAL
+        # default-context executor (Jazzy) and fail with TypeError; real
+        # public ROS L1 #44547906061 reproduced that API error.
+        import time
         for _ in range(6):
-            rclpy.spin_once(node,timeout_sec=.3)
+            time.sleep(.3)
         peers=sum(1 for n,ns in node.get_node_names_and_namespaces()
                   if n!=name or ns!="/")
         return {"node_count":peers,
