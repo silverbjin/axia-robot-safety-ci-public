@@ -110,6 +110,9 @@ if source_archive:
                 "task04_rviz.log":("rviz",30000),
                 "task04_gazebo_gui.log":("gazebo_gui",30000),
                 "teardown.txt":("native_teardown_marker.txt",5000),
+                "g07_ordered_shutdown.json":("native_nav2_ordered_shutdown.json",16000),
+                "g07_shutdown_audit.json":("native_cm_shutdown_audit.json",16000),
+                "g07_ordered_shutdown.log":("native_nav2_ordered_shutdown.log",22000),
                 # Exactly the D08 native/ROS receiver stamps for same-session
                 # correlation; bounded traces, no giant ROS logs or SDF.
                 "d06_g07_scan_delivery_layer.json":("d06_g07_scan_delivery_layer.json",25000),
@@ -157,6 +160,30 @@ summary["source_pair_causality_proven"]=False
 summary["native_transport_rx_observed"]=bool(causal.get("native_count",0)>0)
 summary["ros_rx_observed"]=bool(causal.get("observer_raw_count",0)>0)
 summary["no_goal_acceptance"]=False
+# A parent shutdown marker never overrides actual CM abnormal exit.
+# These fields make independent Nav2 ACK and process exit checks self-contained
+# in the same compact ZIP, even if the original Scan300 gate returns rc3.
+nav={}
+audit={}
+if native_verified:
+    try: nav=json.loads((out/"native_nav2_ordered_shutdown.json").read_text(encoding="utf-8"))
+    except (OSError,ValueError): pass
+    try: audit=json.loads((out/"native_cm_shutdown_audit.json").read_text(encoding="utf-8"))
+    except (OSError,ValueError): pass
+summary["native_no_goal_navigation_ack"]=nav.get("navigation_ack")
+summary["native_no_goal_localization_ack"]=nav.get("localization_ack")
+summary["native_no_goal_cm_exit_code"]=audit.get("cm_exit_code")
+summary["native_no_goal_cm_clean_candidate"]=(
+    nav.get("status")=="NAV2_LIFECYCLE_SHUTDOWN_ACK"
+    and nav.get("navigation_ack") is True
+    and nav.get("localization_ack") is True
+    and nav.get("cm_managed_by_navigation") is True
+    and audit.get("status")=="SHUTDOWN_CLEAN_CANDIDATE"
+    and audit.get("cm_exit_code")==0
+    and not any(crash=="collision_monitor" for crash in crashes)
+    and "FORCED" not in "\\n".join(read("nvidia.run.log"))
+)
+
 (out/"summary.json").write_text(
     json.dumps(summary,indent=2,sort_keys=True,ensure_ascii=False)+"\n",encoding="utf-8")
 markers=re.compile("G07_WSLG_NO_GOAL_SENSOR_|AXIA_G07_WSLG_NO_GOAL_SENSOR_TRUTH|D06_WSLG_NO_GOAL_SENSOR_|D06_GAZEBO_LIVE_RELEASE|D06_WSLG_NO_GOAL_RAW_ARCHIVE|D06_G07_NATIVE|D06_G07_RX_WITNESS|D06_G07_FIRST_SCAN_TTL_HOLD")
@@ -177,6 +204,12 @@ print("D06_FORENSIC_FIRST_SENSOR_FAILURE="+first,flush=True)
 print("D06_FORENSIC_PROCESS_CRASH="+(",".join(crashes) if crashes else "NONE_OBSERVED"),flush=True)
 print("D06_FORENSIC_RTF="+str(report.get("rtf_diagnostics",{}).get("ros_clock_rtf","UNMEASURED")),flush=True)
 print("D06_FORENSIC_SCOPE=NO_GOAL_MOVING_L3_HOLD",flush=True)
+print("D06_FORENSIC_NO_GOAL_NAV2_ACK="+str(
+    summary.get("native_no_goal_navigation_ack"))+"/"+str(
+    summary.get("native_no_goal_localization_ack"))+
+    " CM_NATIVE_EXIT_CODE="+str(summary.get("native_no_goal_cm_exit_code"))+
+    " CLEAN_CANDIDATE="+str(summary.get("native_no_goal_cm_clean_candidate"))+
+    " SENSOR_TTL_GATE_UNCHANGED",flush=True)
 PY
   archive="$ROOT/d06-forensic-$(basename "$d").tar.gz"
   tar -C "$d" -czf "$archive" forensic
