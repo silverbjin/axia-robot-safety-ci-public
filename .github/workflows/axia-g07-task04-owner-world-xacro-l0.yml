@@ -26,5 +26,5 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest -v discover -s student/block_B/tests -p test_g07_task04_world_xacro_order.py
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -v -s student/block_B/tests -p test_g07_task04_world_xacro_order.py
           echo 'AXIA_G07_TASK04_WORLD_XACRO_ORDER_L0_PASS_NO_ROS'
