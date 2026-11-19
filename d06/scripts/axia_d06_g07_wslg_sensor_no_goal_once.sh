@@ -6,9 +6,9 @@ MODE="${1:---run}"
 [[ $# -le 1 && ( "$MODE" == --run || "$MODE" == --self-check ) ]] || {
   echo 'D06_WSLG_SENSOR_USAGE=--self-check|--run' >&2;exit 2;
 }
-readonly STUDENT_SHA='e4c2007064bec2103bb743bd27cdbdf0955961b7'
+readonly STUDENT_SHA='835a5285c49300a8d9943d2e19d0c07f3fa06901'
 readonly PROBE_BLOB='f7534b191b78cba4f20aac55e9d227268504a25f'
-readonly SMOKE_BLOB='48203661d92b92517f5ea44f4a0b14cc26b24630'
+readonly SMOKE_BLOB='5a4a97078aacc7f5b382d1c2ebdcdee82d8f09e1'
 readonly LAUNCH_BLOB='b2886cdf509d99ea62528cd013669258764b05e0'
 readonly REPO='https://github.com/silverbjin/axia-robot-safety-student.git'
 readonly REL='block_B/day07/h01_runtime'
@@ -99,6 +99,9 @@ export AXIA_G07_OWNER_STARTUP_PARITY=1
 export AXIA_P2_G07_PHYSICAL_PREFLIGHT=1
 export AXIA_P2_G07_RELOCATED_OBSTACLE=1
 export AXIA_G07_OWNER_SENSOR_TRUTH_NO_GOAL=1
+# Official Nav2 Lifecycle Manager cleanly shuts down CM before launch SIGINT;
+# preserve any earlier sensor TTL FAIL and require real CM process exit0.
+export AXIA_G07_NO_GOAL_ORDERED_SHUTDOWN=1
 export AXIA_G07_CI_SIM_GOAL_ALLOWED=0
 export AXIA_G07_TASK04_OWNER_MOVING_L3=0
 export AXIA_G07_TASK04_CI_GUI_MOVING=0
