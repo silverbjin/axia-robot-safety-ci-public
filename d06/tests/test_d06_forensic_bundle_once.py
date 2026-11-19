@@ -299,6 +299,29 @@ class ForensicOneShot(unittest.TestCase):
             self.assertEqual(run.returncode,3,(run.stdout,run.stderr))
             self.assertIn("D06_FORENSIC_INVALID_TARGET_NO_GOAL",run.stderr)
 
+    def test_enriched_tcljt2qc_archive_must_never_overwrite_original_evidence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d=fake_record(Path(tmp))
+            original=d.parent/("d06-forensic-"+d.name+".tar.gz")
+            preserved=b"ORIGINAL_IMMUTABLE_TCLJT2QC_EVIDENCE"
+            original.write_bytes(preserved)
+            original_sha=__import__("hashlib").sha256(original.read_bytes()).hexdigest()
+            env={"PATH":os.environ["PATH"],"HOME":str(Path(tmp)),
+                 "GITHUB_ACTIONS":"true",
+                 "AXIA_D06_FORENSIC_TARGET":d.name}
+            run=subprocess.run(["bash",str(SCRIPT),"--analyze-existing"],
+                 env=env,capture_output=True,text=True,timeout=15)
+            self.assertEqual(run.returncode,0,(run.stdout,run.stderr))
+            self.assertEqual(original.read_bytes(),preserved)
+            self.assertEqual(__import__("hashlib").sha256(original.read_bytes()).hexdigest(),original_sha)
+            emitted=run.stdout.split("D06_FORENSIC_ARCHIVE=")[-1].splitlines()[0].strip()
+            self.assertNotEqual(Path(emitted),original)
+            self.assertIn("-recovered-",Path(emitted).name)
+            with tarfile.open(emitted,"r:gz") as tf:
+                self.assertIn("forensic/first_preflight_or_owner_failure.txt",tf.getnames())
+            side=Path(emitted+".sha256")
+            self.assertTrue(side.is_file())
+
     def test_launch_trap_records_original_failure_phase_before_archive(self):
         source=SCRIPT.read_text()
         self.assertIn("D06_STAGE=GPU_PREFLIGHT",source)
