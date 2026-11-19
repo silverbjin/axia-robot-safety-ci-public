@@ -78,6 +78,8 @@ jobs:
           Xvfb :96 -screen 0 1600x900x24 -nolisten tcp > "$GITHUB_WORKSPACE/xvfb.log" 2>&1 &
           xvfb_pid=$!
           runner_pid=''
+          native_rx_pid=''
+          ros_rx_pid=''
           cleanup() {
             trap - EXIT
             set +e
@@ -87,12 +89,45 @@ jobs:
               kill -TERM -- "-$runner_pid" 2>/dev/null || true
               wait "$runner_pid" 2>/dev/null || true
             fi
+            for witness_pid in "$native_rx_pid" "$ros_rx_pid";do
+              if [[ -n "$witness_pid" ]];then
+                kill -TERM "$witness_pid" 2>/dev/null || true
+                wait "$witness_pid" 2>/dev/null || true
+              fi
+            done
             kill -TERM "$xvfb_pid" 2>/dev/null || true
             wait "$xvfb_pid" 2>/dev/null || true
           }
           trap cleanup EXIT
           sleep 2
           kill -0 "$xvfb_pid"
+          # Independent native Gazebo + ROS witness in the SAME real Gazebo
+          # simulation, no second world, no Goal. D08 implementation pinned.
+          if ! /usr/bin/python3 -c 'from gz.transport13 import Node; from gz.msgs10.laserscan_pb2 import LaserScan; from gz.msgs10.clock_pb2 import Clock' >/dev/null 2>&1;then
+            apt-get update -qq
+            DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends python3-gz-transport13 python3-gz-msgs10
+          fi
+          curl -fLsS --retry 3 --max-time 80 \
+            "https://raw.githubusercontent.com/silverbjin/axia-robot-safety-ci-public/30fad621f7916dd8a320489beb46fff8ae0ccf43/d08/harness/d08_gz_native_scan_probe.py" \
+            -o "$GITHUB_WORKSPACE/native/d08_gz_native_scan_probe.py"
+          test "$(git hash-object "$GITHUB_WORKSPACE/native/d08_gz_native_scan_probe.py")" = '7d5f18c5fd6255c83100e29d651b6f4d52ed000d'
+          /usr/bin/python3 -m py_compile "$GITHUB_WORKSPACE/native/d08_gz_native_scan_probe.py" "$GITHUB_WORKSPACE/ci/d06/tools/d06_g07_scan_rx_witness.py"
+          /usr/bin/python3 -u "$GITHUB_WORKSPACE/native/d08_gz_native_scan_probe.py" \
+            --topic /scan --out "$GITHUB_WORKSPACE/native/d06_gz_scan_receipts.jsonl" \
+            --clock-out "$GITHUB_WORKSPACE/native/d06_gz_clock_receipts.jsonl" \
+            > "$GITHUB_WORKSPACE/native/d06_gz_scan_rx.log" 2>&1 &
+          native_rx_pid=$!
+          /usr/bin/python3 -u "$GITHUB_WORKSPACE/ci/d06/tools/d06_g07_scan_rx_witness.py" \
+            --capture --ros-jsonl "$GITHUB_WORKSPACE/native/d06_ros_scan_receipts.jsonl" \
+            --output "$GITHUB_WORKSPACE/native/d06_ros_capture_unused.json" \
+            > "$GITHUB_WORKSPACE/native/d06_ros_scan_rx.log" 2>&1 &
+          ros_rx_pid=$!
+          sleep 2
+          kill -0 "$native_rx_pid" "$ros_rx_pid" || {
+            echo 'AXIA_D06_G07_NATIVE_ROS_SAME_SESSION_WITNESS_NOT_ALIVE_BEFORE_SMOKE' >&2
+            exit 3
+          }
+          echo 'AXIA_D06_G07_NATIVE_ROS_WITNESSES_STARTED_NO_GOAL'
           cd "$GITHUB_WORKSPACE/student/block_B/day07/h01_runtime"
           setsid timeout --signal=TERM --kill-after=8s 960s \
             bash scripts/p2_no_goal_smoke_ci.sh \
@@ -108,6 +143,27 @@ jobs:
           done
           set +e; wait "$runner_pid"; smoke_rc=$?;set -e
           runner_pid=''
+          # Stop independent observers and classify actual FIRST Student
+          # unsafe source stamp, not global startup or post-READY proxy.
+          kill -TERM "$native_rx_pid" "$ros_rx_pid" 2>/dev/null || true
+          native_rx_rc=0; ros_rx_rc=0
+          wait "$native_rx_pid" || native_rx_rc=$?
+          wait "$ros_rx_pid" || ros_rx_rc=$?
+          native_rx_pid='';ros_rx_pid=''
+          echo "AXIA_D06_G07_WITNESS_EXIT native=$native_rx_rc ros=$ros_rx_rc"
+          if [[ "$native_rx_rc" -ne 0 || "$ros_rx_rc" -ne 0 ]];then
+            cat "$GITHUB_WORKSPACE/native/d06_gz_scan_rx.log" >&2 || true
+            cat "$GITHUB_WORKSPACE/native/d06_ros_scan_rx.log" >&2 || true
+            echo 'AXIA_D06_G07_WITNESS_PROCESS_NONCLEAN_L2' >&2;exit 3
+          fi
+          /usr/bin/python3 "$GITHUB_WORKSPACE/ci/d06/tools/d06_g07_scan_rx_witness.py" \
+            --analyze \
+            --ros-jsonl "$GITHUB_WORKSPACE/native/d06_ros_scan_receipts.jsonl" \
+            --native-jsonl "$GITHUB_WORKSPACE/native/d06_gz_scan_receipts.jsonl" \
+            --native-clock-jsonl "$GITHUB_WORKSPACE/native/d06_gz_clock_receipts.jsonl" \
+            --student-truth "$GITHUB_WORKSPACE/native/g07_wslg_sensor_truth.json" \
+            --startup-verdict "$GITHUB_WORKSPACE/native/startup_verdict.json" \
+            --output "$GITHUB_WORKSPACE/native/d06_g07_scan_delivery_layer.json"
           echo "AXIA_D06_G07_NATIVE_SHUTDOWN_SMOKE_RC=$smoke_rc RVIZ=$rviz_seen GAZEBO=$gazebo_seen"
           python3 - "$GITHUB_WORKSPACE/native" "$smoke_rc" "$rviz_seen" "$gazebo_seen" <<'PY'
           import json,sys,re
@@ -136,6 +192,34 @@ jobs:
           assert sensor["goal_sent"] is False and sensor["fixture_moved"] is False
           assert sensor["metrics"]["raw"]["count"]>=20
           assert sensor["metrics"]["safety"]["count"]>=20
+          paired=json.loads((root/"d06_g07_scan_delivery_layer.json").read_text())
+          assert paired["native_count"]>=20 and paired["observer_raw_count"]>=20
+          assert paired["observer_safety_count"]>=20 and paired["native_clock_count"]>=20
+          actual=paired.get("student_first_ttl",{})
+          first=actual.get("student_first_candidate","NOT_MEASURED")
+          print("AXIA_D06_G07_REAL_FIRST_STUDENT_SCAN_TTL candidate="+first+
+                " topic="+str(actual.get("student_first_topic"))+
+                " native_gap_sec="+str(actual.get("student_first_native_gap_sec"))+
+                " host_gap_sec="+str(actual.get("student_first_host_gap_sec")))
+          compact=sensor.get("scan_receipts_compact",{})
+          assert compact.get("schema")=="axia.g07.first_ttl_host_pair.v1"
+          any_bad=False
+          for topic in ("raw","safety"):
+            bad=sensor["metrics"][topic]["max_receipt_gap_sec"]>.3
+            if bad:
+              any_bad=True
+              assert compact.get(topic), ("MISSING_FIRST_TTL_PAIR",topic)
+              assert compact[topic]["gap_sec"]>.3
+            else:
+              assert compact.get(topic) is None, ("UNEXPECTED_FIRST_TTL_PAIR",topic)
+          if any_bad:
+            assert actual.get("student_first_stamp_pair_verified") is True,(
+              "STUDENT_NATIVE_EXACT_FIRST_PAIR_UNVERIFIED",actual)
+            assert actual.get("student_first_native_gap_sec") is not None
+          else:
+            assert first=="STUDENT_FIRST_PAIR_UNAVAILABLE"
+          # This L2 is scoped to sensor and native teardown; no moving authority.
+
           assert nav["status"]=="NAV2_LIFECYCLE_SHUTDOWN_ACK"
           assert nav["cm_managed_by_navigation"] is True
           assert nav["navigation_ack"] is True and nav["localization_ack"] is True
@@ -166,6 +250,12 @@ jobs:
           path: |
             native/startup_verdict.json
             native/g07_wslg_sensor_truth.json
+            native/d06_g07_scan_delivery_layer.json
+            native/d06_gz_scan_receipts.jsonl
+            native/d06_ros_scan_receipts.jsonl
+            native/d06_gz_clock_receipts.jsonl
+            native/d06_gz_scan_rx.log
+            native/d06_ros_scan_rx.log
             native/g07_ordered_shutdown.json
             native/g07_ordered_shutdown.log
             native/g07_gz_world_pause.log
