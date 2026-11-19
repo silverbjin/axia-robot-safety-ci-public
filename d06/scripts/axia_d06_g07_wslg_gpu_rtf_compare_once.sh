@@ -428,6 +428,95 @@ assert v.get("observer_raw_count",0)>=20 and v.get("observer_safety_count",0)>=2
 assert v.get("native_count",0)>=20
 PY
   fi
+  # D06_OWNER_NO_GOAL_NATIVE_GATE_START
+  # Full native shutdown is not established by a successful sensor candidate,
+  # no SIGSEGV substring, or parent P2_L2_GRACEFUL_TEARDOWN alone.
+  # This is read-only verification of the existing immutable Owner evidence.
+  python3 - "$archive" "$MODE" "$rc" "$sub" <<'PY'
+import json, math, re, sys, tarfile
+archive, mode, owner_rc, root = sys.argv[1:]
+def block(reason):
+    print("D06_OWNER_NO_GOAL_NATIVE_GATE_BLOCKED="+reason,flush=True)
+    raise SystemExit(3)
+try:
+    with tarfile.open(archive,"r:gz") as bundle:
+        def read(name,limit=1500000):
+            info=bundle.getmember(root+"/native/"+name)
+            if not info.isfile() or info.size>limit:
+                block("MISSING_OR_OVERSIZED_"+name.replace("/","_"))
+            with bundle.extractfile(info) as stream:
+                return stream.read().decode("utf-8",errors="replace")
+        sensor=json.loads(read("g07_wslg_sensor_truth.json"))
+        nav=json.loads(read("g07_ordered_shutdown.json"))
+        audit=json.loads(read("g07_shutdown_audit.json"))
+        launch=read("launch.log",limit=3000000)
+        teardown=read("teardown.txt",limit=12000)
+        pause=read("g07_gz_world_pause.log",limit=12000)
+        handoff=False
+        if mode=="--nvidia-causal":
+            signal=read("g07_witness_probe_complete.signal",limit=256)
+            ack=read("g07_witness_stopped.ack",limit=256)
+            handoff=(signal.strip()=="G07_READONLY_SENSOR_PROBE_FINISHED"
+                     and ack.strip()=="G07_READONLY_WITNESSES_STOPPED")
+            if not handoff:block("WITNESS_HANDOFF_MISSING_BEFORE_NAV2")
+except (OSError,KeyError,ValueError,UnicodeError,tarfile.TarError) as exc:
+    block("MISSING_OR_INVALID_NATIVE_EVIDENCE_"+type(exc).__name__)
+if owner_rc!="0":block("ORIGINAL_OWNER_RC_"+owner_rc)
+if (sensor.get("status")!="NO_GOAL_SENSOR_WINDOW_CLEAR_CANDIDATE"
+    or sensor.get("reasons")
+    or sensor.get("goal_sent") is not False
+    or sensor.get("fixture_moved") is not False):
+    block("SENSOR_NOT_CLEAR_OR_GOAL_AUTHORITY")
+warmup=sensor.get("startup_pre_both_scan_diagnostics",{})
+if (not isinstance(warmup,dict)
+    or warmup.get("both_topics_ready") is not True
+    or warmup.get("pre_ready_observations_not_motion_authority") is not True
+    or sensor.get("dual_topic_required_observation_sec")!=20
+    or not isinstance(sensor.get("dual_topic_actual_wall_observation_sec"),(int,float))
+    or sensor["dual_topic_actual_wall_observation_sec"]<20):
+    block("BOTH_TOPIC_FULL_20S_NOT_PROVEN")
+metrics=sensor.get("metrics",{})
+for topic in ("raw","safety"):
+    m=metrics.get(topic,{})
+    gap=m.get("max_receipt_gap_sec")
+    if (not isinstance(gap,(int,float)) or not math.isfinite(gap)
+        or not 0<gap<=.300 or m.get("count",0)<20
+        or m.get("first_receipt_ttl_breach_at_index") is not None):
+        block("SCAN_300MS_"+topic.upper()+"_BLOCKED")
+safe=metrics["safety"]
+if (safe.get("clear_count")!=safe["count"]
+    or not isinstance(safe.get("front_median_m"),(float,int))
+    or not isinstance(safe.get("side_median_m"),(float,int))
+    or not safe["front_median_m"]>.75
+    or not safe["side_median_m"]>1.20):
+    block("SCAN_GEOMETRY_NOT_ALL_CLEAR")
+if (nav.get("status")!="NAV2_LIFECYCLE_SHUTDOWN_ACK"
+    or nav.get("navigation_ack") is not True
+    or nav.get("localization_ack") is not True
+    or nav.get("cm_managed_by_navigation") is not True):
+    block("NAV2_LIFECYCLE_SHUTDOWN_ACK_MISSING")
+if audit.get("status")!="SHUTDOWN_CLEAN_CANDIDATE" or audit.get("cm_exit_code")!=0:
+    block("COLLISION_MONITOR_CHILD_EXIT0_NOT_PROVEN")
+if "P2_L2_GRACEFUL_TEARDOWN" not in teardown or "data: true" not in pause:
+    block("PARENT_TEARDOWN_OR_GAZEBO_PAUSE_MISSING")
+def exited_clean(process):
+    return bool(re.search(
+       r"(?m)^\[INFO\]\s+\["+process+r"-\d+\]: process has finished cleanly",
+       launch))
+def died(process):
+    return bool(re.search(
+       r"(?m)^\[ERROR\]\s+\["+process+r"-\d+\]: process has died",
+       launch))
+if not exited_clean("collision_monitor") or died("collision_monitor"):
+    block("COLLISION_MONITOR_LAUNCH_EXIT0_NOT_PROVEN")
+if not exited_clean("gz") or died("gz"):
+    block("GAZEBO_SERVER_LAUNCH_EXIT0_NOT_PROVEN")
+print("D06_OWNER_NO_GOAL_NATIVE_COMPLETE_CANDIDATE"+
+      " SCAN300_DUAL_20S_PASS NAV2_ACK_PASS CM_CHILD_EXIT0 GZ_CHILD_EXIT0"+
+      " WITNESS_HANDOFF="+str(handoff)+" NO_MOVING_L3 CERTIFIED_ESTOP=false",
+      flush=True)
+PY
+  # D06_OWNER_NO_GOAL_NATIVE_GATE_END
   # A fatal shutdown after NVIDIA must not be followed by another session.
   if grep -Eiq 'exit code -11|SIGSEGV|Segmentation fault' "$RUN_DIR/$lc.launch.log";then
     echo "D06_GPU_RTF_NATIVE_SHUTDOWN_SEGV_HOLD=$gpu" >&2
