@@ -88,11 +88,22 @@ def collect_first_scan_boundary(run_dir):
             pass
     if candidates:
         candidates.sort(key=lambda r:(r["host_end_sec"],r["host_start_sec"]))
-        first=dict(candidates[0])
+        chronological=dict(candidates[0])
+        startup=next((c for c in candidates
+                      if c["scope"]=="initial_amcl_pregoal_recovery"),None)
+        # Preserve the chronological FIRST raw gap, but a pre-Goal AMCL
+        # recovery (including the deliberate CI 650ms pause) must not hide
+        # the FIRST active official-path / Owner-cycle timing violation.
+        steady=next((c for c in candidates
+                     if c["scope"]!="initial_amcl_pregoal_recovery"),None)
+        first=dict(steady or chronological)
+        first["chronological_first_raw_boundary"]=chronological
+        first["initial_pregoal_recovery"]=dict(startup) if startup else None
+        first["selected_for_rmw"]=("FIRST_OFFICIAL_PATH_OR_OWNER_CYCLE"
+                                   if steady else "ONLY_INITIAL_PREGOAL_RECOVERY")
         first["available_first_boundaries_count"]=len(candidates)
         first["inspected_cycle_verdicts"]=checked[:64]
-        first["retains_initial_recovery_boundary"]=any(
-            c["scope"]=="initial_amcl_pregoal_recovery" for c in candidates)
+        first["retains_initial_recovery_boundary"]=startup is not None
         return first
     return {"kind":"NO_FIRST_SCAN_VIOLATION_IN_AVAILABLE_VERDICTS",
             "scope":"D08_NO_GOAL_READONLY",
