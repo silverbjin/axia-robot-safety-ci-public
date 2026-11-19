@@ -1,0 +1,47 @@
+# AXIA D06/G07 Cycle 11 — WSLg Gazebo SIGSEGV 최초 코어 스택: 제한적 단일 진단
+
+작성: 2026-11-20 KST | 공개 Draft PR #177 | 강사 WSL2 L3 최종 인수 **NOT_RUN** | 배포 HOLD
+
+## 1. 원본과 미확정 원인
+
+- 기존 강사 WSL2 NVIDIA D3D12 NO_GOAL 원본 d06-forensic-ab-no-goal-r6YhIvPx.tar.gz SHA256 db6c130218bddbe19bec42a6cde7d46476e404b057e1b66b012beb621a574c98.
+- 원본에서 Nav2 Navigation/Localization ACK, CM exit0, Gazebo server exit-11(SIGSEGV) 확인. 최초 충돌 스택 **NOT_CAPTURED**. parent graceful marker만으로 전체 종료 PASS 불가.
+- 가설 B1: WSLg D3D12 TLS destructor/libraries early unload, 참고 https://github.com/microsoft/wslg/issues/1533 및 https://github.com/microsoft/wslg/issues/1497. B2: Gazebo server/renderer 종료 순서 충돌, 참고 https://github.com/gazebosim/gz-sim/issues/3335. 해당 보고서들이 AXIA 원본 root 원인이라는 증거 **없음**.
+- 최근 C10 실제 Linux Xvfb/CycloneDDS Nav2+Gazebo NO_GOAL L2 Run #44568745545 성공 (raw/safety/native <300ms, Nav/Loc ACK, CM/Gazebo exit0). 이는 강사 NVIDIA WSLg/Gazebo exit-11 해결 증거가 아님.
+
+## 2. 설계된 최소 진단
+
+사용자 현장 오류를 반복 재시도하지 않고 **기존 코어가 있는지 먼저 확인**합니다.
+
+- 진단 스크립트: d06/scripts/axia_d06_g07_wslg_sigsegv_capture_once.sh
+- 순수 PID 검색 helper: d06/tools/d06_wslg_latest_gz_sigsegv_core.py
+- 기존 프로세스 코어 분석 재사용: d06/scripts/axia_d06_g07_wslg_existing_core_once.sh
+- 기존 owner NVIDIA NO_GOAL 진단 그대로 재사용: d06/scripts/axia_d06_g07_wslg_gpu_rtf_compare_once.sh --nvidia-causal
+- 기존 코어 목록에서 gz/gz-sim-server SIGSEGV 11 기록을 찾으면 **실제 Gazebo 재실행 없이** 같은 PID를 GDB batch로 분석합니다.
+- 기존 기록이 없는 경우에 한해 **WSL2 NVIDIA NO_GOAL 한 번만** 시작합니다. systemd-coredump 수집 경로, coredumpctl, GDB, NVIDIA WSLg/GUI 환경이 확인되지 않으면 아예 시작하지 않고 HOLD.
+- 모든 외부 진단 소스는 exact commit SHA 및 Git blob으로 검증. 다른 기존 Gazebo 세션이 있으면 HOLD. 시스템 전역 core_pattern·GPU/Mesa·RMW 설정 변경, sudo/apt 설치, Goal/Twist/Fault/Move, pkill 없음.
+- core soft limit 524288 KiB로 제한하여 새 코어 폭증 위험을 낮춤. 실제 OS coredump handler가 파일 크기 제한 및 저장 정책을 다르게 처리할 가능성은 있으며 자동 용량 보증은 아님.
+- GDB에서 첫 SIGSEGV, all-thread backtrace(각 최대15 frames), shared-library maps 보존. 원본 process-memory core는 압축 forensic에 **포함하지 않음**. 작은 local TAR/SHA256과 성공/미확정 구분 결과만 저장.
+- 캡처 문자열 D06_WSLG_CORE_STACK_CAPTURED_NOT_RESOLVED은 스택이 존재한다는 사실만 의미하며 **근본 원인 수정/WSL2 acceptance 성공 아님**.
+- 기존 coredumpctl이 없다면 FAI L-CLOSED: 단일 재실행을 시도하지 않음. 원인 진단을 위한 현장 실행은 1번이지만, 실행기 자체는 아직 WSLg에서 직접 실행된 적 없음.
+
+## 3. RED → GREEN → REFACTOR → REVIEW → COMMIT
+
+- 공개 RED 회귀 d06/tests/test_d06_c11_wslg_core_once.py, source-only first-core scanner 및 one-shot contract, 첫 실제 failing public L0 Run #44571078383: helper/script 파일 미존재.
+- HELPER commit 801e6b7be271da55a86101d25924edcafc98deb6, blob 04cc7cab351f4542dba754262912900cd258ec25. parser 테스트는 gz(SIGSEGV11) 중 최신 기록만 PID로 선택하고 다른 SIGABRT 또는 다른 프로세스를 제외.
+- NVIDIA capture runner commit a587789e535c5884bf3c1380be65d524218740d4, reviewed finish commit 48c181b6d2a1ec85509d67a8bd8fe5738c6d71c1, blob 05816ad275a6523b32f4ff0738c6994839f20633.
+- 공개 GREEN L0 [Run #44571572354](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44571572354): **140/140 PASS**, independent public canary #44571572533 PASS. Static parser fixtures + bash -n + --self-check (no ROS, no Gazebo, no local files) + no-motion/no-global-change contract.
+- 코드 리뷰: owner/TRIAGE/helper 세 파일 모두 immutable source blob 검증 후 사용. 진단 실패는 HOLD 판정, 사용자 실행으로 main 병합하지 않음.
+
+## 4. CI/현장 범위 및 인수 게이트
+
+C11: **L0=PASS (ROS/Gazebo/WSLg 실행하지 않음)**.
+C10: **actual Linux Xvfb CycloneDDS NO_GOAL L2=PASS** (별도 SHA 26a3a1b299e404d6e0fe9e69312578db356081ab).
+C11: **NVIDIA WSLg SIGSEGV first-stack L3-diagnostic=NOT_RUN**, 원본 GPU 원인 B1/B2/B3=UNDETERMINED.
+
+이 스크립트는 승인/배포용이 아닌 **필수 root cause 증거 단일 수집**입니다. 수집 후 최초 실패 stack에 맞춰 최소 수정→공개 CI L0/실 Gazebo L2→강사 WSL2 단일 L3 인수 순서. L2 GREEN을 WSLg GPU 종료 PASS로 승격하면 안 됩니다.
+
+D06_GAZEBO_LIVE_RELEASE=HOLD
+AXIA_MVP_DEMO_ACCEPTED=HOLD
+CERTIFIED_ESTOP=false
+MAIN_MERGED=false
