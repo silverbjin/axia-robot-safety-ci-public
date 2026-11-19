@@ -289,3 +289,299 @@ def diagnose_native_clock_during_first_gap(first_boundary, native_scan, native_c
         ),
     })
     return result
+
+
+def compare_isolated_ros_first_gap(first_boundary, isolated_events, native_events):
+    """First actual parent ROS callback gap vs separate Python ROS subscriber.
+
+    Same-source timestamp pair is mandatory; a separate process avoids shared
+    Python GIL, but cannot by itself distinguish Bridge/DDS and host scheduling.
+    Conclusions are *candidate layers*, never proven resource root causes.
+    """
+    answer={
+        "cause":"UNDETERMINED",
+        "candidate":"NO_REAL_FIRST_ROS_GAP",
+        "first_scan_violation_retained":False,
+        "isolation_proven":False,
+        "isolated_pair_matched":False,
+        "native_pair_matched":False,
+        "isolated_receive_gap_sec":None,
+        "native_receive_gap_sec":None,
+        "publisher_send_timing_proven":False,
+        "dds_internal_delay_measured":False,
+    }
+    b=first_boundary if isinstance(first_boundary,dict) else {}
+    try:
+        ros_gap=float(b["receive_gap_sec"])
+        prev_stamp=int(b["previous_ros_stamp_ns"])
+        next_stamp=int(b["current_ros_stamp_ns"])
+        parent_before=float(b["previous_host_monotonic_sec"])
+        parent_after=float(b["current_host_monotonic_sec"])
+    except (KeyError,ValueError,TypeError,OverflowError):
+        return answer
+    if ros_gap<=.5 or next_stamp<=prev_stamp or parent_after<=parent_before:
+        return answer
+    answer["first_scan_violation_retained"]=True
+
+    def pair_gap(events):
+        if not isinstance(events,(list,tuple)):
+            return None
+        def get_source(stamp):
+            found=[]
+            for e in events:
+                if not isinstance(e,dict) or e.get("topic","scan")!="scan":
+                    continue
+                try:
+                    at=float(e["host_monotonic_sec"])
+                    ns=int(e["source_stamp_ns"])
+                except (KeyError,ValueError,TypeError,OverflowError):
+                    continue
+                if ns==stamp and at==at and abs(at)<1e12:
+                    found.append(at)
+            return found
+        before=get_source(prev_stamp)
+        after=get_source(next_stamp)
+        if not before or not after:
+            return None
+        # Require receipt not later than the parent after-boundary by more
+        # than 50ms. Larger disagreement is not safe causal order evidence.
+        for a in sorted(before):
+            for c in sorted(after):
+                if c>a and c<=parent_after+.05 and a<=parent_before+.05:
+                    return round(c-a,6)
+        return None
+
+    isolated=pair_gap(isolated_events)
+    native=pair_gap(native_events)
+    answer["isolated_pair_matched"]=isolated is not None
+    answer["native_pair_matched"]=native is not None
+    if isolated is None or native is None:
+        answer["candidate"]="ROS_PROCESS_TIMESTAMP_PAIR_MISSING"
+        return answer
+    answer["isolation_proven"]=True
+    answer["isolated_receive_gap_sec"]=isolated
+    answer["native_receive_gap_sec"]=native
+    if native>.5:
+        answer["candidate"]="AT_OR_BEFORE_NATIVE_TRANSPORT_RX"
+    elif isolated>.5:
+        answer["candidate"]="ROS_BRIDGE_DDS_OR_HOST_SCHEDULER"
+    else:
+        answer["candidate"]="LOCAL_ROS_PROCESS_DISPATCH_OR_GIL"
+    return answer
+
+
+def compare_worst_scan_pair_receivers(pair, native, isolated_ros,
+                                     same_python_ros):
+    """Compare EXACT source-stamp pair across all Scan receive layers.
+
+    This diagnostic also accepts a <500ms near-boundary sample, but never
+    treats it as an actual safety violation. Same Linux host monotonic clock.
+    No internal publisher or DDS send timestamps are measured.
+    """
+    verdict={
+        "cause":"UNDETERMINED",
+        "candidate":"SOURCE_PAIR_INCOMPLETE",
+        "source_pair_matched":False,
+        "first_500ms_violation":False,
+        "observer_gap_sec":None,
+        "native_gap_sec":None,
+        "isolated_ros_gap_sec":None,
+        "same_python_gap_sec":None,
+        "publisher_rmw_gap_measured":False,
+    }
+    if not isinstance(pair,dict):
+        return verdict
+    try:
+        old_ns=int(pair["previous_ros_stamp_ns"])
+        new_ns=int(pair["current_ros_stamp_ns"])
+        old_parent=float(pair["previous_host_monotonic_sec"])
+        new_parent=float(pair["current_host_monotonic_sec"])
+        parent_gap=float(pair["receive_gap_sec"])
+    except (KeyError,ValueError,TypeError,OverflowError):
+        return verdict
+    if new_ns<=old_ns or new_parent<=old_parent or parent_gap<=0:
+        return verdict
+    verdict["observer_gap_sec"]=round(parent_gap,6)
+    verdict["first_500ms_violation"]=parent_gap>.5
+
+    def matched_gap(rows):
+        if not isinstance(rows,(list,tuple)):
+            return None
+        by_stamp={}
+        for row in rows:
+            if not isinstance(row,dict) or row.get("topic","scan")!="scan":
+                continue
+            try:
+                ns=int(row["source_stamp_ns"])
+                at=float(row["host_monotonic_sec"])
+            except (KeyError,ValueError,TypeError,OverflowError):
+                continue
+            if ns in (old_ns,new_ns) and at==at and abs(at)<1e12:
+                by_stamp.setdefault(ns,[]).append(at)
+        if old_ns not in by_stamp or new_ns not in by_stamp:
+            return None
+        for a in sorted(by_stamp[old_ns]):
+            for b in sorted(by_stamp[new_ns]):
+                # Do NOT apply a 500ms matching tolerance here: the
+                # very first incident can delay the Observer >500ms.
+                # Same unique source stamps and causal ordering are enough
+                # to match a delayed receiver to earlier real observations.
+                if (b>a and a<=old_parent+.05 and
+                    b<=new_parent+.05):
+                    return round(b-a,6)
+        return None
+
+    values=[matched_gap(x) for x in (native,isolated_ros,same_python_ros)]
+    if any(x is None for x in values):
+        return verdict
+    n,iso,same=values
+    verdict.update({
+        "source_pair_matched":True,
+        "native_gap_sec":n,
+        "isolated_ros_gap_sec":iso,
+        "same_python_gap_sec":same,
+    })
+    if parent_gap-n<.12:
+        verdict["candidate"]="NO_LARGE_RELATIVE_RX_DELAY"
+    elif same>=parent_gap-.08 and iso<=n+.08:
+        verdict["candidate"]="SAME_PYTHON_PROCESS_DELAY_CANDIDATE"
+    elif iso>=parent_gap-.08 and same>=parent_gap-.08:
+        verdict["candidate"]="ROS_BRIDGE_DDS_OR_SHARED_HOST_DELAY_CANDIDATE"
+    elif iso<=n+.08 and same<=n+.08:
+        verdict["candidate"]="PARENT_OBSERVER_ONLY_DELAY_CANDIDATE"
+    else:
+        verdict["candidate"]="MIXED_RECEIVER_TIMING_UNDETERMINED"
+    return verdict
+
+
+def scan_gap_operation_overlaps(parent_pair, spans):
+    """Read-only correlation: actual host callback gap vs synchronous spans.
+
+    Overlap alone never proves the enclosed operation held the GIL/RMW lock.
+    Any future code fix needs separate A/B evidence at same ROS/Gazebo L2.
+    """
+    verdict={"status":"INSUFFICIENT_TIMING_EVIDENCE",
+             "root_cause_confirmed":False,
+             "overlaps":[]}
+    if not isinstance(parent_pair,dict) or not isinstance(spans,(list,tuple)):
+        return verdict
+    import math
+    try:
+        start=float(parent_pair["previous_host_monotonic_sec"])
+        end=float(parent_pair["current_host_monotonic_sec"])
+    except (KeyError,ValueError,TypeError,OverflowError):
+        return verdict
+    if not all(math.isfinite(t) for t in (start,end)) or end<=start:
+        return verdict
+    result=[]
+    for span in spans[:64]:
+        if not isinstance(span,dict):
+            continue
+        name=span.get("name")
+        try:
+            a=float(span["start_sec"]);b=float(span["end_sec"])
+        except (KeyError,ValueError,TypeError,OverflowError):
+            continue
+        if not isinstance(name,str) or not math.isfinite(a) or not math.isfinite(b) or b<=a:
+            continue
+        overlap=min(end,b)-max(start,a)
+        if overlap>0:
+            result.append({"name":name,
+                           "overlap_sec":round(overlap,6),
+                           "span_duration_sec":round(b-a,6),
+                           "started_in_gap":start<=a<=end})
+    result.sort(key=lambda item:-item["overlap_sec"])
+    verdict["status"]="OBSERVED_OVERLAP_NOT_CAUSE"
+    verdict["overlaps"]=result[:16]
+    return verdict
+
+
+def analyze_process_heartbeat_gap(scan_pair, heartbeats):
+    """Compare read-only Python process heartbeat with real Scan callback gap.
+
+    Caller timestamps must use Linux time.monotonic(). Periodic heartbeat
+    reveals process-level scheduling/GIL stalls vs rclpy callback dispatch.
+    It CANNOT independently distinguish a GIL holder from an OS deschedule.
+    """
+    result={
+        "candidate":"HEARTBEAT_WINDOW_UNBRACKETED",
+        "root_cause":"UNDETERMINED",
+        "bracketed":False,
+        "max_heartbeat_gap_sec":None,
+        "process_cpu_progress_sec":None,
+        "process_cpu_per_host_sec":None,
+    }
+    if not isinstance(scan_pair,dict) or not isinstance(heartbeats,(list,tuple)):
+        return result
+    import math
+    try:
+        start=float(scan_pair["previous_host_monotonic_sec"])
+        end=float(scan_pair["current_host_monotonic_sec"])
+    except (KeyError,TypeError,ValueError,OverflowError):
+        return result
+    if not math.isfinite(start) or not math.isfinite(end) or end<=start:
+        return result
+    rows=[]
+    for item in heartbeats:
+        if not isinstance(item,dict):
+            continue
+        try:
+            t=float(item["host_monotonic_sec"])
+            cpu=float(item["process_cpu_sec"])
+        except (KeyError,TypeError,ValueError,OverflowError):
+            continue
+        if math.isfinite(t) and math.isfinite(cpu) and cpu>=0:
+            rows.append((t,cpu))
+    rows.sort(key=lambda x:x[0])
+    before=[(i,v) for i,v in enumerate(rows) if v[0]<=start]
+    after=[(i,v) for i,v in enumerate(rows) if v[0]>=end]
+    if not before or not after:
+        return result
+    i=before[-1][0]
+    j=after[0][0]
+    window=rows[i:j+1]
+    if len(window)<3 or window[-1][0]<=window[0][0]:
+        return result
+    gaps=[b[0]-a[0] for a,b in zip(window,window[1:])]
+    if not gaps or min(gaps)<0:
+        return result
+    max_gap=max(gaps)
+    elapsed=window[-1][0]-window[0][0]
+    cpu_progress=window[-1][1]-window[0][1]
+    result.update({
+        "bracketed":True,
+        "max_heartbeat_gap_sec":round(max_gap,6),
+        "process_cpu_progress_sec":round(cpu_progress,6)
+            if cpu_progress>=0 else None,
+        "process_cpu_per_host_sec":round(cpu_progress/elapsed,4)
+            if cpu_progress>=0 else None,
+        "candidate":(
+            "PROCESS_THREAD_OR_GIL_SCHEDULING_STALL"
+            if max_gap>=.12 else "ROS_EXECUTOR_DISPATCH_OR_RMW_DELAY"),
+    })
+    return result
+
+
+def classify_executor_stack_frames(frames):
+    """Read-only triage of limited Python executor stack fingerprints.
+
+    This is not a native rcl/rmw backtrace and cannot prove DDS internals.
+    Sampling a stack during a pause is correlation, not root-cause proof.
+    """
+    verdict={"candidate":"INSUFFICIENT_STACK_EVIDENCE",
+             "root_cause":"UNDETERMINED"}
+    if not isinstance(frames,(list,tuple)) or not frames:
+        return verdict
+    names={f.get("function","") for f in frames if isinstance(f,dict)}
+    if any(name in names for name in (
+            "on_grid","_lethal_near","on_scan","on_odom","on_clock")):
+        verdict["candidate"]="OBSERVER_CALLBACK_WORK"
+    elif any(name in names for name in (
+            "wait","_wait_for_ready_callbacks",
+            "wait_for_ready_callbacks","_wait_for_ready_callbacks_impl")):
+        verdict["candidate"]="RCLPY_WAITSET_OR_EVENT_WAKE"
+    elif any("spin" in name for name in names):
+        verdict["candidate"]="RCLPY_SPIN_LOOP_UNKNOWN"
+    else:
+        verdict["candidate"]="UNKNOWN_EXECUTOR_PYTHON_STACK"
+    return verdict

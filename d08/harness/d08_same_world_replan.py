@@ -10,7 +10,12 @@ from __future__ import annotations
 from collections import deque
 from d08_scan_gap_trace import (first_scan_receive_gap, diagnose_first_receive_boundary,
                                 compare_native_scan_first_gap,
-                                diagnose_native_clock_during_first_gap)
+                                diagnose_native_clock_during_first_gap,
+                                compare_isolated_ros_first_gap,
+                                compare_worst_scan_pair_receivers,
+                                scan_gap_operation_overlaps,
+                                analyze_process_heartbeat_gap,
+                                classify_executor_stack_frames)
 import json
 import math
 from pathlib import Path
@@ -153,7 +158,8 @@ def new_independent_rx_buffers():
 def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
     import rclpy
     from rclpy.action import ActionClient
-    from rclpy.executors import MultiThreadedExecutor, SingleThreadedExecutor
+    from rclpy.executors import (SingleThreadedExecutor,
+                                 ShutdownException, ExternalShutdownException)
     from rclpy.node import Node
     from rclpy.parameter import Parameter
     from rclpy.qos import (qos_profile_sensor_data, QoSProfile,
@@ -198,10 +204,70 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
     path_pub=node.create_publisher(NavPath,"/axia/d08/official_path_readonly",
         QoSProfile(depth=1,reliability=ReliabilityPolicy.RELIABLE,
                    durability=DurabilityPolicy.TRANSIENT_LOCAL))
-    exe=MultiThreadedExecutor(num_threads=2)
+    exe=SingleThreadedExecutor()
     exe.add_node(node)
+
+    def bounded_spin(executor):
+        # Read-only L2 A/B: wake the rclpy wait-set at most every 50ms.
+        # This is not a change to sensor/CM/Guard safety TTL.
+        try:
+            while rclpy.ok():
+                executor.spin_once(timeout_sec=.05)
+        except (ShutdownException, ExternalShutdownException):
+            return
+
     thread=None
     moved=False
+    operation_spans=[]
+    process_heartbeat_samples=deque(maxlen=2048)
+    process_heartbeat_stop=threading.Event()
+    executor_stall_stack_samples=[]
+
+    def heartbeat_process_loop():
+        # CI-only low-overhead 20ms witness; captures bounded Python
+        # stack fingerprints ONLY during >350ms real Scan callback delays.
+        import sys
+        import traceback
+        last_stack_at=0.0
+        while not process_heartbeat_stop.is_set():
+            now=time.monotonic()
+            process_heartbeat_samples.append({
+                "host_monotonic_sec":now,
+                "process_cpu_sec":time.process_time(),
+            })
+            if (len(executor_stall_stack_samples)<4 and
+                    len(scan_rows)>=2 and thread.ident is not None and
+                    now-scan_rows[-1]["at"]>.35 and
+                    now-last_stack_at>.18):
+                frames=sys._current_frames()
+                witness={"host_monotonic_sec":round(now,6),
+                         "last_observer_scan_age_sec":round(
+                            now-scan_rows[-1]["at"],6)}
+                for key,ident in (
+                        ("observer_executor",thread.ident),
+                        ("same_process_ros_executor",independent_thread.ident)):
+                    frame=frames.get(ident) if ident is not None else None
+                    witness[key]=[
+                        {"function":item.name,
+                         "filename":Path(item.filename).name,
+                         "line":item.lineno}
+                        for item in (traceback.extract_stack(frame)[-8:]
+                                     if frame is not None else [])]
+                executor_stall_stack_samples.append(witness)
+                last_stack_at=now
+            process_heartbeat_stop.wait(.02)
+
+    process_heartbeat_thread=threading.Thread(
+        target=heartbeat_process_loop,daemon=True)
+
+    def record_span(name,start):
+        # Bounded diagnostic of exact host-monotonic synchronous operations.
+        if len(operation_spans)<48:
+            operation_spans.append({
+                "name":name,
+                "start_sec":round(start,6),
+                "end_sec":round(time.monotonic(),6),
+            })
 
     def on_scan(msg):
         entry_at=time.monotonic()  # callback entry, before per-range CPU work
@@ -244,8 +310,7 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
     action=ActionClient(node,ComputePathToPose,"/compute_path_to_pose")
     tfbuf=Buffer()
     listener=TransformListener(tfbuf,node,spin_thread=False)
-    thread=threading.Thread(target=exe.spin,daemon=True)
-    thread.start()
+    thread=threading.Thread(target=lambda:bounded_spin(exe),daemon=True)
 
     # Read-only, independent ROS callback witness. Different executor thread
     # still shares the host/GIL, so it cannot prove native publisher/RMW gaps.
@@ -283,8 +348,7 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
             qos_profile_sensor_data),
     ]
     independent_thread=threading.Thread(
-        target=independent_executor.spin,daemon=True)
-    independent_thread.start()
+        target=lambda:bounded_spin(independent_executor),daemon=True)
 
     def independent_snapshot():
         with independent_lock:
@@ -310,9 +374,15 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
         state_cli=node.create_client(GetState,"/collision_monitor/get_state")
         param_cli=node.create_client(
             GetParameters,"/collision_monitor/get_parameters")
-        if not state_cli.wait_for_service(timeout_sec=8):
+        started=time.monotonic()
+        state_ready=state_cli.wait_for_service(timeout_sec=8)
+        record_span("cm_get_state_service_wait",started)
+        if not state_ready:
             raise RuntimeError("D08_OFFICIAL_CM_NATIVE_STATE_SCAN_NOT_VERIFIED:GET_STATE_ABSENT")
-        if not param_cli.wait_for_service(timeout_sec=8):
+        started=time.monotonic()
+        params_ready=param_cli.wait_for_service(timeout_sec=8)
+        record_span("cm_get_parameters_service_wait",started)
+        if not params_ready:
             raise RuntimeError("D08_OFFICIAL_CM_NATIVE_STATE_SCAN_NOT_VERIFIED:GET_PARAMETERS_ABSENT")
         # Native lifecycle service can exist while activation is still
         # transitioning. Read ONLY real service responses until ACTIVE,
@@ -363,10 +433,12 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
         request=('name: "axia_p2_g07_obstacle", '
             'position: {x: %.9f, y: %.9f, z: %.4f}, orientation: {w: 1}'%
             (xyz[0],xyz[1],xyz[2]))
+        pose_start=time.monotonic()
         cp=subprocess.run(['gz','service','-s','/world/default/set_pose',
               '--reqtype','gz.msgs.Pose','--reptype','gz.msgs.Boolean',
               '--timeout','5000','--req',request],
               env=env,text=True,capture_output=True,timeout=13,check=False)
+        record_span("gazebo_native_set_pose",pose_start)
         (out/f'{stage}_native_ack.txt').write_text(cp.stdout+cp.stderr)
         if cp.returncode!=0 or "data: true" not in cp.stdout:
             raise RuntimeError("D08_"+stage.upper()+"_NATIVE_SET_POSE_NOT_ACKNOWLEDGED")
@@ -434,10 +506,15 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
     native_enabled=env.get("AXIA_D08_NATIVE_RX_PROBE")=="1"
     native_proc=None
     native_log=None
+    isolated_trace=out/"isolated_ros_scan_rx.jsonl"
+    isolated_enabled=env.get("AXIA_D08_ROS_ISOLATED_RX_PROBE")=="1"
+    isolated_proc=None
+    isolated_log=None
 
     try:
-        until(lambda:bool(snapshot()[0] and snapshot()[1] and snapshot()[2]),
-              "SCAN_COSTMAP_ODOM_MISSING",25)
+        # ARM both independent receive processes before the original ROS
+        # executor can record its FIRST callback. A previous real 515.572ms
+        # gap occurred before the native or isolated process subscribed.
         if native_enabled:
             # CI-only, separate-process Gazebo Transport Rx; no publisher.
             native_log=(out/"native_gz_scan_rx.log").open("w")
@@ -456,9 +533,35 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
                     raise RuntimeError("D08_NATIVE_GZ_SCAN_PROBE_EARLY_EXIT")
                 return native_trace.exists() and native_trace.stat().st_size>0
             until(native_has_samples,"NATIVE_GZ_SCAN_RX_NOT_READY",9)
+        if isolated_enabled:
+            isolated_log=(out/"isolated_ros_scan_rx.log").open("w")
+            isolated_proc=subprocess.Popen([
+                "/usr/bin/python3","-u",
+                str(Path(__file__).with_name("d08_ros_isolated_scan_probe.py")),
+                "--out",str(isolated_trace),"--max-samples","1024",
+            ],env=env,stdin=subprocess.DEVNULL,stdout=isolated_log,
+              stderr=subprocess.STDOUT)
+            def isolated_has_samples():
+                if isolated_proc.poll() is not None:
+                    raise RuntimeError("D08_ISOLATED_ROS_SCAN_PROBE_EARLY_EXIT")
+                return isolated_trace.exists() and isolated_trace.stat().st_size>0
+            until(isolated_has_samples,"ISOLATED_ROS_SCAN_RX_NOT_READY",9)
+        result["probe_armed_at_host_monotonic_sec"]=round(time.monotonic(),6)
+        result["first_gap_probes_armed_before_observer"]=True
+        if isolated_enabled:
+            process_heartbeat_thread.start()
+        thread.start()
+        independent_thread.start()
+        result["observer_executor_started_at_monotonic_sec"]=round(time.monotonic(),6)
+        until(lambda:bool(snapshot()[0] and snapshot()[1] and snapshot()[2]),
+              "SCAN_COSTMAP_ODOM_MISSING",25)
         # This information is discovery only: it does not prove a CM callback period.
+        graph_start=time.monotonic()
         pubs=node.get_publishers_info_by_topic("/scan")
+        record_span("graph_publishers",graph_start)
+        graph_start=time.monotonic()
         consumers=node.get_subscriptions_info_by_topic("/scan")
+        record_span("graph_subscriptions",graph_start)
         result["real_scan_publishers"]=[{"node":p.node_name,"type":p.topic_type}
                                         for p in pubs]
         result["real_scan_consumers"]=[{"node":p.node_name,"type":p.topic_type}
@@ -470,7 +573,9 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
         result["scan_graph_anonymous_subscriber_count"]=sum(
             p.node_name=="_NODE_NAME_UNKNOWN_" for p in consumers)
         if not pubs:raise RuntimeError("D08_REAL_SCAN_PUBLISHER_ABSENT")
+        cm_probe_start=time.monotonic()
         result.update(read_official_cm_native_state_and_scan())
+        record_span("cm_native_service_probe",cm_probe_start)
         print("D08_OFFICIAL_CM_NATIVE_ACTIVE_SCAN_SOURCE_NO_GOAL "+
               json.dumps({k:result.get(k) for k in (
                 "official_cm_active_scan_configured",
@@ -567,6 +672,9 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
         result["first_boundary"]=type(exc).__name__+":"+str(exc)[:250]
         print("D08_REAL_THREE_PATHS_HOLD "+result["first_boundary"],flush=True)
     finally:
+        if process_heartbeat_thread.ident is not None:
+            process_heartbeat_stop.set()
+            process_heartbeat_thread.join(timeout=1)
         if moved:
             try:
                 move("cleanup_restore",FAR_WORLD)
@@ -583,6 +691,15 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
                 native_proc.wait(timeout=2)
         if native_log is not None:
             native_log.close()
+        if isolated_proc is not None:
+            isolated_proc.terminate()
+            try:
+                isolated_proc.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                isolated_proc.kill()
+                isolated_proc.wait(timeout=2)
+        if isolated_log is not None:
+            isolated_log.close()
         if native_enabled:
             events=[]
             try:
@@ -635,13 +752,129 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
                         "clock_max_host_receive_gap_sec",
                         "first_violation_cause")}),
                   flush=True)
+        if isolated_enabled:
+            iso_events=[]
+            native_events=[]
+            try:
+                if isolated_trace.is_file():
+                    iso_events=[json.loads(line) for line in
+                                isolated_trace.read_text().splitlines() if line.strip()]
+                if native_trace.is_file():
+                    native_events=[json.loads(line) for line in
+                                   native_trace.read_text().splitlines() if line.strip()]
+            except (OSError,ValueError) as exc:
+                result["isolated_ros_scan_read_error"]=str(exc)[:200]
+            iso_gaps=[b["host_monotonic_sec"]-a["host_monotonic_sec"]
+                      for a,b in zip(iso_events,iso_events[1:])]
+            result["isolated_ros_process_scan_rx"]={
+                "enabled":True,
+                "separate_process":True,
+                "sample_count":len(iso_events),
+                "history_complete":len(iso_events)<1024,
+                "max_host_receive_gap_sec":round(max(iso_gaps),6)
+                    if iso_gaps else None,
+                "first_gap_crosscheck":compare_isolated_ros_first_gap(
+                    result.get("first_scan_timing_boundary"),
+                    iso_events,native_events),
+                "bridge_dds_internal_send_measured":False,
+                "root_resource_cause":"UNDETERMINED",
+            }
+            # Compare the WORST original Scan callback gap whose exact two
+            # source stamps were seen at all three receiver layers. Even a
+            # 493ms near-boundary matters; this is diagnosis, NOT a 500ms
+            # safety violation unless the original gap exceeded the limit.
+            original_scans=snapshot()[0]
+            same_ros=independent_snapshot()["scan"]
+            same_rows=[
+                {"source_stamp_ns":x["stamp_ns"],
+                 "host_monotonic_sec":x["at"]}
+                for x in same_ros if x["stamp_ns"] is not None]
+            stamp_sets=[
+                {x["source_stamp_ns"] for x in rows}
+                for rows in (native_events,iso_events,same_rows)]
+            available=set.intersection(*stamp_sets) if stamp_sets else set()
+            pairs=[]
+            for before,after in zip(original_scans,original_scans[1:]):
+                n1=int(round(before["stamp"]*1e9))
+                n2=int(round(after["stamp"]*1e9))
+                if n1 in available and n2 in available:
+                    pairs.append((after["at"]-before["at"],before,after,n1,n2))
+            if pairs:
+                biggest,before,after,n1,n2=max(pairs,key=lambda x:x[0])
+                pair={"previous_ros_stamp_ns":n1,
+                      "current_ros_stamp_ns":n2,
+                      "previous_host_monotonic_sec":round(before["at"],6),
+                      "current_host_monotonic_sec":round(after["at"],6),
+                      "receive_gap_sec":round(biggest,6)}
+                cmp=compare_worst_scan_pair_receivers(
+                    pair,native_events,iso_events,same_rows)
+                cmp["parent_callback_entry_gap_sec"]=round(
+                    after["entry_at"]-before["entry_at"],6)
+                cmp["operation_overlap_report"]=scan_gap_operation_overlaps(
+                    pair,operation_spans)
+                cmp["process_heartbeat"]=analyze_process_heartbeat_gap(
+                    pair,list(process_heartbeat_samples))
+                scoped_stacks=[item for item in executor_stall_stack_samples
+                    if pair["previous_host_monotonic_sec"]<=
+                       item["host_monotonic_sec"]<=
+                       pair["current_host_monotonic_sec"]]
+                cmp["executor_stack_at_first_gap"]={
+                    "samples":scoped_stacks,
+                    "sample_count":len(scoped_stacks),
+                    "observer_candidates":[classify_executor_stack_frames(
+                        item["observer_executor"])["candidate"]
+                        for item in scoped_stacks],
+                    "same_process_ros_candidates":[
+                        classify_executor_stack_frames(
+                            item["same_process_ros_executor"])["candidate"]
+                        for item in scoped_stacks],
+                    "root_cause":"UNDETERMINED",
+                }
+                result["worst_scan_causal_pair"]=cmp
+                result["worst_scan_pair_source_stamps"]=pair
+                print("D08_REAL_WORST_SCAN_SOURCE_PAIR "
+                      +json.dumps({k:cmp[k] for k in
+                        ("observer_gap_sec","native_gap_sec",
+                         "isolated_ros_gap_sec","same_python_gap_sec",
+                         "candidate","source_pair_matched")},sort_keys=True),
+                      flush=True)
+            else:
+                result["worst_scan_causal_pair"]={
+                    "cause":"UNDETERMINED",
+                    "candidate":"NO_COMMON_SOURCE_PAIR",
+                    "source_pair_matched":False}
+                result["status"]="HOLD"
+                result.setdefault("first_boundary",
+                    "D08_NO_MATCHED_SCAN_SOURCE_PAIR_ACROSS_RECEIVERS")
+            if len(iso_events)<8 or len(iso_events)>=1024:
+                result["status"]="HOLD"
+                result.setdefault("first_boundary","D08_ISOLATED_ROS_RX_EVIDENCE_INCOMPLETE")
+            print("D08_ISOLATED_ROS_SCAN_PROCESS_WITNESS "+json.dumps({
+                k:result["isolated_ros_process_scan_rx"][k] for k in
+                ("sample_count","max_host_receive_gap_sec","history_complete")
+            },sort_keys=True),flush=True)
+        result["executor_stall_stack_samples"]=executor_stall_stack_samples[:4]
+        result["process_heartbeat_summary"]={
+            "enabled":bool(isolated_enabled),
+            "sample_count":len(process_heartbeat_samples),
+            "history_complete":len(process_heartbeat_samples)<2048,
+            "source":"same_python_process_monotonic_and_process_time",
+        }
+        if isolated_enabled and (
+                len(process_heartbeat_samples)<20 or
+                len(process_heartbeat_samples)>=2048):
+            result["status"]="HOLD"
+            result.setdefault("first_boundary",
+                              "D08_PROCESS_HEARTBEAT_EVIDENCE_INCOMPLETE")
+        result["read_only_operation_spans"]=operation_spans[:48]
         # No synthetic /scan or arbitrary ROS cmd_vel publisher is created here.
         (out/"verdict.json").write_text(json.dumps(result,indent=2,sort_keys=True)+"\n")
         independent_executor.shutdown(timeout_sec=2)
         independent_node.destroy_node()
-        independent_thread.join(timeout=2)
+        if independent_thread.ident is not None:
+            independent_thread.join(timeout=2)
         exe.shutdown(timeout_sec=3)
         node.destroy_node()
         rclpy.shutdown()
-        if thread:thread.join(timeout=2)
+        if thread.ident is not None:thread.join(timeout=2)
     return 0 if result["status"].endswith("_PASS_NO_GOAL") else 2
