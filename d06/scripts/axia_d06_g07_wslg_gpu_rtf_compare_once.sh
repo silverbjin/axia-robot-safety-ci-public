@@ -88,6 +88,59 @@ summary={
 if report.get("scan_receipts_compact"):
     (out/"scan_receipts_compact.json").write_text(json.dumps(report["scan_receipts_compact"])+"\n",encoding="utf-8")
 owner=read("nvidia.run.log")
+# Reuse original immutable Owner TAR: only small proven-relevant native
+# clock, graph, GUI and teardown files, never a second Gazebo execution.
+import tarfile
+source_archive=next((row.partition("=")[2] for row in reversed(owner)
+                     if row.startswith("D06_WSLG_NO_GOAL_RAW_ARCHIVE=")),None)
+native_verified=False
+if source_archive:
+    src=Path(source_archive)
+    digest_file=Path(source_archive+".sha256")
+    try:
+        digest=digest_file.read_text(encoding="utf-8").split()[0]
+        if (re.fullmatch(r"[0-9a-fA-F]{64}",digest)
+            and src.is_file() and src.stat().st_size <= 8*1024*1024
+            and hashlib.sha256(src.read_bytes()).hexdigest().lower()==digest.lower()):
+            native_verified=True
+            desired={
+                "clock_diagnostics.json":("native_clock_diagnostics.json",12000),
+                "p2_graph_diagnostics.json":("native_p2_graph_diagnostics.json",20000),
+                "startup_verdict.json":("native_startup_verdict.json",25000),
+                "task04_rviz.log":("rviz",30000),
+                "task04_gazebo_gui.log":("gazebo_gui",30000),
+                "teardown.txt":("native_teardown_marker.txt",5000),
+            }
+            render_errors=[]
+            with tarfile.open(src,"r:gz") as tg:
+                for member in tg.getmembers():
+                    if not member.isfile() or "/native/" not in member.name:continue
+                    name=member.name.rsplit("/",1)[-1]
+                    if name not in desired or member.size>desired[name][1]:continue
+                    fileobj=tg.extractfile(member)
+                    if not fileobj:continue
+                    payload=fileobj.read(member.size+1)
+                    if len(payload)>desired[name][1]:continue
+                    value=payload.decode("utf-8",errors="replace")
+                    dest=desired[name][0]
+                    if dest in ("rviz","gazebo_gui"):
+                        selected=[x[:700] for x in value.splitlines()
+                                  if re.search(r"error|exception|shader|GLSL|render|OpenGL|D3D12|"
+                                               r"message filter|queue is full|ogre|EGL",x,re.I)]
+                        render_errors.extend(["## "+name]+selected[:30])
+                    elif name=="teardown.txt":
+                        (out/dest).write_text(
+                            value+"\nNOTE: marker does not prove child exit 0;"
+                            " launch.log native -11 overrides it\n",encoding="utf-8")
+                    else:
+                        (out/dest).write_text(value,encoding="utf-8")
+            (out/"native_render_errors_excerpt.txt").write_text(
+                "\n".join(render_errors)+"\n",encoding="utf-8")
+    except (OSError,ValueError,tarfile.TarError,IndexError):
+        native_verified=False
+summary["source_archive_sha256_verified"]=native_verified
+(out/"summary.json").write_text(
+    json.dumps(summary,indent=2,sort_keys=True,ensure_ascii=False)+"\n",encoding="utf-8")
 markers=re.compile("G07_WSLG_NO_GOAL_SENSOR_|AXIA_G07_WSLG_NO_GOAL_SENSOR_TRUTH|D06_WSLG_NO_GOAL_SENSOR_|D06_GAZEBO_LIVE_RELEASE|D06_WSLG_NO_GOAL_RAW_ARCHIVE")
 (out/"owner_verdict_excerpt.txt").write_text("\n".join(
     f"{i+1}: {row[:3500]}" for i,row in enumerate(owner) if markers.search(row))[-30000:]+"\n",encoding="utf-8")
