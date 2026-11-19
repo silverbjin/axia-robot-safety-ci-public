@@ -64,6 +64,11 @@ def fake_record(home):
         "task04_rviz.log": "GLSL link result: active samplers with a different type\n",
         "task04_gazebo_gui.log": "Loading plugin [gz-rendering-ogre2]\n",
         "teardown.txt": "P2_L2_GRACEFUL_TEARDOWN\n",
+        "d06_g07_scan_delivery_layer.json": '{"candidate":"AFTER_NATIVE_TRANSPORT_RX","release":"HOLD","goal_allowed":false}',
+        "d06_gz_scan_receipts.jsonl": '{"host_monotonic_sec":100.0,"source_stamp_ns":1000000000}\\n',
+        "d06_ros_scan_receipts.jsonl": '{"topic":"raw","host_monotonic_sec":100.1,"source_stamp_ns":1000000000}\\n',
+        "d06_gz_clock_receipts.jsonl": '{"host_monotonic_sec":100.0,"sim_stamp_ns":1000000000}\\n',
+
     }
     with tarfile.open(archive, "w:gz") as tar:
         for name, body in native.items():
@@ -111,6 +116,10 @@ class ForensicOneShot(unittest.TestCase):
                 self.assertIn("forensic/native_clock_diagnostics.json", members)
                 self.assertIn("forensic/native_p2_graph_diagnostics.json", members)
                 self.assertIn("forensic/native_render_errors_excerpt.txt", members)
+                self.assertIn("forensic/d06_g07_scan_delivery_layer.json", members)
+                self.assertIn("forensic/d06_gz_scan_receipts.jsonl", members)
+                self.assertIn("forensic/d06_ros_scan_receipts.jsonl", members)
+                self.assertIn("forensic/d06_gz_clock_receipts.jsonl", members)
                 self.assertIn("forensic/native_teardown_marker.txt", members)
                 summary = json.load(tar.extractfile("forensic/summary.json"))
                 self.assertEqual(summary["first_sensor_failure"], "SAFETY_RECEIPT_TTL_300MS_BLOCKED")
