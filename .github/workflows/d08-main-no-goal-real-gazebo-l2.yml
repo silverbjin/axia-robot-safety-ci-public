@@ -60,6 +60,7 @@ jobs:
             d08/tests/test_d08_rcl_trace_summary.py \
             d08/tests/test_d08_rmw_scan_topic_join.py \
             d08/tests/test_d08_rmw_scan_event_window.py \
+            d08/tests/test_d08_rmw_source_stamp_message_join.py \
             d08/tests/test_d08_first_ros_input_gate_custody.py \
             d08/tests/test_d08_ros_cross_process_arrival_order.py \
             d08/tests/test_d08_native_probe_apt_contract.py \
