@@ -23,6 +23,9 @@ class WslgABOneShotSafety(unittest.TestCase):
     def test_nvidia_single_no_goal_d08_reuse_never_runs_intel_or_goal(self):
         s=SCRIPT.read_text()
         self.assertIn('--nvidia-only', s)
+        self.assertIn('--nvidia-causal', s)
+        self.assertIn('AXIA_D06_G07_RX_WITNESS=', s)
+        self.assertIn('D06_G07_NATIVE_RX_NO_LAYER_REPORT_NO_GOAL', s)
         self.assertIn('for gpu in "${adapters[@]}";do', s)
         self.assertIn('adapters=(NVIDIA)', s)
         self.assertIn('D06_GPU_RTF_NVIDIA_ONLY_NO_GOAL', s)
@@ -39,7 +42,7 @@ class WslgABOneShotSafety(unittest.TestCase):
     def test_pin_source_commit_and_git_blobs(self):
         s=SCRIPT.read_text()
         self.assertIn("e4c2007064bec2103bb743bd27cdbdf0955961b7",s)
-        self.assertIn("3ec8925d13e9357ffeb45e3d75e5f862b54e931a",s)
+        self.assertIn("34ba4405def9da9ac39342e9c28ee17f29747f1b",s)
         self.assertIn("171aad7ce8abe97c93a42f19787042619c06b65e",s)
         self.assertIn('git hash-object "$TMP/owner.sh"',s)
         self.assertIn('git hash-object "$TMP/compare.py"',s)
@@ -53,7 +56,7 @@ class WslgABOneShotSafety(unittest.TestCase):
         valid=subprocess.run(["bash",str(SCRIPT),"--self-check"],capture_output=True,text=True,timeout=5)
         self.assertEqual(valid.returncode,0,valid.stderr)
         self.assertIn("NO_GAZEBO_NO_GOAL",valid.stdout)
-        for mode in ("--compare","--nvidia-only"):
+        for mode in ("--compare","--nvidia-only","--nvidia-causal"):
             denied=subprocess.run(["bash",str(SCRIPT),mode],capture_output=True,text=True,timeout=5,
                                  env={"PATH":"/usr/bin:/bin","GITHUB_ACTIONS":"true"})
             self.assertEqual(denied.returncode,3,(mode,denied.stdout,denied.stderr))
