@@ -6,10 +6,10 @@
 set -Eeuo pipefail
 umask 077
 readonly STUDENT_REPO='silverbjin/axia-robot-safety-student'
-readonly STUDENT_SHA='dcd1299c03bf702712631dc025b868335cadd1c6'
+readonly STUDENT_SHA='6579e2eef7e99691da558cd2de1964fd26a04621'
 readonly REVIEW_REPO='silverbjin/axia-robot-safety-ci-public'
 readonly REVIEW_SHA='71b85c42ea474276fedd9f345521317b8c348b4e'
-readonly CI_L2_RUN=44433206283
+readonly CI_L2_RUN=44449459417
 MODE="${1:---run}"
 if [[ $# -gt 1 ]];then echo 'AXIA_G07_TASK04_FIRST_FAILURE=BAD_ARGUMENTS' >&2;exit 3;fi
 case "$MODE" in
