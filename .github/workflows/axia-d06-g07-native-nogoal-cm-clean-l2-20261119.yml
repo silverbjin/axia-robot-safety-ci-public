@@ -14,6 +14,7 @@ on:
       - 'd06/tests/test_d06_student_scan_clock_executor_isolation.py'
       - 'd06/tests/test_d06_c06_two_executor_scan_receipt.py'
       - 'd06/tests/test_d06_c07_navigation_manager_service_liveness.py'
+      - 'd06/tests/test_d06_c08_ci_gui_pre_nav2_ready.py'
       - 'd06/tests/test_d06_ci_only_gui_nice.py'
       - 'd06/scripts/axia_d06_g07_wslg_existing_core_once.sh'
   workflow_dispatch:
@@ -39,6 +40,7 @@ jobs:
       AXIA_G07_OWNER_SENSOR_TRUTH_NO_GOAL: '1'
       AXIA_G07_CI_SENSOR_TRUTH_NO_GOAL: '1'
       AXIA_D06_L2_GUI_NICE_ONLY: '15'
+      AXIA_D06_L2_GUI_PRE_NAV2_READY: '1'
       AXIA_G07_NO_GOAL_ORDERED_SHUTDOWN: '1'
       AXIA_G07_NO_GOAL_WITNESS_HANDOFF: '1'
       AXIA_G07_NO_GOAL_GZ_PAUSE_BEFORE_SIGINT: '1'
@@ -60,7 +62,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: b9132d51150be31973476ac34ef97d466f17187f
+          ref: 2e53172863549e8797def5726fa536c6ec74b5e4
           path: student
           persist-credentials: false
       - name: Exact public Student and official lifecycle offline contract
@@ -68,7 +70,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           test "$(git -C ci rev-parse HEAD)" = "$GITHUB_SHA"
-          test "$(git -C student rev-parse HEAD)" = 'b9132d51150be31973476ac34ef97d466f17187f'
+          test "$(git -C student rev-parse HEAD)" = '2e53172863549e8797def5726fa536c6ec74b5e4'
           cd student/block_B/day07/h01_runtime
           set +u; source /opt/ros/jazzy/setup.bash;set -u
           bash -n scripts/p2_no_goal_smoke_ci.sh
@@ -80,6 +82,7 @@ jobs:
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/d06/tests" -p 'test_d06_student_scan_clock_executor_isolation.py' -v
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/d06/tests" -p 'test_d06_c06_two_executor_scan_receipt.py' -v
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/d06/tests" -p 'test_d06_c07_navigation_manager_service_liveness.py' -v
+          python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/d06/tests" -p 'test_d06_c08_ci_gui_pre_nav2_ready.py' -v
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/d06/tests" -p 'test_d06_ci_only_gui_nice.py' -v
           echo 'AXIA_D06_G07_ORDERED_SHUTDOWN_SOURCE_L0_PASS_NO_GOAL'
       - name: Actual same-world Gazebo and official Nav2 CM NO_GOAL teardown
@@ -370,6 +373,13 @@ jobs:
           assert server_stop.is_file(), "G07_NO_GOAL_GAZEBO_SERVER_STOP_PROOF_MISSING"
           assert "data: true" in server_stop.read_text(), "G07_NO_GOAL_GAZEBO_SERVER_STOP_ACK_MISSING"
           out=(Path(__import__("os").environ["GITHUB_WORKSPACE"])/"no_goal_stdout.log").read_text()
+          assert "D06_CI_L2_GUI_PRE_NAV2_STARTED" in out
+          assert "D06_CI_L2_GUI_EARLY_REUSED_NOT_SPAWNED" in out
+          assert out.index("D06_CI_L2_GUI_PRE_NAV2_STARTED") < out.index(
+              "P2_NO_GOAL_STATIC_AND_RUNTIME_READINESS_OBSERVED"), (
+              "CI_GUI_NOT_WARM_BEFORE_NAV2_READY")
+          assert out.count("D06_CI_L2_GUI_PRE_NAV2_STARTED")==1, "CI_GUI_DUPLICATE_LAUNCH"
+          print("AXIA_D06_C08_GUI_PRE_NAV2_READY_L2_PROVEN")
           assert "G07_NO_GOAL_GAZEBO_SERVER_STOP_ACK_BEFORE_SIGINT" in out
           print("AXIA_D06_G07_GAZEBO_SERVER_CONTROL_STOP_ACK_L2_PASS")
           assert gz_clean and not gz_bad, "GAZEBO_SERVER_EXIT0_NOT_PROVEN_L2"
