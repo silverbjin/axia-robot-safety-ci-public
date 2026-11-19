@@ -12,8 +12,8 @@ if [[ "$MODE" == --nvidia-only || "$MODE" == --nvidia-causal ]];then
   adapters=(NVIDIA)
   echo 'D06_GPU_RTF_NVIDIA_ONLY_NO_GOAL OWNER_L3_NOT_ACCEPTED'
 fi
-readonly OWNER_SHA='2385dcfb22be9293d4ca161f43c54c535f8c0bcb'
-readonly OWNER_BLOB='d06c0be29ff0ad6cd0c3dc08f86be9ea17287719'
+readonly OWNER_SHA='6033d7d68efb6324699780fe9de68b9fcefee78f'
+readonly OWNER_BLOB='18f6b3d73951fbd95a05eb4f59dbc1a19e2a5fa3'
 readonly ANALYZER_SHA='615bcd81b8f74a478daa2baeaf9f27ca02c94f11'
 readonly ANALYZER_BLOB='171aad7ce8abe97c93a42f19787042619c06b65e'
 readonly STUDENT_SHA='e4c2007064bec2103bb743bd27cdbdf0955961b7'
