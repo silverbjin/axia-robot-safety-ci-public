@@ -471,7 +471,10 @@ jobs:
               spin=paired['executor_spin_once_worst_gap']
               assert spin['bracketed'] is True,(i,spin)
               assert spin['root_cause']=='UNDETERMINED',(i,spin)
-              assert cycle['executor_spin_once_trace_summary']['history_complete'] is True,(i,spin)
+              proof=paired['executor_spin_once_pair_proof']
+              assert proof['proven'] is True,(i,proof)
+              assert proof['root_cause']=='UNDETERMINED',(i,proof)
+              assert proof['scope']=='MATCHED_CURRENT_SOURCE_PAIR_ONLY',(i,proof)
               stack=paired['executor_stack_at_first_gap']
               assert stack['root_cause']=='UNDETERMINED',(i,stack)
               if paired['first_500ms_violation']:
