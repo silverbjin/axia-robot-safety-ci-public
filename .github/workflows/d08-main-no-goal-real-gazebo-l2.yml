@@ -1287,9 +1287,12 @@ jobs:
             > "$GITHUB_WORKSPACE/d08-host-xvfb-smoke.log" 2>&1 &
           smoke_pid=$!
           sleep 2
-          kill -0 "$smoke_pid" && test -S /tmp/.X11-unix/X98 || {
-            cat "$GITHUB_WORKSPACE/d08-host-xvfb-smoke.log" >&2;exit 2;
-          }
+          if ! kill -0 "$smoke_pid" 2>/dev/null ||
+             [[ ! -S /tmp/.X11-unix/X98 ]];then
+            cat "$GITHUB_WORKSPACE/d08-host-xvfb-smoke.log" >&2
+            echo D08_G07_X11_REAL_SOCKET_MISSING_BEFORE_GAZEBO >&2
+            exit 2
+          fi
           kill -TERM "$smoke_pid" 2>/dev/null || true
           wait "$smoke_pid" 2>/dev/null || true
           echo D08_G07_GUI_XVFB_REAL_SOCKET_PASS_NO_APT_NOT_GAZEBO
