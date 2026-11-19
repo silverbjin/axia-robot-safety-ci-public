@@ -182,6 +182,23 @@ if native_verified:
     except (OSError,ValueError): pass
 summary["native_no_goal_navigation_ack"]=nav.get("navigation_ack")
 summary["native_no_goal_localization_ack"]=nav.get("localization_ack")
+# The entire shutdown is clean ONLY if each native child has positive
+# exit0 evidence. A ros2 launch group exit marker never proves Gazebo clean.
+gz_clean=any(re.search(r"\\[INFO\\]\\s*\\[gz-\\d+\\]:\\s*process has finished cleanly",line) for line in log)
+gz_negative=any(re.search(r"\\[gz-\\d+\\].*exit code (-?\\d+)",line) for line in log)
+summary["native_no_goal_gazebo_server_exit_code"]=(
+    -11 if "gazebo_server" in crashes else 0 if gz_clean and not gz_negative else None
+)
+summary["native_no_goal_gazebo_server_clean"]=(
+    gz_clean and not gz_negative and "gazebo_server" not in crashes
+)
+summary["first_native_crash_layer"]=(
+    "GAZEBO_OR_CM_SHUTDOWN" if len(crashes)>1
+    else "GAZEBO_SERVER" if "gazebo_server" in crashes
+    else "COLLISION_MONITOR" if "collision_monitor" in crashes
+    else "NONE_OBSERVED"
+)
+
 summary["native_no_goal_cm_exit_code"]=audit.get("cm_exit_code")
 summary["native_no_goal_cm_clean_candidate"]=(
     nav.get("status")=="NAV2_LIFECYCLE_SHUTDOWN_ACK"
@@ -193,6 +210,14 @@ summary["native_no_goal_cm_clean_candidate"]=(
     and not any(crash=="collision_monitor" for crash in crashes)
     and "FORCED" not in "\\n".join(read("nvidia.run.log"))
 )
+summary["native_no_goal_whole_teardown_clean"]=(
+    summary["native_no_goal_cm_clean_candidate"]
+    and summary["native_no_goal_gazebo_server_clean"]
+    and not crashes
+    and "P2_L2_GRACEFUL_TEARDOWN" in (out/"native_teardown_marker.txt").read_text(encoding="utf-8")
+    if (out/"native_teardown_marker.txt").exists() else False
+)
+
 
 (out/"summary.json").write_text(
     json.dumps(summary,indent=2,sort_keys=True,ensure_ascii=False)+"\n",encoding="utf-8")
