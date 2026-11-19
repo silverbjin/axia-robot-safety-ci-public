@@ -85,6 +85,19 @@ summary={
  "first_scan_host_receipt_trace_available":any(
      bool(report.get("scan_receipts_compact",{}).get(topic)) for topic in ("raw","safety"))
 }
+# The safety gate now observes an unmodified Scan300 for the FULL window
+# AFTER both topics are active; preserve every earlier warmup breach distinctly.
+warmup=report.get("startup_pre_both_scan_diagnostics",{})
+if not isinstance(warmup,dict):warmup={}
+summary["dual_topic_both_topics_ready"]=warmup.get("both_topics_ready",False)
+summary["pre_ready_raw_gap_sec"]=warmup.get("pre_ready_raw_first_gap_sec")
+summary["pre_ready_breach_evidence_retained"]=warmup.get("pre_ready_breach_evidence_retained",False)
+summary["dual_topic_required_observation_sec"]=report.get("dual_topic_required_observation_sec")
+summary["dual_topic_observed_wall_sec"]=report.get("dual_topic_actual_wall_observation_sec")
+if warmup:
+    (out/"startup_pre_both_scan_diagnostics.json").write_text(
+        json.dumps(warmup,indent=2,sort_keys=True)+"\\n",encoding="utf-8")
+
 (out/"summary.json").write_text(json.dumps(summary,indent=2,sort_keys=True,ensure_ascii=False)+"\n",encoding="utf-8")
 if report.get("scan_receipts_compact"):
     (out/"scan_receipts_compact.json").write_text(json.dumps(report["scan_receipts_compact"])+"\n",encoding="utf-8")
