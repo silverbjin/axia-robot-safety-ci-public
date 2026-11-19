@@ -166,9 +166,14 @@ jobs:
                 echo "AXIA_D06_G07_WITNESS_FAILED_BEFORE_NAV2 native=$native_rx_rc ros=$ros_rx_rc" >&2
               fi
             fi
-            windows="$(timeout 3s xwininfo -root -tree 2>/dev/null || true)"
-            grep -Eiq 'RViz' <<< "$windows" && rviz_seen=1
-            grep -Eiq 'Gazebo' <<< "$windows" && gazebo_seen=1
+            # Avoid repeated X-server tree traversal once both GUI windows
+            # are positively observed. Xvfb software renderer contention is
+            # a single candidate only; later real L2 measures the effect.
+            if [[ "$rviz_seen" == 0 || "$gazebo_seen" == 0 ]];then
+              windows="$(timeout 3s xwininfo -root -tree 2>/dev/null || true)"
+              grep -Eiq 'RViz' <<< "$windows" && rviz_seen=1
+              grep -Eiq 'Gazebo' <<< "$windows" && gazebo_seen=1
+            fi
             sleep 1
           done
           set +e; wait "$runner_pid"; smoke_rc=$?;set -e
@@ -237,6 +242,44 @@ jobs:
           assert sensor["goal_sent"] is False and sensor["fixture_moved"] is False
           assert sensor["metrics"]["raw"]["count"]>=20
           assert sensor["metrics"]["safety"]["count"]>=20
+          # A 20s qualified Student window cannot erase a prior post-Nav2
+          # READY Scan300 violation. Same exact source + host monotonic.
+          paired=json.loads((root/"d06_g07_scan_delivery_layer.json").read_text())
+          post_ready=paired["post_ready_proxy"]
+          assert not post_ready["goal_allowed"]
+          assert post_ready["scope"]=="POST_NAV2_READY_PROXY"
+          print("AXIA_D06_L2_POST_READY_FIRST_BOUNDARY="+str(post_ready.get("candidate"))+
+                " native_gap="+str(post_ready.get("native_gap_sec"))+
+                " raw_gap="+str(post_ready.get("raw_gap_sec"))+
+                " safety_gap="+str(post_ready.get("safety_gap_sec")))
+          # Require a full 20-sec source proof in the exact Nav2 READY window.
+          ready=float(post_ready["ready_window_start_host_sec"])
+          end=ready+20.0
+          for topic,filename in (("native","d06_gz_scan_receipts.jsonl"),
+                                 ("raw","d06_ros_scan_receipts.jsonl"),
+                                 ("safety","d06_ros_scan_receipts.jsonl")):
+            observations=[]
+            for line in (root/filename).read_text().splitlines():
+              try: x=json.loads(line)
+              except ValueError:continue
+              if filename.startswith("d06_ros") and x.get("topic")!=topic:continue
+              if ready<=x.get("host_monotonic_sec",-1)<=end:
+                observations.append(x)
+            assert len(observations)>=20,("POST_READY_SCAN_EVIDENCE_INCOMPLETE",topic,len(observations))
+            for before,after in zip(observations,observations[1:]):
+              gap=after["host_monotonic_sec"]-before["host_monotonic_sec"]
+              assert after["source_stamp_ns"]>before["source_stamp_ns"],(
+                "POST_READY_SCAN_SOURCE_NONMONOTONIC",topic)
+              assert gap<=.300,(
+                "POST_READY_"+topic.upper()+"_SCAN300_FIRST_BREACH",round(gap,6),
+                before["source_stamp_ns"],after["source_stamp_ns"])
+          # Distinguish missing peer/source pairing from measured no-violation.
+          assert post_ready["candidate"]=="NO_ROS_TTL_VIOLATION_WITNESSED",(
+            "POST_READY_ROS_EXACT_PAIR_CAUSAL_HOLD",post_ready)
+          # Trace labels as explicit contract strings in first failure reports:
+          # POST_READY_NATIVE_SCAN300_FIRST_BREACH
+          # POST_READY_RAW_SCAN300_FIRST_BREACH
+          # POST_READY_SAFETY_SCAN300_FIRST_BREACH
           # Previous runs silently passed the shutdown-only L2 while the
           # original Raw/Safety Scan300 safety window was HOLD. This
           # integrated NO_GOAL candidate MUST pass both, without changing TTL.
