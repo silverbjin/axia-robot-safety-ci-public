@@ -12,6 +12,8 @@ on:
       - 'd06/tests/test_d06_gpu_rtf_runner_safety.py'
       - 'd06/tests/test_d06_forensic_bundle_once.py'
       - 'd06/tests/test_d06_g07_native_scan_layer.py'
+      - 'd06/tests/test_d06_g07_native_clock_and_rclpy_shutdown.py'
+      - 'd06/fixtures/g07_owner_nvidia_native_scan_clock_first_gap_20261119.json'
       - 'd06/tools/d06_g07_scan_rx_witness.py'
       - 'd06/fixtures/g07_owner_nvidia_first_ttl_20261119.json'
       - 'd06/docs/AXIA_D06_D08_MVP_NVIDIA_NO_GOAL_REUSE_RCA_20261119_KO.md'
@@ -23,6 +25,8 @@ on:
       - 'd06/tests/test_d06_gpu_rtf_runner_safety.py'
       - 'd06/tests/test_d06_forensic_bundle_once.py'
       - 'd06/tests/test_d06_g07_native_scan_layer.py'
+      - 'd06/tests/test_d06_g07_native_clock_and_rclpy_shutdown.py'
+      - 'd06/fixtures/g07_owner_nvidia_native_scan_clock_first_gap_20261119.json'
       - 'd06/tools/d06_g07_scan_rx_witness.py'
       - 'd06/fixtures/g07_owner_nvidia_first_ttl_20261119.json'
       - 'd06/docs/AXIA_D06_D08_MVP_NVIDIA_NO_GOAL_REUSE_RCA_20261119_KO.md'
@@ -52,6 +56,7 @@ jobs:
           python3 -m unittest discover -s d06/tests -p 'test_d06_gpu_rtf_runner_safety.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_forensic_bundle_once.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_g07_native_scan_layer.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_g07_native_clock_and_rclpy_shutdown.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_native_raw_scan_ttl_boundary.py' -v
           bash -n d06/scripts/axia_d06_g07_wslg_sensor_no_goal_once.sh
           bash -n d06/scripts/axia_d06_g07_wslg_gpu_rtf_compare_once.sh
