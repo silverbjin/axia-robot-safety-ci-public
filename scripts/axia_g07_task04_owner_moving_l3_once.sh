@@ -128,6 +128,19 @@ trap 'FIRST_FAILURE=OWNER_INTERRUPT;exit 130' INT
 trap 'FIRST_FAILURE=OWNER_TERMINATED;exit 143' TERM
 hold() { FIRST_FAILURE="$1";echo "AXIA_G07_TASK04_FIRST_FAILURE=$1" >&2;exit 3; }
 
+owner_consent_first_failure() {
+  # The outer wrapper runs after the real ROS runner has exited. Keep the
+  # FIRST narrow human-consent failure from its private log instead of the
+  # generic NATIVE_RUNNER_FAILED_REVIEW_RAW. Do not parse or log the answer.
+  local log="${1:-}"
+  [[ -r "$log" ]] || return 0
+  awk '
+    $1 ~ /^(OWNER_GOAL_CONSENT_TIMEOUT|OWNER_GOAL_CONSENT_EOF_OR_TTY_ERROR|OWNER_GOAL_CONSENT_DENIED|OWNER_GOAL_CONSENT_TTY_UNAVAILABLE)$/ {
+      print $1;exit
+    }
+  ' "$log"
+}
+
 # Owner is a real interactive WSL2 process, never a simulated CI actor.
 [[ "${GITHUB_ACTIONS:-}" != true ]] || hold CI_AUTHORITY_DENIED
 [[ -t 0 && -r /dev/tty ]] || hold OWNER_CONTROLLING_TTY_REQUIRED
@@ -306,6 +319,15 @@ PY_FIRST
 )" || ORIGINAL_FIRST_FAILURE=''
     if [[ "$ORIGINAL_FIRST_FAILURE" =~ ^OWNER_PREGOAL_[A-Z0-9_]+$ ]];then
       FIRST_FAILURE="$ORIGINAL_FIRST_FAILURE"
+      echo "AXIA_G07_TASK04_UPSTREAM_FIRST_FAILURE=$FIRST_FAILURE"
+    fi
+  fi
+  # Goal consent is an external physical interaction; its first error may
+  # occur AFTER a successful PREGOAL baseline and BEFORE any Goal JSON.
+  if [[ "$FIRST_FAILURE" == NATIVE_RUNNER_FAILED_REVIEW_RAW ]];then
+    CONSENT_FIRST_FAILURE="$(owner_consent_first_failure "$OUT/native_runner.log")" || CONSENT_FIRST_FAILURE=''
+    if [[ -n "$CONSENT_FIRST_FAILURE" ]];then
+      FIRST_FAILURE="$CONSENT_FIRST_FAILURE"
       echo "AXIA_G07_TASK04_UPSTREAM_FIRST_FAILURE=$FIRST_FAILURE"
     fi
   fi
