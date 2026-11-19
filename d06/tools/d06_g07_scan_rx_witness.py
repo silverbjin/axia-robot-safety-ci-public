@@ -64,13 +64,16 @@ def classify(native, raw, safety, limit=TTL):
     safety_first=first_gap(safety,limit)
     if raw_first:r["raw_gap_sec"]=round(raw_first[2],6)
     if safety_first:r["safety_gap_sec"]=round(safety_first[2],6)
-    # Source stamp exact pairing across gazebo + ROS is essential.
-    # Prefer first safety violation (original Owner first index 6).
-    first=safety_first or raw_first
+    # Earliest *host* timing violation wins across both subscriptions.
+    # Different subscriber startup times mean index 6 vs 11 is NOT chronology.
+    selected=[(x[1]["host_monotonic_sec"],kind,x) for kind,x in
+              (("safety",safety_first),("raw",raw_first)) if x is not None]
+    selected.sort(key=lambda v:v[0])
+    _,first_topic,first=selected[0] if selected else (None,None,None)
     if first is None:return r
     before,after,_=first
     r["candidate"]="NATIVE_SOURCE_STAMP_PAIR_UNAVAILABLE"
-    r["first_ros_topic"]="safety" if safety_first is not None else "raw"
+    r["first_ros_topic"]=first_topic
     r["first_ros_source_stamps_ns"]=[before["source_stamp_ns"],after["source_stamp_ns"]]
     r["first_ros_host_receive_sec"]=[before["host_monotonic_sec"],after["host_monotonic_sec"]]
     matches={}
