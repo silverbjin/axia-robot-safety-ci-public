@@ -75,6 +75,8 @@ def fake_record(home):
         "g07_ordered_shutdown.json": '{"status":"NAV2_LIFECYCLE_SHUTDOWN_ACK","cm_managed_by_navigation":true,"navigation_ack":true,"localization_ack":true,"certified_estop":false}',
         "g07_shutdown_audit.json": '{"status":"SHUTDOWN_CLEAN_CANDIDATE","cm_exit_code":0,"certified_estop":false}',
         "g07_ordered_shutdown.log": 'G07_NAV2_ORDERED_SHUTDOWN navigation_ack=true localization_ack=true',
+        "g07_witness_probe_complete.signal":"G07_READONLY_SENSOR_PROBE_FINISHED",
+        "g07_witness_stopped.ack":"G07_READONLY_WITNESSES_STOPPED",
         "d06_g07_scan_delivery_layer.json": '{"candidate":"AFTER_NATIVE_TRANSPORT_RX","release":"HOLD","goal_allowed":false}',
         "d06_gz_scan_receipts.jsonl": '{"host_monotonic_sec":100.0,"source_stamp_ns":1000000000}\\n',
         "d06_ros_scan_receipts.jsonl": '{"topic":"raw","host_monotonic_sec":100.1,"source_stamp_ns":1000000000}\\n',
@@ -134,6 +136,8 @@ class ForensicOneShot(unittest.TestCase):
                 self.assertIn("forensic/native_teardown_marker.txt", members)
                 self.assertIn("forensic/native_nav2_ordered_shutdown.json", members)
                 self.assertIn("forensic/native_cm_shutdown_audit.json", members)
+                self.assertIn("forensic/native_witness_probe_completed.txt", members)
+                self.assertIn("forensic/native_witness_handoff_ack.txt", members)
                 summary = json.load(tar.extractfile("forensic/summary.json"))
                 self.assertEqual(summary["first_sensor_failure"], "SAFETY_RECEIPT_TTL_300MS_BLOCKED")
                 self.assertEqual(summary["process_crashes"], ["collision_monitor", "gazebo_server"])
@@ -146,6 +150,7 @@ class ForensicOneShot(unittest.TestCase):
                 self.assertIn("forensic/startup_pre_both_scan_diagnostics.json", members)
                 self.assertEqual(summary["source"], "EXISTING_LOCAL_EVIDENCE")
                 self.assertTrue(summary["source_archive_sha256_verified"])
+                self.assertTrue(summary["native_readonly_witness_handoff_ack"])
                 self.assertEqual(summary["native_no_goal_navigation_ack"], True)
                 self.assertEqual(summary["native_no_goal_localization_ack"], True)
                 self.assertEqual(summary["native_no_goal_cm_exit_code"], 0)
