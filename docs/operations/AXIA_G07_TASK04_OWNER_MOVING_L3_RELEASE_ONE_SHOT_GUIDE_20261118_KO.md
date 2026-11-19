@@ -2,36 +2,36 @@
 
 2026-11-19 KST / 실제 강사 WSL2 Moving Goal **NOT_RUN** / 배포는 공개 CI 범위 한정 L2 검증 후 / SW Stop ≠ 인증 E-Stop.
 
-## 최신 n7 인수용 고정 공개 소스와 단계
+## 최신 oZGSnDD1 Xacro + Localization ACK 수정판 출고 증거
 
 | 항목 | 정확한 버전/증거 |
 |---|---|
 | 공개 CI PR | https://github.com/silverbjin/axia-robot-safety-ci-public/pull/182 |
 | Student PR | https://github.com/silverbjin/axia-robot-safety-student/pull/61 |
-| 단일 주행 소스 SHA | `dcd1299c03bf702712631dc025b868335cadd1c6` |
+| 단일 주행 소스 SHA | `6579e2eef7e99691da558cd2de1964fd26a04621` |
 | CI read-only 판정 소스 SHA | `71b85c42ea474276fedd9f345521317b8c348b4e` |
-| 실제 Gazebo Harmonic + Nav2 + Waffle + RViz Xvfb L2 | https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44433206283 |
-| 출고 Owner 원샷 Bootstrap L0 | [#44433913225 — 8/8 PASS](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44433913225) |
-| L2 원본 공개 수치·SHA256 artifact | https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44433206283/artifacts/14487965556 |
+| 실제 Gazebo Harmonic + Nav2 + Waffle + RViz Xvfb L2 | https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44449459417 |
+| 출고 Owner 원샷 Bootstrap L0 | [#44450173850 — 8/8 PASS](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44450173850) |
+| L2 원본 공개 수치·SHA256 artifact | https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44449459417/artifacts/14495301259 |
 | 강사 실제 WSL2 L3 | **n7 원본 19/21 HOLD / 신규 timing 수정판 미실행** |
 | main | **병합 안 함** |
 
-기존 Task01~03 성공 증거를 보존하고 반복하지 않는다. 최종 수정판은 공개 CI #44433206283에서 **실제 Gazebo/Nav2 Moving Goal+GUI 21/21 안전 검증**을 완료했다. Xvfb CI는 Owner WSLg D3D12가 아니므로 L3 승격 불가.
+기존 Task01~03 성공 증거를 보존하고 반복하지 않는다. 최신 종료 ACK 수정판은 공개 CI #44449459417에서 **실제 Gazebo/Nav2 Moving Goal+GUI 21/21 안전 검증**을 완료했다. Xvfb CI는 Owner WSLg D3D12가 아니므로 L3 승격 불가.
 
-과거 CI #44359652805의 이동 0.198562m, 정지 1.013681초, CM Source 59.330ms, Observer 86.805ms, Guard age 36.842ms는 **이전 실행의 보존된 기록**이다. 최신 #44433206283은 새 Student SHA의 21개 조건 true, first_failure=NONE, rc=0 및 GUI2를 확인하였으며 새 수치 JSON 아티팩트를 별도로 보존했다.
+과거 CI #44359652805의 이동 0.198562m, 정지 1.013681초, CM Source 59.330ms, Observer 86.805ms, Guard age 36.842ms는 **이전 실행의 보존된 기록**이다. 최신 #44449459417은 새 Student SHA의 21개 조건 true, first_failure=NONE, rc=0 및 GUI2를 확인하였으며 새 수치 JSON 아티팩트를 별도로 보존했다.
 
 **현장 경계:** S75의 0.538428m/0.626332m 근거리 오검출은 n7 원본에서 1.414623m/2.523533m CLEAR로 개선되었다. 이번 n7의 남은 실패는 **엄격 CM Owner 스키마·Guard 내부 age 증거 누락 및 WSL2 RMW wall-clock step**이며 새 WSL2 실행은 아직 미검증이다.
 
 기존 실행 명령에서 사용했던 원샷 커밋 `e56bbad873e0e37c83f34ecbcc206cc8a648e63d`은 WSLg D3D12 변수를 전역 export하는 이전 배포 후보이므로 **현장 신규 실행에 사용하지 않는다.** 새 고정 SHA는 동일 Student SHA의 공개 L2 및 원샷 Bootstrap L0를 통과했다.
 
-## 강사 WSL2 복사·붙여넣기 명령 (하나의 블록)
+## 강사 WSL2 복사·붙여넣기 명령 (최신 종료 ACK 수정판, 하나의 블록)
 
-다음은 **이 시점의 실증 공개 원샷 SHA `4cd36853358bb088263a0b73a0cfa6c8d5ec2d55`**를 고정한다. CI가 검증한 Student SHA는 내부에서 별도 확인한다. 무작위 main HEAD를 내려받지 않는다.
+다음은 **이 시점의 실증 공개 원샷 SHA `1816fbbbfdb972e52c5168ade26c768167998556`**를 고정한다. CI가 검증한 Student SHA는 내부에서 별도 확인한다. 무작위 main HEAD를 내려받지 않는다.
 
 ```bash
 (
   set -Eeuo pipefail
-  SOURCE_SHA='4cd36853358bb088263a0b73a0cfa6c8d5ec2d55'
+  SOURCE_SHA='1816fbbbfdb972e52c5168ade26c768167998556'
   RUNNER="$(mktemp --suffix=.sh)"
   trap 'rm -f -- "$RUNNER"' EXIT
   curl -fLsS --retry 3 --max-time 90 \
@@ -54,7 +54,7 @@
 `--self-check` 성공은 ROS를 시작하지 않는 L0이다:
 
 ```text
-AXIA_G07_TASK04_OWNER_MOVING_BOOTSTRAP_L0_PASS student_sha=dcd1299c03bf702712631dc025b868335cadd1c6 l2_run=44433206283 NO_ROS_NO_GAZEBO_NO_GOAL
+AXIA_G07_TASK04_OWNER_MOVING_BOOTSTRAP_L0_PASS student_sha=6579e2eef7e99691da558cd2de1964fd26a04621 l2_run=44449459417 NO_ROS_NO_GAZEBO_NO_GOAL
 AXIA_G07_TASK04_OWNER_MOVING_L3=NOT_RUN
 AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false
 ```
@@ -62,7 +62,7 @@ AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false
 **현장에서 실제로 성공한 뒤 기대할 패턴 (아직 실행 증거가 아님):**
 
 ```text
-AXIA_G07_TASK04_STUDENT_SHA_VERIFIED=dcd1299c03bf702712631dc025b868335cadd1c6
+AXIA_G07_TASK04_STUDENT_SHA_VERIFIED=6579e2eef7e99691da558cd2de1964fd26a04621
 AXIA_G07_TASK04_OWNER_CORE_PARITY_25_5_PASS
 AXIA_G07_TASK04_WSLG_D3D12_GPU_SELECTED=...
 AXIA_G07_OWNER_GAZEBO_LIDAR_SOFTWARE_RENDERER_SELECTED D3D12_GUI_ONLY
@@ -123,3 +123,26 @@ AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false
 - 최신 Student `dcd1299c03bf702712631dc025b868335cadd1c6`, 공개 판정 `71b85c42ea474276fedd9f345521317b8c348b4e`, 실제 L2 [#44433206283](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44433206283) SUCCESS 21/21. CLI 원샷 `4cd36853358bb088263a0b73a0cfa6c8d5ec2d55`는 이 두 커밋과 L2 Run을 고정.
 - Owner `--self-check` = L0, 실제 WSL2 `--run` = 아직 미실행. Guest monotonic 기반 CLOCK_REALTIME 보정은 **안전 인증 아님**; 실제 Windows 호스트 일시정지 부재를 증명하지 못하므로 `host_external_clock_verified=false`. CM/Guard 진짜 지연, 첫 latch 및 감속/정지는 원본으로 다시 검토해야 한다.
 - 검증 전에 `AXIA_MVP_DEMO_ACCEPTED=PASS`를 출력하지 않는다. 실패하면 동일 현장 재실행보다 첫 실패·첫 타이밍 위반을 공개 CI 회귀로 먼저 편입한다. 인증된 HW E-Stop으로 보고하지 않는다.
+
+## oZGSnDD1 현장 Gazebo 임시 월드 실패 → CI L2 Localization 종료 실패 → 최종 수정판 (2026-11-19)
+
+- 최초 현장 원본 `owner-moving-oZGSnDD1.tar.gz` SHA256 `316183965070fab7ffdf0c1621d4cacc9fe4d6d5f674aa125791908a90a19569`, 첫 원인은 `gz sim -r -s /tmp/nav2_*.sdf` exit 255. Guard BOOT_SAFE/NO_FRESH_PAIR, `/cmd_vel=0`, Goal 미발행.
+- Student H01의 `OnProcessExit` 보호를 Task04 Owner/공개 CI에 재사용, Xacro exit 0과 실제 유효한 SDF XML/World/SHA256 확인 후 Gazebo를 딱 한 번 시작. RED [#44439674602](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44439674602), L0 GREEN [#44440787429](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44440787429) 5/5, 실제 ROS Launch L1 [#44440794690](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44440794690) 3/3.
+- 실제 L2 [#44440932197](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44440932197) 및 [#44442176276](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44442176276)에서 Goal·STOP·정확한 cancel 모두 성공했으나 Localization SHUTDOWN ACK가 30.001s, 30.003s에 TIMEOUT. `main` 병합이나 현장 재실행 대신 공개 회귀 테스트 추가. 안전 제어 계층의 타이밍을 완화하지 않음.
+- RED [#44443257191](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44443257191), GREEN [#44443374979](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44443374979): Navigation 및 Localization Native Service의 재사용 클라이언트 상태 가능성을 최소 재현. 새 `rclpy` 요청 노드를 각각 독립 할당하되, 기존 Native Client·실제 ACK·30s 한계·1회 요청 조건 보존. Student 최종 commit `6579e2eef7e99691da558cd2de1964fd26a04621`.
+- 실제 Gazebo/Nav2 Moving GUI L2 [#44449459417](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44449459417) **SUCCESS, 21/21**, rc=0, Gazebo/RViz GUI2, `first_failure=NONE`, Contact/정지/CM·Guard/Lifecycle 종료 동일 세션 PASS. Source 6579 SHA가 정확히 고정된 결과.
+- 실행기 pinned SHA `1816fbbbfdb972e52c5168ade26c768167998556`는 Student 6579, strict review `71b85c42ea474276fedd9f345521317b8c348b4e`, 실제 공개 L2 #44449459417을 고정한다. 공개 Bootstrap [#44450173850](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44450173850) **8/8 PASS**.
+- 근거 보고서: `AXIA_G07_TASK04_OZGSnDD1_GAZEBO_WORLD_XACRO_RACE_RED_GREEN_20261119_KO.md`, `AXIA_G07_TASK04_OZG_LOCALIZATION_SHUTDOWN_ACK_RED_GREEN_20261119_KO.md`. 이전 n7 배포판 SHA 4cd368은 기록으로만 남기며 **더 이상 현장에 사용하지 않는다**.
+- **L2 PASS는 Owner WSL2/WSLg 실측이나 인증된 E-Stop이 아니다.** Owner L3 원본 TAR/SQLite/ZIP에 실제 Guard 내부 CM age, CM RMW raw 보정 근거, 최초 안전 상태 전이·타이밍 위반 및 Lifecycle ACK를 확인하기 전 최종 인수 HOLD.
+
+```ini
+PUBLIC_CI_L0_WORLD_XACRO_ORDER=PASS_5_OF_5
+PUBLIC_CI_L1_REAL_ROS_LAUNCH=PASS_3_OF_3_NO_GAZEBO
+PUBLIC_CI_L0_SHUTDOWN_ACK_CLIENT=PASS_6_OF_6
+PUBLIC_CI_MOVING_GAZEBO_NATIVE_L2=PASS_21_OF_21
+OWNER_BOOTSTRAP_L0=PASS_8_OF_8
+OWNER_WSL2_L3=NOT_RUN
+AXIA_MVP_DEMO_ACCEPTED=HOLD
+CERTIFIED_ESTOP=false
+MAIN_MERGED=false
+```
