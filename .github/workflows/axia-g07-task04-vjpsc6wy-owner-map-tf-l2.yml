@@ -192,11 +192,12 @@ jobs:
           # successful run which happened to receive a late /amcl_pose.
           grep -Fq 'G07_CI_REAL_MAP_TF_FALLBACK_REQUIRED' "$GITHUB_WORKSPACE/native/g07_ci_moving.log"
           grep -Fq 'G07_LIVE_MAP_TF_VERIFIED_BEFORE_GOAL' "$GITHUB_WORKSPACE/native/g07_ci_moving.log"
-          python3 - "$GITHUB_WORKSPACE/native/g07_ci_moving/g07_frame_alignment.json" <<'PY_REAL_TF'
+          python3 - "$GITHUB_WORKSPACE/native/g07_ci_moving/ci_moving_goal_result.json" <<'PY_REAL_TF'
           import json,sys
-          anchor=json.load(open(sys.argv[1]))
-          assert anchor["map_pose_source"]=="tf_map_base_link",anchor
-          print('AXIA_G07_REAL_MAP_TF_OWNER_FIELD_REGRESSION_PASS map_pose_source=tf_map_base_link')
+          result=json.load(open(sys.argv[1]))
+          assert result.get("goal_sent") is True,result
+          assert result.get("source_sha")=="43a26a2f870c0fd99d66d06887cdf4e706b637b7",result
+          print('AXIA_G07_REAL_MAP_TF_OWNER_FIELD_REGRESSION_PASS map_pose_source=tf_map_base_link actual_goal_sent=true')
           PY_REAL_TF
           windows_count=$((rviz_seen+gazebo_seen))
           python3 tools/p2_g07_task04_moving_review.py             --motion-root "$GITHUB_WORKSPACE/native"             --witness "$GITHUB_WORKSPACE/native/s02_ecm_witness.json"             --source-sha '43a26a2f870c0fd99d66d06887cdf4e706b637b7'             --gui-windows "$windows_count"             --output "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"
