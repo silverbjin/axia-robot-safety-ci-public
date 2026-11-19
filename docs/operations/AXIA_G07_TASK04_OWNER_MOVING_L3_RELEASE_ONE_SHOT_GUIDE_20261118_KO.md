@@ -11,7 +11,7 @@
 | 단일 주행 소스 SHA | `dcd1299c03bf702712631dc025b868335cadd1c6` |
 | CI read-only 판정 소스 SHA | `71b85c42ea474276fedd9f345521317b8c348b4e` |
 | 실제 Gazebo Harmonic + Nav2 + Waffle + RViz Xvfb L2 | https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44433206283 |
-| 출고 Owner 원샷 Bootstrap L0 | **신규 pin 8개 검증 중** |
+| 출고 Owner 원샷 Bootstrap L0 | [#44433913225 — 8/8 PASS](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44433913225) |
 | L2 원본 공개 수치·SHA256 artifact | https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44433206283/artifacts/14487965556 |
 | 강사 실제 WSL2 L3 | **n7 원본 19/21 HOLD / 신규 timing 수정판 미실행** |
 | main | **병합 안 함** |
@@ -112,7 +112,7 @@ AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false
 
 ## 최종 Pose 파서 회귀와 검수한 배포본
 
-본 인계의 **최종 Student**는 `c4cc2a7adc0309d9107e35f31d8f3dd95fa8dac2`입니다. S75 원본 `gz model --pose`가 출력하는 `[-2.000520 -0.500000 0.010007]`의 실제 공백 구분 좌표가 기존 파서의 `|` 구분만 허용하는 버그로 누락됐습니다. 이를 최초 장애 지점 근거 기반 테스트 [RED #44358905525](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44358905525) → 허용 형식 최소 수정 → 실제 [Gazebo No-Goal L2 #44359662336](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44359662336) 및 [Moving Goal+GUI L2 #44359652805](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44359652805) **SUCCESS**까지 검증하였습니다.
+이전 S75 배포판의 **당시 최종 Student**는 `c4cc2a7adc0309d9107e35f31d8f3dd95fa8dac2`였습니다. S75 원본 `gz model --pose`가 출력하는 `[-2.000520 -0.500000 0.010007]`의 실제 공백 구분 좌표가 기존 파서의 `|` 구분만 허용하는 버그로 누락됐습니다. 이를 최초 장애 지점 근거 기반 테스트 [RED #44358905525](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44358905525) → 허용 형식 최소 수정 → 실제 [Gazebo No-Goal L2 #44359662336](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44359662336) 및 [Moving Goal+GUI L2 #44359652805](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44359652805) **SUCCESS**까지 검증하였습니다.
 
 이번 수정은 **진단 기록의 정확성 개선**이며, 처음 S75에서 발생한 WSLg gpu_lidar 근거리 환형 스캔과 4.4초 호스트 공백이 실제 Owner PC에서 해결되었다는 뜻은 아닙니다. 새 원샷은 반드시 강사 WSL2에서 한 번 최종 확인하고, 재발하면 재실행을 반복하지 말고 최초 실패와 최초 안전 TTL 이탈을 정리합니다. `AXIA_MVP_DEMO_ACCEPTED=HOLD`를 유지합니다.
 
