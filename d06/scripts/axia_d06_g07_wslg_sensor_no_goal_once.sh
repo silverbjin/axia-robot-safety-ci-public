@@ -132,8 +132,8 @@ PY
   # Exact D08 and D06 immutable commits and git blobs.
   D08_RECEIVER_SHA='30fad621f7916dd8a320489beb46fff8ae0ccf43'
   D08_RECEIVER_BLOB='7d5f18c5fd6255c83100e29d651b6f4d52ed000d'
-  D06_RECEIVER_SHA='13b5fb267e598d9dd3d72059c385b81fe0deb379'
-  D06_RECEIVER_BLOB='533dda8c896862399c499f7a4b68e1f42afe83dc'
+  D06_RECEIVER_SHA='1f3effb77e74e89eda048dd8a82ae9567db09f7b'
+  D06_RECEIVER_BLOB='fd17616ec2a6d9cd7363d078493ed784bded36ba'
   RX_TOOL="$GIT_ROOT/d06_g07_scan_rx_witness.py"
   GZ_TOOL="$GIT_ROOT/d08_gz_native_scan_probe.py"
   curl -fLsS --retry 3 --max-time 90 \
