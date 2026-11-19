@@ -107,8 +107,79 @@ echo "AXIA_D06_G07_WSLG_NO_GOAL_SOURCE_PIN_VERIFIED=$STUDENT_SHA"
 echo "AXIA_D06_G07_WSLG_NO_GOAL_REAL_SENSOR_BEGIN renderer=$(grep -m1 'OpenGL renderer' "$RUN_DIR/renderer.txt" || true)"
 printf 'D06_SENSOR_PROBE_OWNER_MOVING=false\nD06_SENSOR_PROBE_SOURCE=%s\n' "$STUDENT_SHA" > "$RUN_DIR/source_manifest.txt"
 
+# Opt-in same-session Gazebo native -> ROS read-only Scan receipt witness.
+# Reuses D08 transport tool unchanged. No Goal, Twist, or TTL alteration.
+RX_WITNESS="${AXIA_D06_G07_RX_WITNESS:-0}"
+[[ "$RX_WITNESS" == 0 || "$RX_WITNESS" == 1 ]] || exit 3
+RX_PID=''; GZ_PID=''
+RX_TOOL=''; GZ_TOOL=''
+if [[ "$RX_WITNESS" == 1 ]];then
+  command -v curl >/dev/null || { echo D06_G07_RX_CURL_REQUIRED_NO_GOAL >&2;exit 3; }
+  python3 - <<'PY' || { echo D06_G07_NATIVE_PROBE_IMPORT_MISSING_NO_GOAL >&2;exit 3; }
+from gz.transport13 import Node
+from gz.msgs10.laserscan_pb2 import LaserScan
+from gz.msgs10.clock_pb2 import Clock
+PY
+  # Exact D08 and D06 immutable commits and git blobs.
+  D08_RECEIVER_SHA='30fad621f7916dd8a320489beb46fff8ae0ccf43'
+  D08_RECEIVER_BLOB='7d5f18c5fd6255c83100e29d651b6f4d52ed000d'
+  D06_RECEIVER_SHA='13b5fb267e598d9dd3d72059c385b81fe0deb379'
+  D06_RECEIVER_BLOB='533dda8c896862399c499f7a4b68e1f42afe83dc'
+  RX_TOOL="$GIT_ROOT/d06_g07_scan_rx_witness.py"
+  GZ_TOOL="$GIT_ROOT/d08_gz_native_scan_probe.py"
+  curl -fLsS --retry 3 --max-time 90 \
+    "https://raw.githubusercontent.com/silverbjin/axia-robot-safety-ci-public/$D06_RECEIVER_SHA/d06/tools/d06_g07_scan_rx_witness.py" \
+    -o "$RX_TOOL"
+  curl -fLsS --retry 3 --max-time 90 \
+    "https://raw.githubusercontent.com/silverbjin/axia-robot-safety-ci-public/$D08_RECEIVER_SHA/d08/harness/d08_gz_native_scan_probe.py" \
+    -o "$GZ_TOOL"
+  [[ "$(git hash-object "$RX_TOOL")" == "$D06_RECEIVER_BLOB" &&
+     "$(git hash-object "$GZ_TOOL")" == "$D08_RECEIVER_BLOB" ]] || {
+       echo D06_G07_NATIVE_RX_BLOB_MISMATCH_NO_GOAL >&2;exit 3;
+     }
+  python3 -m py_compile "$RX_TOOL" "$GZ_TOOL"
+  mkdir -p "$RUN_DIR/native"
+  python3 -u "$GZ_TOOL" --topic /scan \
+    --out "$RUN_DIR/native/d06_gz_scan_receipts.jsonl" \
+    --clock-out "$RUN_DIR/native/d06_gz_clock_receipts.jsonl" \
+    > "$RUN_DIR/native/d06_gz_scan_rx.log" 2>&1 &
+  GZ_PID=$!
+  python3 -u "$RX_TOOL" --capture \
+    --ros-jsonl "$RUN_DIR/native/d06_ros_scan_receipts.jsonl" \
+    --output "$RUN_DIR/native/d06_ros_rx_unused.json" \
+    > "$RUN_DIR/native/d06_ros_scan_rx.log" 2>&1 &
+  RX_PID=$!
+  sleep 2
+  kill -0 "$RX_PID" "$GZ_PID" 2>/dev/null || {
+    echo D06_G07_NATIVE_RX_WITNESS_DIED_BEFORE_SMOKE_NO_GOAL >&2
+    kill -TERM "$RX_PID" "$GZ_PID" 2>/dev/null || true
+    wait "$RX_PID" "$GZ_PID" 2>/dev/null || true
+    exit 3
+  }
+  echo D06_G07_NATIVE_RX_WITNESS_STARTED_GZ_AND_ROS_NO_GOAL
+fi
 RC=0
 bash "$RUNTIME/scripts/p2_no_goal_smoke_ci.sh" > "$RUN_DIR/owner_no_goal.log" 2>&1 || RC=$?
+if [[ "$RX_WITNESS" == 1 ]];then
+  kill -TERM "$RX_PID" "$GZ_PID" 2>/dev/null || true
+  RX_RC=0; GZ_RC=0
+  wait "$RX_PID" || RX_RC=$?
+  wait "$GZ_PID" || GZ_RC=$?
+  echo "D06_G07_RX_WITNESS_EXIT ros=$RX_RC native=$GZ_RC"
+  if [[ "$RX_RC" != 0 || "$GZ_RC" != 0 ]];then
+    echo D06_G07_RX_WITNESS_DID_NOT_FINISH_CLEANLY_NO_GOAL >&2
+    RC=3
+  fi
+  if ! python3 "$RX_TOOL" --analyze \
+      --ros-jsonl "$RUN_DIR/native/d06_ros_scan_receipts.jsonl" \
+      --native-jsonl "$RUN_DIR/native/d06_gz_scan_receipts.jsonl" \
+      --output "$RUN_DIR/native/d06_g07_scan_delivery_layer.json" \
+      > "$RUN_DIR/native/d06_g07_scan_delivery_layer.log" 2>&1;then
+    echo D06_G07_NATIVE_SCAN_LAYER_NOT_MEASURED_NO_GOAL >&2
+    RC=3
+  fi
+  cat "$RUN_DIR/native/d06_g07_scan_delivery_layer.log" || true
+fi
 grep -E 'G07_WSLG_NO_GOAL_SENSOR_|AXIA_G07_WSLG_NO_GOAL_SENSOR_TRUTH|P2_NO_GOAL_BLOCKED|P2_STAGED_NO_GOAL_BLOCKED' "$RUN_DIR/owner_no_goal.log" | tail -n 16 || true
 tar -C "$EVIDENCE_ROOT" -czf "$RUN_DIR.tar.gz" "$(basename "$RUN_DIR")"
 sha256sum "$RUN_DIR.tar.gz" > "$RUN_DIR.tar.gz.sha256"
