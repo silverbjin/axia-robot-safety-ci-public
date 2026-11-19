@@ -144,6 +144,13 @@ jobs:
           assert "FORCED" not in teardown and "GRACEFUL" in teardown
           assert not re.search(r"\[collision_monitor-\d+\].*exit code -11",log)
           assert not re.search(r"\[gz-\d+\].*exit code -11",log)
+          # The original ZOAgryLW owner log had GRACEFUL parent marker but
+          # gz sim server -11. Positive child exit0 is REQUIRED for scoped L2.
+          gz_clean=bool(re.search(r"\\[INFO\\]\\s*\\[gz-\\d+\\]:\\s*process has finished cleanly",log))
+          gz_bad=re.findall(r"\\[ERROR\\]\\s*\\[gz-\\d+\\]:\\s*process has died[^\\n]*",log)
+          print("AXIA_D06_G07_REAL_GAZEBO_CHILD_EXIT0="+str(gz_clean)+
+                " bad="+repr(gz_bad[:2]))
+          assert gz_clean and not gz_bad, "GAZEBO_SERVER_EXIT0_NOT_PROVEN_L2"
           print("AXIA_D06_G07_ACTUAL_NAV2_CM_CHILD_EXIT0_L2_PASS_NO_GOAL_SENSOR_TTL_INDEPENDENT")
           print("D06_GAZEBO_LIVE_RELEASE=HOLD CERTIFIED_ESTOP=false OWNER_WSLG_L3_NOT_RUN")
           PY
