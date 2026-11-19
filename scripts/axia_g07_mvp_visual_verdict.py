@@ -13,8 +13,19 @@ def classify(motion, shutdown, gui_windows, expected_source):
     if not isinstance(motion, dict) or not isinstance(shutdown, dict):
         raise ValueError("ORIGINAL_NATIVE_JSON_REQUIRED")
     c, s, t = (motion.get(k) for k in ("clear", "slow", "stop"))
+    ci_scope = (
+        motion.get("shared_execution_mode") == "ci"
+        and motion.get("ci_specific") is True
+        and motion.get("status") == "CI_GAZEBO_MOVING_GOAL_CANDIDATE")
+    owner_scope = (
+        motion.get("shared_execution_mode") == "owner"
+        and motion.get("ci_specific") is False
+        and motion.get("owner_authority_verified") is True
+        and motion.get("status") == "NUMERICAL_CANDIDATE"
+        and motion.get("common_g07_ci_oracle_status") == "CI_GAZEBO_MOVING_GOAL_CANDIDATE")
     ok = (
-        gui_windows == 2
+        (ci_scope or owner_scope)
+        and gui_windows == 2
         and motion.get("source_sha") == expected_source
         and re.fullmatch(r"[0-9a-f]{32}", str(motion.get("goal_uuid", ""))) is not None
         and motion.get("goal_sent") is True
@@ -23,7 +34,6 @@ def classify(motion, shutdown, gui_windows, expected_source):
         and motion.get("stop_native_set_pose_ack") is True
         and motion.get("goal_cancel_ack") is True
         and motion.get("goal_cancel_status") == 5
-        and motion.get("status") == "CI_GAZEBO_MOVING_GOAL_CANDIDATE"
         and motion.get("first_timing_violation") is None
         and motion.get("guard_latched") is False
         and measured(motion.get("observed_odom_moved_m"))
@@ -45,8 +55,12 @@ def classify(motion, shutdown, gui_windows, expected_source):
     )
     return {
         "schema": "axia_g07_task04_mvp_educational_visual_verdict_v1",
-        "status": ("MVP_VISUAL_L2_PASS_FORMAL_SHUTDOWN_HOLD" if ok else "HOLD"),
+        "status": (("MVP_OWNER_NUMERICAL_CANDIDATE_FORMAL_SHUTDOWN_HOLD"
+                    if owner_scope else "MVP_VISUAL_L2_PASS_FORMAL_SHUTDOWN_HOLD")
+                   if ok else "HOLD"),
         "physical_demo_observed": bool(ok),
+        "demo_execution_mode": "owner" if owner_scope else "ci",
+        "visual_content_verified": False,
         "localization_shutdown_ack": False,
         "formal_l2_accepted": False,
         "owner_wsl2_l3_accepted": False,
