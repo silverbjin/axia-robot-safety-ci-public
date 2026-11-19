@@ -184,8 +184,8 @@ summary["native_no_goal_navigation_ack"]=nav.get("navigation_ack")
 summary["native_no_goal_localization_ack"]=nav.get("localization_ack")
 # The entire shutdown is clean ONLY if each native child has positive
 # exit0 evidence. A ros2 launch group exit marker never proves Gazebo clean.
-gz_clean=any(re.search(r"\\[INFO\\]\\s*\\[gz-\\d+\\]:\\s*process has finished cleanly",line) for line in log)
-gz_negative=any(re.search(r"\\[gz-\\d+\\].*exit code (-?\\d+)",line) for line in log)
+gz_clean=any("[gz-" in row and "process has finished cleanly" in row for row in log)
+gz_negative=any("[gz-" in row and "process has died" in row for row in log)
 summary["native_no_goal_gazebo_server_exit_code"]=(
     -11 if "gazebo_server" in crashes else 0 if gz_clean and not gz_negative else None
 )
