@@ -22,6 +22,13 @@ class TestWSL2CpuPreemptionDiagnostic(unittest.TestCase):
         subprocess.run(["bash","-n",str(ENTRY)],check=True)
         subprocess.run(["python3","-m","py_compile",str(GUEST)],check=True)
 
+    def test_avoid_wasting_owner_run_when_windows_host_sampler_missing(self):
+        s=ENTRY.read_text()
+        self.assertIn("AXIA_G07_CV2_HOST_SAMPLER_PRECHECK_FAILED_NO_OWNER_RUN",s)
+        self.assertIn('[[ -s "$OUT/windows_host.jsonl" ]]',s)
+        self.assertIn("AXIA_G07_CV2_WINDOWS_HOST_MONITOR_READY",s)
+        self.assertIn("OWNER_RC=",s)
+
     def test_exact_owner_scenario_is_not_modified_or_autoconsented(self):
         s=ENTRY.read_text()
         self.assertIn("cd8c23c52588f5efd6295b6904e15b1aa54496e7",s)
