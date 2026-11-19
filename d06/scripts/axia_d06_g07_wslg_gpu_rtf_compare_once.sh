@@ -350,9 +350,20 @@ if [[ "$MODE" == --analyze-existing ]];then
 import sys
 from pathlib import Path
 root=Path(sys.argv[1])
-found=[p for p in root.glob("ab-no-goal-*") if p.is_dir()
-       and (p/"nvidia.g07_wslg_sensor_truth.json").is_file()]
-if found:print(max(found,key=lambda p:(p/"nvidia.g07_wslg_sensor_truth.json").stat().st_mtime))
+# An interrupted bootstrap may never create sensor_truth.json. Replay
+# the latest actual WSL2 attempt from its Owner log, stage marker or GL probe.
+# Never launch ROS/Gazebo in --analyze-existing.
+evidence_names=("nvidia.g07_wslg_sensor_truth.json",
+                "nvidia.run.log","attempt_state.txt",
+                "nvidia.preflight.txt","nvidia.preflight.stderr.txt")
+def newest_signal(path):
+    signals=[(path/name).stat().st_mtime for name in evidence_names
+             if (path/name).is_file()]
+    return max(signals,default=-1)
+found=[p for p in root.glob("ab-no-goal-*")
+       if p.is_dir() and newest_signal(p)>=0]
+if found:
+    print(max(found,key=lambda p:(newest_signal(p),p.name)))
 PY
 )"
   [[ -n "$RUN_DIR" ]] || {
