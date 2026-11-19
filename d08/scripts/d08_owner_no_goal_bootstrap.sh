@@ -273,7 +273,10 @@ p=Path(sys.argv[1])
 if not p.is_file():
     sys.exit(2)
 x=json.loads(p.read_text())
-if x.get("first_500ms_violation_retained") and x.get("candidate")=="EVIDENCE_INCOMPLETE":
+if (x.get("first_500ms_violation_retained")
+    and x.get("candidate")=="EVIDENCE_INCOMPLETE"
+    and (x.get("first_observer_gap") or {}).get("scope")
+        != "initial_amcl_pregoal_recovery"):
     sys.exit(2)
 PY
   then
