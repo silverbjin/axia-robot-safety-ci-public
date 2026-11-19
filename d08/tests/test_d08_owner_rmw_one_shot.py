@@ -81,3 +81,42 @@ def test_original_owner_one_shot_starts_trace_and_archives_small_first_boundary(
     assert "500ms/CM/Guard criterion UNCHANGED" in trace
     for dangerous in ("reset --hard","pkill","rm -rf"):
         assert dangerous not in script
+
+
+def test_earliest_pregoal_recovery_is_preserved_but_first_live_cycle_is_target(tmp_path):
+    root=tmp_path/"run"/"live_evidence"
+    root.mkdir(parents=True)
+    # CI deliberately stalls the initial executor by 650ms; the first
+    # post-initialization violation must NOT be shadowed by this recovery.
+    (root/"official_nav2_before_path.json").write_text(json.dumps({
+        "real_amcl_and_tf":{"live_scan_odom_at_localization":{
+            "no_goal_pre_goal_recovery":{"historical_first_gaps":{
+                "scan":{"first_at_host_monotonic":50.7,"gap_sec":.65}}}}}}))
+    cycle=root/"owner_replan_cycles"/"cycle_0000"
+    cycle.mkdir(parents=True)
+    (cycle/"verdict.json").write_text(json.dumps({
+        "first_scan_timing_boundary":{
+            "previous_host_monotonic_sec":100.0,
+            "current_host_monotonic_sec":100.505365,
+            "receive_gap_sec":.505365,
+            "previous_ros_stamp_ns":48000000000,
+            "current_ros_stamp_ns":48102000000}}))
+    first=collect_first_scan_boundary(tmp_path/"run")
+    assert first["scope"]=="owner_replan_cycles/cycle_0000"
+    assert first["gap_sec"]==.505365
+    assert first["chronological_first_raw_boundary"]["scope"]=="initial_amcl_pregoal_recovery"
+    assert first["initial_pregoal_recovery"]["gap_sec"]==.65
+    assert first["selected_for_rmw"]=="FIRST_OFFICIAL_PATH_OR_OWNER_CYCLE"
+
+def test_startup_gap_only_remains_diagnostic_not_stable_cycle_hard_failure(tmp_path):
+    root=tmp_path/"run"/"live_evidence"
+    root.mkdir(parents=True)
+    (root/"official_nav2_before_path.json").write_text(json.dumps({
+        "real_amcl_and_tf":{"live_scan_odom_at_localization":{
+            "no_goal_pre_goal_recovery":{"historical_first_gaps":{
+                "scan":{"first_at_host_monotonic":20.75,"gap_sec":.65}}}}}}))
+    first=collect_first_scan_boundary(tmp_path/"run")
+    assert first["scope"]=="initial_amcl_pregoal_recovery"
+    assert first["selected_for_rmw"]=="ONLY_INITIAL_PREGOAL_RECOVERY"
+    script=(ROOT/"d08/scripts/d08_owner_no_goal_bootstrap.sh").read_text()
+    assert 'initial_amcl_pregoal_recovery' in script
