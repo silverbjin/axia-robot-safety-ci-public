@@ -42,6 +42,17 @@ class SafetyGapNativeWitness(unittest.TestCase):
         result=m.classify(native,raw,safe)
         self.assertEqual(result["candidate"],"AT_OR_BEFORE_NATIVE_TRANSPORT_RX")
         self.assertFalse(result["publisher_send_timing_proven"])
+    def test_actual_first_host_violation_wins_not_stream_index(self):
+        m=load()
+        # Raw subscriber started earlier and breached before safety callback
+        # despite safety first_gap_index being numerically smaller.
+        native=[event(100.0,1000000000,"gz"),event(100.1,1100000000,"gz")]
+        raw=[event(100.02,1000000000,"raw"),event(100.41,1100000000,"raw")]
+        safe=[event(100.12,1200000000,"safety"),event(100.53,1300000000,"safety")]
+        v=m.classify(native,raw,safe)
+        self.assertEqual(v["first_ros_topic"],"raw")
+        self.assertEqual(v["candidate"],"AFTER_NATIVE_TRANSPORT_RX")
+        self.assertEqual(v["release"],"HOLD")
     def test_missing_native_exact_pair_stays_undetermined(self):
         m=load()
         raw=[event(100,1000000000,"raw"),event(100.4,1100000000,"raw")]
