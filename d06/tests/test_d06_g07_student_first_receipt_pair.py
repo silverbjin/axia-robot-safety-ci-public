@@ -180,6 +180,45 @@ class ExactStudentPairGazeboBoundary(unittest.TestCase):
         self.assertEqual(v["student_first_candidate"],"AFTER_NATIVE_TRANSPORT_RX")
         self.assertTrue(v["student_first_stamp_pair_verified"])
 
+    def test_l2_44489912476_first_student_gap_is_after_independent_ros(self):
+        """Exact same source-stamp pair from real independent CI receipts.
+
+        Native=109.453ms, independent ROS safety=112.480ms, Student safety
+        callback=385.188ms. Never mislabel this as Gazebo/bridge delay or
+        assert the Linux scheduler versus Python executor root cause.
+        """
+        witness=ROOT/"d06/tools/d06_g07_scan_rx_witness.py"
+        spec=importlib.util.spec_from_file_location("student_peer_pair",witness)
+        m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+        a,b=36300000000,36402000000
+        def rec(t,stamp,topic=None):
+            r={"host_monotonic_sec":t,"source_stamp_ns":stamp}
+            if topic is not None:r["topic"]=topic
+            return r
+        truth={"scan_receipts_compact":{
+            "schema":"axia.g07.first_ttl_host_pair.v1",
+            "raw":{"before":rec(492.097119,a),
+                   "after":rec(492.485648,b),"gap_sec":.388529},
+            "safety":{"before":rec(492.098214,a),
+                      "after":rec(492.483402,b),"gap_sec":.385188}}}
+        native=[rec(492.097196,a),rec(492.206649,b)]
+        peer=[rec(492.097117,a,"raw"),rec(492.207775,b,"raw"),
+              rec(492.097441,a,"safety"),rec(492.209921,b,"safety")]
+        v=m.classify_student_first(native,truth,ros_observer=peer)
+        self.assertTrue(v["student_first_stamp_pair_verified"])
+        self.assertTrue(v["student_first_ros_peer_pair_verified"])
+        self.assertEqual(v["student_first_topic"],"safety")
+        self.assertAlmostEqual(v["student_first_native_gap_sec"],.109453)
+        self.assertAlmostEqual(v["student_first_ros_peer_gap_sec"],.112480)
+        self.assertAlmostEqual(v["student_first_host_gap_sec"],.385188)
+        self.assertAlmostEqual(
+            v["student_first_ros_peer_to_student_after_sec"],.273481)
+        self.assertEqual(v["student_first_boundary"],
+                         "AFTER_INDEPENDENT_ROS_RECEIPT")
+        self.assertEqual(v["cause"],"UNDETERMINED")
+        self.assertEqual(v["release"],"HOLD")
+        self.assertFalse(v["goal_allowed"])
+
     def test_without_student_ttl_pair_dont_fake_first_cause(self):
         witness=ROOT/"d06/tools/d06_g07_scan_rx_witness.py"
         spec=importlib.util.spec_from_file_location("g07_first_student_witness3",witness)
