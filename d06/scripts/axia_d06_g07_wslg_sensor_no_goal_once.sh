@@ -6,9 +6,9 @@ MODE="${1:---run}"
 [[ $# -le 1 && ( "$MODE" == --run || "$MODE" == --self-check ) ]] || {
   echo 'D06_WSLG_SENSOR_USAGE=--self-check|--run' >&2;exit 2;
 }
-readonly STUDENT_SHA='835a5285c49300a8d9943d2e19d0c07f3fa06901'
+readonly STUDENT_SHA='9bfd86fb6996d0a4bdfaa638a5a8fc757555276a'
 readonly PROBE_BLOB='f7534b191b78cba4f20aac55e9d227268504a25f'
-readonly SMOKE_BLOB='5a4a97078aacc7f5b382d1c2ebdcdee82d8f09e1'
+readonly SMOKE_BLOB='83d7b57cd8e527cf8b85896cf6f60568d8b332ad'
 readonly LAUNCH_BLOB='b2886cdf509d99ea62528cd013669258764b05e0'
 readonly REPO='https://github.com/silverbjin/axia-robot-safety-student.git'
 readonly REL='block_B/day07/h01_runtime'
@@ -102,6 +102,9 @@ export AXIA_G07_OWNER_SENSOR_TRUTH_NO_GOAL=1
 # Official Nav2 Lifecycle Manager cleanly shuts down CM before launch SIGINT;
 # preserve any earlier sensor TTL FAIL and require real CM process exit0.
 export AXIA_G07_NO_GOAL_ORDERED_SHUTDOWN=1
+# Gazebo 8 documented WorldControl pause before launch SIGINT.
+# Never changes Scan300/CM120/Guard150 limits or authorizes Goal.
+export AXIA_G07_NO_GOAL_GZ_PAUSE_BEFORE_SIGINT=1
 export AXIA_G07_CI_SIM_GOAL_ALLOWED=0
 export AXIA_G07_TASK04_OWNER_MOVING_L3=0
 export AXIA_G07_TASK04_CI_GUI_MOVING=0
@@ -135,8 +138,8 @@ PY
   # Exact D08 and D06 immutable commits and git blobs.
   D08_RECEIVER_SHA='30fad621f7916dd8a320489beb46fff8ae0ccf43'
   D08_RECEIVER_BLOB='7d5f18c5fd6255c83100e29d651b6f4d52ed000d'
-  D06_RECEIVER_SHA='2bda8cb5208da8765e2667ae18c6f032be7a95c2'
-  D06_RECEIVER_BLOB='199eba87bb17754bd4efb506be37e80e7fa56017'
+  D06_RECEIVER_SHA='baf2ee907757ff248e45a9f02e62b40de40a3aed'
+  D06_RECEIVER_BLOB='d55bce65cefe41ea046503445511b68e916607c2'
   RX_TOOL="$GIT_ROOT/d06_g07_scan_rx_witness.py"
   GZ_TOOL="$GIT_ROOT/d08_gz_native_scan_probe.py"
   curl -fLsS --retry 3 --max-time 90 \
@@ -187,6 +190,7 @@ if [[ "$RX_WITNESS" == 1 ]];then
       --native-jsonl "$RUN_DIR/native/d06_gz_scan_receipts.jsonl" \
       --native-clock-jsonl "$RUN_DIR/native/d06_gz_clock_receipts.jsonl" \
       --startup-verdict "$RUN_DIR/native/startup_verdict.json" \
+      --student-truth "$RUN_DIR/native/g07_wslg_sensor_truth.json" \
       --output "$RUN_DIR/native/d06_g07_scan_delivery_layer.json" \
       > "$RUN_DIR/native/d06_g07_scan_delivery_layer.log" 2>&1;then
     echo D06_G07_NATIVE_SCAN_LAYER_NOT_MEASURED_NO_GOAL >&2
