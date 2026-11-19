@@ -42,13 +42,13 @@ class WslgABOneShotSafety(unittest.TestCase):
 
     def test_pin_source_commit_and_git_blobs(self):
         s=SCRIPT.read_text()
-        self.assertIn("ad86587c30e41a2bbc291c0418bdddd6dcea974f",s)
-        self.assertIn("8cd4aef9c7a653a61c3611e055bed8fe567de899",s)
+        self.assertIn("df911a88f88f70a7e622170b55678ee821423d8f",s)
+        self.assertIn("a33c771b2576d6b99f7fd74d33e012920b8c22d0",s)
         self.assertIn("171aad7ce8abe97c93a42f19787042619c06b65e",s)
         self.assertIn('git hash-object "$TMP/owner.sh"',s)
         self.assertIn('git hash-object "$TMP/compare.py"',s)
         o=OWNER.read_text()
-        self.assertIn("ad86587c30e41a2bbc291c0418bdddd6dcea974f",o)
+        self.assertIn("df911a88f88f70a7e622170b55678ee821423d8f",o)
         self.assertIn("1f00c7118f55ed72257155b92e83a98d6dcbc017",o)
 
     def test_fr1_native_gz_witness_pinned_unsubscribe_and_proven_before_nav2(self):
@@ -59,7 +59,7 @@ class WslgABOneShotSafety(unittest.TestCase):
         self.assertIn("D06_GZ_NATIVE_SUBSCRIPTIONS_RELEASED",o)
         self.assertIn("D06_GZ_NATIVE_RX_UNSUBSCRIBE_BEFORE_NAV2_SHUTDOWN_PASS",o)
         self.assertIn("export AXIA_G07_NO_GOAL_GZ_STOP_BEFORE_SIGINT=1",o)
-        self.assertIn("ad86587c30e41a2bbc291c0418bdddd6dcea974f",o)
+        self.assertIn("df911a88f88f70a7e622170b55678ee821423d8f",o)
         self.assertIn("ca4af428c59716b46b9bc6bde6f25ea47d6d4e68",o)
         self.assertNotIn("D08_RECEIVER_BLOB",o)
         probe=ROOT/"d06/tools/d06_gz_native_scan_probe_safe.py"
@@ -74,7 +74,7 @@ class WslgABOneShotSafety(unittest.TestCase):
         another physical WSL2 launch.
         """
         text=OWNER.read_text()
-        expected_ref="ad86587c30e41a2bbc291c0418bdddd6dcea974f"
+        expected_ref="df911a88f88f70a7e622170b55678ee821423d8f"
         self.assertIn("readonly STUDENT_SHA='"+expected_ref+"'",text)
         student=ROOT/"student"
         self.assertTrue(student.is_dir(),
