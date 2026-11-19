@@ -1206,10 +1206,35 @@ jobs:
         run: |
           set -Eeuo pipefail
           set +u;source /opt/ros/jazzy/setup.bash;set -u
-          if ! command -v Xvfb >/dev/null || ! command -v rviz2 >/dev/null || ! command -v xwininfo >/dev/null;then
-            apt-get update -qq
-            DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends --no-upgrade xvfb x11-utils ros-jazzy-rviz2
+          missing_gui=()
+          for tool in Xvfb rviz2 xwininfo;do
+            command -v "$tool" >/dev/null 2>&1 || missing_gui+=("$tool")
+          done
+          if (( ${#missing_gui[@]} > 0 ));then
+            echo "D08_G07_GUI_PACKAGES_MISSING=${missing_gui[*]}"
+            # Cycle09 #44531908665: archive.ubuntu.com HTTP/80 connection
+            # failure before any Gazebo; use only official Ubuntu HTTPS
+            # mirrors and fail closed under bounded network timeouts.
+            for sources in /etc/apt/sources.list /etc/apt/sources.list.d/*.sources;do
+              [[ -f "$sources" ]] || continue
+              sed -i \
+                -e 's|http://archive.ubuntu.com/ubuntu/|https://archive.ubuntu.com/ubuntu/|g' \
+                -e 's|http://security.ubuntu.com/ubuntu/|https://security.ubuntu.com/ubuntu/|g' \
+                "$sources"
+            done
+            timeout --signal=TERM --kill-after=5s 140s apt-get update -qq \
+              -o APT::Update::Error-Mode=any -o Acquire::Retries=2 \
+              -o Acquire::https::Timeout=22 -o Acquire::http::Timeout=22 || {
+                echo D08_G07_GUI_APT_HTTPS_MIRROR_FAILED_BEFORE_GAZEBO >&2;exit 2;
+              }
+            timeout --signal=TERM --kill-after=5s 140s \
+              env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
+              --no-install-recommends --no-upgrade xvfb x11-utils ros-jazzy-rviz2 || {
+                echo D08_G07_GUI_APT_PACKAGES_FAILED_BEFORE_GAZEBO >&2;exit 2;
+              }
           fi
+          for tool in Xvfb rviz2 xwininfo;do command -v "$tool" >/dev/null || exit 2;done
+          echo D08_G07_GUI_RUNTIME_BINARIES_VERIFIED_BEFORE_MOVING
           # Exact G07 Owner lock: never allow OSRF development headers to
           # silently upgrade the runtime package from 13.6 to 13.7.
           actual="$(dpkg-query -W -f='${Version}' libgz-transport13)"
