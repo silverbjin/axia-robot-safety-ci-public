@@ -56,7 +56,7 @@ def check(patch=None,mode="--nvidia-causal",rc=0):
     with tempfile.TemporaryDirectory() as td:
         file=pathlib.Path(td)/"evidence.tar.gz"
         make_tar(file,patch)
-        return subprocess.run([sys.executable,"-c",gate_code(),str(file),mode,str(rc)],
+        return subprocess.run([sys.executable,"-c",gate_code(),str(file),mode,str(rc),ROOT_NAME],
                               text=True,capture_output=True,timeout=10)
 
 class OwnerWholeNoGoalNativeGate(unittest.TestCase):
