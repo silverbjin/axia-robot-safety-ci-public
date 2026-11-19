@@ -148,8 +148,8 @@ class ForensicOneShot(unittest.TestCase):
             home=Path(tmp)
             d=fake_record(home)
             (d / "nvidia.launch.log").write_text(
-                "[INFO] [collision_monitor-16]: process has finished cleanly [pid 1760]\\n"
-                "[INFO] [gz-21]: process has finished cleanly [pid 1798]\\n")
+                "[INFO] [collision_monitor-16]: process has finished cleanly [pid 1760]"+chr(10)
+                "[INFO] [gz-21]: process has finished cleanly [pid 1798]"+chr(10))
             run=subprocess.run(["bash",str(SCRIPT),"--analyze-existing"],
                 env={"PATH":os.environ["PATH"],"HOME":str(home),"GITHUB_ACTIONS":"true"},
                 capture_output=True,text=True,timeout=15)
@@ -171,8 +171,8 @@ class ForensicOneShot(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             d=fake_record(Path(tmp))
             (d/"nvidia.launch.log").write_text(
-                "[INFO] [collision_monitor-16]: process has finished cleanly [pid 3574]\\n"
-                "[ERROR] [gz-21]: process has died [pid 3623, exit code -11, cmd 'gz sim -r -s /tmp/nav2_5wtxcwad.sdf']\\n"
+                "[INFO] [collision_monitor-16]: process has finished cleanly [pid 3574]"+chr(10)
+                "[ERROR] [gz-21]: process has died [pid 3623, exit code -11, cmd 'gz sim -r -s /tmp/nav2_5wtxcwad.sdf']"+chr(10)
             )
             result=subprocess.run(["bash",str(SCRIPT),"--analyze-existing"],
                 env={"PATH":os.environ["PATH"],"HOME":str(Path(tmp)),"GITHUB_ACTIONS":"true"},
