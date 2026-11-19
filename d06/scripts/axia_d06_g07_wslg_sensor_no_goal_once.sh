@@ -6,7 +6,7 @@ MODE="${1:---run}"
 [[ $# -le 1 && ( "$MODE" == --run || "$MODE" == --self-check ) ]] || {
   echo 'D06_WSLG_SENSOR_USAGE=--self-check|--run' >&2;exit 2;
 }
-readonly STUDENT_SHA='4f51d255660359f345028410f758793674aaac1c'
+readonly STUDENT_SHA='b9132d51150be31973476ac34ef97d466f17187f'
 readonly PROBE_BLOB='069b0aba9a7da9ba523049ede668d2aa3acfdcb3'
 readonly SMOKE_BLOB='9b0cbc348a48784c29e042a55b549d08dd9c57a7'
 readonly LAUNCH_BLOB='b2886cdf509d99ea62528cd013669258764b05e0'
