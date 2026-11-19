@@ -12,11 +12,11 @@ if [[ "$MODE" == --nvidia-only || "$MODE" == --nvidia-causal ]];then
   adapters=(NVIDIA)
   echo 'D06_GPU_RTF_NVIDIA_ONLY_NO_GOAL OWNER_L3_NOT_ACCEPTED'
 fi
-readonly OWNER_SHA='5bd585eb04e428dcdea4538679617ca30e115f19'
-readonly OWNER_BLOB='cb66013b1324dce0b7fadabf4c7574b182f9db3d'
+readonly OWNER_SHA='bdcee0e05d3bcc290ff6f33442201d71e2d2ebcc'
+readonly OWNER_BLOB='f26db98678957ae83b29532ddd68bd30b63a335c'
 readonly ANALYZER_SHA='615bcd81b8f74a478daa2baeaf9f27ca02c94f11'
 readonly ANALYZER_BLOB='171aad7ce8abe97c93a42f19787042619c06b65e'
-readonly STUDENT_SHA='835a5285c49300a8d9943d2e19d0c07f3fa06901'
+readonly STUDENT_SHA='9bfd86fb6996d0a4bdfaa638a5a8fc757555276a'
 echo "AXIA_D06_GPU_RTF_PINNED_STUDENT=$STUDENT_SHA NO_GOAL_ONLY"
 if [[ "$MODE" == --self-check ]];then
   echo 'D06_GPU_RTF_STATIC_PASS NO_ROS_NO_GAZEBO_NO_GOAL'
@@ -82,7 +82,8 @@ summary={
  "fixture_moved":report.get("fixture_moved","UNVERIFIED"),
  "certified_estop":False,"moving_l3_accepted":False,
  "raw_archive_embedded":False,
- "first_scan_host_receipt_trace_available":bool(report.get("scan_receipts_compact"))
+ "first_scan_host_receipt_trace_available":any(
+     bool(report.get("scan_receipts_compact",{}).get(topic)) for topic in ("raw","safety"))
 }
 (out/"summary.json").write_text(json.dumps(summary,indent=2,sort_keys=True,ensure_ascii=False)+"\n",encoding="utf-8")
 if report.get("scan_receipts_compact"):
@@ -165,6 +166,13 @@ summary["post_ready_proxy_candidate"]=post_ready.get("candidate","NOT_MEASURED")
 summary["post_ready_proxy_native_gap_sec"]=post_ready.get("native_gap_sec")
 summary["post_ready_proxy_clock_rtf"]=post_ready.get("native_clock_window_rtf")
 summary["post_ready_proxy_student_pair_proven"]=False
+student_first=causal.get("student_first_ttl",{})
+summary["student_first_actual_pair_candidate"]=student_first.get("student_first_candidate","NOT_MEASURED")
+summary["student_first_actual_stamp_pair_verified"]=bool(student_first.get("student_first_stamp_pair_verified",False))
+summary["student_first_actual_native_gap_sec"]=student_first.get("student_first_native_gap_sec")
+summary["student_first_actual_host_gap_sec"]=student_first.get("student_first_host_gap_sec")
+summary["student_first_topic"]=student_first.get("student_first_topic")
+
 
 summary["source_pair_causality_proven"]=False
 summary["native_transport_rx_observed"]=bool(causal.get("native_count",0)>0)
@@ -221,7 +229,7 @@ summary["native_no_goal_whole_teardown_clean"]=(
 
 (out/"summary.json").write_text(
     json.dumps(summary,indent=2,sort_keys=True,ensure_ascii=False)+"\n",encoding="utf-8")
-markers=re.compile("G07_WSLG_NO_GOAL_SENSOR_|AXIA_G07_WSLG_NO_GOAL_SENSOR_TRUTH|D06_WSLG_NO_GOAL_SENSOR_|D06_GAZEBO_LIVE_RELEASE|D06_WSLG_NO_GOAL_RAW_ARCHIVE|D06_G07_NATIVE|D06_G07_RX_WITNESS|D06_G07_FIRST_SCAN_TTL_HOLD|D06_G07_POST_READY_PROXY")
+markers=re.compile("G07_WSLG_NO_GOAL_SENSOR_|AXIA_G07_WSLG_NO_GOAL_SENSOR_TRUTH|D06_WSLG_NO_GOAL_SENSOR_|D06_GAZEBO_LIVE_RELEASE|D06_WSLG_NO_GOAL_RAW_ARCHIVE|D06_G07_NATIVE|D06_G07_RX_WITNESS|D06_G07_FIRST_SCAN_TTL_HOLD|D06_G07_POST_READY_PROXY|D06_G07_STUDENT_FIRST_TTL|G07_NO_GOAL_GAZEBO_PAUSE")
 (out/"owner_verdict_excerpt.txt").write_text("\n".join(
     f"{i+1}: {row[:3500]}" for i,row in enumerate(owner) if markers.search(row))[-30000:]+"\n",encoding="utf-8")
 renderer=[]
@@ -381,6 +389,12 @@ print("D06_G07_FIRST_SCAN_TTL_HOLD candidate="+str(v.get("candidate","UNMEASURED
       " native_gap_sec="+str(v.get("native_gap_sec"))+
       " raw_gap_sec="+str(v.get("raw_gap_sec"))+
       " safety_gap_sec="+str(v.get("safety_gap_sec"))+
+      " GOAL_NOT_SENT")
+actual=v.get("student_first_ttl",{})
+print("D06_G07_STUDENT_FIRST_TTL candidate="+str(actual.get("student_first_candidate","NOT_MEASURED"))+
+      " matched="+str(actual.get("student_first_stamp_pair_verified",False))+
+      " native_gap="+str(actual.get("student_first_native_gap_sec"))+
+      " topic="+str(actual.get("student_first_topic"))+
       " GOAL_NOT_SENT")
 assert v.get("release")=="HOLD" and v.get("goal_allowed") is False
 assert v.get("observer_raw_count",0)>=20 and v.get("observer_safety_count",0)>=20
