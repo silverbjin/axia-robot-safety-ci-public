@@ -37,3 +37,15 @@
 - `CERTIFIED_ESTOP=false`
 - `OWNER_WSLG_L3_NOT_RUN`
 - WSLg GPU 특이 SIGSEGV 코어 스택 미확보, 최종 인수 미검증. 공개 PR #177/학생 PR #62 Draft 유지, main 미병합.
+
+## 7. 실제 C05 L2 완료 후 원본 RCA 업데이트 (同 SHA)
+
+공개 실 Gazebo L2 [#44538452186](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44538452186)는 **FAIL**. 기존 본문 5절의 "최종 verdict 예정"보다 아래 실제 완료 결과를 우선한다. 원본 artifact #14536669582. no_goal_stdout에 `D06_CI_ONLY_SOFTWARE_GUI_PRIORITY_15_ENABLED` 확인. CPU priority 적용은 입증됐으나 단일 실행만으로 개선 인과관계는 확정 불가.
+
+- Nav2 READY(host monotonic 493.327s) 이후 첫 20초의 독립 ROS/native witness에서는 Scan300 위반 미관찰(`post_ready_proxy=NO_ROS_TTL_VIOLATION_WITNESSED`). 학생 노드 자체의 첫 위반도 검사해야 함.
+- Student Raw 199개, 최초 TTL 위반 **442.855ms**, Safety 200개 **442.280ms**; 정확히 동일한 source-stamp pair **36.600→36.702초**. 대응 Gazebo native gap **113.807ms**, 독립 ROS Safety peer gap **117.211ms**, 두 번째 Student callback은 독립 peer보다 **327.465ms 늦음**. Student callback/executor scheduling이 우선 조사 경계이고, Gazebo LiDAR 자체가 442ms 느리다고 말할 근거 없음.
+- Global /clock 수신 기준 RTF 약 **0.996211**, Safety distance CLEAR200/200. Global RTF 정상 ≠ Scan callback TTL 정상.
+- Navigation SHUTDOWN **ACK 1.473939s**. Localization SHUTDOWN 요청 전송 후 **30.000328s TIMEOUT**. 같은 manager `get_parameters`는 **0.023428s**, 관리 콜백 그룹과 동일한 `/is_active` Trigger는 **0.027376s** 응답 및 is_active=true. 이는 최소한 사후 검사 시점의 관리 그룹 응답성만 증명함. Lifecycle shutdown ACK로 승격 금지.
+- Gazebo server, Collision Monitor, Guard, Supervisor 실제 child exit0; 부모 graceful marker는 Localization SHUTDOWN 성공을 뜻하지 않음.
+
+**결론**: C05 L0 122/122 GREEN / 실제 L2 FAIL. GUI nice15은 이번 Linux Xvfb에서 처음 post-READY native gap 미검출이라는 증거를 얻었으나, 단일 세션 개선 인과 확정은 금지. 다음 단일 후보는 학생 진단의 고빈도 Clock/Odom과 Scan의 공유 Executor task queue 제거(별도의 SingleThreadedExecutor)이며, 기존 ROS/실제 안전 제한 유지. WSLg D3D12 SIGSEGV 최초 코어 스택은 여전히 NOT_CAPTURED. `D06_GAZEBO_LIVE_RELEASE=HOLD`, `AXIA_MVP_DEMO_ACCEPTED=HOLD`.
