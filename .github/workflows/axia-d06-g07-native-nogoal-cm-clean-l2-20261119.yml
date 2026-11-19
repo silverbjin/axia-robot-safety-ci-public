@@ -81,8 +81,18 @@ jobs:
         run: |
           set -Eeuo pipefail
           set +u; source /opt/ros/jazzy/setup.bash;set -u
+          # CI_ONLY_UBUNTU_APT_HTTPS_BEFORE_GAZEBO:
+          # #44534113749 died BEFORE Gazebo on HTTP security archive
+          # InRelease download (rc100). Never disable GPG checks or alter
+          # the Owner WSL2 image; container apt sources only.
+          for apt_src in /etc/apt/sources.list /etc/apt/sources.list.d/*.sources;do
+            [[ -f "$apt_src" ]] || continue
+            sed -i -e 's@http://security.ubuntu.com/ubuntu@https://security.ubuntu.com/ubuntu@g' \
+                   -e 's@http://archive.ubuntu.com/ubuntu@https://archive.ubuntu.com/ubuntu@g' \
+                   "$apt_src"
+          done
           if ! command -v Xvfb >/dev/null || ! command -v rviz2 >/dev/null || ! command -v xwininfo >/dev/null;then
-            apt-get update -qq
+            apt-get update -qq -o Acquire::Retries=2 -o Acquire::http::Timeout=20
             DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends --no-upgrade xvfb x11-utils ros-jazzy-rviz2
           fi
           export DISPLAY=:96
@@ -121,7 +131,7 @@ jobs:
           # Independent native Gazebo + ROS witness in the SAME real Gazebo
           # simulation, no second world, no Goal. D08 implementation pinned.
           if ! /usr/bin/python3 -c 'from gz.transport13 import Node; from gz.msgs10.laserscan_pb2 import LaserScan; from gz.msgs10.clock_pb2 import Clock' >/dev/null 2>&1;then
-            apt-get update -qq
+            apt-get update -qq -o Acquire::Retries=2 -o Acquire::http::Timeout=20
             DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends python3-gz-transport13 python3-gz-msgs10
           fi
           # Reuse D08 native receipt schema; only Gazebo Transport13
