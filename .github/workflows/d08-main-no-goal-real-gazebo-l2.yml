@@ -1063,3 +1063,18 @@ jobs:
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools \
             -p test_d08_g07_cm_tf_wait_candidate.py -v
           echo D08_G07_STUDENT_SINGLE_SESSION_HOOK_L0_PASS_NOT_GAZEBO
+
+
+  g07-one-world-moving-real-l2:
+    # Existing public D08 workflow is registered and verifies L0 and the
+    # EXACT official Jazzy/G07 SDF source first. Reuse its PR event for
+    # a SINGLE native Gazebo Moving Goal instead of a second independent
+    # workflow that may not be registered on the Draft target branch.
+    needs:
+      - l0-human-proxy-red-green
+      - g07-student-single-session-hook-l0
+      - g07-official-source-sdf-adapter-l1
+    if: github.event_name == 'pull_request' && github.head_ref == 'feat/d08-d04-d07-single-session-20261119'
+    uses: ./.github/workflows/d08-single-session-moving-l2.yml
+    permissions:
+      contents: read
