@@ -161,8 +161,21 @@ SPIN_ONCE_HISTORY_LIMIT = 4096
 
 
 def new_spin_once_event_buffer():
-    """Bounded ~100s 40Hz two-executor trace; retain early three-phase gaps."""
+    """Bounded per-cycle spin trace, sampled without changing spin behavior."""
     return deque(maxlen=SPIN_ONCE_HISTORY_LIMIT)
+
+
+def append_sampled_spin_event(trace, last_recorded_at, event):
+    """Store at most 1 event per executor/50ms, plus every >=75ms overrun."""
+    label=event["executor"]
+    end=float(event["end_sec"])
+    start=float(event["start_sec"])
+    if (end-last_recorded_at.get(label,float("-inf"))>=.05
+            or end-start>=.075):
+        trace.append(event)
+        last_recorded_at[label]=end
+        return True
+    return False
 
 
 def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
@@ -218,6 +231,7 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
     exe.add_node(node)
 
     spin_once_events=new_spin_once_event_buffer()
+    last_spin_event_recorded_at={}
 
     def bounded_spin(executor):
         # Record wall vs THREAD CPU duration. A 50ms timeout limits the
@@ -231,13 +245,14 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
                     executor.spin_once(timeout_sec=.05)
                 finally:
                     wall_end=time.monotonic()
-                    spin_once_events.append({
-                        "executor":label,
-                        "start_sec":round(wall_start,6),
-                        "end_sec":round(wall_end,6),
-                        "thread_cpu_sec":round(
-                            max(0.,time.thread_time()-cpu_start),6),
-                    })
+                    append_sampled_spin_event(
+                        spin_once_events,last_spin_event_recorded_at,{
+                            "executor":label,
+                            "start_sec":round(wall_start,6),
+                            "end_sec":round(wall_end,6),
+                            "thread_cpu_sec":round(
+                                max(0.,time.thread_time()-cpu_start),6),
+                        })
         except (ShutdownException, ExternalShutdownException):
             return
 
