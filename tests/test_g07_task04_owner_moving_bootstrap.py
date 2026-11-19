@@ -4,9 +4,9 @@ import subprocess
 import unittest
 
 SCRIPT=Path(__file__).resolve().parents[1]/"scripts/axia_g07_task04_owner_moving_l3_once.sh"
-SHA="c4cc2a7adc0309d9107e35f31d8f3dd95fa8dac2"
-RUN=44359652805
-REVIEW_SHA='2b4cd883e9a61286c8bf0e85295a72024c42485e'
+SHA="efff0fb8bf941de74572336d1988dfb0005e11f7"
+RUN=44455960504
+REVIEW_SHA='71b85c42ea474276fedd9f345521317b8c348b4e'
 
 class OwnerMovingBootstrap(unittest.TestCase):
     def test_static_self_check_instant_no_ros(self):
@@ -57,6 +57,9 @@ class OwnerMovingBootstrap(unittest.TestCase):
         self.assertIn("task04_owner_verdict.json",s)
         self.assertIn("SHA256SUMS",s)
         self.assertIn("CORE_PARITY_PASS",s)
+        self.assertIn("p2_g07_owner_tty_consent.sh",s)
+        self.assertIn("STUDENT_TTY_HELPER_SYNTAX",s)
+        self.assertIn("owner_consent_first_failure()",s)
 
     def test_small_separate_diagnostic_zip_without_raw_bag(self):
         s=SCRIPT.read_text()

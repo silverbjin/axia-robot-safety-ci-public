@@ -1,0 +1,69 @@
+name: AXIA G07 CV2 WSL2 CPU preemption diagnostic no-ROS L0
+on:
+  push:
+    branches: ['fix/g07-task04-owner-timing-evidence-20261119']
+    paths:
+      - '.github/workflows/axia-g07-cv2-wsl2-cpu-probe-l0.yml'
+      - 'tests/test_g07_wsl2_cpu_preemption_probe.py'
+      - 'scripts/axia_g07_wsl2_cpu_preemption_once.sh'
+      - 'scripts/axia_g07_wsl2_sched_probe.py'
+      - 'scripts/axia_g07_windows_host_cpu_probe.ps1'
+permissions:
+  contents: read
+jobs:
+  minimal-wsl2-scheduler-diagnostic:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Linux scheduler test without ROS, Gazebo, privileges or goals
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -v -s tests -p test_g07_wsl2_cpu_preemption_probe.py
+          AXIA_G07_CV2_PROBE_REF="$GITHUB_SHA"             timeout 60s bash scripts/axia_g07_wsl2_cpu_preemption_once.sh --self-check
+          echo 'AXIA_G07_CV2_CPU_PREEMPTION_L0_PASS_DIAG_ONLY_NO_ROS_NO_GOAL'
+
+  windows-host-sampler:
+    runs-on: windows-2022
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Execute actual Win32 GetSystemTimes/VmmemWSL sampler - no WSL or Goal
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          $file=(Resolve-Path 'scripts/axia_g07_windows_host_cpu_probe.ps1').Path
+          $output=Join-Path $env:RUNNER_TEMP 'cv2-windows-host.jsonl'
+          $stop=Join-Path $env:RUNNER_TEMP 'cv2-windows-host.stop'
+          if (Test-Path $stop) { Remove-Item $stop }
+          $job=Start-Job -ScriptBlock {
+            param($script,$out,$stop)
+            & $script -OutputPath $out -StopPath $stop -IntervalMs 150
+          } -ArgumentList @($file,$output,$stop)
+          $deadline=(Get-Date).AddSeconds(20)
+          while (-not (Test-Path $output) -and (Get-Date) -lt $deadline) {
+            if ($job.State -eq 'Failed') { break }
+            Start-Sleep -Milliseconds 250
+          }
+          if (-not (Test-Path $output)) {
+            Receive-Job -Job $job -Keep -ErrorAction Continue
+            throw 'AXIA_CV2_WINDOWS_HOST_PROBE_NO_OUTPUT'
+          }
+          Start-Sleep -Seconds 2
+          New-Item -Path $stop -ItemType File -Force | Out-Null
+          Wait-Job -Job $job -Timeout 12 | Out-Null
+          Receive-Job -Job $job -ErrorAction Stop
+          if ($job.State -ne 'Completed') { throw "AXIA_CV2_WINDOWS_HOST_PROBE_FAILED=$($job.State)" }
+          $rows=@(Get-Content $output | ConvertFrom-Json)
+          if ($rows.Count -lt 3) { throw "AXIA_CV2_WINDOWS_HOST_TOO_FEW_SAMPLES=$($rows.Count)" }
+          foreach($row in $rows){
+            if (-not ($row.epoch_ms -gt 0 -and $row.gap_ms -ge 0)) {
+              throw 'AXIA_CV2_WINDOWS_HOST_SAMPLE_BAD_SCHEMA'
+            }
+          }
+          Write-Output "AXIA_G07_CV2_WINDOWS_HOST_NATIVE_SAMPLER_L0_PASS samples=$($rows.Count) NO_WSL_NO_ROS_NO_GOAL"

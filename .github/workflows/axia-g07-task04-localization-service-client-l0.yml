@@ -1,0 +1,27 @@
+name: AXIA G07 Task04 localization fresh lifecycle client RED-GREEN L0
+on:
+  push:
+    branches: ['fix/g07-task04-owner-timing-evidence-20261119']
+    paths: ['.github/workflows/axia-g07-task04-localization-service-client-l0.yml']
+permissions:
+  contents: read
+jobs:
+  one-shot-service-isolation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: 6579e2eef7e99691da558cd2de1964fd26a04621
+          path: student
+          persist-credentials: false
+      - name: Synthetic navigation ACK then localization timeout regression, no ROS
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C student rev-parse HEAD)" = '6579e2eef7e99691da558cd2de1964fd26a04621'
+          cd student/block_B/day07/h01_runtime/tools
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest -v test_g07_task04_localization_isolated_client
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest -v test_g07_task03_localization_shutdown_budget
+          echo 'AXIA_G07_TASK04_ISOLATED_NAV_LOC_SERVICE_CLIENT_L0_PASS_NO_ROS'

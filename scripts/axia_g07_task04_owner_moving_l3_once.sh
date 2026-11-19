@@ -6,10 +6,10 @@
 set -Eeuo pipefail
 umask 077
 readonly STUDENT_REPO='silverbjin/axia-robot-safety-student'
-readonly STUDENT_SHA='c4cc2a7adc0309d9107e35f31d8f3dd95fa8dac2'
+readonly STUDENT_SHA='efff0fb8bf941de74572336d1988dfb0005e11f7'
 readonly REVIEW_REPO='silverbjin/axia-robot-safety-ci-public'
-readonly REVIEW_SHA='2b4cd883e9a61286c8bf0e85295a72024c42485e'
-readonly CI_L2_RUN=44359652805
+readonly REVIEW_SHA='71b85c42ea474276fedd9f345521317b8c348b4e'
+readonly CI_L2_RUN=44455960504
 MODE="${1:---run}"
 if [[ $# -gt 1 ]];then echo 'AXIA_G07_TASK04_FIRST_FAILURE=BAD_ARGUMENTS' >&2;exit 3;fi
 case "$MODE" in
@@ -128,6 +128,19 @@ trap 'FIRST_FAILURE=OWNER_INTERRUPT;exit 130' INT
 trap 'FIRST_FAILURE=OWNER_TERMINATED;exit 143' TERM
 hold() { FIRST_FAILURE="$1";echo "AXIA_G07_TASK04_FIRST_FAILURE=$1" >&2;exit 3; }
 
+owner_consent_first_failure() {
+  # The outer wrapper runs after the real ROS runner has exited. Keep the
+  # FIRST narrow human-consent failure from its private log instead of the
+  # generic NATIVE_RUNNER_FAILED_REVIEW_RAW. Do not parse or log the answer.
+  local log="${1:-}"
+  [[ -r "$log" ]] || return 0
+  awk '
+    $1 ~ /^(OWNER_GOAL_CONSENT_TIMEOUT|OWNER_GOAL_CONSENT_EOF_OR_TTY_ERROR|OWNER_GOAL_CONSENT_DENIED|OWNER_GOAL_CONSENT_TTY_UNAVAILABLE)$/ {
+      print $1;exit
+    }
+  ' "$log"
+}
+
 # Owner is a real interactive WSL2 process, never a simulated CI actor.
 [[ "${GITHUB_ACTIONS:-}" != true ]] || hold CI_AUTHORITY_DENIED
 [[ -t 0 && -r /dev/tty ]] || hold OWNER_CONTROLLING_TTY_REQUIRED
@@ -212,8 +225,9 @@ REVIEW_CACHE="$HOME/.cache/axia/g07_task04_moving_ci/$REVIEW_SHA"
 fetch_pinned "$STUDENT_REPO" "$STUDENT_SHA" "$STUDENT_CACHE" STUDENT
 fetch_pinned "$REVIEW_REPO" "$REVIEW_SHA" "$REVIEW_CACHE" PUBLIC_CI
 RUNTIME="$STUDENT_CACHE/block_B/day07/h01_runtime"
-[[ -r "$RUNTIME/scripts/p2_no_goal_smoke_ci.sh" && -r "$RUNTIME/tools/p2_g07_task04_moving_review.py" ]] || hold RUNTIME_FILES_MISSING
+[[ -r "$RUNTIME/scripts/p2_no_goal_smoke_ci.sh" && -r "$RUNTIME/tools/p2_g07_task04_moving_review.py" && -r "$RUNTIME/tools/p2_g07_owner_tty_consent.sh" ]] || hold RUNTIME_FILES_MISSING
 bash -n "$RUNTIME/scripts/p2_no_goal_smoke_ci.sh" || hold STUDENT_SHELL_SYNTAX
+bash -n "$RUNTIME/tools/p2_g07_owner_tty_consent.sh" || hold STUDENT_TTY_HELPER_SYNTAX
 export PYTHONPATH="$REVIEW_CACHE${PYTHONPATH:+:$PYTHONPATH}"
 
 # Verify the exact official 25 Debian versions + five official file digests
@@ -306,6 +320,15 @@ PY_FIRST
 )" || ORIGINAL_FIRST_FAILURE=''
     if [[ "$ORIGINAL_FIRST_FAILURE" =~ ^OWNER_PREGOAL_[A-Z0-9_]+$ ]];then
       FIRST_FAILURE="$ORIGINAL_FIRST_FAILURE"
+      echo "AXIA_G07_TASK04_UPSTREAM_FIRST_FAILURE=$FIRST_FAILURE"
+    fi
+  fi
+  # Goal consent is an external physical interaction; its first error may
+  # occur AFTER a successful PREGOAL baseline and BEFORE any Goal JSON.
+  if [[ "$FIRST_FAILURE" == NATIVE_RUNNER_FAILED_REVIEW_RAW ]];then
+    CONSENT_FIRST_FAILURE="$(owner_consent_first_failure "$OUT/native_runner.log")" || CONSENT_FIRST_FAILURE=''
+    if [[ -n "$CONSENT_FIRST_FAILURE" ]];then
+      FIRST_FAILURE="$CONSENT_FIRST_FAILURE"
       echo "AXIA_G07_TASK04_UPSTREAM_FIRST_FAILURE=$FIRST_FAILURE"
     fi
   fi

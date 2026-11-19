@@ -1,0 +1,40 @@
+name: AXIA G07 Task04 n7 Owner WSL2 Clock/Guard RED-GREEN L0
+on:
+  push:
+    branches: ['fix/g07-task04-owner-timing-evidence-20261119']
+    paths:
+      - '.github/workflows/axia-g07-task04-owner-n7-timing-l0.yml'
+      - 'tests/test_g07_task04_owner_n7_timing_regression.py'
+      - 'd06/diagnostic/g07_task02_strict_gate.py'
+  pull_request:
+    paths:
+      - '.github/workflows/axia-g07-task04-owner-n7-timing-l0.yml'
+      - 'tests/test_g07_task04_owner_n7_timing_regression.py'
+      - 'd06/diagnostic/g07_task02_strict_gate.py'
+permissions:
+  contents: read
+jobs:
+  strict-owner-n7-ros-free:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          path: ci
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: bcebc5d1f3a7d00860a541507e263dd05b27a9a3
+          path: student
+          persist-credentials: false
+      - name: Native source scope, replayed n7 clock step and Guard read-only evidence tests
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cd "$GITHUB_WORKSPACE/ci"
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest -v tests.test_g07_task04_owner_n7_timing_regression
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest -v d06.tests.test_g07_task02_public_strict_gate
+          cd "$GITHUB_WORKSPACE/student/block_B/day07/h01_runtime"
+          PYTHONPATH="$GITHUB_WORKSPACE/ci:$PWD/tools" PYTHONDONTWRITEBYTECODE=1 python3 -m unittest -v tools.test_g07_task04_owner_n7_timing_regression
+          echo "G07_N7_OWNER_MONOTONIC_CLOCK_STEP_AND_GUARD_L0_PASS"

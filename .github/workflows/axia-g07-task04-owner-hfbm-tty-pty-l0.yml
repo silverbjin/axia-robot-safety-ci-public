@@ -1,0 +1,45 @@
+name: AXIA G07 HFbm Owner Consent Real PTY and First Failure RED-GREEN L0
+on:
+  push:
+    branches: ['fix/g07-task04-owner-timing-evidence-20261119']
+    paths:
+      - '.github/workflows/axia-g07-task04-owner-hfbm-tty-pty-l0.yml'
+      - 'tests/test_g07_task04_owner_tty_first_failure.py'
+      - 'scripts/axia_g07_task04_owner_moving_l3_once.sh'
+permissions:
+  contents: read
+jobs:
+  real-pty-fail-closed-and-first-error:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          path: ci
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: efff0fb8bf941de74572336d1988dfb0005e11f7
+          path: student
+          persist-credentials: false
+      - name: Check actual PTY accept deny timeout EOF and Owner first failure, no ROS
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cd "$GITHUB_WORKSPACE/ci"
+          set +e
+          PYTHONDONTWRITEBYTECODE=1 timeout 45s python3 -m unittest discover -v -s tests -p test_g07_task04_owner_tty_first_failure.py
+          CI_RC=$?
+          cd "$GITHUB_WORKSPACE/student/block_B/day07/h01_runtime/tools"
+          PYTHONDONTWRITEBYTECODE=1 timeout 45s python3 -m unittest -v test_g07_task04_owner_tty_pty
+          STUDENT_RC=$?
+          PYTHONDONTWRITEBYTECODE=1 timeout 20s python3 -m unittest -v test_g07_task04_owner_shell_contract
+          SHELL_RC=$?
+          set -e
+          echo "AXIA_G07_HFBM_PTY_L0_TEST_RESULTS ci_rc=$CI_RC student_rc=$STUDENT_RC shell_rc=$SHELL_RC"
+          if (( CI_RC != 0 || STUDENT_RC != 0 || SHELL_RC != 0 ));then
+            echo 'AXIA_G07_HFBM_PTY_L0_RED_REPRODUCED' >&2
+            exit 1
+          fi
+          echo 'AXIA_G07_HFBM_PTY_L0_GREEN_REAL_PTY_NO_ROS_NO_GOAL'
