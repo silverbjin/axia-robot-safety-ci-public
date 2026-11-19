@@ -560,3 +560,28 @@ def analyze_process_heartbeat_gap(scan_pair, heartbeats):
             if max_gap>=.12 else "ROS_EXECUTOR_DISPATCH_OR_RMW_DELAY"),
     })
     return result
+
+
+def classify_executor_stack_frames(frames):
+    """Read-only triage of limited Python executor stack fingerprints.
+
+    This is not a native rcl/rmw backtrace and cannot prove DDS internals.
+    Sampling a stack during a pause is correlation, not root-cause proof.
+    """
+    verdict={"candidate":"INSUFFICIENT_STACK_EVIDENCE",
+             "root_cause":"UNDETERMINED"}
+    if not isinstance(frames,(list,tuple)) or not frames:
+        return verdict
+    names={f.get("function","") for f in frames if isinstance(f,dict)}
+    if any(name in names for name in (
+            "on_grid","_lethal_near","on_scan","on_odom","on_clock")):
+        verdict["candidate"]="OBSERVER_CALLBACK_WORK"
+    elif any(name in names for name in (
+            "wait","_wait_for_ready_callbacks",
+            "wait_for_ready_callbacks","_wait_for_ready_callbacks_impl")):
+        verdict["candidate"]="RCLPY_WAITSET_OR_EVENT_WAKE"
+    elif any("spin" in name for name in names):
+        verdict["candidate"]="RCLPY_SPIN_LOOP_UNKNOWN"
+    else:
+        verdict["candidate"]="UNKNOWN_EXECUTOR_PYTHON_STACK"
+    return verdict
