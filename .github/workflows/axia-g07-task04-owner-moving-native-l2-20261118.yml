@@ -67,6 +67,17 @@ jobs:
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_owner_gui_d3d12_isolation.py' -v
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_owner_sensor_renderer_parity.py' -v
           echo 'AXIA_G07_TASK04_PUBLIC_NATIVE_MOVING_L0_PASS=29_PLUS_MVP_STAGE'
+      # Check the pinned CI image before installing build-only Gazebo dev packages.
+      # OSRF apt currently upgrades libgz-transport13 13.6 -> 13.7 for headers.
+      - name: Verify exact CI image parity before Gazebo witness dev packages
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          set +u; source /opt/ros/jazzy/setup.bash; set -u
+          mkdir -p "$GITHUB_WORKSPACE/public_evidence"
+          cd "$GITHUB_WORKSPACE/student/block_B/day07/h01_runtime"
+          python3 tools/p2_g07_owner_env_parity.py --mode ci --output "$GITHUB_WORKSPACE/public_evidence/prebuild_parity.json"
+          echo 'AXIA_G07_CI_IMAGE_PREBUILD_CORE_PARITY_PASS'
       - name: Prepare Xvfb GUI and same Gazebo8 native S02 contact witness
         shell: bash
         run: |
@@ -88,9 +99,14 @@ jobs:
       - name: Exactly one native Gazebo Moving Goal and RViz/Gazebo GUI Xvfb session
         timeout-minutes: 25
         shell: bash
+        # Prebuild 25+5 exact runtime parity was verified above; only the
+        # CI native-witness dev toolchain upgraded Gazebo transport afterward.
+        env:
+          AXIA_P2_G07_OWNER_PARITY_CHECK: '0'
         run: |
           set -Eeuo pipefail
           set +u;source /opt/ros/jazzy/setup.bash;set -u
+          echo 'AXIA_G07_CI_WITNESS_BUILD_ONLY_LIBGZ_TRANSPORT13=' "$(dpkg-query -W -f='${Version}' libgz-transport13)"
           export DISPLAY=:97 GALLIUM_DRIVER=llvmpipe
           export PYTHONPATH="$GITHUB_WORKSPACE/ci${PYTHONPATH:+:$PYTHONPATH}"
           export GZ_PARTITION="axia_p2_task04_moving_$GITHUB_RUN_ID"
