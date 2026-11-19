@@ -50,7 +50,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 64de9dc02e9073dc1c2898b14c973e38c664ba6e
+          ref: 72f34d5d5de7aab8f3bd46b219757460413eaeac
           path: student
           persist-credentials: false
       - name: Exact public Student and official lifecycle offline contract
@@ -58,7 +58,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           test "$(git -C ci rev-parse HEAD)" = "$GITHUB_SHA"
-          test "$(git -C student rev-parse HEAD)" = '64de9dc02e9073dc1c2898b14c973e38c664ba6e'
+          test "$(git -C student rev-parse HEAD)" = '72f34d5d5de7aab8f3bd46b219757460413eaeac'
           cd student/block_B/day07/h01_runtime
           set +u; source /opt/ros/jazzy/setup.bash;set -u
           bash -n scripts/p2_no_goal_smoke_ci.sh
