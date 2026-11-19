@@ -11,6 +11,8 @@ on:
       - 'd06/scripts/axia_d06_g07_wslg_sensor_no_goal_once.sh'
       - 'd06/tests/test_d06_gpu_rtf_runner_safety.py'
       - 'd06/tests/test_d06_forensic_bundle_once.py'
+      - 'd06/tests/test_d06_existing_gazebo_core_triage.py'
+      - 'd06/scripts/axia_d06_g07_wslg_existing_core_once.sh'
       - 'd06/tests/test_d06_gz_native_witness_teardown.py'
       - 'd06/tools/d06_gz_native_scan_probe_safe.py'
       - 'd06/tests/test_d06_g07_native_scan_layer.py'
@@ -40,6 +42,8 @@ on:
       - 'd06/scripts/axia_d06_g07_wslg_gpu_rtf_compare_once.sh'
       - 'd06/tests/test_d06_gpu_rtf_runner_safety.py'
       - 'd06/tests/test_d06_forensic_bundle_once.py'
+      - 'd06/tests/test_d06_existing_gazebo_core_triage.py'
+      - 'd06/scripts/axia_d06_g07_wslg_existing_core_once.sh'
       - 'd06/tests/test_d06_gz_native_witness_teardown.py'
       - 'd06/tools/d06_gz_native_scan_probe_safe.py'
       - 'd06/tests/test_d06_g07_native_scan_layer.py'
@@ -82,6 +86,7 @@ jobs:
           python3 -m unittest discover -s d06/tests -p 'test_d06_lidar_rtf_field_evidence.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_gpu_rtf_runner_safety.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_forensic_bundle_once.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_existing_gazebo_core_triage.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_gz_native_witness_teardown.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_g07_native_scan_layer.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_g07_native_clock_and_rclpy_shutdown.py' -v
