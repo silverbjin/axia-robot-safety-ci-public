@@ -64,6 +64,9 @@ def fake_record(home):
         "task04_rviz.log": "GLSL link result: active samplers with a different type\n",
         "task04_gazebo_gui.log": "Loading plugin [gz-rendering-ogre2]\n",
         "teardown.txt": "P2_L2_GRACEFUL_TEARDOWN\n",
+        "g07_ordered_shutdown.json": '{"status":"NAV2_LIFECYCLE_SHUTDOWN_ACK","cm_managed_by_navigation":true,"navigation_ack":true,"localization_ack":true,"certified_estop":false}',
+        "g07_shutdown_audit.json": '{"status":"SHUTDOWN_CLEAN_CANDIDATE","cm_exit_code":0,"certified_estop":false}',
+        "g07_ordered_shutdown.log": 'G07_NAV2_ORDERED_SHUTDOWN navigation_ack=true localization_ack=true',
         "d06_g07_scan_delivery_layer.json": '{"candidate":"AFTER_NATIVE_TRANSPORT_RX","release":"HOLD","goal_allowed":false}',
         "d06_gz_scan_receipts.jsonl": '{"host_monotonic_sec":100.0,"source_stamp_ns":1000000000}\\n',
         "d06_ros_scan_receipts.jsonl": '{"topic":"raw","host_monotonic_sec":100.1,"source_stamp_ns":1000000000}\\n',
@@ -121,12 +124,18 @@ class ForensicOneShot(unittest.TestCase):
                 self.assertIn("forensic/d06_ros_scan_receipts.jsonl", members)
                 self.assertIn("forensic/d06_gz_clock_receipts.jsonl", members)
                 self.assertIn("forensic/native_teardown_marker.txt", members)
+                self.assertIn("forensic/native_nav2_ordered_shutdown.json", members)
+                self.assertIn("forensic/native_cm_shutdown_audit.json", members)
                 summary = json.load(tar.extractfile("forensic/summary.json"))
                 self.assertEqual(summary["first_sensor_failure"], "SAFETY_RECEIPT_TTL_300MS_BLOCKED")
                 self.assertEqual(summary["process_crashes"], ["collision_monitor", "gazebo_server"])
                 self.assertFalse(summary["goal_sent"])
                 self.assertEqual(summary["source"], "EXISTING_LOCAL_EVIDENCE")
                 self.assertTrue(summary["source_archive_sha256_verified"])
+                self.assertEqual(summary["native_no_goal_navigation_ack"], True)
+                self.assertEqual(summary["native_no_goal_localization_ack"], True)
+                self.assertEqual(summary["native_no_goal_cm_exit_code"], 0)
+                self.assertEqual(summary["native_no_goal_cm_clean_candidate"], True)
                 self.assertFalse(any("native_full" in m or ".sdf.xacro" in m
                                      for m in members))
 
