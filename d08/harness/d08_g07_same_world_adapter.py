@@ -80,3 +80,29 @@ def build_g07_d08_camera_world(world: Path, robot: Path, actor_mesh: Path,
         json.dumps(manifest, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
         encoding="utf-8")
     return manifest
+
+
+def main(argv=None) -> int:
+    import argparse
+    p=argparse.ArgumentParser(description=__doc__)
+    p.add_argument("--world",type=Path,required=True)
+    p.add_argument("--robot",type=Path,required=True)
+    p.add_argument("--actor",type=Path,required=True)
+    p.add_argument("--out",type=Path,required=True)
+    p.add_argument("--student-sha",required=True)
+    a=p.parse_args(argv)
+    try:
+        m=build_g07_d08_camera_world(
+            a.world,a.robot,a.actor,a.out,student_sha=a.student_sha)
+    except (OSError,ValueError,ET.ParseError) as exc:
+        print("D08_G07_STATIC_OVERLAY_HOLD_NO_GOAL "
+              +type(exc).__name__+":"+str(exc)[:160],flush=True)
+        return 2
+    print("D08_G07_SINGLE_WORLD_STATIC_OVERLAY_READY_NOT_GAZEBO_NO_GOAL "
+          +json.dumps({"world":m["world"],"robot_sdf":m["robot_sdf"],
+            "student_sha":m["g07_student_source_sha"]}),flush=True)
+    return 0
+
+
+if __name__=="__main__":
+    raise SystemExit(main())
