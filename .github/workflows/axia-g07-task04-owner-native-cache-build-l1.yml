@@ -1,0 +1,86 @@
+# One build-only real Gazebo ABI test, never starts a robot or Goal.
+name: AXIA G07 Owner Native Witness Cold Warm Build L1
+on:
+  push:
+    branches: ['perf/g07-task04-owner-native-witness-cache-20261119']
+    paths:
+      - 'scripts/axia_g07_task04_owner_moving_l3_once.sh'
+      - 'tests/test_g07_task04_owner_native_cache_runtime.py'
+      - '.github/workflows/axia-g07-task04-owner-native-cache-build-l1.yml'
+permissions:
+  contents: read
+jobs:
+  actual-gz8-witness-cold-warm:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          path: ci
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: 954fc2f054c50df783bc81c4d0835a6ee6f8645d
+          path: student
+          persist-credentials: false
+      - name: Same Gazebo8 dev ABI as existing one-Goal L2
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C student rev-parse HEAD)" = '954fc2f054c50df783bc81c4d0835a6ee6f8645d'
+          if ! command -v c++ >/dev/null || ! test -f /usr/include/gz/sim8/gz/sim/System.hh;then
+            apt-get update -qq
+            DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends cmake g++ libgz-sim8-dev
+          fi
+          test -r /usr/include/gz/sim8/gz/sim/System.hh
+      - name: Real Gazebo witness source compile on MISS then reuse on HIT
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          export STUDENT_SHA='954fc2f054c50df783bc81c4d0835a6ee6f8645d'
+          export RUNTIME="$GITHUB_WORKSPACE/student/block_B/day07/h01_runtime"
+          export HOME="$GITHUB_WORKSPACE/owner-witness-benchmark-home"
+          mkdir -p "$HOME"
+          python3 - "$GITHUB_WORKSPACE/ci/scripts/axia_g07_task04_owner_moving_l3_once.sh" "$GITHUB_WORKSPACE/bench_block.sh" <<'PY'
+          import sys
+          from pathlib import Path
+          source=Path(sys.argv[1]).read_text()
+          start=source.index('\nNATIVE_BUILD_CACHE_ROOT=')+1
+          end=source.index('\nexport AXIA_G07_TASK03_WITNESS_SHA256=',start)
+          prefix='set -Eeuo pipefail\nhold(){ echo "HOLD:$1" >&2;exit 3; }\nstartup_mark(){ :; }\n'
+          Path(sys.argv[2]).write_text(prefix+source[start:end])
+          PY
+          for cycle in 1 2;do
+            export OUT="$GITHUB_WORKSPACE/witness-bench-$cycle"
+            mkdir -p "$OUT"
+            bash "$GITHUB_WORKSPACE/bench_block.sh" | tee "$OUT/startup.log"
+          done
+          python3 - "$GITHUB_WORKSPACE" <<'PY'
+          import json,sys
+          from pathlib import Path
+          root=Path(sys.argv[1])
+          a=json.loads((root/"witness-bench-1/native_witness_build_profile.json").read_text())
+          b=json.loads((root/"witness-bench-2/native_witness_build_profile.json").read_text())
+          assert a["cache_status"]=="MISS",a
+          assert b["cache_status"]=="HIT",b
+          assert a["abi_cache_key"]==b["abi_cache_key"]
+          assert a["output_binary_sha256"]==b["output_binary_sha256"]
+          cold=a["build_phase_wall_sec"]
+          warm=b["build_phase_wall_sec"]
+          assert warm<cold and warm<10.0,(cold,warm)
+          print("AXIA_G07_REAL_GAZEBO_ABI_WITNESS_COLD_WARM_PASS "
+                f"cold_sec={cold} warm_sec={warm} saved_sec={round(cold-warm,3)}")
+          (root/"native_witness_perf_summary.json").write_text(
+             json.dumps({"cold_sec":cold,"warm_sec":warm,
+                         "saved_sec":round(cold-warm,3),
+                         "same_binary_sha256":True,"gazebo_executed":False},indent=2)+"\n")
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: axia-g07-owner-native-cache-build-only-${{ github.run_id }}
+          path: native_witness_perf_summary.json
+          if-no-files-found: ignore
