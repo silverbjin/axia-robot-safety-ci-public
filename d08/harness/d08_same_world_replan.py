@@ -201,7 +201,7 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
     path_pub=node.create_publisher(NavPath,"/axia/d08/official_path_readonly",
         QoSProfile(depth=1,reliability=ReliabilityPolicy.RELIABLE,
                    durability=DurabilityPolicy.TRANSIENT_LOCAL))
-    exe=MultiThreadedExecutor(num_threads=2)
+    exe=SingleThreadedExecutor()
     exe.add_node(node)
     thread=None
     moved=False
