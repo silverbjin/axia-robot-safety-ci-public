@@ -6,9 +6,9 @@ MODE="${1:---run}"
 [[ $# -le 1 && ( "$MODE" == --run || "$MODE" == --self-check ) ]] || {
   echo 'D06_WSLG_SENSOR_USAGE=--self-check|--run' >&2;exit 2;
 }
-readonly STUDENT_SHA='f1f5d932de831d3dabedf9a44a5fa27cf5705f42'
+readonly STUDENT_SHA='8e19742fd7bd80db73a37dc7b1d798768dc33e2a'
 readonly PROBE_BLOB='f7534b191b78cba4f20aac55e9d227268504a25f'
-readonly SMOKE_BLOB='83d7b57cd8e527cf8b85896cf6f60568d8b332ad'
+readonly SMOKE_BLOB='9cb5baf6c766a79cf6fd5134707981e32bb23e85'
 readonly LAUNCH_BLOB='b2886cdf509d99ea62528cd013669258764b05e0'
 readonly REPO='https://github.com/silverbjin/axia-robot-safety-student.git'
 readonly REL='block_B/day07/h01_runtime'
@@ -60,6 +60,10 @@ RUN_DIR="$(mktemp -d -p "$EVIDENCE_ROOT" d06-wslg-sensor-XXXXXXXX)"
 GIT_ROOT="$(mktemp -d)"
 cleanup(){
   # NO_GOAL read-only probes owned by this wrapper on any early failure.
+  if [[ -n "${SMOKE_PID:-}" ]] && kill -0 "$SMOKE_PID" 2>/dev/null;then
+    kill -TERM "$SMOKE_PID" 2>/dev/null || true
+    wait "$SMOKE_PID" 2>/dev/null || true
+  fi
   local owned
   for owned in "${RX_PID:-}" "${GZ_PID:-}";do
     [[ -n "$owned" ]] || continue
@@ -174,12 +178,49 @@ PY
   echo D06_G07_NATIVE_RX_WITNESS_STARTED_GZ_AND_ROS_NO_GOAL
 fi
 RC=0
-bash "$RUNTIME/scripts/p2_no_goal_smoke_ci.sh" > "$RUN_DIR/owner_no_goal.log" 2>&1 || RC=$?
+RX_RC=0; GZ_RC=0; HANDOFF_DONE=0; SMOKE_PID=''
 if [[ "$RX_WITNESS" == 1 ]];then
-  kill -TERM "$RX_PID" "$GZ_PID" 2>/dev/null || true
-  RX_RC=0; GZ_RC=0
-  wait "$RX_PID" || RX_RC=$?
-  wait "$GZ_PID" || GZ_RC=$?
+  # The Student process writes a probe-complete marker after its actual
+  # strict 20s dual-Scan verdict, then WAITS for observers to stop before
+  # it requests the official Nav2 lifecycle shutdown.
+  export AXIA_G07_NO_GOAL_WITNESS_HANDOFF=1
+  bash "$RUNTIME/scripts/p2_no_goal_smoke_ci.sh" > "$RUN_DIR/owner_no_goal.log" 2>&1 &
+  SMOKE_PID=$!
+  while kill -0 "$SMOKE_PID" 2>/dev/null;do
+    if [[ -f "$RUN_DIR/native/g07_witness_probe_complete.signal" ]];then
+      kill -TERM "$RX_PID" "$GZ_PID" 2>/dev/null || true
+      wait "$RX_PID" || RX_RC=$?
+      wait "$GZ_PID" || GZ_RC=$?
+      RX_PID='';GZ_PID=''
+      if [[ "$RX_RC" == 0 && "$GZ_RC" == 0 ]];then
+        echo 'G07_READONLY_WITNESSES_STOPPED' > "$RUN_DIR/native/g07_witness_stopped.ack"
+        HANDOFF_DONE=1
+        echo 'D06_G07_WSLG_READONLY_WITNESS_HANDOFF_DONE_BEFORE_SHUTDOWN'
+      else
+        echo 'D06_G07_WSLG_WITNESS_NONCLEAN_HANDOFF_HOLD' >&2
+        RC=3
+      fi
+      break
+    fi
+    sleep .2
+  done
+  wait "$SMOKE_PID" || RC=3
+  SMOKE_PID=''
+  if [[ "$HANDOFF_DONE" != 1 ]];then
+    if [[ -n "$RX_PID" ]];then
+      kill -TERM "$RX_PID" "$GZ_PID" 2>/dev/null || true
+      wait "$RX_PID" || RX_RC=$?
+      wait "$GZ_PID" || GZ_RC=$?
+      RX_PID='';GZ_PID=''
+    fi
+    echo 'D06_G07_WSLG_WITNESS_HANDOFF_MISSING_HOLD' >&2
+    RC=3
+  fi
+else
+  export AXIA_G07_NO_GOAL_WITNESS_HANDOFF=0
+  bash "$RUNTIME/scripts/p2_no_goal_smoke_ci.sh" > "$RUN_DIR/owner_no_goal.log" 2>&1 || RC=$?
+fi
+if [[ "$RX_WITNESS" == 1 ]];then
   echo "D06_G07_RX_WITNESS_EXIT ros=$RX_RC native=$GZ_RC"
   if [[ "$RX_RC" != 0 || "$GZ_RC" != 0 ]];then
     echo D06_G07_RX_WITNESS_DID_NOT_FINISH_CLEANLY_NO_GOAL >&2
