@@ -94,9 +94,24 @@ def native_clock_window(left, right, clock):
     return r
 
 
-def classify(native, raw, safety, limit=TTL, native_clock=None):
-    """Compare same source stamps on the same host; never claim bridge send proof."""
+def classify(native, raw, safety, limit=TTL, native_clock=None,
+             after_host_sec=None, before_host_sec=None):
+    """Compare same source stamps on one host; post-READY scope is a proxy."""
+    scoped = after_host_sec is not None
+    if scoped:
+        if not isinstance(after_host_sec,(int,float)) or not math.isfinite(after_host_sec):
+            raise ValueError("D06_G07_INVALID_READY_HOST_MONOTONIC")
+        if (not isinstance(before_host_sec,(int,float))
+                or not math.isfinite(before_host_sec)
+                or before_host_sec<=after_host_sec):
+            raise ValueError("D06_G07_INVALID_READY_PROXY_WINDOW")
+        raw=[v for v in raw if after_host_sec<=v.get("host_monotonic_sec",-1)<=before_host_sec]
+        safety=[v for v in safety if after_host_sec<=v.get("host_monotonic_sec",-1)<=before_host_sec]
     r = {
+        "scope": "POST_NAV2_READY_PROXY" if scoped else "WHOLE_SESSION_FIRST_BREACH",
+        "student_probe_same_pair_proven": False,
+        "ready_window_start_host_sec": after_host_sec,
+        "ready_window_end_host_sec": before_host_sec,
         "schema": "axia.d06.g07.native_ros_first_scan_ttl.v1",
         "candidate": "NO_ROS_TTL_VIOLATION_WITNESSED",
         "cause": "UNDETERMINED", "native_gap_sec": None,
@@ -220,6 +235,7 @@ def main():
     p.add_argument("--ros-jsonl",type=Path)
     p.add_argument("--native-jsonl",type=Path)
     p.add_argument("--native-clock-jsonl",type=Path)
+    p.add_argument("--startup-verdict",type=Path)
     p.add_argument("--output",type=Path)
     a=p.parse_args()
     if a.self_check:
@@ -242,6 +258,30 @@ def main():
     report["observer_safety_count"]=len(safe)
     report["native_count"]=len(native)
     report["original_student_first_gap_same_pair_proven"]=False
+    if a.startup_verdict:
+        proxy={"scope":"POST_NAV2_READY_PROXY",
+               "candidate":"NAV2_READY_TIMESTAMP_NOT_VERIFIED",
+               "release":"HOLD","goal_allowed":False,
+               "student_probe_same_pair_proven":False}
+        try:
+            startup=json.loads(a.startup_verdict.read_text(encoding="utf-8"))
+            gates=[x for x in startup.get("stages",[])
+                   if x.get("gate")=="NAV2_ACTION_READY"
+                   and x.get("status")=="PASS"
+                   and isinstance(x.get("wall_monotonic_s"),(int,float))]
+            if startup.get("status")=="SMOKE_READY" and len(gates)==1:
+                ready=float(gates[0]["wall_monotonic_s"])
+                proxy=classify(native,raw,safe,native_clock=native_clock,
+                    after_host_sec=ready,before_host_sec=ready+20.0)
+                proxy["student_window_alignment"]="PROXY_ONLY_NOT_SOURCE_PAIRED"
+                proxy["ready_gate"]="NAV2_ACTION_READY"
+        except (OSError,ValueError,TypeError,KeyError):
+            pass
+        report["post_ready_proxy"]=proxy
+        print("D06_G07_POST_READY_PROXY candidate="+str(proxy.get("candidate"))+
+              " native_gap_sec="+str(proxy.get("native_gap_sec"))+
+              " local_rtf="+str(proxy.get("native_clock_window_rtf"))+
+              " STUDENT_PAIR_NOT_VERIFIED release=HOLD",flush=True)
     a.output.parent.mkdir(parents=True,exist_ok=True)
     a.output.write_text(json.dumps(report,indent=2,sort_keys=True)+"\n")
     print("D06_G07_FIRST_SCAN_TTL_HOLD candidate="+report["candidate"]+
