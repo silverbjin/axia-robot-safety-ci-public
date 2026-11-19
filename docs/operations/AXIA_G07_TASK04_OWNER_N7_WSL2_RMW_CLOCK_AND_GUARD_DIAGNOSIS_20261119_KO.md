@@ -63,7 +63,7 @@ OWNER_N7_ORIGINAL_GAZEBO_GOAL_MOTION=NUMERICAL_CANDIDATE_19_21
 OWNER_N7_GUARD_NATIVE_150MS=UNVERIFIED_NOT_PUBLISHED
 OWNER_N7_RMW_SOURCE_RAW_WALL_GAP_MS=2964.068703
 PUBLIC_L0_OWNER_CLOCK_PARITY=PASS
-PUBLIC_L2_FINAL_NEW_SOURCE=NOT_RECORDED_IN_THIS_REPORT
+PUBLIC_L2_FINAL_NEW_SOURCE=PASS_21_OF_21_PUBLIC_CI_ONLY
 OWNER_WSL2_NEW_L3=NOT_RUN
 CERTIFIED_ESTOP=false
 AXIA_MVP_DEMO_ACCEPTED=HOLD
@@ -76,3 +76,39 @@ Main 병합은 별도 승인 전 금지. Owner는 새 L2 성공 및 정확한 St
 - Microsoft WSL host-side guest freeze / wall vs monotonic 관찰: https://github.com/microsoft/WSL/issues/40745
 - Microsoft WSL 시계 불연속 문제: https://github.com/microsoft/WSL/issues/11790
 - ROS 2 RMW source / receive timestamps: https://github.com/ros2/rosbag2/issues/2023
+
+## 7. 최신 공개 CI 통합 재검증 및 Owner 단일 인수 출고
+
+### n7 판정 보존 추가 RED→GREEN
+- Student report의 CM120 항목에서 정규화된 송신 간격만 표시하면 S75/n7의 실제 RMW wall-clock 2.964초 step이 최종 Owner 소형 ZIP에 남지 않는다.
+- Student `test_g07_task04_owner_n7_timing_regression.py` RED `24bb8511a7550c452d3a13c14463bc9912fa991e`: 공개 [#44433055899](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44433055899)에서 단일 보존 테스트 FAIL.
+- Student 최종 **`dcd1299c03bf702712631dc025b868335cadd1c6`**에서 `cm120.source_raw_gap_max_ms`, `clock_step_pairs`, `clock_step_evidence`, `host_external_clock_verified`를 숫자 판정 JSON에 전달. 그에 따라 **기존 Guard/CM 정책은 변경하지 않고 원본 측정 증거만 추가**.
+- 공개 [#44433188501](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44433188501) 최종 L0 GREEN: n7 신규 CI 6 / 기존 CM strict 5 / Student Guard·JSON 보존 3, 총 14개 PASS. 일반 Python contracts 및 runner canary도 같은 브랜치에서 성공.
+
+### CI Gazebo 환경 drift와 실제 완전 통합 L2
+- 첫 수정 L2 [#44430959362](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44430959362)는 실제 Gazebo 전에 FAIL: 현재 OSRF apt `libgz-transport13-dev=13.7.0`이 설치된 `libgz-transport13=13.6.0`을 13.7로 올려 Owner 공식 패키지 패리티를 깨뜨림.
+- 공개 의존성 [#44431621259](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44431621259) 진단 PASS. 원본 컨테이너 13.6 설치 확인; 현재 apt 13.7만 제공, 오래된 dev 13.6 후보 없음.
+- 완화 없이 네이티브 증인 라이브러리는 별도 빌드 Job에서 컴파일하고, 실제 Moving Goal은 **변경되지 않은 13.6 런타임 컨테이너**에서 수행해 원본 안전 의존성 유지. 빌드한 파일의 SHA256 확인 후 실제 Gazebo plugin 로딩 성공.
+- 중간 같은 구조 실제 [#44432235573](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44432235573) SUCCESS (이전 Student SHA `b1d1973...`). 
+- **최종 Student `dcd1299c...` 실제** [#44433206283](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44433206283) **SUCCESS** (공개 CI HEAD `71b85c42ea474276fedd9f345521317b8c348b4e`). 실제 출력:
+```text
+G07_N7_PINNED_13_6_GAZEBO_RUNTIME_UNCHANGED
+AXIA_G07_TASK04_NATIVE_ONE_MOVING_RUNNER_RC=0 RVIZ_X11=1 GAZEBO_X11=1
+AXIA_G07_TASK04_NATIVE_MOVING_GUI_VERDICT {"first_failure":"NONE","gui_windows_seen":2,"source_sha":"dcd1299c03bf702712631dc025b868335cadd1c6","status":"TASK04_REAL_GAZEBO_MOVING_GUI_L2_SCOPED_PASS"}
+AXIA_G07_TASK04_OWNER_MOVING_L3=NOT_RUN AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false
+```
+- 해당 verdict 코드는 모든 **21개 실제 Gate**가 참일 때에만 생성됨. 수치 JSON artifact [#14487965556](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44433206283/artifacts/14487965556); 공개 아티팩트에 실제 원본 rosbag/개인 경로 없음.
+- Owner 공개 고정 실행기 코드 `scripts/axia_g07_task04_owner_moving_l3_once.sh`, 소스 commit **`4cd36853358bb088263a0b73a0cfa6c8d5ec2d55`**. 내부 Student `dcd1299...`, 공개 review `71b85c42...`, L2 `44433206283` exact pins. 실제 Owner WSLg L3는 현재 **NOT_RUN**.
+
+```ini
+PUBLIC_CI_L0_N7_CLOCK_GUARD=PASS_14_TESTS
+PUBLIC_CI_NATIVE_MOVING_GUI_L2=PASS_21_OF_21
+NEW_OWNER_WSL2_L3=NOT_RUN
+WSL2_REALTIME_STEP_HOST_PHYSICAL_CAUSE=NOT_PROVEN
+OWNER_NATIVE_GUARD_150MS=AWAIT_NEW_RUN
+CERTIFIED_ESTOP=false
+AXIA_MVP_DEMO_ACCEPTED=HOLD
+MAIN_MERGED=false
+```
+
+검증 수준: CI의 Linux/Xvfb 실제 Gazebo/Nav2; 강사 WSL2의 WSLg/NVIDIA 화면·Guest/Windows 물리 스케줄링은 미검증. 권한 있는 Owner의 새 원본 Guard 내부 age와 CM raw+corrected clock step을 다시 검사한 뒤에만 정식 L3 판정.
