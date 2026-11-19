@@ -14,7 +14,8 @@ from d08_scan_gap_trace import (first_scan_receive_gap, diagnose_first_receive_b
                                 compare_isolated_ros_first_gap,
                                 compare_worst_scan_pair_receivers,
                                 scan_gap_operation_overlaps,
-                                analyze_process_heartbeat_gap)
+                                analyze_process_heartbeat_gap,
+                                classify_executor_stack_frames)
 import json
 import math
 from pathlib import Path
@@ -209,15 +210,40 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
     operation_spans=[]
     process_heartbeat_samples=deque(maxlen=2048)
     process_heartbeat_stop=threading.Event()
+    executor_stall_stack_samples=[]
 
     def heartbeat_process_loop():
-        # CI-only low-overhead 20ms witness; detects whether ALL Python
-        # threads pause or only ROS executor callbacks are delayed.
+        # CI-only low-overhead 20ms witness; captures bounded Python
+        # stack fingerprints ONLY during >350ms real Scan callback delays.
+        import sys
+        import traceback
+        last_stack_at=0.0
         while not process_heartbeat_stop.is_set():
+            now=time.monotonic()
             process_heartbeat_samples.append({
-                "host_monotonic_sec":time.monotonic(),
+                "host_monotonic_sec":now,
                 "process_cpu_sec":time.process_time(),
             })
+            if (len(executor_stall_stack_samples)<4 and
+                    len(scan_rows)>=2 and thread.ident is not None and
+                    now-scan_rows[-1]["at"]>.35 and
+                    now-last_stack_at>.18):
+                frames=sys._current_frames()
+                witness={"host_monotonic_sec":round(now,6),
+                         "last_observer_scan_age_sec":round(
+                            now-scan_rows[-1]["at"],6)}
+                for key,ident in (
+                        ("observer_executor",thread.ident),
+                        ("same_process_ros_executor",independent_thread.ident)):
+                    frame=frames.get(ident) if ident is not None else None
+                    witness[key]=[
+                        {"function":item.name,
+                         "filename":Path(item.filename).name,
+                         "line":item.lineno}
+                        for item in (traceback.extract_stack(frame)[-8:]
+                                     if frame is not None else [])]
+                executor_stall_stack_samples.append(witness)
+                last_stack_at=now
             process_heartbeat_stop.wait(.02)
 
     process_heartbeat_thread=threading.Thread(
@@ -777,6 +803,22 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
                     pair,operation_spans)
                 cmp["process_heartbeat"]=analyze_process_heartbeat_gap(
                     pair,list(process_heartbeat_samples))
+                scoped_stacks=[item for item in executor_stall_stack_samples
+                    if pair["previous_host_monotonic_sec"]<=
+                       item["host_monotonic_sec"]<=
+                       pair["current_host_monotonic_sec"]]
+                cmp["executor_stack_at_first_gap"]={
+                    "samples":scoped_stacks,
+                    "sample_count":len(scoped_stacks),
+                    "observer_candidates":[classify_executor_stack_frames(
+                        item["observer_executor"])["candidate"]
+                        for item in scoped_stacks],
+                    "same_process_ros_candidates":[
+                        classify_executor_stack_frames(
+                            item["same_process_ros_executor"])["candidate"]
+                        for item in scoped_stacks],
+                    "root_cause":"UNDETERMINED",
+                }
                 result["worst_scan_causal_pair"]=cmp
                 result["worst_scan_pair_source_stamps"]=pair
                 print("D08_REAL_WORST_SCAN_SOURCE_PAIR "
@@ -800,6 +842,7 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
                 k:result["isolated_ros_process_scan_rx"][k] for k in
                 ("sample_count","max_host_receive_gap_sec","history_complete")
             },sort_keys=True),flush=True)
+        result["executor_stall_stack_samples"]=executor_stall_stack_samples[:4]
         result["process_heartbeat_summary"]={
             "enabled":bool(isolated_enabled),
             "sample_count":len(process_heartbeat_samples),
