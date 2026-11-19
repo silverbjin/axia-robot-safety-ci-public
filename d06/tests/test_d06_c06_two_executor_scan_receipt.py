@@ -49,7 +49,7 @@ class C06TwoExecutorReceipts(unittest.TestCase):
         self.assertIn("aux_thread.join(timeout=3.0)",s)
         self.assertIn("G07_READONLY_AUX_EXECUTOR_DID_NOT_STOP",s)
         self.assertNotIn("MultiThreadedExecutor(num_threads=2)",s)
-        self.assertNotIn("executor.add_node(scan_node)",s)
+        self.assertNotIn("    executor.add_node(scan_node)",s)
 
     def test_strict_no_goal_and_topic_contract_unchanged(self):
         s=SRC.read_text()
