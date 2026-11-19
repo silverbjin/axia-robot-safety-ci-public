@@ -51,6 +51,12 @@ def create_compact_evidence(run_dir:Path,archive:Path)->dict:
             if len(data)>MAX_FILE:raise ValueError('D08_COMPACT_UNEXPECTED_LARGE_EVIDENCE:'+relative)
             out[relative]=data
     for f in LIVE_FILES:add_from(run_dir/'live_evidence'/f,'live_evidence/'+f)
+    # RMW summary and the FIRST Owner boundary only; never ship raw CTF or
+    # unbounded per-message RMW JSONL to students or public CI.
+    for f in ('summary.json','owner_first_gap_verdict.json',
+              'trace-size-bytes.txt','tracetools-status.txt',
+              'raw-archive-verdict.txt','stop.success'):
+        add_from(run_dir/'rmw_trace'/f,'rmw_trace/'+f)
     for f in ROOT_LOGS:add_from(run_dir/f,'logs/'+f,bounded=True)
     add_from(run_dir/'live_evidence'/'d08_official_nav2_one_world.log',
              'logs/d08_official_nav2_one_world.log',bounded=True)
