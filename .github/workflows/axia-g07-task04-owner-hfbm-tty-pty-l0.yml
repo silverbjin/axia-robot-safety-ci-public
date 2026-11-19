@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 12bcf040c0d8322aa452f26332feeb0d4a7a1edb
+          ref: 72f58fd67fe57a808ec11100c5f6c04e3a8de4cc
           path: student
           persist-credentials: false
       - name: Check actual PTY accept deny timeout EOF and Owner first failure, no ROS
