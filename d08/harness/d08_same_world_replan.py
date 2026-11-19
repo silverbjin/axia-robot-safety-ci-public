@@ -156,6 +156,14 @@ def new_independent_rx_buffers():
             for k in ("scan","odom","clock","tf")}
 
 
+SPIN_ONCE_HISTORY_LIMIT = 4096
+
+
+def new_spin_once_event_buffer():
+    """Bounded ~100s 40Hz two-executor trace; retain early three-phase gaps."""
+    return deque(maxlen=SPIN_ONCE_HISTORY_LIMIT)
+
+
 def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
     import rclpy
     from rclpy.action import ActionClient
@@ -208,7 +216,7 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
     exe=SingleThreadedExecutor()
     exe.add_node(node)
 
-    spin_once_events=deque(maxlen=1024)
+    spin_once_events=new_spin_once_event_buffer()
 
     def bounded_spin(executor):
         # Record wall vs THREAD CPU duration. A 50ms timeout limits the
@@ -835,7 +843,7 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
                     diagnose_spin_once_during_scan_gap(pair,spin_events))
                 result["executor_spin_once_trace_summary"]={
                     "sample_count":len(spin_events),
-                    "history_complete":len(spin_events)<1024,
+                    "history_complete":len(spin_events)<SPIN_ONCE_HISTORY_LIMIT,
                     "max_observer_spin_once_wall_sec":round(max(
                         (x["end_sec"]-x["start_sec"] for x in spin_events
                          if x["executor"]=="observer"),default=0.),6),
@@ -848,7 +856,7 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
                     if x["end_sec"]>=pair["previous_host_monotonic_sec"]-.06
                     and x["start_sec"]<=pair["current_host_monotonic_sec"]+.06
                 ][:32]
-                if len(spin_events)>=1024 or not cmp[
+                if len(spin_events)>=SPIN_ONCE_HISTORY_LIMIT or not cmp[
                         "executor_spin_once_worst_gap"]["bracketed"]:
                     result["status"]="HOLD"
                     result.setdefault("first_boundary",
