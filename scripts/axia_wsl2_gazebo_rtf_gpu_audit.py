@@ -258,29 +258,75 @@ def proc_cpu_delta(before: list[dict], after: list[dict],
     return result
 
 
-def find_disk_sensor_profile() -> dict:
-    # The newest persisted SDF is only a CANDIDATE, not proof of the
-    # currently running Gazebo world's sensor update rate.
-    base = Path.home() / "axia_d04_student_evidence"
-    candidates = sorted(base.glob("d04-gazebo-*/scene/student_waffle_rgb.sdf.xacro"),
-                        key=lambda p: p.stat().st_mtime, reverse=True)[:1]
-    result = {"status": "DISK_ONLY_NOT_PROVEN_ACTIVE",
-              "rgbd_hz_disk_candidate": None, "sdf_path": None}
-    if candidates:
-        p = candidates[0]
-        try:
-            import xml.etree.ElementTree as ET
-            root = ET.parse(p).getroot()
-            sensor = next((s for s in root.iter("sensor")
-                           if "rgbd" in s.get("name", "").lower()), None)
-            if sensor is not None:
-                rate = sensor.findtext("update_rate")
-                if rate and float(rate) > 0:
-                    result["rgbd_hz_disk_candidate"] = float(rate)
-            result["sdf_path"] = str(p)
-        except (OSError, ValueError, ET.ParseError):
-            result["status"] = "DISK_SDF_PARSE_FAILED"
+def find_disk_sensor_profile(partition: str | None = None,
+                             base: Path | None = None) -> dict:
+    # G07 Task04 runs a separate official Nav2 world. The previous probe
+    # incorrectly attached an unrelated, latest D04 camera SDF to G07.
+    result = {
+        "status": "DISK_ONLY_NOT_PROVEN_ACTIVE",
+        "rgbd_hz_disk_candidate": None,
+        "rgb_camera_hz_disk_candidate": None,
+        "camera_sensors_disk": [],
+        "sdf_path": None,
+    }
+    if partition and partition.startswith("axia_p2_"):
+        result["status"] = "NOT_APPLICABLE_TO_G07_SCENARIO"
+        return result
+    if partition and not partition.startswith("axia_d04_student_"):
+        result["status"] = "NOT_APPLICABLE_TO_UNKNOWN_SCENARIO"
+        return result
+    evidence = base if base is not None else Path.home() / "axia_d04_student_evidence"
+    candidates = sorted(
+        evidence.glob("d04-gazebo-*/scene/student_waffle_rgb.sdf.xacro"),
+        key=lambda p: p.stat().st_mtime, reverse=True,
+    )[:1]
+    if not candidates:
+        result["status"] = "DISK_SDF_NOT_FOUND"
+        return result
+    p = candidates[0]
+    result["sdf_path"] = str(p)
+    try:
+        import xml.etree.ElementTree as ET
+        root = ET.parse(p).getroot()
+        for s in root.iter("sensor"):
+            name = s.get("name", "")
+            sensor_type = s.get("type", "")
+            # Exclude gpu_lidar; include official RGB, registered RGBD cameras.
+            if not ("rgb" in name.lower() or "camera" in name.lower()
+                    or "camera" in sensor_type.lower()):
+                continue
+            rate = s.findtext("update_rate")
+            try:
+                hz = float(rate) if rate is not None else None
+            except ValueError:
+                hz = None
+            w = s.findtext("camera/image/width")
+            h = s.findtext("camera/image/height")
+            entry = {"name": name, "type": sensor_type,
+                     "topic": s.findtext("topic"),
+                     "update_rate_hz": hz,
+                     "resolution": f"{w}x{h}" if w and h else None}
+            result["camera_sensors_disk"].append(entry)
+            if "rgbd" in name.lower() and hz is not None:
+                result["rgbd_hz_disk_candidate"] = hz
+            elif (("rgb" in name.lower() or "camera" in name.lower())
+                  and hz is not None):
+                result["rgb_camera_hz_disk_candidate"] = hz
+    except (OSError, ValueError, ET.ParseError):
+        result["status"] = "DISK_SDF_PARSE_FAILED"
     return result
+
+
+def count_target_roles(processes: list[dict],
+                       partition: str | None) -> dict[str, int]:
+    if not partition:
+        return {}
+    counts: dict[str, int] = {}
+    for p in processes:
+        if p.get("env", {}).get("GZ_PARTITION") == partition:
+            role = p["role"]
+            counts[role] = counts.get(role, 0) + 1
+    return counts
 
 
 def find_ogre_log() -> dict:
@@ -371,6 +417,8 @@ def compare(a: dict, b: dict) -> dict:
     if get(a, "renderer_profiles", "inherited", "renderer") != \
             get(b, "renderer_profiles", "inherited", "renderer"):
         conditions.append("shell_glx_renderer")
+    if get(a, "active_process_roles") != get(b, "active_process_roles"):
+        conditions.append("active_process_roles")
     return {"left_interval_rtf_percent": aa, "right_interval_rtf_percent": bb,
             "rtf_gap_percentage_points": round(bb-aa, 2)
             if isinstance(aa, (int, float)) and isinstance(bb, (int, float))
@@ -498,7 +546,8 @@ def main(argv=None) -> int:
                 if gui else None},
         "renderer_profiles": gpu, "processes": [
             {k: v for k, v in p.items() if k != "cpu_ticks"} for p in procs
-        ], "sensor_profile": find_disk_sensor_profile() if not args.from_stats
+        ], "active_process_roles": count_target_roles(procs, partition),
+        "sensor_profile": find_disk_sensor_profile(partition) if not args.from_stats
         else {"status": "SYNTHETIC", "rgbd_hz_disk_candidate": None},
         "platform": extra,
         "actual_gazebo_gui_verified": False,
