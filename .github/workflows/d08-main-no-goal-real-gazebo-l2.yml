@@ -933,3 +933,96 @@ jobs:
             /tmp/ui9_yolo_runtime.log
           retention-days: 7
           if-no-files-found: warn
+
+
+  g07-official-source-sdf-adapter-l1:
+    # Source-level integration of ACTUAL official Nav2/Jazzy Xacro and pinned
+    # G07 Student overlay. Does not launch ROS, Gazebo, Goal, CM or YOLO.
+    # This is not a substitute for the future same-session real Moving L2.
+    needs: l0-human-proxy-red-green
+    if: github.event_name == 'pull_request' && github.head_ref == 'feat/d08-d04-d07-single-session-20261119'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    container:
+      image: ros:jazzy-ros-base-noble
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Obtain exact upstream G07 and official Jazzy Xacro
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt-get update -qq -o APT::Update::Error-Mode=any -o Acquire::Retries=1
+          apt-get install -y -qq --no-install-recommends \
+            git curl ca-certificates ros-jazzy-xacro \
+            ros-jazzy-nav2-minimal-tb3-sim python3
+          git init -q /tmp/d08-g07-student
+          git -C /tmp/d08-g07-student remote add origin https://github.com/silverbjin/axia-robot-safety-student.git
+          git -C /tmp/d08-g07-student fetch -q --no-tags --depth 1 origin efff0fb8bf941de74572336d1988dfb0005e11f7
+          git -C /tmp/d08-g07-student -c advice.detachedHead=false checkout -q --detach FETCH_HEAD
+          test "$(git -C /tmp/d08-g07-student rev-parse HEAD)" = efff0fb8bf941de74572336d1988dfb0005e11f7
+          mkdir -p results/d08-g07-official-source-bridge
+          curl -fLsS --retry 3 --max-time 100 \
+            -o /tmp/d08-g07-walk.dae \
+            'https://fuel.gazebosim.org/1.0/Mingfei/models/actor/tip/files/meshes/walk.dae'
+          echo '49af0df3a319d1cb8ca2cebf02dbd00f625e5d5bec820bc5e109925b18b65c6e  /tmp/d08-g07-walk.dae' | sha256sum -c -
+      - name: Reuse exact G07 Contact world, SceneBroadcaster and 10Hz robot
+        shell: bash
+        run: |
+          set -eo pipefail
+          source /opt/ros/jazzy/setup.bash
+          RUNTIME=/tmp/d08-g07-student/block_B/day07/h01_runtime
+          OUT=results/d08-g07-official-source-bridge
+          WORLD="$(ros2 pkg prefix nav2_minimal_tb3_sim)/share/nav2_minimal_tb3_sim/worlds/tb3_sandbox.sdf.xacro"
+          ROBOT="$(ros2 pkg prefix nav2_minimal_tb3_sim)/share/nav2_minimal_tb3_sim/urdf/gz_waffle.sdf.xacro"
+          python3 "$RUNTIME/tools/p2_l3_world_overlay.py" \
+            --source "$WORLD" --output "$OUT/g07_world.sdf.xacro" \
+            --manifest "$OUT/g07_world_manifest.json"
+          python3 "$RUNTIME/tools/d07_h01_scene_broadcaster_overlay.py" \
+            --source "$OUT/g07_world.sdf.xacro" --output "$OUT/g07_scene_world.sdf.xacro" \
+            --manifest "$OUT/g07_scene_manifest.json"
+          python3 "$RUNTIME/tools/p2_g07_demo_lidar_overlay.py" \
+            --source "$ROBOT" --output "$OUT/g07_robot.sdf.xacro" \
+            --manifest "$OUT/g07_robot_manifest.json"
+          python3 d08/harness/d08_g07_same_world_adapter.py \
+            --world "$OUT/g07_scene_world.sdf.xacro" \
+            --robot "$OUT/g07_robot.sdf.xacro" \
+            --actor /tmp/d08-g07-walk.dae --out "$OUT/d08_unified" \
+            --student-sha efff0fb8bf941de74572336d1988dfb0005e11f7
+          xacro "$OUT/d08_unified/axia_d08_p2_person_world.sdf.xacro" \
+            headless:=true > "$OUT/expanded_world.sdf"
+          xacro "$OUT/d08_unified/axia_d08_waffle_rgbd.sdf.xacro" \
+            > "$OUT/expanded_robot.sdf"
+          python3 - "$OUT" <<'PY'
+          import json,sys,xml.etree.ElementTree as ET
+          from pathlib import Path
+          o=Path(sys.argv[1])
+          m=json.loads((o/'d08_unified/manifest.json').read_text())
+          w=ET.parse(o/'expanded_world.sdf').getroot()
+          r=ET.parse(o/'expanded_robot.sdf').getroot()
+          assert len(w.findall("./world"))==1
+          assert len(w.findall(".//model[@name='axia_p2_g07_obstacle']"))==1
+          assert len(w.findall(".//collision[@name='obstacle_collision']"))==1
+          assert len(w.findall(".//visual[@name='axia_d08_human_mesh']"))==1
+          assert len(w.findall(".//plugin[@name='gz::sim::systems::Contact']"))==1
+          assert len(w.findall(".//plugin[@name='gz::sim::systems::SceneBroadcaster']"))==1
+          assert len(r.findall(".//sensor[@name='axia_d08_registered_rgbd']"))==1
+          assert len(r.findall(".//sensor[@name='hls_lfcd_lds']"))==1
+          assert r.findtext(".//sensor[@name='hls_lfcd_lds']/update_rate")=="10"
+          assert m["upstream_g07_lidar_10hz_preserved"] is True
+          assert m["moving_goal_verified"] is False
+          assert m["d06_cm_guard_ttl_verified"] is False
+          assert m["single_world_runtime_claimed"] is False
+          print("D08_G07_REAL_OFFICIAL_XACRO_STATIC_L1_PASS_NOT_GAZEBO_NOT_MOVING")
+          PY
+          find "$OUT" -type f ! -name SHA256SUMS -print0 | sort -z | \
+            xargs -0 -r sha256sum > "$OUT/SHA256SUMS"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d08-g07-official-source-only-not-real-gazebo
+          path: results/d08-g07-official-source-bridge/
+          retention-days: 7
+          if-no-files-found: warn
