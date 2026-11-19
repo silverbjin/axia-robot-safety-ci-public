@@ -1071,17 +1071,19 @@ jobs:
   # registered on the Draft PR base, resulting in an invalid workflow run.
   # No new Gazebo, Goal, planner, safety threshold or Student answer.
   build-native-witness:
+    # Reuse exact prior GREEN native binary; this Student C++ source tree
+    # 569d7cfd is identical at SHAs 0890f971 and d94a0f7.
+    # 7-day GitHub artifact retention: bounded acceptance, not perpetual CI.
     if: github.event_name == 'pull_request' && github.head_ref == 'feat/d08-d04-d07-single-session-20261119'
     needs:
       - l0-human-proxy-red-green
       - g07-student-single-session-hook-l0
       - g07-official-source-sdf-adapter-l1
-    # Disposable build job may install OSRF development headers. Never upgrade
-    # the G07 moving runtime's locked libgz-transport13=13.6.0-1~noble.
     runs-on: ubuntu-24.04
-    timeout-minutes: 16
-    container:
-      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+    timeout-minutes: 7
+    permissions:
+      contents: read
+      actions: read
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -1089,20 +1091,23 @@ jobs:
           ref: d94a0f7090c976d4b0c9e57bb449581e96243bf1
           path: student
           persist-credentials: false
-      - name: Build exact public native S02 witness away from moving OS
+      - uses: actions/download-artifact@v4
+        with:
+          repository: silverbjin/axia-robot-safety-ci-public
+          run-id: 44504838398
+          github-token: ${{ github.token }}
+          name: d08-g07-witness-44504838398
+          path: witness_build
+      - name: Verify prior GREEN compiled Contact witness and unchanged C++ tree
         shell: bash
         run: |
           set -Eeuo pipefail
           test "$(git -C student rev-parse HEAD)" = d94a0f7090c976d4b0c9e57bb449581e96243bf1
-          if ! command -v c++ >/dev/null || ! test -f /usr/include/gz/sim8/gz/sim/System.hh; then
-            apt-get update -qq -o APT::Update::Error-Mode=any -o Acquire::Retries=1
-            DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends cmake g++ libgz-sim8-dev
-          fi
-          cmake -S student/block_B/day07/h01_runtime/tools/native_s02_public -B witness_build -DCMAKE_BUILD_TYPE=Release
-          cmake --build witness_build --parallel 2
+          test "$(git -C student rev-parse HEAD:block_B/day07/h01_runtime/tools/native_s02_public)" = 569d7cfd8590d38f17eb470f997f0170681e5fdf
           test -s witness_build/libaxia_g07_s02_ecm_witness.so
-          (cd witness_build && sha256sum libaxia_g07_s02_ecm_witness.so > witness.sha256)
-          echo D08_G07_NATIVE_WITNESS_DISPOSABLE_BUILD_PASS_NOT_MOVING
+          (cd witness_build && sha256sum -c witness.sha256)
+          printf '%s\n' '1e2dd3ad4a7d445b981ca3df9677ea7c88a680a1e6b10d04084873cd578f7ba8  witness_build/libaxia_g07_s02_ecm_witness.so' | sha256sum -c -
+          echo D08_G07_PRIOR_GREEN_NATIVE_WITNESS_REUSED_SHA_PASS_NO_GOAL
       - uses: actions/upload-artifact@v4
         with:
           name: d08-g07-witness-${{ github.run_id }}
