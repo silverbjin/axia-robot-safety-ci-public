@@ -193,8 +193,8 @@ set -u
 # same ROS_DOMAIN_ID=86, while GZ_PARTITION was already unique. ROS DDS graph
 # isolation must be checked BEFORE launching a Gazebo /clock bridge or Goal.
 # Exact reviewed helper is pinned to its immutable Git blob and cached.
-readonly DOMAIN_HELPER_COMMIT='d04bb8e1be0f7ef50f0968a77a9f00cce8777f12'
-readonly DOMAIN_HELPER_GIT_BLOB='571882893d02603534b81e687c6be78e2d4d8578'
+readonly DOMAIN_HELPER_COMMIT='977d759e751c08d6d3d22b5c9b53e2d114ad58ae'
+readonly DOMAIN_HELPER_GIT_BLOB='8c8db2e361216ec34c1d7a5d19e0ddb436af7fa3'
 DOMAIN_HELPER_CACHE="$HOME/.cache/axia/g07_task04_domain_helper"
 mkdir -p "$DOMAIN_HELPER_CACHE" || hold DOMAIN_HELPER_CACHE_DIRECTORY_FAILED
 [[ ! -L "$DOMAIN_HELPER_CACHE" ]] || hold DOMAIN_HELPER_CACHE_SYMLINK_DENIED
