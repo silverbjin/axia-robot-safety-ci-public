@@ -165,7 +165,7 @@ def classify(native, raw, safety, limit=TTL, native_clock=None,
     return r
 
 
-def classify_student_first(native, truth, limit=TTL, ros_observer=None):
+def classify_student_first(native, truth, limit=TTL, ros_observer=None, native_clock=None):
     """Match the Student's *actual* first unsafe receipt pair to Gazebo native.
 
     Host monotonic seconds and exact source stamp integers are both required.
@@ -182,6 +182,11 @@ def classify_student_first(native, truth, limit=TTL, ros_observer=None):
         "student_first_boundary":"NOT_MEASURED",
         "publisher_send_timing_proven":False,
         "cause":"UNDETERMINED","release":"HOLD","goal_allowed":False,
+        "root_cause_proven":False,
+        "student_first_native_clock_same_stamp_rtf":None,
+        "student_first_clock_stamp_pair_verified":False,
+        "student_first_native_to_peer_extra_gap_sec":None,
+        "student_first_decomposition":"UNMEASURED",
     }
     pairs=truth.get("scan_receipts_compact",{}) if isinstance(truth,dict) else {}
     if not isinstance(pairs,dict):return result
@@ -252,6 +257,40 @@ def classify_student_first(native, truth, limit=TTL, ros_observer=None):
                 result["student_first_boundary"]=(
                     "AFTER_INDEPENDENT_ROS_RECEIPT" if peer_gap<=limit
                     else "AT_OR_BEFORE_INDEPENDENT_ROS_RECEIPT")
+    # Same-pair first-boundary evidence from actual Gazebo /clock and Scan.
+    # This is an observed callback RTF, never a simulator publish timestamp.
+    if native_clock is not None:
+        clock_index={}
+        for item in native_clock:
+            if not isinstance(item,dict):continue
+            stamp=item.get("sim_stamp_ns")
+            at=item.get("host_monotonic_sec")
+            if (stamp in (stamp0,stamp1) and isinstance(at,(int,float))
+                    and math.isfinite(at)):
+                clock_index.setdefault(stamp,float(at))
+        if stamp0 in clock_index and stamp1 in clock_index:
+            elapsed=clock_index[stamp1]-clock_index[stamp0]
+            if elapsed>0:
+                result["student_first_clock_stamp_pair_verified"]=True
+                result["student_first_native_clock_same_stamp_rtf"]=round(
+                    (stamp1-stamp0)/1e9/elapsed,6)
+
+    # The independent subscriber is a peer, NOT the ROS bridge send clock.
+    # The later peer callback may occur after the Student callback; avoid
+    # falsely attributing that to the Student executor itself.
+    if result["student_first_ros_peer_pair_verified"]:
+        p_gap=result["student_first_ros_peer_gap_sec"]
+        result["student_first_native_to_peer_extra_gap_sec"]=round(
+            p_gap-native_gap,6)
+        if .25<=native_gap<=limit and p_gap>limit:
+            result["student_first_decomposition"]=(
+                "NATIVE_NEAR_LIMIT_WITH_ROS_PEER_TTL_BREACH")
+        elif native_gap>limit:
+            result["student_first_decomposition"]="NATIVE_RX_TTL_BREACH"
+        elif p_gap>limit:
+            result["student_first_decomposition"]="ROS_PEER_TTL_BREACH"
+        else:
+            result["student_first_decomposition"]="STUDENT_CALLBACK_ONLY_BREACH"
     return result
 
 
