@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """D06 read-only Gazebo Transport /scan + /clock teardown-safe witness.
 
-Based on D08 probe at 30fad621f7916dd8a320489beb46fff8ae0ccf43.\nSeparate Python process from ROS Observer; native transport SUBSCRIBER
+Based on D08 probe at 30fad621f7916dd8a320489beb46fff8ae0ccf43.
+Separate Python process from ROS Observer; native transport SUBSCRIBER
 callback timestamps do not measure Gazebo internal publisher or bridge send.
 Bounded JSONL evidence; does not publish or control the robot.
 """
