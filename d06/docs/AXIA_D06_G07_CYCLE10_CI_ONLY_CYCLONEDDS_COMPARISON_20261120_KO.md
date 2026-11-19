@@ -36,3 +36,23 @@ D06_GAZEBO_LIVE_RELEASE=HOLD
 AXIA_MVP_DEMO_ACCEPTED=HOLD
 CERTIFIED_ESTOP=false
 MAIN_MERGED=false
+
+## 5. C10 실제 공개 Gazebo L2 완료 — 단일 세션 정밀 인수 PASS
+
+- 실제 Linux Xvfb + ROS 2 Jazzy + Gazebo Harmonic + TurtleBot3 Waffle + 공식 Nav2, 동일 public code SHA **26a3a1b299e404d6e0fe9e69312578db356081ab**, [Run #44568745545](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44568745545) **SUCCESS**.
+- artifact #14552428293 압축 ZIP, SHA256 **3846bd9fe8a0c86750b80ae1c1b183e948c197cede48e94badbad25643a66f44**. native/stdout/launch/JSONL 원본 포함.
+- 실제 관리 프로세스가 기록한 RMW: **rmw_cyclonedds_cpp**. 설정 문자열과 실제 식별값 일치.
+- Nav2 READY host monotonic 278.494s에서 시작하는 엄격 20초 독립 관측: native/raw/safety 각 **199개**. 해당 구간 최대 gap **114.808/114.294/114.993ms**, 모두 300ms 미만. 전체 세션 native456 raw456 safety456, max gap **122.501/123.621/125.325ms**, 전부 300ms 미만.
+- Student qualified **20.108초**, Raw202 max **114.426ms**, Safety202 max **114.035ms**, Safety202/202 CLEAR, front median1.414385m, side2.518874m. 모든 first_receipt_ttl_breach_at_index=null.
+- Student /clock global RTF **0.999034** (sim_elapsed19.965s / host_elapsed19.984312s). CLOCK 진행 정상, 별개 safety TTL도 실제 수신 간격으로 검증.
+- Navigation Lifecycle SHUTDOWN ACK **2.423671s**, Localization ACK **0.593787s**, 두 관리 요청 모두 전송·ACK. 충돌감시 CM 실제 child exit0, Base Guard/Supervisor/Gazebo server도 실제 clean exit. native witness는 subscribe 종료 및 SIGINT handoff ACK, world pause와 /server_control stop:true ACK, teardown P2_L2_GRACEFUL_TEARDOWN. Xvfb Gazebo/RViz 창 확인.
+- Goal/velocity/fault/fixture 이동 없음, certified E-Stop 아님. 본 L2 종료 성공은 **NO_GOAL + Linux Xvfb + CycloneDDS** 범위로만 유효.
+- artifact d06_g07_scan_delivery_layer.json의 release=HOLD/goal_allowed=false는 의도된 **L3/motion 권한 미부여 플래그**이며 첫 안전 위반 관측은 NO_ROS_TTL_VIOLATION_WITNESSED. 독립 시연 L2 verdict 성공과 모순 아님.
+
+## 6. 원인 확정과 출고 구분
+
+- 기존 C09 동일 개발선 Fast DDS 실측에서는 Student Safety365.478ms, Localization Manage no-ACK. C10 CycloneDDS에서 두 증상이 **같은 단일 실행에 재발하지 않았음**. 하지만 실행 회차/시스템 스케줄링 차이가 있으므로 RMW vendor가 단일 근본 원인이라고 단정 금지.
+- 최소 권장 기준선 후보는 **현재 코드 SHA 26a3a1b2…의 CI-only RMW 교체**. 강사 WSL2 실행기에 무검증 전역 RMW override 이식 금지.
+- 독립 owner WSL2 NVIDIA WSLg GPU Gazebo 종료 SIGSEGV exit-11 원본 core stack 미확보. Collision Monitor120ms/Guard150ms Moving Goal 실제 E2E 미검증, owner L3 실행 안 함.
+- 따라서 **C10_PUBLIC_REAL_GAZEBO_NO_GOAL_L2=PASS**, 그러나 **D06_GAZEBO_LIVE_RELEASE=HOLD**, **AXIA_MVP_DEMO_ACCEPTED=HOLD**, **CERTIFIED_ESTOP=false**. User 승인 전 main 병합 금지.
+
