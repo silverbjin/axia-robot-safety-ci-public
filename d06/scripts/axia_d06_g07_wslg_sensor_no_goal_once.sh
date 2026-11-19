@@ -6,8 +6,8 @@ MODE="${1:---run}"
 [[ $# -le 1 && ( "$MODE" == --run || "$MODE" == --self-check ) ]] || {
   echo 'D06_WSLG_SENSOR_USAGE=--self-check|--run' >&2;exit 2;
 }
-readonly STUDENT_SHA='7604c69308bc8ec7d5b48e8b1bb8db0f64524dec'
-readonly PROBE_BLOB='e8fafd439b3c86c0df8f895c8d12f108056c8681'
+readonly STUDENT_SHA='ad86587c30e41a2bbc291c0418bdddd6dcea974f'
+readonly PROBE_BLOB='1f00c7118f55ed72257155b92e83a98d6dcbc017'
 readonly SMOKE_BLOB='ca4af428c59716b46b9bc6bde6f25ea47d6d4e68'
 readonly LAUNCH_BLOB='b2886cdf509d99ea62528cd013669258764b05e0'
 readonly REPO='https://github.com/silverbjin/axia-robot-safety-student.git'
@@ -145,8 +145,8 @@ PY
   # Exact D08 and D06 immutable commits and git blobs.
   D06_GZ_SAFE_RECEIVER_SHA='7b4b6b553d13c07dd8fc60f4f9a065500cf1cb9a'
   D06_GZ_SAFE_RECEIVER_BLOB='653ec644e80eb832f32c4db6ed46a5a0db02b60d'
-  D06_RECEIVER_SHA='baf2ee907757ff248e45a9f02e62b40de40a3aed'
-  D06_RECEIVER_BLOB='d55bce65cefe41ea046503445511b68e916607c2'
+  D06_RECEIVER_SHA='310f7f85add2c240d99ab4059d58ffdb143c678b'
+  D06_RECEIVER_BLOB='52f58ffdcf2a457bac45adddd47e930e2229e122'
   RX_TOOL="$GIT_ROOT/d06_g07_scan_rx_witness.py"
   GZ_TOOL="$GIT_ROOT/d06_gz_native_scan_probe_safe.py"
   curl -fLsS --retry 3 --max-time 90 \
