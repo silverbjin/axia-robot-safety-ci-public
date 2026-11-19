@@ -21,8 +21,9 @@ jobs:
       - name: Real Jazzy Launch callback - no Gazebo, Goal, or ROS graph
         shell: bash
         run: |
-          set -Eeuo pipefail
+          set -Ee -o pipefail
           source /opt/ros/jazzy/setup.bash
+          set -u
           test "$(git -C student rev-parse HEAD)" = 'e9e4de09deb544cb19ca4468b68e238400da6dda'
           PYTHONDONTWRITEBYTECODE=1 timeout 40s python3 -m unittest discover -v -s student/block_B/tests -p test_g07_task04_world_xacro_launch_l1.py
           echo 'AXIA_G07_OWNER_WORLD_XACRO_L1_PASS_REAL_ROS_LAUNCH_NO_GAZEBO_NO_GOAL'
