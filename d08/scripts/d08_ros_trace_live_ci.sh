@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Scoped CI-only trace around ACTUAL D08 public no-Goal Gazebo L2.
-# Never use trace availability as a 500ms/CM/Guard safety pass.
+# 500ms/CM/Guard criterion UNCHANGED; trace availability never a safety PASS.
 set -Eeuo pipefail
 source /opt/ros/jazzy/setup.bash
 MODE="$1"
