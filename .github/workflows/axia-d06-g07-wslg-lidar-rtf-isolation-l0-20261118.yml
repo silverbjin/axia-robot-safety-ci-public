@@ -25,6 +25,7 @@ on:
       - 'd06/tests/test_d06_localization_manager_callback_probe.py'
       - 'd06/tests/test_d06_student_scan_clock_executor_isolation.py'
       - 'd06/tests/test_d06_l2_apt_https_bootstrap.py'
+      - 'd06/tests/test_d06_ci_only_gui_nice.py'
       - '.github/workflows/axia-d06-g07-native-nogoal-cm-clean-l2-20261119.yml'
       - 'd06/tests/test_d06_g07_no_goal_manager_discovery.py'
       - 'd06/tests/test_d06_owner_full_native_gate.py'
@@ -61,6 +62,7 @@ on:
       - 'd06/tests/test_d06_localization_manager_callback_probe.py'
       - 'd06/tests/test_d06_student_scan_clock_executor_isolation.py'
       - 'd06/tests/test_d06_l2_apt_https_bootstrap.py'
+      - 'd06/tests/test_d06_ci_only_gui_nice.py'
       - '.github/workflows/axia-d06-g07-native-nogoal-cm-clean-l2-20261119.yml'
       - 'd06/tests/test_d06_g07_no_goal_manager_discovery.py'
       - 'd06/tests/test_d06_owner_full_native_gate.py'
@@ -107,6 +109,7 @@ jobs:
           python3 -m unittest discover -s d06/tests -p 'test_d06_localization_manager_callback_probe.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_student_scan_clock_executor_isolation.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_l2_apt_https_bootstrap.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_ci_only_gui_nice.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_g07_no_goal_manager_discovery.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_owner_full_native_gate.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_native_raw_scan_ttl_boundary.py' -v
