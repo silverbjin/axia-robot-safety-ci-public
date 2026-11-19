@@ -4,6 +4,7 @@ on:
     branches: ['fix/d06-wslg-lidar-vs-rtf-ci-20261118']
     paths:
       - '.github/workflows/axia-d06-g07-native-nogoal-cm-clean-l2-20261119.yml'
+      - 'd06/tests/test_d06_g07_nogoal_ordered_cm_shutdown.py'
   workflow_dispatch:
 permissions:
   contents: read
