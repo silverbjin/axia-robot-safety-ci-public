@@ -41,13 +41,13 @@ class WslgABOneShotSafety(unittest.TestCase):
 
     def test_pin_source_commit_and_git_blobs(self):
         s=SCRIPT.read_text()
-        self.assertIn("f1f5d932de831d3dabedf9a44a5fa27cf5705f42",s)
-        self.assertIn("045cc27a2080f3a422445a25385fbf0f05ceaf50",s)
+        self.assertIn("8e19742fd7bd80db73a37dc7b1d798768dc33e2a",s)
+        self.assertIn("8fa030fd2e87907b758075c7a88b61caa8b9bb42",s)
         self.assertIn("171aad7ce8abe97c93a42f19787042619c06b65e",s)
         self.assertIn('git hash-object "$TMP/owner.sh"',s)
         self.assertIn('git hash-object "$TMP/compare.py"',s)
         o=OWNER.read_text()
-        self.assertIn("f1f5d932de831d3dabedf9a44a5fa27cf5705f42",o)
+        self.assertIn("8e19742fd7bd80db73a37dc7b1d798768dc33e2a",o)
         self.assertIn("f7534b191b78cba4f20aac55e9d227268504a25f",o)
 
     def test_single_wslg_owner_stops_external_witnesses_before_official_shutdown(self):
