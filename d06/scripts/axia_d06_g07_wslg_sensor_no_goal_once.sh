@@ -58,7 +58,16 @@ chmod 700 "$EVIDENCE_ROOT"
 EVIDENCE_ROOT="$(cd "$EVIDENCE_ROOT" && pwd -P)"
 RUN_DIR="$(mktemp -d -p "$EVIDENCE_ROOT" d06-wslg-sensor-XXXXXXXX)"
 GIT_ROOT="$(mktemp -d)"
-cleanup(){ rm -rf -- "$GIT_ROOT"; }
+cleanup(){
+  # NO_GOAL read-only probes owned by this wrapper on any early failure.
+  local owned
+  for owned in "${RX_PID:-}" "${GZ_PID:-}";do
+    [[ -n "$owned" ]] || continue
+    kill -TERM "$owned" 2>/dev/null || true
+    wait "$owned" 2>/dev/null || true
+  done
+  rm -rf -- "$GIT_ROOT"
+}
 trap cleanup EXIT
 {
   glxinfo -B
