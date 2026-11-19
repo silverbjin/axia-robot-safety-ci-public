@@ -1034,3 +1034,28 @@ jobs:
           path: results/d08-g07-official-source-bridge/
           retention-days: 7
           if-no-files-found: warn
+
+
+  g07-student-single-session-hook-l0:
+    # Separate public Student repo, no Instructor answers. RED before GREEN.
+    needs: l0-human-proxy-red-green
+    if: github.event_name == 'pull_request' && github.head_ref == 'feat/d08-d04-d07-single-session-20261119'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: df1b9ea853a980825d35d544414c04d7d53a8ac5
+          path: student
+          persist-credentials: false
+      - name: Exact independent Student source and fail-closed new opt-in
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C student rev-parse HEAD)" = df1b9ea853a980825d35d544414c04d7d53a8ac5
+          cd student/block_B/day07/h01_runtime
+          bash -n scripts/p2_no_goal_smoke_ci.sh
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools \
+            -p test_d08_g07_single_session_hook.py -v
+          echo D08_G07_STUDENT_SINGLE_SESSION_HOOK_L0_PASS_NOT_GAZEBO
