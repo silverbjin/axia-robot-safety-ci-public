@@ -282,6 +282,15 @@ jobs:
           assert pause.is_file(), "G07_NO_GOAL_GAZEBO_PAUSE_PROOF_MISSING"
           assert "data: true" in pause.read_text(), "G07_NO_GOAL_GAZEBO_PAUSE_ACK_MISSING"
           assert gz_clean and not gz_bad, "GAZEBO_SERVER_EXIT0_NOT_PROVEN_L2"
+          # A handoff flag alone is insufficient: both real source files
+          # must prove that the extra observers stopped before lifecycle.
+          probe_marker=root/"g07_witness_probe_complete.signal"
+          stopped_ack=root/"g07_witness_stopped.ack"
+          assert probe_marker.is_file(), "SENSOR_PROBE_COMPLETE_MARKER_MISSING"
+          assert stopped_ack.is_file(), "WITNESS_STOP_BEFORE_LIFECYCLE_ACK_MISSING"
+          assert "G07_READONLY_SENSOR_PROBE_FINISHED" in probe_marker.read_text()
+          assert stopped_ack.read_text().strip()=="G07_READONLY_WITNESSES_STOPPED"
+          print("AXIA_D06_G07_NO_GOAL_STRICT_INTEGRATED_L2_PASS_SENSOR300_NAV2_ACK_CM0_GZ0")
           print("AXIA_D06_G07_ACTUAL_NAV2_CM_CHILD_EXIT0_L2_PASS_NO_GOAL_SENSOR_TTL_INDEPENDENT")
           print("D06_GAZEBO_LIVE_RELEASE=HOLD CERTIFIED_ESTOP=false OWNER_WSLG_L3_NOT_RUN")
           PY
