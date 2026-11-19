@@ -42,14 +42,14 @@ class WslgABOneShotSafety(unittest.TestCase):
 
     def test_pin_source_commit_and_git_blobs(self):
         s=SCRIPT.read_text()
-        self.assertIn("2e53172863549e8797def5726fa536c6ec74b5e4",s)
-        self.assertIn("e4b23c5df175eb655600a5f1b302dc9be1ca92a2",s)
+        self.assertIn("0565e580f5b7c80d719960a6046de3e45c8ea477",s)
+        self.assertIn("d19a364d7180c542a7204111bb68b3394c5d42f9",s)
         self.assertIn("171aad7ce8abe97c93a42f19787042619c06b65e",s)
         self.assertIn('git hash-object "$TMP/owner.sh"',s)
         self.assertIn('git hash-object "$TMP/compare.py"',s)
         o=OWNER.read_text()
-        self.assertIn("2e53172863549e8797def5726fa536c6ec74b5e4",o)
-        self.assertIn("069b0aba9a7da9ba523049ede668d2aa3acfdcb3",o)
+        self.assertIn("0565e580f5b7c80d719960a6046de3e45c8ea477",o)
+        self.assertIn("922516dd0bb8818bdf1ed057813168886d3b3b8e",o)
 
     def test_fr1_native_gz_witness_pinned_unsubscribe_and_proven_before_nav2(self):
         o=OWNER.read_text()
@@ -59,7 +59,7 @@ class WslgABOneShotSafety(unittest.TestCase):
         self.assertIn("D06_GZ_NATIVE_SUBSCRIPTIONS_RELEASED",o)
         self.assertIn("D06_GZ_NATIVE_RX_UNSUBSCRIBE_BEFORE_NAV2_SHUTDOWN_PASS",o)
         self.assertIn("export AXIA_G07_NO_GOAL_GZ_STOP_BEFORE_SIGINT=1",o)
-        self.assertIn("2e53172863549e8797def5726fa536c6ec74b5e4",o)
+        self.assertIn("0565e580f5b7c80d719960a6046de3e45c8ea477",o)
         # Frozen Student smoke CI-only nice branch changed its blob.
         # Keep the hash pinned to the actual source, not the obsolete one.
         self.assertIn("81adb67b40b3c7ee937bc2c695c4906282391774",o)
@@ -76,7 +76,7 @@ class WslgABOneShotSafety(unittest.TestCase):
         another physical WSL2 launch.
         """
         text=OWNER.read_text()
-        expected_ref="2e53172863549e8797def5726fa536c6ec74b5e4"
+        expected_ref="0565e580f5b7c80d719960a6046de3e45c8ea477"
         self.assertIn("readonly STUDENT_SHA='"+expected_ref+"'",text)
         student=ROOT/"student"
         self.assertTrue(student.is_dir(),

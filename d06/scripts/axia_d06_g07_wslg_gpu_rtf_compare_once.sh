@@ -12,11 +12,11 @@ if [[ "$MODE" == --nvidia-only || "$MODE" == --nvidia-causal ]];then
   adapters=(NVIDIA)
   echo 'D06_GPU_RTF_NVIDIA_ONLY_NO_GOAL OWNER_L3_NOT_ACCEPTED'
 fi
-readonly OWNER_SHA='e8bef68d6f15cba1b2599ce4dab0aa053e5d05b4'
-readonly OWNER_BLOB='e4b23c5df175eb655600a5f1b302dc9be1ca92a2'
+readonly OWNER_SHA='cb147989b7ef86af671cff8c65bf9317cc4de9ea'
+readonly OWNER_BLOB='d19a364d7180c542a7204111bb68b3394c5d42f9'
 readonly ANALYZER_SHA='615bcd81b8f74a478daa2baeaf9f27ca02c94f11'
 readonly ANALYZER_BLOB='171aad7ce8abe97c93a42f19787042619c06b65e'
-readonly STUDENT_SHA='2e53172863549e8797def5726fa536c6ec74b5e4'
+readonly STUDENT_SHA='0565e580f5b7c80d719960a6046de3e45c8ea477'
 echo "AXIA_D06_GPU_RTF_PINNED_STUDENT=$STUDENT_SHA NO_GOAL_ONLY"
 if [[ "$MODE" == --self-check ]];then
   echo 'D06_GPU_RTF_STATIC_PASS NO_ROS_NO_GAZEBO_NO_GOAL'

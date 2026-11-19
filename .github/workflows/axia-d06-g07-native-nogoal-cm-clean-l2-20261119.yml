@@ -15,6 +15,7 @@ on:
       - 'd06/tests/test_d06_c06_two_executor_scan_receipt.py'
       - 'd06/tests/test_d06_c07_navigation_manager_service_liveness.py'
       - 'd06/tests/test_d06_c08_ci_gui_pre_nav2_ready.py'
+      - 'd06/tests/test_d06_c09_deferred_scan_geometry.py'
       - 'd06/tests/test_d06_ci_only_gui_nice.py'
       - 'd06/scripts/axia_d06_g07_wslg_existing_core_once.sh'
   workflow_dispatch:
@@ -62,7 +63,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 2e53172863549e8797def5726fa536c6ec74b5e4
+          ref: 0565e580f5b7c80d719960a6046de3e45c8ea477
           path: student
           persist-credentials: false
       - name: Exact public Student and official lifecycle offline contract
@@ -70,7 +71,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           test "$(git -C ci rev-parse HEAD)" = "$GITHUB_SHA"
-          test "$(git -C student rev-parse HEAD)" = '2e53172863549e8797def5726fa536c6ec74b5e4'
+          test "$(git -C student rev-parse HEAD)" = '0565e580f5b7c80d719960a6046de3e45c8ea477'
           cd student/block_B/day07/h01_runtime
           set +u; source /opt/ros/jazzy/setup.bash;set -u
           bash -n scripts/p2_no_goal_smoke_ci.sh
@@ -83,6 +84,7 @@ jobs:
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/d06/tests" -p 'test_d06_c06_two_executor_scan_receipt.py' -v
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/d06/tests" -p 'test_d06_c07_navigation_manager_service_liveness.py' -v
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/d06/tests" -p 'test_d06_c08_ci_gui_pre_nav2_ready.py' -v
+          python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/d06/tests" -p 'test_d06_c09_deferred_scan_geometry.py' -v
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/d06/tests" -p 'test_d06_ci_only_gui_nice.py' -v
           echo 'AXIA_D06_G07_ORDERED_SHUTDOWN_SOURCE_L0_PASS_NO_GOAL'
       - name: Actual same-world Gazebo and official Nav2 CM NO_GOAL teardown
