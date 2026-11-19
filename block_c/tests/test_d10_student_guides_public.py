@@ -7,7 +7,7 @@ import os
 import json
 
 STUDENT=Path(os.environ.get('AXIA_D10_STUDENT_ROOT','student'))
-SHA='103c956b92434a04acddb6be85809ddaae2431d9'
+SHA='ff94f37b2ec2d025fa3e39a3203fbd256ea9abef'
 
 def test_d10_pinned_public_student_source():
     assert os.environ.get('AXIA_D10_STUDENT_SHA')==SHA
