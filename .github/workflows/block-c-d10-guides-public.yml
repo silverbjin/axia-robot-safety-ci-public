@@ -1,0 +1,62 @@
+name: AXIA D10 public student guides source and safety L0
+on:
+  push:
+    branches: ['ci/d10-*']
+    paths: ['block_c/tests/test_d10_student_guides_public.py', '.github/workflows/block-c-d10-guides-public.yml']
+  pull_request:
+    paths: ['block_c/tests/test_d10_student_guides_public.py', '.github/workflows/block-c-d10-guides-public.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  d10-public-student-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          path: ci-public
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: 103c956b92434a04acddb6be85809ddaae2431d9
+          path: student
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check pytest==8.3.5
+      - name: Exact student source, fixture and D10 docs, preserve expected RED
+        shell: bash
+        env:
+          AXIA_D10_STUDENT_ROOT: student
+          AXIA_D10_STUDENT_SHA: 103c956b92434a04acddb6be85809ddaae2431d9
+        run: |
+          set -Eeuo pipefail
+          mkdir -p evidence
+          test "$(git -C student rev-parse HEAD)" = "$AXIA_D10_STUDENT_SHA"
+          echo "D10_PUBLIC_STUDENT_PIN=$AXIA_D10_STUDENT_SHA" | tee evidence/source_pin.log
+          python3 student/block_C/fixtures/generator.py --check --fixture-dir student/block_C/fixtures | tee evidence/fixture.log
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest -q ci-public/block_c/tests/test_d10_student_guides_public.py \
+            --junitxml=evidence/public.xml | tee evidence/public.log
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest -q student/block_C/tests/test_d10_guides_contract.py \
+            --junitxml=evidence/student.xml | tee evidence/student.log
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest -q student/block_C/tests/test_block_c_scaffold_contract.py \
+            --junitxml=evidence/scaffold.xml | tee evidence/scaffold.log
+          set +e
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest -q student/block_C/tests/test_student_task_expected_red.py \
+            >evidence/student_red.log 2>&1
+          rc=$?
+          set -e
+          test "$rc" -eq 1
+          grep -q '4 failed' evidence/student_red.log
+          echo D10_PUBLIC_STUDENT_TODO_EXPECTED_RED_4_CONFIRMED | tee evidence/verdict.log
+          echo D10_PUBLIC_GUIDES_L0_PASS_PRIVATE_NOT_CHECKED_OUT_ROS_GAZEBO_NOT_RUN | tee -a evidence/verdict.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d10-public-student-guides-evidence
+          path: evidence/
+          retention-days: 7
+          if-no-files-found: warn
