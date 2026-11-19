@@ -188,6 +188,20 @@ jobs:
             done
             exit 3
           fi
+          # Field teardown vJpsc6Wy: the parent "GRACEFUL" marker coexisted
+          # with BOTH Guard and Supervisor child exit1 after rclpy SIGINT.
+          # Require genuine clean exit0 of both nodes in this same session.
+          for child in p2_base_guard_node p2_supervisor_node;do
+            if grep -Eq "\\[ERROR\\] \\[${child}-[0-9]+\\]: process has died" "$GITHUB_WORKSPACE/native/launch.log";then
+              echo "AXIA_G07_NATIVE_L2_CHILD_DIED_DURING_TEARDOWN=${child}" >&2
+              exit 3
+            fi
+            grep -Eq "\\[INFO\\] \\[${child}-[0-9]+\\]: process has finished cleanly" "$GITHUB_WORKSPACE/native/launch.log" || {
+              echo "AXIA_G07_NATIVE_L2_CHILD_CLEAN_EXIT_ABSENT=${child}" >&2
+              exit 3
+            }
+          done
+          echo 'AXIA_G07_NATIVE_L2_GUARD_SUPERVISOR_ACTUAL_CHILD_EXIT0_PASS'
           # This is a REAL-GAZEBO /tf fallback regression, not merely a
           # successful run which happened to receive a late /amcl_pose.
           grep -Fq 'G07_CI_REAL_MAP_TF_FALLBACK_REQUIRED' "$GITHUB_WORKSPACE/native/g07_ci_moving.log"
