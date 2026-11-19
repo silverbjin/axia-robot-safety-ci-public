@@ -99,6 +99,18 @@ def fake_record(home):
     return d
 
 
+class LocalizationFirstTimeoutCompactContract(unittest.TestCase):
+    def test_owner_forensic_retains_parameter_service_probe_verdict(self):
+        text=SCRIPT.read_text()
+        self.assertIn('summary["native_no_goal_localization_parameter_probe"]=',text)
+        self.assertIn('nav.get("localization_parameter_probe")',text)
+        self.assertIn('summary["native_no_goal_localization_response_elapsed_sec"]=',text)
+        self.assertIn('summary["native_no_goal_localization_request_sent"]=',text)
+        self.assertIn("D06_FORENSIC_LOCALIZATION_FIRST_TIMEOUT_PROBE=",text)
+        self.assertIn("D06_G07_WSLG_READONLY_WITNESS_HANDOFF_DONE_BEFORE_SHUTDOWN",
+                      (Path(__file__).resolve().parents[2]/
+                       "d06/scripts/axia_d06_g07_wslg_sensor_no_goal_once.sh").read_text())
+
 class ForensicOneShot(unittest.TestCase):
     def test_existing_no_ros_no_gazebo_has_compact_sha256_archive(self):
         with tempfile.TemporaryDirectory() as tmp:
