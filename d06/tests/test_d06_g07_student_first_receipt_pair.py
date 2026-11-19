@@ -105,7 +105,7 @@ class DualTopicReadinessGate(unittest.TestCase):
         self.assertIn("dual_ready_at",s)
         self.assertIn("select_dual_topic_window(records)",s)
         self.assertIn("first_scan_at and",s)  # original liveness start retained
-        self.assertIn("dual_ready_at + duration",s)
+        self.assertIn("time.monotonic() - dual_ready_at >= duration",s)
         self.assertIn("startup_pre_both_scan_diagnostics",s)
 
 
