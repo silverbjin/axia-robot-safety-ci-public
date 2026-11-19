@@ -23,4 +23,5 @@ jobs:
           set -Eeuo pipefail
           bash -n scripts/axia_g07_task04_owner_moving_l3_once.sh
           python3 -m unittest discover -s tests -p 'test_g07_task04_owner_startup_performance.py' -v
+          python3 -m unittest discover -s tests -p 'test_g07_task04_owner_native_cache_runtime.py' -v
           python3 -m unittest discover -s tests -p 'test_g07_task04_owner_moving_bootstrap.py' -v
