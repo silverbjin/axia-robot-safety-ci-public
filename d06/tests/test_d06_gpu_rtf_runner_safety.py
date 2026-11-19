@@ -50,6 +50,19 @@ class WslgABOneShotSafety(unittest.TestCase):
         self.assertIn("f1f5d932de831d3dabedf9a44a5fa27cf5705f42",o)
         self.assertIn("f7534b191b78cba4f20aac55e9d227268504a25f",o)
 
+    def test_single_wslg_owner_stops_external_witnesses_before_official_shutdown(self):
+        o=OWNER.read_text()
+        self.assertIn("export AXIA_G07_NO_GOAL_WITNESS_HANDOFF=1",o)
+        self.assertIn('g07_witness_probe_complete.signal',o)
+        self.assertIn('g07_witness_stopped.ack',o)
+        self.assertIn('G07_READONLY_WITNESSES_STOPPED',o)
+        self.assertIn('SMOKE_PID=$!',o)
+        self.assertIn('wait "$SMOKE_PID"',o)
+        self.assertIn('D06_G07_WSLG_READONLY_WITNESS_HANDOFF_DONE_BEFORE_SHUTDOWN',o)
+        self.assertNotIn('export AXIA_G07_CI_SIM_GOAL_ALLOWED=1',o)
+        self.assertEqual(subprocess.run(["bash","-n",str(OWNER)],
+                                      capture_output=True,text=True).returncode,0)
+
     def test_bash_syntax_self_check_and_ci_owner_denial(self):
         chk=subprocess.run(["bash","-n",str(SCRIPT)],capture_output=True,text=True,timeout=5)
         self.assertEqual(chk.returncode,0,chk.stderr)
