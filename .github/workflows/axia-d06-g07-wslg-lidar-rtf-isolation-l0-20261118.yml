@@ -27,6 +27,7 @@ on:
       - 'd06/docs/AXIA_D06_G07_ZOA_FIRST_BOUNDARY_RCA_20261119_KO.md'
       - 'd06/docs/AXIA_D06_G07_NO_GOAL_ORDERED_CM_L2_ACCEPTANCE_REPORT_20261119_KO.md'
       - 'd06/docs/AXIA_D06_G07_FIRST_STUDENT_PAIR_READY_WINDOW_AND_SHUTDOWN_RCA_20261119_KO.md'
+      - 'd06/docs/AXIA_D06_G07_OWNER_L3_SINGLE_RUN_RELEASE_GATE_20261119_KO.md'
       - 'd06/tests/test_d06_native_raw_scan_ttl_boundary.py'
   pull_request:
     paths:
