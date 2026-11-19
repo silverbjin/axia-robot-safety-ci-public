@@ -970,9 +970,9 @@ jobs:
           echo D08_G07_PINNED_G07_RUNTIME_IMAGE_JAZZY_READY
           git init -q /tmp/d08-g07-student
           git -C /tmp/d08-g07-student remote add origin https://github.com/silverbjin/axia-robot-safety-student.git
-          git -C /tmp/d08-g07-student fetch -q --no-tags --depth 1 origin 06fddfdda7a4717cf3adfff9de3909d9698a265c
+          git -C /tmp/d08-g07-student fetch -q --no-tags --depth 1 origin b9fcd6107caa5f715df6cd18e5bbd5893d0ba23f
           git -C /tmp/d08-g07-student -c advice.detachedHead=false checkout -q --detach FETCH_HEAD
-          test "$(git -C /tmp/d08-g07-student rev-parse HEAD)" = 06fddfdda7a4717cf3adfff9de3909d9698a265c
+          test "$(git -C /tmp/d08-g07-student rev-parse HEAD)" = b9fcd6107caa5f715df6cd18e5bbd5893d0ba23f
           mkdir -p results/d08-g07-official-source-bridge
           curl -fLsS --retry 3 --max-time 100 \
             -o /tmp/d08-g07-walk.dae \
@@ -1000,7 +1000,7 @@ jobs:
             --world "$OUT/g07_scene_world.sdf.xacro" \
             --robot "$OUT/g07_robot.sdf.xacro" \
             --actor /tmp/d08-g07-walk.dae --out "$OUT/d08_unified" \
-            --student-sha 06fddfdda7a4717cf3adfff9de3909d9698a265c
+            --student-sha b9fcd6107caa5f715df6cd18e5bbd5893d0ba23f
           xacro "$OUT/d08_unified/axia_d08_p2_person_world.sdf.xacro" \
             headless:=true > "$OUT/expanded_world.sdf"
           xacro "$OUT/d08_unified/axia_d08_waffle_rgbd.sdf.xacro" \
@@ -1048,14 +1048,14 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 06fddfdda7a4717cf3adfff9de3909d9698a265c
+          ref: b9fcd6107caa5f715df6cd18e5bbd5893d0ba23f
           path: student
           persist-credentials: false
       - name: Exact independent Student source and fail-closed new opt-in
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C student rev-parse HEAD)" = 06fddfdda7a4717cf3adfff9de3909d9698a265c
+          test "$(git -C student rev-parse HEAD)" = b9fcd6107caa5f715df6cd18e5bbd5893d0ba23f
           cd student/block_B/day07/h01_runtime
           bash -n scripts/p2_no_goal_smoke_ci.sh
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools \
@@ -1090,7 +1090,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 06fddfdda7a4717cf3adfff9de3909d9698a265c
+          ref: b9fcd6107caa5f715df6cd18e5bbd5893d0ba23f
           path: student
           persist-credentials: false
       - uses: actions/download-artifact@v4
@@ -1104,7 +1104,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C student rev-parse HEAD)" = 06fddfdda7a4717cf3adfff9de3909d9698a265c
+          test "$(git -C student rev-parse HEAD)" = b9fcd6107caa5f715df6cd18e5bbd5893d0ba23f
           test "$(git -C student rev-parse HEAD:block_B/day07/h01_runtime/tools/native_s02_public)" = 569d7cfd8590d38f17eb470f997f0170681e5fdf
           test -s witness_build/libaxia_g07_s02_ecm_witness.so
           (cd witness_build && sha256sum -c witness.sha256)
@@ -1149,7 +1149,7 @@ jobs:
       AXIA_D08_G07_ADAPTER_SCRIPT: ${{ github.workspace }}/ci/d08/harness/d08_g07_same_world_adapter.py
       AXIA_D08_G07_PERSON_MESH: ${{ github.workspace }}/public_evidence/walk.dae
       AXIA_D08_G07_EXPECTED_PUBLIC_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-      AXIA_D08_G07_EXPECTED_STUDENT_SHA: 06fddfdda7a4717cf3adfff9de3909d9698a265c
+      AXIA_D08_G07_EXPECTED_STUDENT_SHA: b9fcd6107caa5f715df6cd18e5bbd5893d0ba23f
       PYTHONPATH: ${{ github.workspace }}/review:${{ github.workspace }}/ci
       QT_QPA_PLATFORM: xcb
       QT_X11_NO_MITSHM: '1'
@@ -1163,7 +1163,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 06fddfdda7a4717cf3adfff9de3909d9698a265c
+          ref: b9fcd6107caa5f715df6cd18e5bbd5893d0ba23f
           path: student
           persist-credentials: false
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -1181,7 +1181,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C student rev-parse HEAD)" = '06fddfdda7a4717cf3adfff9de3909d9698a265c'
+          test "$(git -C student rev-parse HEAD)" = 'b9fcd6107caa5f715df6cd18e5bbd5893d0ba23f'
           test "$(git -C ci rev-parse HEAD)" = "$AXIA_D08_G07_EXPECTED_PUBLIC_SHA"
           test "$(git -C review rev-parse HEAD)" = 71b85c42ea474276fedd9f345521317b8c348b4e
           test -s review/d06/diagnostic/g07_task02_strict_gate.py
@@ -1309,7 +1309,7 @@ jobs:
             exit 3
           fi
           windows_count=$((rviz_seen+gazebo_seen))
-          python3 tools/p2_g07_task04_moving_review.py             --motion-root "$GITHUB_WORKSPACE/native"             --witness "$GITHUB_WORKSPACE/native/s02_ecm_witness.json"             --source-sha '06fddfdda7a4717cf3adfff9de3909d9698a265c'             --gui-windows "$windows_count"             --output "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"
+          python3 tools/p2_g07_task04_moving_review.py             --motion-root "$GITHUB_WORKSPACE/native"             --witness "$GITHUB_WORKSPACE/native/s02_ecm_witness.json"             --source-sha 'b9fcd6107caa5f715df6cd18e5bbd5893d0ba23f'             --gui-windows "$windows_count"             --output "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"
           sha256sum "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"             > "$GITHUB_WORKSPACE/public_evidence/task04_moving_verdict.sha256"
           echo 'D08_G07_REAL_MOVING_RGBD_WORLD_L2_PASS_YOLO_D05_NOT_RUN'
           echo 'AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false'
