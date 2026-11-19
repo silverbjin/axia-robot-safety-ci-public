@@ -50,6 +50,8 @@ def test_g07_10hz_world_and_d08_registered_camera_are_one_preserved_session(tmp_
     assert len(world.findall(".//visual[@name='axia_d08_human_mesh']"))==1
     assert len(world.findall(".//collision[@name='obstacle_collision']"))==1
     assert len(robot.findall(".//sensor[@name='axia_d08_registered_rgbd']"))==1
+    assert robot.findtext(".//sensor[@name='axia_d08_registered_rgbd']/always_on")=="false"
+    assert manifest["rgbd_renders_only_with_subscribers"] is True
     assert robot.find(".//sensor[@name='hls_lfcd_lds']/update_rate").text=="10"
     assert manifest["upstream_g07_lidar_10hz_preserved"] is True
     assert manifest["g07_student_source_sha"]==TEST_SHA
