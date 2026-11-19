@@ -54,6 +54,20 @@ class NoGoalCMShutdownRegression(unittest.TestCase):
         v=m.audit(clean,"navigation_ack=true")
         self.assertEqual(v["cm_exit_code"],0)
         self.assertEqual(v["status"],"SHUTDOWN_CLEAN_CANDIDATE")
+    def test_two_read_only_witnesses_stop_before_nav2_ordered_shutdown(self):
+        s=SRC.read_text()
+        assert 'G07_READONLY_WITNESSES_STOPPED' in s
+        assert 'AXIA_G07_NO_GOAL_WITNESS_HANDOFF' in s
+        assert 'G07_READONLY_WITNESS_HANDOFF_ACK_BEFORE_SHUTDOWN' in s
+        self.assertLess(s.index('witness_handoff_before_shutdown()'),s.index('G07_WSLG_NO_GOAL_SENSOR_WINDOW_CANDIDATE_NO_MOVING_ACCEPTANCE'))
+        w=(ROOT/".github/workflows/axia-d06-g07-native-nogoal-cm-clean-l2-20261119.yml").read_text()
+        self.assertIn("AXIA_G07_NO_GOAL_WITNESS_HANDOFF: '1'",w)
+        self.assertIn('g07_witness_probe_complete.signal',w)
+        self.assertIn('g07_witness_stopped.ack',w)
+        self.assertIn('kill -TERM "$native_rx_pid" "$ros_rx_pid"',w)
+        self.assertIn('G07_READONLY_WITNESSES_STOPPED',w)
+        self.assertIn('assert witness_handoff_done==1',w)
+
     def test_real_l2_requires_full_20s_dual_topic_safe_gate_not_just_cm_exit0(self):
         w=(ROOT/".github/workflows/axia-d06-g07-native-nogoal-cm-clean-l2-20261119.yml").read_text()
         self.assertIn('assert rc==0',w)
