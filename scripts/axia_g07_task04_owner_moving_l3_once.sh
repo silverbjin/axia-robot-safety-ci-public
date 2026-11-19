@@ -6,10 +6,10 @@
 set -Eeuo pipefail
 umask 077
 readonly STUDENT_REPO='silverbjin/axia-robot-safety-student'
-readonly STUDENT_SHA='c4cc2a7adc0309d9107e35f31d8f3dd95fa8dac2'
+readonly STUDENT_SHA='2ca257c80fa12f35d801ca525cb16bebbaaa0c8f'
 readonly REVIEW_REPO='silverbjin/axia-robot-safety-ci-public'
-readonly REVIEW_SHA='2b4cd883e9a61286c8bf0e85295a72024c42485e'
-readonly CI_L2_RUN=44359652805
+readonly REVIEW_SHA='d60beed5e18d8104b254f17476d47f1d1917a7eb'
+readonly CI_L2_RUN=44468919246
 MODE="${1:---run}"
 if [[ $# -gt 1 ]];then echo 'AXIA_G07_TASK04_FIRST_FAILURE=BAD_ARGUMENTS' >&2;exit 3;fi
 case "$MODE" in
@@ -71,6 +71,7 @@ dest=Path(sys.argv[2])
 names=[
     'first_failure.txt','manifest.txt','gui_windows.txt',
     'task04_owner_verdict.json','task04_owner_numeric_review.json',
+    'task04_mvp_visual_verdict.json',
     'owner_numeric_review.log','owner_parity.json',
     'native/runtime.txt','native/clock_diagnostics.json',
     'native/g07_ci_pregoal/pregoal_baseline.json',
@@ -288,6 +289,38 @@ wait "$WATCH_PID" 2>/dev/null || true
 WATCH_PID=''
 echo "AXIA_G07_TASK04_OWNER_NATIVE_RUNNER_RC=$RUNNER_RC"
 if [[ "$RUNNER_RC" -ne 0 ]];then
+  # Educational MVP scope: a real physical CLEAR/SLOW/STOP + exact UUID
+  # cancel may have completed while the unrelated localization lifecycle ACK
+  # timed out during cleanup. All original artifacts and formal HOLD remain.
+  RV=0;GZ=0
+  grep -Fxq 'rviz=1' "$OUT/gui_windows.txt" && RV=1 || true
+  grep -Fxq 'gazebo=1' "$OUT/gui_windows.txt" && GZ=1 || true
+  if [[ "$RV" == 1 && "$GZ" == 1 ]] \
+     && python3 "$REVIEW_CACHE/scripts/axia_g07_mvp_visual_verdict.py" \
+       --motion "$OUT/native/g07_ci_moving/ci_moving_goal_result.json" \
+       --shutdown "$OUT/native/g07_ordered_shutdown.json" \
+       --gui-windows 2 --source-sha "$STUDENT_SHA" \
+       --output "$OUT/task04_mvp_visual_verdict.json"; then
+    python3 - "$OUT/task04_mvp_visual_verdict.json" "$OUT/task04_owner_verdict.json" "$STUDENT_SHA" "$CI_L2_RUN" <<'PY_MVP'
+import json,sys
+from pathlib import Path
+v=json.loads(Path(sys.argv[1]).read_text())
+assert v["status"]=="MVP_OWNER_NUMERICAL_CANDIDATE_FORMAL_SHUTDOWN_HOLD"
+result={"schema":"axia_g07_task04_owner_mvp_visual_candidate_v1",
+        "status":"MVP_PHYSICAL_DEMO_CANDIDATE_FORMAL_SHUTDOWN_HOLD",
+        "source_sha":sys.argv[3], "public_ci_moving_source_run":int(sys.argv[4]),
+        "physical_clear_slow_stop_cancel":True,
+        "localization_shutdown_ack":False,
+        "visual_content_verified":False, "owner_moving_l3_accepted":False,
+        "axia_mvp_demo_accepted":False,"certified_estop":False}
+Path(sys.argv[2]).write_text(json.dumps(result,indent=2,sort_keys=True)+"\n")
+PY_MVP
+    FIRST_FAILURE='FORMAL_LOCALIZATION_SHUTDOWN_TIMEOUT_AFTER_DEMO'
+    NUMERICAL='MVP_PHYSICAL_DEMO_CANDIDATE_VISUAL_REVIEW_PENDING'
+    echo 'AXIA_G07_TASK04_OWNER_MVP_CLEAR_SLOW_STOP_GOAL_CANCEL_CANDIDATE'
+    echo 'AXIA_G07_TASK04_OWNER_FORMAL_SHUTDOWN_HOLD VISUAL_REVIEW_PENDING CERTIFIED_ESTOP=false'
+    exit 0
+  fi
   FIRST_FAILURE='NATIVE_RUNNER_FAILED_REVIEW_RAW'
   # Preserve the FIRST upstream safety failure instead of masking it with
   # the outer shell exception. The source wrote this file before raise.
