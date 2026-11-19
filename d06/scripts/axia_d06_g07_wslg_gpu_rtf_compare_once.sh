@@ -159,7 +159,7 @@ summary["ros_rx_observed"]=bool(causal.get("observer_raw_count",0)>0)
 summary["no_goal_acceptance"]=False
 (out/"summary.json").write_text(
     json.dumps(summary,indent=2,sort_keys=True,ensure_ascii=False)+"\n",encoding="utf-8")
-markers=re.compile("G07_WSLG_NO_GOAL_SENSOR_|AXIA_G07_WSLG_NO_GOAL_SENSOR_TRUTH|D06_WSLG_NO_GOAL_SENSOR_|D06_GAZEBO_LIVE_RELEASE|D06_WSLG_NO_GOAL_RAW_ARCHIVE")
+markers=re.compile("G07_WSLG_NO_GOAL_SENSOR_|AXIA_G07_WSLG_NO_GOAL_SENSOR_TRUTH|D06_WSLG_NO_GOAL_SENSOR_|D06_GAZEBO_LIVE_RELEASE|D06_WSLG_NO_GOAL_RAW_ARCHIVE|D06_G07_NATIVE|D06_G07_RX_WITNESS|D06_G07_FIRST_SCAN_TTL_HOLD")
 (out/"owner_verdict_excerpt.txt").write_text("\n".join(
     f"{i+1}: {row[:3500]}" for i,row in enumerate(owner) if markers.search(row))[-30000:]+"\n",encoding="utf-8")
 renderer=[]
