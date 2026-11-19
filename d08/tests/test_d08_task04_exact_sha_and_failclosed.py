@@ -11,7 +11,9 @@ OWNER=ROOT/"d08/scripts/d08_owner_no_goal_bootstrap.sh"
 def test_same_exact_source_sha_in_public_pr_ci_and_owner_checkout():
     workflow=W.read_text()
     exact="${{ github.event.pull_request.head.sha || github.sha }}"
-    assert workflow.count("ref: "+exact)==4
+    # Original four plus exact-HEAD G07 official-source and native-moving jobs.
+    assert workflow.count("ref: "+exact)==6
+    assert "g07-official-source-sdf-adapter-l1:" in workflow
     assert "AXIA_D08_EXACT_SOURCE_SHA: "+exact in workflow
     runner=RUNNER.read_text()
     assert "env.get('AXIA_D08_EXACT_SOURCE_SHA')" in runner

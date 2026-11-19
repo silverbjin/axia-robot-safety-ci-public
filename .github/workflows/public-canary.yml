@@ -15,3 +15,87 @@ jobs:
           echo AXIA_PUBLIC_RUNNER_CANARY_OK
           uname -a
           python3 --version
+
+  d08-yaml-diagnostic:
+    if: github.event_name == 'pull_request' && github.head_ref == 'feat/d08-d04-d07-single-session-20261119'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Analyze exact D08 workflow syntax without running Gazebo
+        run: |
+          set -Eeuo pipefail
+          python3 -m pip install -q PyYAML==6.0.2
+          python3 - <<'PY'
+          from pathlib import Path
+          import yaml
+          p=Path(".github/workflows/d08-main-no-goal-real-gazebo-l2.yml")
+          d=yaml.safe_load(p.read_text())
+          jobs=d["jobs"]
+          assert len(jobs)==len(set(jobs)), "D08_DUPLICATE_JOB_NAMES"
+          assert "build-native-witness" in jobs, list(jobs)
+          assert "one-real-gazebo-moving-gui" in jobs, list(jobs)
+          print("D08_MAIN_WORKFLOW_YAML_PARSE_PASS",len(jobs))
+          PY
+          go version
+          GOTOOLCHAIN=local timeout 120s go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 \
+            .github/workflows/d08-main-no-goal-real-gazebo-l2.yml
+          echo D08_MAIN_ACTIONLINT_GITHUB_SEMANTIC_PASS
+
+  d08-host-x11-binary-inventory:
+    # Pure host capability probe, NO apt, Gazebo, Goal or safety changes.
+    if: github.event_name == 'pull_request' && github.head_ref == 'feat/d08-d04-d07-single-session-20261119'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Verify available host Xvfb/xwininfo executables and dependencies
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          for tool in Xvfb xwininfo rviz2;do
+            if command -v "$tool" >/dev/null;then
+              bin="$(command -v "$tool")"
+              echo "D08_HOST_X11_EXISTS_$tool=$bin"
+              ldd "$bin" | grep -F 'not found' && exit 2 || true
+              dpkg-query -S "$bin" | head -n 1 || true
+            else
+              echo "D08_HOST_X11_MISSING_$tool"
+            fi
+          done
+          echo D08_HOST_X11_INVENTORY_COMPLETE_NOT_GAZEBO
+      - name: Preserve exact Ubuntu24 runner Xvfb and dynamic dependencies
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          stage="$RUNNER_TEMP/d08-host-xvfb-payload"
+          mkdir -p "$stage" "$RUNNER_TEMP/d08-host-xvfb-artifact"
+          test -x /usr/bin/Xvfb
+          cp -L --parents /usr/bin/Xvfb "$stage"
+          python3 - <<'PY' | while IFS= read -r library;do
+          from pathlib import Path
+          import subprocess
+          lines=subprocess.check_output(["ldd","/usr/bin/Xvfb"],text=True)
+          libraries=set()
+          for line in lines.splitlines():
+              for part in line.replace("=>"," ").split():
+                  if part.startswith("/") and Path(part).is_file():
+                      libraries.add(part)
+          for library in sorted(libraries):
+              print(library)
+          PY
+            test -f "$library" || exit 2
+            cp -L --parents "$library" "$stage"
+          done
+          tar -C "$stage" -czf "$RUNNER_TEMP/d08-host-xvfb-artifact/xvfb-ubuntu24.tgz" .
+          (cd "$RUNNER_TEMP/d08-host-xvfb-artifact" && sha256sum xvfb-ubuntu24.tgz > SHA256SUMS)
+          du -h "$RUNNER_TEMP/d08-host-xvfb-artifact/xvfb-ubuntu24.tgz"
+          echo D08_HOST_XVFB_EXACT_UBUNTU24_DEPS_ARCHIVED_NO_GAZEBO
+      - uses: actions/upload-artifact@v4
+        with:
+          name: d08-host-xvfb-ubuntu24-${{ github.run_id }}
+          path: ${{ runner.temp }}/d08-host-xvfb-artifact/
+          retention-days: 7
+          if-no-files-found: error
