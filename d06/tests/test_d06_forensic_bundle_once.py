@@ -55,6 +55,27 @@ def fake_record(home):
     (d / "nvidia.preflight.txt").write_text(
         "OpenGL renderer string: D3D12 (NVIDIA GeForce RTX 2060)\n"
     )
+    # The original Owner already stored a native TAR; collect just its
+    # clock/graph/GUI/teardown evidence without another physical run.
+    archive = root / "d06-native-original.tar.gz"
+    native = {
+        "clock_diagnostics.json": '{"status":"READY","clock":{"samples":3}}',
+        "p2_graph_diagnostics.json": '{"status":"P2_NO_GOAL_READONLY_READY"}',
+        "task04_rviz.log": "GLSL link result: active samplers with a different type\n",
+        "task04_gazebo_gui.log": "Loading plugin [gz-rendering-ogre2]\n",
+        "teardown.txt": "P2_L2_GRACEFUL_TEARDOWN\n",
+    }
+    with tarfile.open(archive, "w:gz") as tar:
+        for name, body in native.items():
+            payload = body.encode()
+            info = tarfile.TarInfo("d06-test/native/" + name)
+            info.size = len(payload)
+            tar.addfile(info, io.BytesIO(payload))
+    import hashlib
+    digest = hashlib.sha256(archive.read_bytes()).hexdigest()
+    Path(str(archive)+".sha256").write_text(digest+"  "+str(archive)+"\n")
+    with (d / "nvidia.run.log").open("a") as log:
+        log.write("D06_WSLG_NO_GOAL_RAW_ARCHIVE="+str(archive)+"\n")
     (d / "nvidia.g07_world.sdf.xacro").write_text("<sdf version='1.10'/>")
     (d / "nvidia.g07_demo_waffle.sdf.xacro").write_text("<sdf version='1.10'/>")
     return d
@@ -87,11 +108,16 @@ class ForensicOneShot(unittest.TestCase):
                 self.assertIn("forensic/first_stop_and_timing.txt", members)
                 self.assertIn("forensic/shutdown_context.txt", members)
                 self.assertIn("forensic/source_hashes.txt", members)
+                self.assertIn("forensic/native_clock_diagnostics.json", members)
+                self.assertIn("forensic/native_p2_graph_diagnostics.json", members)
+                self.assertIn("forensic/native_render_errors_excerpt.txt", members)
+                self.assertIn("forensic/native_teardown_marker.txt", members)
                 summary = json.load(tar.extractfile("forensic/summary.json"))
                 self.assertEqual(summary["first_sensor_failure"], "SAFETY_RECEIPT_TTL_300MS_BLOCKED")
                 self.assertEqual(summary["process_crashes"], ["collision_monitor", "gazebo_server"])
                 self.assertFalse(summary["goal_sent"])
                 self.assertEqual(summary["source"], "EXISTING_LOCAL_EVIDENCE")
+                self.assertTrue(summary["source_archive_sha256_verified"])
                 self.assertFalse(any("native_full" in m or ".sdf.xacro" in m
                                      for m in members))
 
