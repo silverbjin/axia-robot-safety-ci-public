@@ -55,6 +55,60 @@ class StudentFirstHostGap(unittest.TestCase):
         self.assertIsNone(v["scan_receipts_compact"]["raw"])
         self.assertEqual(v["status"],"NO_GOAL_SENSOR_WINDOW_CLEAR_CANDIDATE")
 
+class DualTopicReadinessGate(unittest.TestCase):
+    """Warmup is NOT clearance; prove 20s of raw+safe only after both active."""
+    def test_real_ci_first_raw_gap_pre_safety_does_not_truncate_dual_topic_dwell(self):
+        m=load()
+        def row(t,stamp):
+            return {"recv":t,"stamp":stamp,"front":1.42,"side":2.52,"near":.05,"beams":360}
+        raw=[row(200+i*.1,40+i*.1) for i in range(4)]
+        raw += [row(200.74,40.4),row(200.84,40.5),row(201.00,40.6)]
+        raw += [row(201.1+i*.1,40.7+i*.1) for i in range(202)]
+        safety=[row(201.15+i*.1,40.8+i*.1) for i in range(201)]
+        inp={"raw":raw,"safety":safety,"clock":[1,2,3],
+             "odom":[{"vx":0,"wz":0} for _ in range(4)]}
+        self.assertIn("RAW_RECEIPT_TTL_300MS_BLOCKED",m.assess_window(inp)["reasons"])
+        win=m.select_dual_topic_window(inp)
+        self.assertTrue(win["both_topics_ready"])
+        self.assertGreater(win["start_host_monotonic_sec"],201.)
+        self.assertGreaterEqual(win["observed_dwell_sec"],20.)
+        self.assertGreater(win["pre_ready_raw_first_gap_sec"],.3)
+        self.assertTrue(win["pre_ready_breach_evidence_retained"])
+        result=m.assess_window(win["records"])
+        self.assertNotIn("RAW_RECEIPT_TTL_300MS_BLOCKED",result["reasons"])
+        self.assertEqual(result["status"],"NO_GOAL_SENSOR_WINDOW_CLEAR_CANDIDATE")
+
+    def test_after_dual_topic_ready_any_gap_over_300ms_still_blocks(self):
+        m=load()
+        def row(t,stamp):
+            return {"recv":t,"stamp":stamp,"front":1.42,"side":2.52,"near":.05}
+        raw=[row(10+i*.1,10+i*.1) for i in range(3)]
+        raw += [row(10.7,10.3)]
+        raw += [row(10.8+i*.1,10.4+i*.1) for i in range(202)]
+        safe=[row(10.03+i*.1,10.03+i*.1) for i in range(215)]
+        inp={"raw":raw,"safety":safe,"clock":[1,2,3],
+             "odom":[{"vx":0,"wz":0} for _ in range(4)]}
+        w=m.select_dual_topic_window(inp)
+        self.assertTrue(w["both_topics_ready"])
+        self.assertIn("RAW_RECEIPT_TTL_300MS_BLOCKED",m.assess_window(w["records"])["reasons"])
+
+    def test_missing_safety_topic_never_establishes_window(self):
+        m=load()
+        v=m.select_dual_topic_window({"raw":[{"recv":1,"stamp":1}], "safety":[],
+                                       "odom":[],"clock":[]})
+        self.assertFalse(v["both_topics_ready"])
+        self.assertEqual(v["status"],"BOTH_TOPIC_READINESS_MISSING")
+        self.assertFalse(v["goal_allowed"])
+
+    def test_live_probe_waits_full_dwell_after_both_topics_are_live(self):
+        s=SRC.read_text()
+        self.assertIn("dual_ready_at",s)
+        self.assertIn("select_dual_topic_window(records)",s)
+        self.assertIn("first_scan_at and",s)  # original liveness start retained
+        self.assertIn("dual_ready_at + duration",s)
+        self.assertIn("startup_pre_both_scan_diagnostics",s)
+
+
 class ExactStudentPairGazeboBoundary(unittest.TestCase):
     def test_actual_first_student_breach_matched_to_native(self):
         witness=ROOT/"d06/tools/d06_g07_scan_rx_witness.py"
