@@ -21,6 +21,7 @@ on:
       - 'd06/fixtures/g07_zoa_first_boundary_20261119.json'
       - 'd06/tests/test_d06_g07_nogoal_ordered_cm_shutdown.py'
       - 'd06/tests/test_d06_g07_student_first_receipt_pair.py'
+      - 'd06/tests/test_d06_g07_post_ready_first_breach_l2.py'
       - 'd06/tests/test_d06_g07_no_goal_manager_discovery.py'
       - 'd06/tests/test_d06_owner_full_native_gate.py'
       - 'd06/fixtures/g07_owner_nvidia_native_scan_clock_first_gap_20261119.json'
@@ -52,6 +53,7 @@ on:
       - 'd06/fixtures/g07_zoa_first_boundary_20261119.json'
       - 'd06/tests/test_d06_g07_nogoal_ordered_cm_shutdown.py'
       - 'd06/tests/test_d06_g07_student_first_receipt_pair.py'
+      - 'd06/tests/test_d06_g07_post_ready_first_breach_l2.py'
       - 'd06/tests/test_d06_g07_no_goal_manager_discovery.py'
       - 'd06/tests/test_d06_owner_full_native_gate.py'
       - 'd06/fixtures/g07_owner_nvidia_native_scan_clock_first_gap_20261119.json'
@@ -93,6 +95,7 @@ jobs:
           python3 -m unittest discover -s d06/tests -p 'test_d06_g07_zoa_scope_regression.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_g07_nogoal_ordered_cm_shutdown.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_g07_student_first_receipt_pair.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_g07_post_ready_first_breach_l2.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_g07_no_goal_manager_discovery.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_owner_full_native_gate.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_native_raw_scan_ttl_boundary.py' -v
