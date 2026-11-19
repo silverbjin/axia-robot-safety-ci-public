@@ -333,6 +333,11 @@ print("D06_FORENSIC_NO_GOAL_NAV2_ACK="+str(
     " SENSOR_TTL_GATE_UNCHANGED",flush=True)
 PY
   archive="$ROOT/d06-forensic-$(basename "$d").tar.gz"
+  # Never overwrite a previous field evidence TAR/sidecar during offline
+  # replay. The original hash and original first failure are immutable.
+  if [[ -e "$archive" || -e "$archive.sha256" ]];then
+    archive="$(mktemp -p "$ROOT" "d06-forensic-$(basename "$d")-recovered-XXXXXXXX.tar.gz")"
+  fi
   tar -C "$d" -czf "$archive" forensic
   sha256sum "$archive" > "$archive.sha256"
   echo "D06_FORENSIC_ARCHIVE=$archive"
