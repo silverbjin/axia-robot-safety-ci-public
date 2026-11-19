@@ -211,13 +211,36 @@ PY
     grep -Ei 'GL_RENDERER|GL_VENDOR|OpenGL|D3D12' "$HOME/.gz/rendering/ogre2.log" \
       | tail -n 12 > "$RUN_DIR/$lc.ogre2_gl_evidence.txt" || true
   fi
+  # Surface the first sensor failure BEFORE native shutdown crash check.
+  python3 - "$RUN_DIR/$lc.g07_wslg_sensor_truth.json" <<'PY'
+import json,sys
+r=json.load(open(sys.argv[1],encoding="utf-8"))
+reasons=r.get("reasons",[])
+m=r.get("metrics",{})
+print("D06_GPU_RTF_FIRST_SENSOR_FAILURE="+(reasons[0] if reasons else "NONE"))
+print("D06_GPU_RTF_SENSOR_REASONS="+",".join(reasons))
+for key in ("raw","safety"):
+    a=m.get(key,{})
+    print("D06_GPU_RTF_"+key.upper()+"_MAX_HOST_GAP_SEC="+str(a.get("max_receipt_gap_sec")))
+    print("D06_GPU_RTF_"+key.upper()+"_FIRST_TTL_INDEX="+str(a.get("first_receipt_ttl_breach_at_index")))
+safe=m.get("safety",{})
+print("D06_GPU_RTF_CLEAR_COUNT="+str(safe.get("clear_count"))+"/"+str(safe.get("count")))
+print("D06_GPU_RTF_FRONT_SIDE_MEDIAN_M="+str(safe.get("front_median_m"))+"/"+str(safe.get("side_median_m")))
+PY
   echo "D06_GPU_RTF_AB_CASE_FINISHED=$gpu SENSOR_EXIT=$rc NO_GOAL"
   # A fatal shutdown after NVIDIA must not be followed by another session.
-  if grep -Eiq 'exit code -11|SIGSEGV|Segmentation fault|Traceback' "$RUN_DIR/$lc.launch.log";then
+  if grep -Eiq 'exit code -11|SIGSEGV|Segmentation fault' "$RUN_DIR/$lc.launch.log";then
     echo "D06_GPU_RTF_NATIVE_SHUTDOWN_SEGV_HOLD=$gpu" >&2
     if [[ "$gpu" == NVIDIA ]];then
       echo D06_GPU_RTF_NVIDIA_SHUTDOWN_CRASH_ABORT_SECOND_RUN >&2
     fi
+    exit 3
+  elif grep -Eiq 'Traceback' "$RUN_DIR/$lc.launch.log";then
+    echo "D06_GPU_RTF_NATIVE_PYTHON_TRACEBACK_HOLD=$gpu" >&2
+    exit 3
+  fi
+  if [[ "$rc" -ne 0 ]];then
+    echo "D06_GPU_RTF_SENSOR_EXIT_HOLD=$gpu:$rc" >&2
     exit 3
   fi
 done
