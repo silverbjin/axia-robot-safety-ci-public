@@ -20,7 +20,13 @@ start)
     echo D08_BRIDGE_RCL_TRACE_DISABLED; exit 2
   fi
   # Start before the existing Gazebo L2 process creates ros_gz_bridge.
-  if ! timeout 30s ros2 trace start "$SESSION" > "$LOG" 2>&1; then
+  # Constrain LTTng events: first real attempt used all 35 default events
+  # and produced 546,133,504 bytes, while rcl_take has no subscription
+  # handle; instead use RMW source/take handles and publish initialization.
+  if ! timeout 30s ros2 trace start "$SESSION" --ust \
+      ros2:rcl_publisher_init ros2:rcl_subscription_init \
+      ros2:rcl_publish ros2:rmw_publish ros2:rmw_take \
+      > "$LOG" 2>&1; then
     echo D08_BRIDGE_RCL_TRACE_START_BLOCKED
     tail -c 1800 "$LOG"; exit 2
   fi
