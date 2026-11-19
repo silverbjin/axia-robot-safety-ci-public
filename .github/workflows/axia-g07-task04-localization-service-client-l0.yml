@@ -13,14 +13,14 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 3011c1af3d50eb231a90c79649fd7df4ef95946d
+          ref: 6579e2eef7e99691da558cd2de1964fd26a04621
           path: student
           persist-credentials: false
       - name: Synthetic navigation ACK then localization timeout regression, no ROS
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C student rev-parse HEAD)" = '3011c1af3d50eb231a90c79649fd7df4ef95946d'
+          test "$(git -C student rev-parse HEAD)" = '6579e2eef7e99691da558cd2de1964fd26a04621'
           cd student/block_B/day07/h01_runtime/tools
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest -v test_g07_task04_localization_isolated_client
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest -v test_g07_task03_localization_shutdown_budget
