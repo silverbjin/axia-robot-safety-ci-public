@@ -1,0 +1,30 @@
+name: AXIA G07 Owner oZGSnDD1 World Xacro Race RED-GREEN L0
+on:
+  push:
+    branches: ['fix/g07-task04-owner-timing-evidence-20261119']
+    paths:
+      - '.github/workflows/axia-g07-task04-owner-world-xacro-l0.yml'
+      - 'tests/test_g07_task04_world_xacro_source_contract.py'
+permissions:
+  contents: read
+jobs:
+  xacro-startup-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          path: ci
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: f1d45310efab8d1cfbd37b946cdfc62a42a0e391
+          path: student
+          persist-credentials: false
+      - name: Reproduce race with Student original Owner scope
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest -v discover -s student/block_B/tests -p test_g07_task04_world_xacro_order.py
+          echo 'AXIA_G07_TASK04_WORLD_XACRO_ORDER_L0_PASS_NO_ROS'
