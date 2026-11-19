@@ -15,10 +15,13 @@ def test_actual_l2_trace_start_before_ros_process_and_stop_after_failure():
     assert "d08/scripts/d08_ros_trace_live_ci.sh start" in workflow
     assert "d08/scripts/d08_ros_trace_live_ci.sh stop" in workflow
     assert "if: always() && github.head_ref == 'diag/d08-live-rcl-publish-take-20261119'" in workflow
-    assert workflow.index("d08/scripts/d08_ros_trace_live_ci.sh start") < workflow.index(
-        "python3 -u d08/scripts/d08_public_gazebo_l2.py")
-    assert workflow.index("d08/scripts/d08_ros_trace_live_ci.sh stop") > workflow.index(
-        "python3 -u d08/scripts/d08_public_gazebo_l2.py")
+    start_at = workflow.index("d08/scripts/d08_ros_trace_live_ci.sh start")
+    # The workflow deliberately has an earlier independent contact-only
+    # Gazebo job; compare positions only inside the official Nav2 job.
+    real_runner_at = workflow.index(
+        "python3 -u d08/scripts/d08_public_gazebo_l2.py", start_at)
+    stop_at = workflow.index("d08/scripts/d08_ros_trace_live_ci.sh stop")
+    assert start_at < real_runner_at < stop_at
 
 def test_trace_is_userspace_bounded_evidence_not_safety_pass():
     src = SCRIPT.read_text()
