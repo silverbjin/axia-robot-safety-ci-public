@@ -58,23 +58,20 @@ class OwnerN7RMWClockRegression(unittest.TestCase):
     def test_n7_clock_step_not_ignored_without_received_timestamp(self):
         report, events = owner_fixture(wall_step_ns=2_920_000_000)
         del events[32]["rmw_received_ns"]
-        self.assertNotIn("NUMERICAL_CANDIDATE",
-                         assess(report, events)["status"].split("_")[-2:])
+        self.assertFalse(assess(report, events)["status"].endswith("NUMERICAL_CANDIDATE"))
 
     def test_true_151ms_first_source_or_observer_interval_stays_hold(self):
         report, events = owner_fixture(real_gap_ns=151_000_000)
         result = assess(report, events)
-        self.assertNotIn("NUMERICAL_CANDIDATE", result["status"].split("_")[-2:])
+        self.assertFalse(result["status"].endswith("NUMERICAL_CANDIDATE"))
 
     def test_realtime_jump_mismatch_and_sequence_gap_never_pass(self):
         report, events = owner_fixture(wall_step_ns=2_920_000_000)
         events[32]["rmw_received_ns"] -= 1_000_000_000
-        self.assertNotIn("NUMERICAL_CANDIDATE",
-                         assess(report, events)["status"].split("_")[-2:])
+        self.assertFalse(assess(report, events)["status"].endswith("NUMERICAL_CANDIDATE"))
         report, events = owner_fixture(wall_step_ns=2_920_000_000)
         events[32]["rmw_publication_seq"] += 1
-        self.assertNotIn("NUMERICAL_CANDIDATE",
-                         assess(report, events)["status"].split("_")[-2:])
+        self.assertFalse(assess(report, events)["status"].endswith("NUMERICAL_CANDIDATE"))
 
     def test_unauthorized_owner_has_no_ci_bypass(self):
         report, events = owner_fixture()
