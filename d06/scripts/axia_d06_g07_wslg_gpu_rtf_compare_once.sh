@@ -346,10 +346,16 @@ if [[ "$MODE" == --analyze-existing ]];then
   [[ -d "$ROOT" ]] || {
     echo D06_FORENSIC_EXISTING_EVIDENCE_MISSING_NO_GOAL >&2;exit 3;
   }
-  RUN_DIR="$(python3 - "$ROOT" <<'PY'
+  FORENSIC_TARGET="${AXIA_D06_FORENSIC_TARGET:-}"
+  if [[ -n "$FORENSIC_TARGET" && ! "$FORENSIC_TARGET" =~ ^ab-no-goal-[a-zA-Z0-9_-]{1,32}$ ]];then
+    echo 'D06_FORENSIC_INVALID_TARGET_NO_GOAL' >&2
+    exit 3
+  fi
+  RUN_DIR="$(python3 - "$ROOT" "$FORENSIC_TARGET" <<'PY'
 import sys
 from pathlib import Path
 root=Path(sys.argv[1])
+selected=sys.argv[2]
 # An interrupted bootstrap may never create sensor_truth.json. Replay
 # the latest actual WSL2 attempt from its Owner log, stage marker or GL probe.
 # Never launch ROS/Gazebo in --analyze-existing.
@@ -360,10 +366,16 @@ def newest_signal(path):
     signals=[(path/name).stat().st_mtime for name in evidence_names
              if (path/name).is_file()]
     return max(signals,default=-1)
-found=[p for p in root.glob("ab-no-goal-*")
-       if p.is_dir() and newest_signal(p)>=0]
-if found:
-    print(max(found,key=lambda p:(newest_signal(p),p.name)))
+if selected:
+    chosen=root/selected
+    if (chosen.is_dir() and chosen.resolve().parent==root.resolve()
+        and newest_signal(chosen)>=0):
+        print(chosen)
+else:
+    found=[p for p in root.glob("ab-no-goal-*")
+           if p.is_dir() and newest_signal(p)>=0]
+    if found:
+        print(max(found,key=lambda p:(newest_signal(p),p.name)))
 PY
 )"
   [[ -n "$RUN_DIR" ]] || {
