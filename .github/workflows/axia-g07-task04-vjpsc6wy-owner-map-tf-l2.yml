@@ -194,6 +194,8 @@ jobs:
           for child in p2_base_guard_node p2_supervisor_node;do
             if grep -Eq "\\[ERROR\\] \\[${child}-[0-9]+\\]: process has died" "$GITHUB_WORKSPACE/native/launch.log";then
               echo "AXIA_G07_NATIVE_L2_CHILD_DIED_DURING_TEARDOWN=${child}" >&2
+              echo '=== FIRST ACTUAL CHILD EXCEPTION (bounded) ===' >&2
+              grep -F "[${child}-" "$GITHUB_WORKSPACE/native/launch.log" | tail -n 48 >&2 || true
               exit 3
             fi
             grep -Eq "\\[INFO\\] \\[${child}-[0-9]+\\]: process has finished cleanly" "$GITHUB_WORKSPACE/native/launch.log" || {
