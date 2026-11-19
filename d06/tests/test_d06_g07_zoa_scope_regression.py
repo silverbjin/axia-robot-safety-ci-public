@@ -81,7 +81,7 @@ class ActualZoaScope(unittest.TestCase):
             arr.sort(key=lambda x:x["host_monotonic_sec"])
             (root/"ros.jsonl").write_text(chr(10).join(json.dumps(x) for x in arr)+chr(10))
             (root/"startup.json").write_text(json.dumps({"status":"SMOKE_READY",
-                "stages":[{"gate":"NAV2_ACTION_READY","wall_monotonic_s":
+                "stages":[{"gate":"NAV2_ACTION_READY","status":"PASS","wall_monotonic_s":
                 d["nav2_action_ready_host_monotonic_sec"]}]}))
             run=subprocess.run([sys.executable,str(FILE),"--analyze",
                 "--ros-jsonl",str(root/"ros.jsonl"),
