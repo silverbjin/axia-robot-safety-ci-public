@@ -28,12 +28,16 @@ class StudentFirstHostGap(unittest.TestCase):
         source=SRC.read_text()
         callback=source.split("    def scan_callback(msg, kind):",1)[1]
         callback=callback.split("    def on_odom(msg):",1)[0]
+        # C09 preserves the exact callback entry timestamp while moving
+        # CPU-heavy geometry out of the ROS Scan executor entirely.
         self.assertLess(callback.index("now = time.monotonic()"),
-                        callback.index("front = ["))
-        self.assertLess(callback.index("now = time.monotonic()"),
-                        callback.index("side = sector_min(msg)"))
-        self.assertLess(callback.index("now = time.monotonic()"),
-                        callback.index("near, beams = near_ring_fraction(msg)"))
+                        callback.index("records[kind].append("))
+        self.assertNotIn("sector_min(msg)",callback)
+        self.assertNotIn("near_ring_fraction(msg)",callback)
+        geometry=source.split("def enrich_scan_geometry(records):",1)[1]
+        geometry=geometry.split("def run(out, duration):",1)[0]
+        self.assertIn("side=sector_min(msg)",geometry)
+        self.assertIn("near,beams=near_ring_fraction(msg)",geometry)
         self.assertIn("SCAN_TTL_SEC = .300",source)
         self.assertIn('"goal_sent": False',source)
         self.assertIn('"certified_estop": False',source)
