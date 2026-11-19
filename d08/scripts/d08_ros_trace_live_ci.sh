@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # Scoped CI-only trace around ACTUAL D08 public no-Goal Gazebo L2.
 # 500ms/CM/Guard criterion UNCHANGED; trace availability never a safety PASS.
-set -Eeuo pipefail
+set -Eeo pipefail
+# Match the verified Jazzy preflight: source setup before strict nounset.
 source /opt/ros/jazzy/setup.bash
+set -u
 MODE="$1"
 OUT="$PWD/results/d08-ros-trace-live"
 export ROS_TRACE_DIR="$OUT/trace"
