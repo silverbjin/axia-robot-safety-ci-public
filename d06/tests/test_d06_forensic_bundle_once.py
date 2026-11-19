@@ -449,8 +449,8 @@ class ForensicOneShot(unittest.TestCase):
             (d/"nvidia.g07_wslg_sensor_truth.json").write_text(
                 json.dumps(verdict))
             (d/"nvidia.launch.log").write_text(
-                "[INFO] [collision_monitor-16]: process has finished cleanly [pid 222]\\n"
-                "[ERROR] [gz-21]: process has died [pid 111, exit code -11]\\n")
+                "[INFO] [collision_monitor-16]: process has finished cleanly [pid 222]"+chr(10)+
+                "[ERROR] [gz-21]: process has died [pid 111, exit code -11]"+chr(10))
             (d/"attempt_state.txt").write_text(
                 "phase=NATIVE_ARCHIVE_VALIDATION"+chr(10)+
                 "owner_rc=3"+chr(10)+"outer_rc=3"+chr(10)+
