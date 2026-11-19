@@ -140,7 +140,8 @@ def attach_human_visual_to_fixture(wn, actor_mesh: Path) -> None:
         raise ValueError('D08_SEPARATE_VISUAL_ACTOR_FORBIDDEN')
 
 
-def build_overlay(world: Path, robot: Path, actor_mesh: Path, output: Path) -> dict:
+def build_overlay(world: Path, robot: Path, actor_mesh: Path, output: Path, *,
+                  g07_lidar_preconfigured: bool = False) -> dict:
     world, robot, actor_mesh, output = map(Path, (world, robot, actor_mesh, output))
     for p in (world, robot, actor_mesh):
         if p.is_symlink() or not p.is_file():
@@ -174,13 +175,21 @@ def build_overlay(world: Path, robot: Path, actor_mesh: Path, output: Path) -> d
     if lidar_nodes:
         lidar=lidar_nodes[0]
         hz=lidar.find('update_rate')
-        if lidar.get('type')!='gpu_lidar' or hz is None or (hz.text or '').strip()!='5':
-            raise ValueError('D08_UPSTREAM_GPU_LIDAR_RATE_UNEXPECTED')
-        lidar_rate_before=5
-        hz.text=str(GPU_LIDAR_SIM_RATE_HZ)
-        vis=lidar.find('visualize')
-        if vis is not None:
-            vis.text='false'  # Gazebo ray visualization is not the actual /scan.
+        rate=(hz.text or '').strip() if hz is not None else None
+        if g07_lidar_preconfigured:
+            # G07 already applied the verified 5->10Hz overlay. Never
+            # retune it a second time or weaken G07's 300ms Scan gate.
+            if lidar.get('type')!='gpu_lidar' or rate!='10':
+                raise ValueError('D08_G07_10HZ_LIDAR_REQUIRED')
+            lidar_rate_before=10
+        else:
+            if lidar.get('type')!='gpu_lidar' or rate!='5':
+                raise ValueError('D08_UPSTREAM_GPU_LIDAR_RATE_UNEXPECTED')
+            lidar_rate_before=5
+            hz.text=str(GPU_LIDAR_SIM_RATE_HZ)
+            vis=lidar.find('visualize')
+            if vis is not None:
+                vis.text='false'  # Gazebo ray visualization is not the actual /scan.
     # Owner 1XZYehm8: D08 uses its registered 640x480 RGBD. The
     # upstream Waffle's unused 320x240, 5Hz intel depth sensor adds
     # redundant GPU rendering under WSLg. Remove ONLY from generated
