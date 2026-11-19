@@ -51,7 +51,7 @@ stop)
   # The resulting rcl_publish / rcl_take inter-event gaps are only
   # candidates: per-Scan message identity and RMW internals are UNDETERMINED.
   if ! timeout 150s babeltrace "$SESSION_PATH" |
-      python3 d08/scripts/d08_rcl_trace_summary.py --out "$OUT/summary.json"; then
+      python3 d08/scripts/d08_rcl_trace_summary.py --clock-anchor "$OUT/clock_anchor.json" --out "$OUT/summary.json"; then
     echo D08_BRIDGE_RCL_TRACE_PARSE_BLOCKED; exit 2
   fi
   test -s "$OUT/summary.json"
