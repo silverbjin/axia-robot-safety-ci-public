@@ -1,0 +1,68 @@
+name: AXIA G07 Task04 Foreign Clock Real DDS ROS Jazzy L1
+on:
+  push:
+    branches: ['fix/g07-task04-wsl2-foreign-clock-domain-20261119']
+    paths:
+      - 'scripts/axia_g07_task04_select_free_domain.py'
+      - 'scripts/axia_g07_task04_owner_moving_l3_once.sh'
+      - '.github/workflows/axia-g07-task04-clock-domain-real-ros-l1.yml'
+permissions:
+  contents: read
+jobs:
+  real-ros-foreign-clock-isolation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Actual Jazzy /clock publisher on contaminated domain86
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          set +u; source /opt/ros/jazzy/setup.bash; set -u
+          export ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
+          export ROS_DOMAIN_ID=86
+          python3 -u - > /tmp/foreign_clock_ros.log 2>&1 <<'PY' &
+          import rclpy,time
+          from rosgraph_msgs.msg import Clock
+          rclpy.init()
+          node=rclpy.create_node('axia_foreign_clock_test_publisher')
+          pub=node.create_publisher(Clock,'/clock',10)
+          until=time.monotonic()+18.
+          while time.monotonic()<until:
+              c=Clock(); c.clock.sec=1940;c.clock.nanosec=123000000
+              pub.publish(c)
+              rclpy.spin_once(node,timeout_sec=.08)
+          node.destroy_node();rclpy.try_shutdown()
+          PY
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true; wait "$pid" 2>/dev/null || true' EXIT
+          sleep 2
+          set +e
+          python3 scripts/axia_g07_task04_select_free_domain.py --requested 86 --output /tmp/domain86.json > /tmp/domain86.out 2>/tmp/domain86.err
+          blocked_rc=$?
+          set -e
+          cat /tmp/domain86.json
+          test "$blocked_rc" -eq 3
+          python3 - <<'PY'
+          import json
+          record=json.load(open('/tmp/domain86.json'))
+          assert record['status']=='NO_FREE_DOMAIN',record
+          assert record['domain_id'] is None
+          assert record['candidates'][0]['clock_publishers']>=1,record
+          print('AXIA_G07_L1_FOREIGN_CLOCK_DETECTED_BLOCKED_NO_GOAL')
+          PY
+          python3 scripts/axia_g07_task04_select_free_domain.py --output /tmp/clean_domain.json > /tmp/clean_domain.out
+          python3 - <<'PY'
+          import json
+          record=json.load(open('/tmp/clean_domain.json'))
+          assert record['status']=='SELECTED',record
+          assert record['domain_id']!=86,record
+          assert record['candidates'][-1]['node_count']==0,record
+          assert record['candidates'][-1]['clock_publishers']==0,record
+          print('AXIA_G07_L1_AUTO_DOMAIN_CLEAN_SELECTED_NO_GOAL domain_id='+str(record['domain_id']))
+          PY
+          echo 'AXIA_G07_FOREIGN_CLOCK_ROS_JAZZY_L1_PASS_GAZEBO_NOT_RUN'
