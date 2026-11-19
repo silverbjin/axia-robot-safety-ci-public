@@ -24,7 +24,7 @@
 - **RED**: [#44466701947](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44466701947), 원본처럼 센서 JSON 누락/Owner 로그 SHA만 존재하는 재현 fixture에서 초기 실패 텍스트를 보존하지 못하는 테스트 실패.
 - 중간 재현 [#44466967948](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44466967948): 첫 오류 excerpt는 구현됐지만 **오프라인 selector가 센서 JSON을 요구하여** 실제로 복구하지 못함. 재현 후 최소 수정.
 - **GREEN** [#44467131799](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44467131799), 초기 로그만 있는 경우를 오프라인 분석 대상에 포함, 최초 원본 오류 line/원래 Owner RC/실패 stage를 compact forensic에 추가.
-- 별도 **원본 비파괴 회귀** 등록 [#44467400000](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44467400000): 원본 아카이브 덮어쓰기 위험 검증 후, 기존 파일이 있으면 `-recovered-XXXXXXXX.tar.gz` 신규 아카이브를 사용하도록 수정.
+- 별도 **원본 비파괴 회귀** 등록 [#44467498366](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44467498366): 원본 아카이브 덮어쓰기 위험 검증 후, 기존 파일이 있으면 `-recovered-XXXXXXXX.tar.gz` 신규 아카이브를 사용하도록 수정.
 - 최종 **GREEN L0 87/87** [#44467550994](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44467550994), [public canary #44467550908](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44467550908). 신규 회귀는 원본 TAR 비파괴, 초기 로그만 있는 경우, 최초 오류 excerpt, 명시적 폴더 선택, 이름 경로 traversal 거부 등을 확인.
 - 수정된 실행기 Git commit `956acc29be2ac07a274d06c94f89fedcc7cb8321`, Git blob `6cdf520938baad82d42063162ca78c8787e92a7a`; 분기 `fix/d06-wslg-lidar-vs-rtf-ci-20261118`.
 - **REVIEW**: Safety 300/120/150ms, 공식 TB3/Nav2/CM, 런치 신호, 로봇 Goal/속도/센서 입력은 변경하지 않음. 로그의 민감한 API 토큰 일부 패턴은 redaction, excerpt 최대 17KB, 원본 로그는 사용자 WSL2에 남기고 작은 추출물만 업로드.
