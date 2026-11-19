@@ -1048,16 +1048,18 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: bae5b4d02b7dcd09c54b523b015a24b3428012ac
+          ref: d11eac53f5ce4e322f4e37a50c367e5afabadcc6
           path: student
           persist-credentials: false
       - name: Exact independent Student source and fail-closed new opt-in
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C student rev-parse HEAD)" = bae5b4d02b7dcd09c54b523b015a24b3428012ac
+          test "$(git -C student rev-parse HEAD)" = d11eac53f5ce4e322f4e37a50c367e5afabadcc6
           cd student/block_B/day07/h01_runtime
           bash -n scripts/p2_no_goal_smoke_ci.sh
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools \
             -p test_d08_g07_single_session_hook.py -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools \
+            -p test_d08_g07_cm_tf_wait_candidate.py -v
           echo D08_G07_STUDENT_SINGLE_SESSION_HOOK_L0_PASS_NOT_GAZEBO
