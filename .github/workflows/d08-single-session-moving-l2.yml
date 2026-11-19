@@ -3,7 +3,11 @@
 name: AXIA D08 G07 Same-World RGBD Moving L2 (pre-YOLO phase)
 on:
   pull_request:
-    paths: ['d08/**', '.github/workflows/d08-single-session-moving-l2.yml']
+    paths:
+      - '.github/workflows/d08-single-session-moving-l2.yml'
+      - 'd08/harness/d08_g07_same_world_adapter.py'
+      - 'd08/harness/d08_live_world.py'
+      - 'd08/scripts/d08_g07_readonly_pregoal.py'
   workflow_dispatch:
 permissions:
   contents: read
@@ -217,6 +221,15 @@ jobs:
           PY
           fi
           if [[ "$runner_rc" -ne 0 ]];then
+            # Real first failure, not final rclpy cleanup exception.
+            # Actual first Guard/Observer CM age is read-only and allowlisted;
+            # never upload raw bag, full logs, or make a safety PASS.
+            python3 "$GITHUB_WORKSPACE/ci/d08/scripts/d08_g07_first_guard_ttl_review.py" \
+              --in-log "$GITHUB_WORKSPACE/native/g07_ci_moving.log" \
+              --out "$GITHUB_WORKSPACE/public_evidence/first_guard_ttl_boundary.json" || true
+            test -s "$GITHUB_WORKSPACE/public_evidence/first_guard_ttl_boundary.json"
+            sha256sum "$GITHUB_WORKSPACE/public_evidence/first_guard_ttl_boundary.json" \
+              > "$GITHUB_WORKSPACE/public_evidence/first_guard_ttl_boundary.sha256"
             for f in "$GITHUB_WORKSPACE/native/staged_startup.log"                      "$GITHUB_WORKSPACE/native/g07_ci_moving.log"                      "$GITHUB_WORKSPACE/native/g07_ordered_shutdown.log"                      "$GITHUB_WORKSPACE/native/launch.log"                      "$GITHUB_WORKSPACE/public_evidence/moving_stdout.log";do
               [[ -f "$f" ]] || continue
               echo "=== FIRST NATIVE MOVING EVIDENCE === ${f##*/}"
@@ -238,6 +251,8 @@ jobs:
             public_evidence/task04_moving_l2_verdict.json
             public_evidence/task04_moving_verdict.sha256
             task04_witness_SHA256SUMS.txt
+            public_evidence/first_guard_ttl_boundary.json
+            public_evidence/first_guard_ttl_boundary.sha256
             native/d08_unified/manifest.json
             native/d08_overlay.log
           retention-days: 14
