@@ -42,7 +42,7 @@ class WslgABOneShotSafety(unittest.TestCase):
     def test_pin_source_commit_and_git_blobs(self):
         s=SCRIPT.read_text()
         self.assertIn("9bfd86fb6996d0a4bdfaa638a5a8fc757555276a",s)
-        self.assertIn("818c94aa2a55a9a80d52ead4214b855abdfcc896",s)
+        self.assertIn("f26db98678957ae83b29532ddd68bd30b63a335c",s)
         self.assertIn("171aad7ce8abe97c93a42f19787042619c06b65e",s)
         self.assertIn('git hash-object "$TMP/owner.sh"',s)
         self.assertIn('git hash-object "$TMP/compare.py"',s)
