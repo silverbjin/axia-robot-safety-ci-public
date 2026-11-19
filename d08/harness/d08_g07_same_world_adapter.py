@@ -56,6 +56,22 @@ def build_g07_d08_camera_world(world: Path, robot: Path, actor_mesh: Path,
             or len(new_robot.findall(".//sensor[@name='hls_lfcd_lds']")) != 1
             or new_robot.findtext(".//sensor[@name='hls_lfcd_lds']/update_rate") != "10"):
         raise ValueError("D08_G07_SOURCE_OVERLAY_INVARIANT_BROKEN")
+    # Gazebo Harmonic on-demand rendering experiment ONLY for the G07
+    # integrated overlay. The no-Goal D08 camera remains 5Hz always-on.
+    # The Owner moving phase has NO camera subscriber until the later live
+    # YOLO/D05 read-only phase is connected; do not render gratuitously.
+    # This is CONFIGURATION, not proof of runtime sensor suspension.
+    rgbd = new_robot.find(".//sensor[@name='axia_d08_registered_rgbd']")
+    always_on = rgbd.find("always_on") if rgbd is not None else None
+    if always_on is None or (always_on.text or "").strip() not in ("1","true"):
+        raise ValueError("D08_G07_EXPECTED_REGISTERED_RGBD_ALWAYS_ON_SOURCE")
+    always_on.text = "false"
+    ET.ElementTree(new_robot).write(manifest["robot_sdf"],
+                                    encoding="unicode",xml_declaration=True)
+    manifest["result_robot_sha256"] = hashlib.sha256(
+        Path(manifest["robot_sdf"]).read_bytes()).hexdigest()
+    manifest["rgbd_on_demand_configured"] = True
+    manifest["rgbd_actual_subscriber_render_suspension_verified"] = False
     hashes_after = [hashlib.sha256(p.read_bytes()).hexdigest()
                     for p in (world, robot, actor_mesh)]
     if hashes_before != hashes_after:
