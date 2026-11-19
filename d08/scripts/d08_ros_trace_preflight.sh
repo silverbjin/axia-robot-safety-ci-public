@@ -26,19 +26,21 @@ if ! grep -q 'Tracing enabled' "$OUT/tracetools-status.txt"; then
   echo "D08_ROS_TRACE_PREFLIGHT_BLOCKED_DISABLED"
   exit 2
 fi
-if ! timeout 25s ros2 trace start "$NAME" --snapshot-mode > "$LOG" 2>&1; then
+if ! timeout 25s ros2 trace start "$NAME" > "$LOG" 2>&1; then
   echo "D08_ROS_TRACE_PREFLIGHT_BLOCKED_START"
   tail -c 2400 "$LOG"
   exit 2
 fi
 started=1
-# The small snapshot is a tracing infrastructure canary only. No assertion
-# about causal Scan source timestamps or the bridge publisher is made.
-if ! timeout 25s ros2 trace record_snapshot "$NAME" >> "$LOG" 2>&1; then
-  echo "D08_ROS_TRACE_PREFLIGHT_BLOCKED_SNAPSHOT"
-  tail -c 2400 "$LOG"
-  exit 2
-fi
+# Exercise the official ROS initialization tracepoints with one disposable
+# read-only node. No Gazebo world, control publisher or navigation action.
+python3 - <<'PY' >> "$LOG" 2>&1
+import rclpy
+rclpy.init()
+node=rclpy.create_node("axia_d08_trace_preflight_readonly")
+node.destroy_node()
+rclpy.shutdown()
+PY
 if ! timeout 25s ros2 trace stop "$NAME" >> "$LOG" 2>&1; then
   echo "D08_ROS_TRACE_PREFLIGHT_BLOCKED_STOP"
   tail -c 2400 "$LOG"
