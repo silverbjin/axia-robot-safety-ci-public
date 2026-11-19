@@ -60,6 +60,31 @@ class TestWSL2CpuPreemptionDiagnostic(unittest.TestCase):
             self.assertTrue(all("mono_ns" in x and "realtime_ns" in x
                                 and "gap_ms" in x for x in lines))
 
+    def test_host_guest_and_scan_windows_are_correlated_not_global_max(self):
+        import importlib.util
+        spec=importlib.util.spec_from_file_location("axia_sched_probe",GUEST)
+        mod=importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        # Event at guest monotonic 1000.0s, real-time 1800001000.0s.
+        base=1800000000
+        rows=[{"mono_ns":int(t*1e9),"realtime_ns":int((base+t)*1e9),
+               "gap_ms":gap,"steal_jiffies":0,
+               "cpu_pressure_some_us":0,"proc_sched":[]}
+              for t,gap in [(999.4,40),(999.8,40),(1000.0,350),
+                            (1000.3,40),(1001.8,400)]]
+        host=[{"epoch_ms":int((base+t)*1000),
+               "gap_ms":gap,"host_cpu_pct":cpu}
+              for t,gap,cpu in [(999.8,150,92),(1000.05,450,99),
+                                (1001.8,800,95)]]
+        v={"channel":"scan","first_violation_at":1000.0,
+           "first_violation_sec":0.35,"limit_sec":0.3}
+        r=mod.evaluate(rows,host,None,{},v)
+        self.assertEqual(r["windows_host_max_gap_near_violation_ms"],450)
+        self.assertEqual(r["guest_monotonic_max_gap_near_violation_ms"],350)
+        self.assertEqual(r["windows_host_cpu_peak_pct_near_violation"],99)
+        self.assertEqual(r["hypervisor_cpu_preemption"],
+                         "HOST_CPU_PREEMPTION_UNCONFIRMED")
+
     def test_analyst_does_not_claim_hypervisor_preemption_from_guest_only(self):
         s=GUEST.read_text()
         self.assertIn("HOST_CPU_PREEMPTION_UNCONFIRMED",s)
