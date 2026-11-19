@@ -4,7 +4,7 @@ set -Eeuo pipefail
 umask 077
 MODE=--compare
 if [[ $# -gt 0 ]]; then MODE="$1";fi
-[[ $# -le 1 && ( "$MODE" == --compare || "$MODE" == --nvidia-only || "$MODE" == --self-check ) ]] || exit 2
+[[ $# -le 1 && ( "$MODE" == --compare || "$MODE" == --nvidia-only || "$MODE" == --analyze-existing || "$MODE" == --self-check ) ]] || exit 2
 # Reuse the D08 Owner-proven NVIDIA WSLg profile as one isolated
 # NO_GOAL diagnostic; do not repeat the historically failed Intel run.
 adapters=(NVIDIA Intel)
@@ -23,6 +23,123 @@ if [[ "$MODE" == --self-check ]];then
   echo 'D06_GAZEBO_LIVE_RELEASE=HOLD CERTIFIED_ESTOP=false'
   exit 0
 fi
+# Both --analyze-existing and future run failures produce ONE small archive.
+# No ROS/Gazebo launched in --analyze-existing.
+ROOT="$HOME/axia_d06_g07_gpu_rtf_evidence"
+collect_and_package() {
+  local d="$1" origin="${2:-FUTURE_RUN_SAME_SESSION}" archive
+  [[ -d "$d" ]] || return 3
+  mkdir -p "$d/forensic"
+  python3 - "$d" "$origin" "$STUDENT_SHA" <<'PY'
+import hashlib
+import json
+import re
+import sys
+from pathlib import Path
+
+base=Path(sys.argv[1]); origin=sys.argv[2]; sha=sys.argv[3]
+out=base/"forensic";out.mkdir(parents=True,exist_ok=True)
+def read(name):
+    file=base/name
+    return file.read_text(encoding="utf-8",errors="replace").splitlines() if file.is_file() else []
+def excerpt(rows,points,before=5,after=8):
+    ids=set()
+    for i in points[:12]:
+        ids.update(range(max(0,i-before),min(len(rows),i+after+1)))
+    return "\n".join(f"{i+1}: {rows[i][:1400]}" for i in sorted(ids)[:170])+"\n"
+try:
+    report=json.loads((base/"nvidia.g07_wslg_sensor_truth.json").read_text(encoding="utf-8"))
+except (OSError,ValueError):
+    report={}
+reasons=report.get("reasons",[])
+if not isinstance(reasons,list):reasons=[]
+first=next((v for v in reasons if isinstance(v,str)),"EVIDENCE_INCOMPLETE")
+log=read("nvidia.launch.log")
+stop=next((i for i,row in enumerate(log) if "Robot to stop due to" in row or "AXIA_StopFront polygon" in row),None)
+timing=next((i for i,row in enumerate(log) if "SCAN_TIMEOUT" in row or "HEALTH_BAD_DIAGNOSTIC" in row),None)
+crash=[i for i,row in enumerate(log) if re.search(r"exit code -11|SIGSEGV|Segmentation fault",row,re.I)]
+signals=[i for i,row in enumerate(log) if re.search(r"SIGINT|SIGTERM|Sending signal",row,re.I)]
+crashes=[]
+if any(re.search(r"\[collision_monitor-\d+\].*exit code -11",log[i]) for i in crash):crashes.append("collision_monitor")
+if any(re.search(r"\[gz-\d+\].*exit code -11",log[i]) for i in crash):crashes.append("gazebo_server")
+(out/"first_stop_and_timing.txt").write_text("First safety STOP and first timing warning (log line numbers)\n"+
+    excerpt(log,([stop] if stop is not None else [])+([timing] if timing is not None else [])),encoding="utf-8")
+(out/"shutdown_context.txt").write_text("Signals and actual native child exits (log line numbers)\n"+
+    excerpt(log,signals[:2]+crash[:8],before=8,after=12),encoding="utf-8")
+summary={
+ "schema":"axia.d06.g07.compact_forensics.v1",
+ "source":origin,"student_sha":sha,"first_sensor_failure":first,
+ "all_sensor_reasons":reasons,"sensor_status":report.get("status","UNMEASURED"),
+ "rtf_diagnostics":report.get("rtf_diagnostics",{}),
+ "raw":report.get("metrics",{}).get("raw",{}),
+ "safety":report.get("metrics",{}).get("safety",{}),
+ "raw_first_gap_diagnostics":report.get("raw_first_gap_diagnostics",{}),
+ "first_stop_log_line":None if stop is None else stop+1,
+ "first_timeout_log_line":None if timing is None else timing+1,
+ "first_native_crash_log_line":None if not crash else crash[0]+1,
+ "process_crashes":crashes,
+ "goal_sent":report.get("goal_sent","UNVERIFIED"),
+ "fixture_moved":report.get("fixture_moved","UNVERIFIED"),
+ "certified_estop":False,"moving_l3_accepted":False,
+ "raw_archive_embedded":False,
+ "first_scan_host_receipt_trace_available":bool(report.get("scan_receipts_compact"))
+}
+(out/"summary.json").write_text(json.dumps(summary,indent=2,sort_keys=True,ensure_ascii=False)+"\n",encoding="utf-8")
+if report.get("scan_receipts_compact"):
+    (out/"scan_receipts_compact.json").write_text(json.dumps(report["scan_receipts_compact"])+"\n",encoding="utf-8")
+owner=read("nvidia.run.log")
+markers=re.compile("G07_WSLG_NO_GOAL_SENSOR_|AXIA_G07_WSLG_NO_GOAL_SENSOR_TRUTH|D06_WSLG_NO_GOAL_SENSOR_|D06_GAZEBO_LIVE_RELEASE|D06_WSLG_NO_GOAL_RAW_ARCHIVE")
+(out/"owner_verdict_excerpt.txt").write_text("\n".join(
+    f"{i+1}: {row[:3500]}" for i,row in enumerate(owner) if markers.search(row))[-30000:]+"\n",encoding="utf-8")
+renderer=[]
+for file in ("nvidia.preflight.txt","nvidia.renderer.txt","nvidia.ogre2_gl_evidence.txt"):
+    relevant=[row[:500] for row in read(file) if re.search("GL_RENDERER|OpenGL renderer|GL_VENDOR|D3D12|llvmpipe|NVIDIA|Intel",row,re.I)]
+    renderer.append("## "+file+"\n"+"\n".join(relevant[-12:]))
+(out/"renderer_excerpt.txt").write_text("\n".join(renderer)+"\n",encoding="utf-8")
+hashed=[]
+for fn in ("nvidia.g07_wslg_sensor_truth.json","nvidia.launch.log","nvidia.run.log",
+           "nvidia.g07_world.sdf.xacro","nvidia.g07_demo_waffle.sdf.xacro","nvidia.initialpose.json"):
+    file=base/fn
+    if file.is_file():hashed.append(hashlib.sha256(file.read_bytes()).hexdigest()+"  "+fn)
+(out/"source_hashes.txt").write_text("SHA256 of original local evidence (not embedded)\n"+"\n".join(hashed)+"\n",encoding="utf-8")
+print("D06_FORENSIC_FIRST_SENSOR_FAILURE="+first,flush=True)
+print("D06_FORENSIC_PROCESS_CRASH="+(",".join(crashes) if crashes else "NONE_OBSERVED"),flush=True)
+print("D06_FORENSIC_RTF="+str(report.get("rtf_diagnostics",{}).get("ros_clock_rtf","UNMEASURED")),flush=True)
+print("D06_FORENSIC_SCOPE=NO_GOAL_MOVING_L3_HOLD",flush=True)
+PY
+  archive="$ROOT/d06-forensic-$(basename "$d").tar.gz"
+  tar -C "$d" -czf "$archive" forensic
+  sha256sum "$archive" > "$archive.sha256"
+  echo "D06_FORENSIC_ARCHIVE=$archive"
+  echo "D06_FORENSIC_SHA256=$archive.sha256"
+}
+
+if [[ "$MODE" == --analyze-existing ]];then
+  for cmd in python3 tar sha256sum;do
+    command -v "$cmd" >/dev/null || { echo D06_FORENSIC_TOOLS_MISSING >&2;exit 3; }
+  done
+  [[ -d "$ROOT" ]] || {
+    echo D06_FORENSIC_EXISTING_EVIDENCE_MISSING_NO_GOAL >&2;exit 3;
+  }
+  RUN_DIR="$(python3 - "$ROOT" <<'PY'
+import sys
+from pathlib import Path
+root=Path(sys.argv[1])
+found=[p for p in root.glob("ab-no-goal-*") if p.is_dir()
+       and (p/"nvidia.g07_wslg_sensor_truth.json").is_file()]
+if found:print(max(found,key=lambda p:(p/"nvidia.g07_wslg_sensor_truth.json").stat().st_mtime))
+PY
+)"
+  [[ -n "$RUN_DIR" ]] || {
+    echo D06_FORENSIC_EXISTING_EVIDENCE_MISSING_NO_GOAL >&2;exit 3;
+  }
+  ROOT="$(cd "$ROOT" && pwd -P)"
+  echo "D06_FORENSIC_EXISTING_NO_SIM_REPLAY=$RUN_DIR"
+  collect_and_package "$RUN_DIR" EXISTING_LOCAL_EVIDENCE
+  echo 'D06_GAZEBO_LIVE_RELEASE=HOLD CERTIFIED_ESTOP=false'
+  exit 0
+fi
+
 [[ -n "$(printenv DISPLAY || :)" && "$(printenv GITHUB_ACTIONS || :)" != true ]] || {
   echo D06_GPU_RTF_REAL_WSLG_REQUIRED >&2;exit 3;
 }
@@ -30,12 +147,20 @@ grep -qiE 'microsoft|wsl' /proc/sys/kernel/osrelease || exit 3
 for cmd in curl git python3 glxinfo tar sha256sum cmp;do
   command -v "$cmd" >/dev/null || { echo "MISSING_EXECUTABLE=$cmd" >&2;exit 3; }
 done
-ROOT="$HOME/axia_d06_g07_gpu_rtf_evidence"
 mkdir -p "$ROOT";chmod 700 "$ROOT"
 ROOT="$(cd "$ROOT" && pwd -P)"
 RUN_DIR="$(mktemp -d -p "$ROOT" ab-no-goal-XXXXXXXX)"
 TMP="$(mktemp -d)"
-trap 'rm -rf -- "$TMP"' EXIT
+cleanup() {
+  local saved_rc=$?
+  trap - EXIT
+  # Never turn a failed sensor/teardown process into a success.
+  collect_and_package "$RUN_DIR" FUTURE_RUN_SAME_SESSION ||
+    echo 'D06_FORENSIC_BUNDLE_FAILED_OR_INCOMPLETE_NO_GOAL' >&2
+  rm -rf -- "$TMP"
+  exit "$saved_rc"
+}
+trap cleanup EXIT
 # Preflight *actual* GPU selection before ever launching a robot.
 for gpu in "${adapters[@]}";do
   MESA_D3D12_DEFAULT_ADAPTER_NAME="$gpu" glxinfo -B > "$RUN_DIR/$gpu.preflight.txt"
