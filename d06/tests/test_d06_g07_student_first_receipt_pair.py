@@ -245,5 +245,49 @@ class ExactStudentPairGazeboBoundary(unittest.TestCase):
         self.assertFalse(result["student_first_stamp_pair_verified"])
 
 
+    def test_r6_exact_stamp_clock_and_ros_peer_decomposition(self):
+        """Owner r6YhIvPx SHA db6c130...; exact synchronized host trace, no ROS runtime."""
+        m=load()
+        s0,s1=68901000000,69000000000
+        def packet(stamp,at,topic=None):
+            v={"source_stamp_ns":stamp,"host_monotonic_sec":at}
+            if topic is not None:v["topic"]=topic
+            return v
+        truth={"scan_receipts_compact":{"safety":{
+            "before":packet(s0,7964.014425),
+            "after":packet(s1,7964.317578),"gap_sec":.303153},
+            "raw":None}}
+        native=[packet(s0,7964.013676),packet(s1,7964.301244)]
+        ros=[packet(s0,7964.018297,"raw"),packet(s1,7964.308777,"raw"),
+             packet(s0,7964.018692,"safety"),packet(s1,7964.324221,"safety")]
+        clock=[{"sim_stamp_ns":s0,"host_monotonic_sec":7963.970236},
+               {"sim_stamp_ns":s1,"host_monotonic_sec":7964.248479}]
+        v=m.classify_student_first(native,truth,ros_observer=ros,native_clock=clock)
+        self.assertEqual(v["student_first_boundary"],"AT_OR_BEFORE_INDEPENDENT_ROS_RECEIPT")
+        self.assertAlmostEqual(v["student_first_native_gap_sec"],.287568,places=6)
+        self.assertAlmostEqual(v["student_first_ros_peer_gap_sec"],.305529,places=6)
+        self.assertAlmostEqual(v["student_first_native_clock_same_stamp_rtf"],.355805,places=4)
+        self.assertAlmostEqual(v["student_first_native_to_peer_extra_gap_sec"],.017961,places=6)
+        self.assertEqual(v["student_first_decomposition"],"NATIVE_NEAR_LIMIT_WITH_ROS_PEER_TTL_BREACH")
+        self.assertFalse(v["publisher_send_timing_proven"])
+        self.assertFalse(v["root_cause_proven"])
+        self.assertEqual(v["release"],"HOLD")
+        self.assertFalse(v["goal_allowed"])
+
+    def test_r6_mismatched_clock_must_not_fake_instantaneous_rtf(self):
+        m=load()
+        def p(s,t):return {"source_stamp_ns":s,"host_monotonic_sec":t}
+        truth={"scan_receipts_compact":{"safety":{
+            "before":p(68901000000,10.01),
+            "after":p(69000000000,10.32),"gap_sec":.31}}}
+        v=m.classify_student_first(
+            [p(68901000000,10.),p(69000000000,10.28)],truth,
+            native_clock=[{"sim_stamp_ns":68901000000,"host_monotonic_sec":9.9},
+                          {"sim_stamp_ns":99900000000,"host_monotonic_sec":10.2}])
+        self.assertIsNone(v["student_first_native_clock_same_stamp_rtf"])
+        self.assertFalse(v["student_first_clock_stamp_pair_verified"])
+        self.assertEqual(v["release"],"HOLD")
+
+
 if __name__=="__main__":
     unittest.main()
