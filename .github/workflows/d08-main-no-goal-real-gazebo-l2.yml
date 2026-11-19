@@ -1069,6 +1069,11 @@ jobs:
   # registered on the Draft PR base, resulting in an invalid workflow run.
   # No new Gazebo, Goal, planner, safety threshold or Student answer.
   build-native-witness:
+    if: github.event_name == 'pull_request' && github.head_ref == 'feat/d08-d04-d07-single-session-20261119'
+    needs:
+      - l0-human-proxy-red-green
+      - g07-student-single-session-hook-l0
+      - g07-official-source-sdf-adapter-l1
     # Disposable build job may install OSRF development headers. Never upgrade
     # the G07 moving runtime's locked libgz-transport13=13.6.0-1~noble.
     runs-on: ubuntu-24.04
@@ -1106,6 +1111,7 @@ jobs:
           if-no-files-found: error
 
   one-real-gazebo-moving-gui:
+    if: github.event_name == 'pull_request' && github.head_ref == 'feat/d08-d04-d07-single-session-20261119'
     needs: build-native-witness
     runs-on: ubuntu-24.04
     timeout-minutes: 45
