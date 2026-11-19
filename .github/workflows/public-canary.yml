@@ -40,3 +40,7 @@ jobs:
           assert "one-real-gazebo-moving-gui" in jobs, list(jobs)
           print("D08_MAIN_WORKFLOW_YAML_PARSE_PASS",len(jobs))
           PY
+          go version
+          GOTOOLCHAIN=local timeout 120s go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 \
+            .github/workflows/d08-main-no-goal-real-gazebo-l2.yml
+          echo D08_MAIN_ACTIONLINT_GITHUB_SEMANTIC_PASS
