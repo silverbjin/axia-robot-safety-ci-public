@@ -22,6 +22,14 @@ def fake_record(home):
         "status": "NO_GOAL_SENSOR_UNSAFE_HOLD",
         "reasons": ["SAFETY_RECEIPT_TTL_300MS_BLOCKED", "RAW_RECEIPT_TTL_300MS_BLOCKED"],
         "goal_sent": False, "fixture_moved": False, "certified_estop": False,
+        "dual_topic_required_observation_sec":20,
+        "dual_topic_actual_wall_observation_sec":20.008,
+        "startup_pre_both_scan_diagnostics":{
+            "both_topics_ready":True,
+            "pre_ready_raw_first_gap_sec":.434354,
+            "pre_ready_breach_evidence_retained":True,
+            "pre_ready_observations_not_motion_authority":True
+        },
         "rtf_diagnostics": {"ros_clock_rtf": 0.913157, "timing_pattern": "RTF_NORMAL"},
         "metrics": {
             "raw": {"count": 185, "max_receipt_gap_sec": .427761,
@@ -130,6 +138,12 @@ class ForensicOneShot(unittest.TestCase):
                 self.assertEqual(summary["first_sensor_failure"], "SAFETY_RECEIPT_TTL_300MS_BLOCKED")
                 self.assertEqual(summary["process_crashes"], ["collision_monitor", "gazebo_server"])
                 self.assertFalse(summary["goal_sent"])
+                self.assertTrue(summary["dual_topic_both_topics_ready"])
+                self.assertAlmostEqual(summary["pre_ready_raw_gap_sec"],.434354)
+                self.assertTrue(summary["pre_ready_breach_evidence_retained"])
+                self.assertEqual(summary["dual_topic_required_observation_sec"],20)
+                self.assertAlmostEqual(summary["dual_topic_observed_wall_sec"],20.008)
+                self.assertIn("forensic/startup_pre_both_scan_diagnostics.json", members)
                 self.assertEqual(summary["source"], "EXISTING_LOCAL_EVIDENCE")
                 self.assertTrue(summary["source_archive_sha256_verified"])
                 self.assertEqual(summary["native_no_goal_navigation_ack"], True)
