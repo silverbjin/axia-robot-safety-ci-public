@@ -54,6 +54,18 @@ class NoGoalCMShutdownRegression(unittest.TestCase):
         v=m.audit(clean,"navigation_ack=true")
         self.assertEqual(v["cm_exit_code"],0)
         self.assertEqual(v["status"],"SHUTDOWN_CLEAN_CANDIDATE")
+    def test_real_l2_requires_full_20s_dual_topic_safe_gate_not_just_cm_exit0(self):
+        w=(ROOT/".github/workflows/axia-d06-g07-native-nogoal-cm-clean-l2-20261119.yml").read_text()
+        self.assertIn('assert rc==0',w)
+        self.assertIn('assert sensor["status"]=="NO_GOAL_SENSOR_WINDOW_CLEAR_CANDIDATE"',w)
+        self.assertIn('assert not sensor["reasons"]',w)
+        self.assertIn('assert startup["both_topics_ready"] is True',w)
+        self.assertIn('assert sensor["dual_topic_actual_wall_observation_sec"]>=20',w)
+        self.assertIn('assert sensor["metrics"][topic]["max_receipt_gap_sec"]<=.3',w)
+        self.assertIn('assert sensor["metrics"]["safety"]["clear_count"]==sensor["metrics"]["safety"]["count"]',w)
+        self.assertIn('assert gz_clean and not gz_bad',w)
+        self.assertIn('audit["cm_exit_code"]==0',w)
+
     def test_owner_causal_runner_must_enable_safe_no_goal_teardown(self):
         s=(ROOT/"d06/scripts/axia_d06_g07_wslg_sensor_no_goal_once.sh").read_text()
         self.assertIn('AXIA_G07_NO_GOAL_ORDERED_SHUTDOWN=1',s)
