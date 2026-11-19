@@ -196,3 +196,44 @@ def test_auto_refuses_two_simultaneous_matching_gazebo_gui_sessions():
     chosen, partition, status = m.choose_server(processes, None, None)
     assert chosen is None and partition is None
     assert status == "MULTIPLE_ACTIVE_GAZEBO_GUI_SESSIONS"
+
+
+def test_g07_does_not_misattribute_latest_d04_camera_sdf(tmp_path):
+    m = module()
+    scene = tmp_path / "d04-gazebo-fake" / "scene" / "student_waffle_rgb.sdf.xacro"
+    scene.parent.mkdir(parents=True)
+    scene.write_text('<sdf><sensor name="axia_student_rgb" type="camera"><update_rate>30</update_rate></sensor></sdf>')
+    result = m.find_disk_sensor_profile(partition="axia_p2_task04_123", base=tmp_path)
+    assert result["status"] == "NOT_APPLICABLE_TO_G07_SCENARIO"
+    assert result["rgbd_hz_disk_candidate"] is None
+
+
+def test_d04_rgb_camera_sensor_rate_not_mistaken_for_missing_rgbd(tmp_path):
+    m = module()
+    scene = tmp_path / "d04-gazebo-fake" / "scene" / "student_waffle_rgb.sdf.xacro"
+    scene.parent.mkdir(parents=True)
+    scene.write_text(
+        '<sdf><sensor name="axia_student_rgb" type="camera">'
+        '<topic>camera/image_raw</topic><update_rate>30</update_rate>'
+        '<camera><image><width>640</width><height>480</height></image></camera>'
+        '</sensor></sdf>'
+    )
+    result = m.find_disk_sensor_profile(partition="axia_d04_student_123_40", base=tmp_path)
+    assert result["status"] == "DISK_ONLY_NOT_PROVEN_ACTIVE"
+    assert result["rgb_camera_hz_disk_candidate"] == 30.0
+    assert result["camera_sensors_disk"][0]["name"] == "axia_student_rgb"
+    assert result["camera_sensors_disk"][0]["resolution"] == "640x480"
+
+
+def test_workload_profile_counts_only_target_partition():
+    m = module()
+    procs = [
+        {"role": "gazebo_server_candidate", "env": {"GZ_PARTITION": "A"}},
+        {"role": "gazebo_gui", "env": {"GZ_PARTITION": "A"}},
+        {"role": "yolo", "env": {"GZ_PARTITION": "B"}},
+        {"role": "image_view", "env": {"GZ_PARTITION": "B"}},
+        {"role": "rviz2", "env": {"GZ_PARTITION": "A"}},
+    ]
+    assert m.count_target_roles(procs, "A") == {
+        "gazebo_server_candidate": 1, "gazebo_gui": 1, "rviz2": 1}
+    assert m.count_target_roles(procs, "B") == {"yolo": 1, "image_view": 1}
