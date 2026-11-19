@@ -15,7 +15,9 @@ def test_readonly_ros2_trace_preflight_script_exists():
     assert "ros2 run tracetools status" in source
     assert "ros2 trace start" in source
     assert "ros2 trace stop" in source
-    assert "--snapshot-mode" in source
+    # Jazzy 8.2.6 rejects snapshot-mode even though newer docs describe it.
+    assert "--snapshot-mode" not in source
+    assert "ros2 trace record_snapshot" not in source
     assert "D08_ROS_TRACE_PREFLIGHT_L2_PASS" in source
     assert "cmd_vel" not in source
     assert "set_pose" not in source
