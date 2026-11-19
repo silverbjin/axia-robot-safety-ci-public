@@ -11,6 +11,7 @@ on:
       - 'd06/tests/test_d06_g07_student_first_receipt_pair.py'
       - 'd06/tests/test_d06_existing_gazebo_core_triage.py'
       - 'd06/tests/test_d06_localization_manager_callback_probe.py'
+      - 'd06/tests/test_d06_student_scan_clock_executor_isolation.py'
       - 'd06/scripts/axia_d06_g07_wslg_existing_core_once.sh'
   workflow_dispatch:
 permissions:
@@ -55,7 +56,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 50464f39b2c37dd631768c4ea98c9bdad2d1127c
+          ref: b67d22af3687c2662117a590f909eab9216399a8
           path: student
           persist-credentials: false
       - name: Exact public Student and official lifecycle offline contract
@@ -63,7 +64,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           test "$(git -C ci rev-parse HEAD)" = "$GITHUB_SHA"
-          test "$(git -C student rev-parse HEAD)" = '50464f39b2c37dd631768c4ea98c9bdad2d1127c'
+          test "$(git -C student rev-parse HEAD)" = 'b67d22af3687c2662117a590f909eab9216399a8'
           cd student/block_B/day07/h01_runtime
           set +u; source /opt/ros/jazzy/setup.bash;set -u
           bash -n scripts/p2_no_goal_smoke_ci.sh
@@ -72,6 +73,7 @@ jobs:
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/d06/tests" -p 'test_d06_g07_student_first_receipt_pair.py' -v
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/d06/tests" -p 'test_d06_existing_gazebo_core_triage.py' -v
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/d06/tests" -p 'test_d06_localization_manager_callback_probe.py' -v
+          python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/d06/tests" -p 'test_d06_student_scan_clock_executor_isolation.py' -v
           echo 'AXIA_D06_G07_ORDERED_SHUTDOWN_SOURCE_L0_PASS_NO_GOAL'
       - name: Actual same-world Gazebo and official Nav2 CM NO_GOAL teardown
         shell: bash
