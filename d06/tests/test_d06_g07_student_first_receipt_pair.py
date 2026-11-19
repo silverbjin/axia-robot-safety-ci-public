@@ -64,7 +64,7 @@ class DualTopicReadinessGate(unittest.TestCase):
         raw=[row(200+i*.1,40+i*.1) for i in range(4)]
         raw += [row(200.74,40.4),row(200.84,40.5),row(201.00,40.6)]
         raw += [row(201.1+i*.1,40.7+i*.1) for i in range(202)]
-        safety=[row(201.15+i*.1,40.8+i*.1) for i in range(201)]
+        safety=[row(201.15+i*.1,40.8+i*.1) for i in range(205)]
         inp={"raw":raw,"safety":safety,"clock":[1,2,3],
              "odom":[{"vx":0,"wz":0} for _ in range(4)]}
         self.assertIn("RAW_RECEIPT_TTL_300MS_BLOCKED",m.assess_window(inp)["reasons"])
