@@ -61,3 +61,34 @@
 - `AXIA_MVP_DEMO_ACCEPTED=HOLD`, `D06_GAZEBO_LIVE_RELEASE=HOLD`, `CERTIFIED_ESTOP=false`, main 병합 없음.
 
 참고: [ROS 2 Jazzy 서비스 Client 패턴](https://docs.ros.org/en/jazzy/Tutorials/Beginner-Client-Libraries/Writing-A-Simple-Py-Service-And-Client.html), [Gazebo Sim WorldControl Pause](https://gazebosim.org/api/sim/9/pause_run_simulation.html), [Nav2 Lifecycle Manager 설정](https://docs.nav2.org/rolling/configuration_and_development/configuration_guide/core_servers/configuring_lifecycle_manager/).
+
+
+---
+
+## 5. 2026-11-19 최종 NO_GOAL L2 회귀 — 두 read-only witness의 종료 경쟁 해결
+
+### 5.1 최초 실패와 증거 보존
+
+- [실제 초기 회귀 #44455727595](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44455727595): Student 첫 Raw callback 호스트 지연 434.354ms, **같은 두 Scan stamp의 Gazebo native 수신 103.745ms**, 최초 Safety Scan 수신 이전. ROS 수신/준비 지연을 Gazebo 내부 publisher 문제로 오진하지 않도록 exact source-stamp matching을 구현.
+- [엄격 검사 #44459901466](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44459901466): 20초 dual-topic 센서 검사 자체는 PASS였지만, Nav2 Navigation shutdown ManageLifecycleNodes 응답 TIMEOUT, 그 다음 CM 프로세스 `exit -11`; Gazebo 서버는 정상 종료. 이전 WSLg ZOA 서버 -11과 **다른 충돌**. `P2_L2_GRACEFUL_TEARDOWN` 부모 마커만으로 성공 판정하면 안 됨.
+- 이전 CI는 센서 rc3이어도 CM 종료만 성공하면 Job PASS 가능했음. `.github/workflows/axia-d06-g07-native-nogoal-cm-clean-l2-20261119.yml`은 현재 `smoke_rc==0`, `reasons=[]`, Raw/Safety 20초 각 300ms TTL, 모든 CLEAR 거리, Nav2 ACK와 두 native child exit0, GUI 실제 창을 **동일 실행의 필수 assert**로 검증.
+
+### 5.2 최소 구현 및 TDD
+
+1. **기존 계측기 종료 경계:** 기존 두 read-only 진단 프로세스(Gazebo transport + ROS rclpy subscriber)가 Student NO_GOAL 본시험 후에도 Nav2 shutdown과 동시에 살아 있었음. 그들이 Nav2 timeout/CM -11의 직접 원인이라는 프로파일링 증명은 없으며 **경쟁 가능성만 확인**. 안전관리자·CM 코드 수정 없이 **진단 측 프로세스 수명**만 분리.
+2. **Student:** `scripts/p2_no_goal_smoke_ci.sh`는 `AXIA_G07_NO_GOAL_WITNESS_HANDOFF=1`인 NO_GOAL + ordered shutdown에서만 probe 완료 후 `g07_witness_probe_complete.signal`을 작성, 최대 12초 동안 `g07_witness_stopped.ack`을 기다림. ACK가 없으면 rc3/HOLD. 기본 교육·Goal 경로 영향 없음.
+3. **Public CI/Owner:** 실제 20초 학생 본시험이 끝나면 자체 소유한 read-only native/ROS observer 두 PID에 SIGTERM, `wait` 후 exit0일 때만 `G07_READONLY_WITNESSES_STOPPED` ACK를 작성. 이후 공식 Nav2 lifecycle navigation→localization shutdown 진행. **Scan300·CM120·Guard150 TTL을 완화하지 않음**.
+4. **RED:** [#44460780110](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44460780110) — 계측기 종료 핸드오프와 ACK 전제 계약 실패. 수정 과정의 marker 문자열/CI 테스트 계약 오류는 같은 public L0 회귀에서 수정하고 그 원본 Run 이력 보존.
+5. **실제 GREEN L2 1:** [#44461092763](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44461092763), [원본 아티팩트 #14499928636](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44461092763/artifacts/14499928636). `smoke_rc=0`, Raw Scan 192개/최대142.175ms, Safety 191개/최대141.016ms, 20.005초, CLEAR191/191, front1.413810m / side2.519839m. Nav2 Navigation/Localization ACK=true, CM child exit0, Gazebo server exit0, 순서화 종료 완료.
+6. **실제 GREEN L2 2:** [#44461627846](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44461627846), [원본 아티팩트 #14499834649](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44461627846/artifacts/14499834649). `smoke_rc=0`, Raw Scan 196개/최대127.526ms, Safety 196개/최대125.545ms, 20.003초, CLEAR196/196, front1.414726m/side2.520725m. Nav2 ACK, CM exit0, Gazebo server exit0. 관측기 핸드오프 marker 둘 모두 원본 증거에 존재하고 일치.
+7. **원샷 forensic RED→GREEN:** `d06/tests/test_d06_forensic_bundle_once.py`는 원본 Owner TAR checksum 확인 후 완료 marker + 두 observer exit0 handoff ACK도 **동일한 작은 압축 archive**로 보존하도록 필수 테스트 추가. RED [#44461826855](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44461826855), GREEN [#44462067138](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44462067138) (**총 71개 L0 PASS**). Reader/analyzer의 잘못된 긍정 verdict 방지 기존 테스트 보존.
+8. **REFACTOR/REVIEW:** TDD 범위는 학생 probe 20초 시작 경계 + lifecycle service discovery + read-only 계측 PID 종료 순서 + 자동 custody. 기존 공식 Nav2/Collision Monitor/TB3/Gazebo 센서 스키마 변경 없음. Safety SW stop은 인증 E-Stop이 아님.
+
+### 5.3 출고 범위와 남는 인수 한계
+
+- 실행 브랜치: Public `fix/d06-wslg-lidar-vs-rtf-ci-20261118` PR #177, Student `fix/g07-nogoal-ordered-cm-shutdown-20261119` PR #62.
+- **최종 본시험 Student 실행 코드 SHA** `8e19742fd7bd80db73a37dc7b1d798768dc33e2a`, smoke `git hash-object=9cb5baf6c766a79cf6fd5134707981e32bb23e85`.
+- **Owner 자동 진단 실행기** `d06/scripts/axia_d06_g07_wslg_sensor_no_goal_once.sh` SHA `3e2e9f2abc694a1183634c06b558efe85e976474`, blob `8fa030fd2e87907b758075c7a88b61caa8b9bb42`.
+- 외부 한 명령 다운로드: `d06/scripts/axia_d06_g07_wslg_gpu_rtf_compare_once.sh`, git blob `be375d277bcc232488f917facf4a441e3b87bf47`, 최종 commit pin은 이 보고서 뒤 공개 HEAD 참조.
+- 공개 CI Linux/Xvfb 소프트웨어 렌더러 실제 L2 2회 성공은 **WSL2 NVIDIA/D3D12 재현 안정성을 증명하지 않음**. Owner WSL2 NVIDIA NO_GOAL 단일 인수, 이후 기존 Moving Goal/CM120/Guard150 실제 데이터 전달 안전 TTL 검증은 미수행. 기존 기록 보존·미검증 영역 HOLD.
+- `AXIA_MVP_DEMO_ACCEPTED=HOLD`, `D06_GAZEBO_LIVE_RELEASE=HOLD`, `CERTIFIED_ESTOP=false`; main merge는 사용자 승인을 받기 전 진행하지 않음.
