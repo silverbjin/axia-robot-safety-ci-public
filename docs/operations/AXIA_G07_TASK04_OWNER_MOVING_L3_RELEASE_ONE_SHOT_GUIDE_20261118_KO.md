@@ -2,36 +2,36 @@
 
 2026-11-19 KST / 실제 강사 WSL2 Moving Goal **NOT_RUN** / 배포는 공개 CI 범위 한정 L2 검증 후 / SW Stop ≠ 인증 E-Stop.
 
-## 검증한 고정 공개 소스와 단계
+## 최신 n7 인수용 고정 공개 소스와 단계
 
 | 항목 | 정확한 버전/증거 |
 |---|---|
-| 공개 CI PR | https://github.com/silverbjin/axia-robot-safety-ci-public/pull/169 |
-| Student PR | https://github.com/silverbjin/axia-robot-safety-student/pull/46 |
-| 단일 주행 소스 SHA | `c4cc2a7adc0309d9107e35f31d8f3dd95fa8dac2` |
-| CI read-only 판정 소스 SHA | `2b4cd883e9a61286c8bf0e85295a72024c42485e` |
-| 실제 Gazebo Harmonic + Nav2 + Waffle + RViz Xvfb L2 | https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44359652805 |
-| 출고 Owner 원샷 Bootstrap L0 | https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44360531447 |
-| L2 원본 공개 수치·SHA256 artifact | https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44359652805/artifacts/14452139684 |
-| 강사 실제 WSL2 L3 | **종전 S75 실행 실패 / 수정판 미실행·미검증** |
+| 공개 CI PR | https://github.com/silverbjin/axia-robot-safety-ci-public/pull/182 |
+| Student PR | https://github.com/silverbjin/axia-robot-safety-student/pull/61 |
+| 단일 주행 소스 SHA | `dcd1299c03bf702712631dc025b868335cadd1c6` |
+| CI read-only 판정 소스 SHA | `71b85c42ea474276fedd9f345521317b8c348b4e` |
+| 실제 Gazebo Harmonic + Nav2 + Waffle + RViz Xvfb L2 | https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44433206283 |
+| 출고 Owner 원샷 Bootstrap L0 | **신규 pin 8개 검증 중** |
+| L2 원본 공개 수치·SHA256 artifact | https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44433206283/artifacts/14487965556 |
+| 강사 실제 WSL2 L3 | **n7 원본 19/21 HOLD / 신규 timing 수정판 미실행** |
 | main | **병합 안 함** |
 
-사전 성공인 NO_GOAL GUI나 Task03 기존 L2는 다시 실행하지 않는다. 이번 출고 후보는 공개 CI Run #44359652805에서 **하나의 실제 Moving Goal+GUI 통합 실행**으로 안전수치·정확 UUID CANCELED·Native Contact0·SQLite14·Nav2 Lifecycle ACK와 CM clean exit 검증을 마쳤다. 다만 공개 Xvfb는 Owner WSLg D3D12가 아니므로 L3 승격 불가.
+기존 Task01~03 성공 증거를 보존하고 반복하지 않는다. 최종 수정판은 공개 CI #44433206283에서 **실제 Gazebo/Nav2 Moving Goal+GUI 21/21 안전 검증**을 완료했다. Xvfb CI는 Owner WSLg D3D12가 아니므로 L3 승격 불가.
 
-이번 소스의 동일 세션 L2 공개 검증에서는 실제 Odometry 이동 0.198562m, 정지 유지 1.013681초, Native Contact 0, CM Publisher 59.330ms/120ms, Observer 86.805ms/120ms, Guard 내부 CM age 36.842ms/150ms, 실제 Goal UUID `d909284cfa9246638e04e364bd9070ed` 취소, 14-topic rosbag 및 Lifecycle/CM 종료가 모두 검증됐다. 공개 CI 수치 아티팩트는 소량의 JSON/SHA만 공개한다.
+과거 CI #44359652805의 이동 0.198562m, 정지 1.013681초, CM Source 59.330ms, Observer 86.805ms, Guard age 36.842ms는 **이전 실행의 보존된 기록**이다. 최신 #44433206283은 새 Student SHA의 21개 조건 true, first_failure=NONE, rc=0 및 GUI2를 확인하였으며 새 수치 JSON 아티팩트를 별도로 보존했다.
 
-**중요한 한계:** 이번 CI의 초기 CLEAR 정면 1.421119m/측면 2.513343m와 최신 현장 S75 원본의 0.538428m/0.626332m는 일치하지 않는다. 현장 장애물 원인·실제 엔티티 좌표와 WSLg 환경은 검증되지 않았다. 새로운 Owner 실행에서 같은 실패가 발생하면 재실행하지 말고 아래 소형 진단 ZIP과 원본 비공개 TAR를 보존한다.
+**현장 경계:** S75의 0.538428m/0.626332m 근거리 오검출은 n7 원본에서 1.414623m/2.523533m CLEAR로 개선되었다. 이번 n7의 남은 실패는 **엄격 CM Owner 스키마·Guard 내부 age 증거 누락 및 WSL2 RMW wall-clock step**이며 새 WSL2 실행은 아직 미검증이다.
 
 기존 실행 명령에서 사용했던 원샷 커밋 `e56bbad873e0e37c83f34ecbcc206cc8a648e63d`은 WSLg D3D12 변수를 전역 export하는 이전 배포 후보이므로 **현장 신규 실행에 사용하지 않는다.** 새 고정 SHA는 동일 Student SHA의 공개 L2 및 원샷 Bootstrap L0를 통과했다.
 
 ## 강사 WSL2 복사·붙여넣기 명령 (하나의 블록)
 
-다음은 **이 시점의 실증 공개 원샷 SHA `8c86d72f4669d62f9a8e71b7e528052781aca980`**를 고정한다. CI가 검증한 Student SHA는 내부에서 별도 확인한다. 무작위 main HEAD를 내려받지 않는다.
+다음은 **이 시점의 실증 공개 원샷 SHA `4cd36853358bb088263a0b73a0cfa6c8d5ec2d55`**를 고정한다. CI가 검증한 Student SHA는 내부에서 별도 확인한다. 무작위 main HEAD를 내려받지 않는다.
 
 ```bash
 (
   set -Eeuo pipefail
-  SOURCE_SHA='8c86d72f4669d62f9a8e71b7e528052781aca980'
+  SOURCE_SHA='4cd36853358bb088263a0b73a0cfa6c8d5ec2d55'
   RUNNER="$(mktemp --suffix=.sh)"
   trap 'rm -f -- "$RUNNER"' EXIT
   curl -fLsS --retry 3 --max-time 90 \
@@ -54,7 +54,7 @@
 `--self-check` 성공은 ROS를 시작하지 않는 L0이다:
 
 ```text
-AXIA_G07_TASK04_OWNER_MOVING_BOOTSTRAP_L0_PASS student_sha=c4cc2a7adc0309d9107e35f31d8f3dd95fa8dac2 l2_run=44359652805 NO_ROS_NO_GAZEBO_NO_GOAL
+AXIA_G07_TASK04_OWNER_MOVING_BOOTSTRAP_L0_PASS student_sha=dcd1299c03bf702712631dc025b868335cadd1c6 l2_run=44433206283 NO_ROS_NO_GAZEBO_NO_GOAL
 AXIA_G07_TASK04_OWNER_MOVING_L3=NOT_RUN
 AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false
 ```
@@ -62,7 +62,7 @@ AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false
 **현장에서 실제로 성공한 뒤 기대할 패턴 (아직 실행 증거가 아님):**
 
 ```text
-AXIA_G07_TASK04_STUDENT_SHA_VERIFIED=c4cc2a7adc0309d9107e35f31d8f3dd95fa8dac2
+AXIA_G07_TASK04_STUDENT_SHA_VERIFIED=dcd1299c03bf702712631dc025b868335cadd1c6
 AXIA_G07_TASK04_OWNER_CORE_PARITY_25_5_PASS
 AXIA_G07_TASK04_WSLG_D3D12_GPU_SELECTED=...
 AXIA_G07_OWNER_GAZEBO_LIDAR_SOFTWARE_RENDERER_SELECTED D3D12_GUI_ONLY
@@ -99,7 +99,7 @@ AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false
 
 개발 결과는 공개 CI PR #169 및 Student PR #46의 기능 브랜치에만 보관한다. 강사용 실행기와 학생 TODO 저장소 역할을 혼동하거나 main에 자동 병합하지 않는다.
 
-## S75 실측 실패 분석 및 새 배포판 증거 (2026-11-19)
+## 과거 S75 실측 실패 분석 및 이전 배포판 증거 (2026-11-19)
 
 이번 원샷은 현장 S75의 `/scan` 377/377 `/safety/scan` 동일, 353/360 근거리 0.5m 링, 약 4.4초 WSL2 호스트 일시정지, 안전 최초 `BOOT_SAFE`, Goal 미전송을 분석한 후 배포한 **새 소프트웨어 센서 렌더러 후보**입니다. 최초 오류 기록을 외부 래퍼의 generic 실패로 덮지 않고 `pregoal_baseline.json`에서 직접 복원합니다.
 
@@ -115,3 +115,11 @@ AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false
 본 인계의 **최종 Student**는 `c4cc2a7adc0309d9107e35f31d8f3dd95fa8dac2`입니다. S75 원본 `gz model --pose`가 출력하는 `[-2.000520 -0.500000 0.010007]`의 실제 공백 구분 좌표가 기존 파서의 `|` 구분만 허용하는 버그로 누락됐습니다. 이를 최초 장애 지점 근거 기반 테스트 [RED #44358905525](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44358905525) → 허용 형식 최소 수정 → 실제 [Gazebo No-Goal L2 #44359662336](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44359662336) 및 [Moving Goal+GUI L2 #44359652805](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44359652805) **SUCCESS**까지 검증하였습니다.
 
 이번 수정은 **진단 기록의 정확성 개선**이며, 처음 S75에서 발생한 WSLg gpu_lidar 근거리 환형 스캔과 4.4초 호스트 공백이 실제 Owner PC에서 해결되었다는 뜻은 아닙니다. 새 원샷은 반드시 강사 WSL2에서 한 번 최종 확인하고, 재발하면 재실행을 반복하지 말고 최초 실패와 최초 안전 TTL 이탈을 정리합니다. `AXIA_MVP_DEMO_ACCEPTED=HOLD`를 유지합니다.
+
+## n7 최초 엄격 검증 실패와 2026-11-19 최종 수정판
+
+- 실제 n7 현장에서는 이동·정지·Goal 취소 성공, 19/21 판정 통과. CM Owner 스키마 불일치 및 Guard 내부 age 미발행이 최초 안전 증거 실패. [근거 보고서](AXIA_G07_TASK04_OWNER_N7_WSL2_RMW_CLOCK_AND_GUARD_DIAGNOSIS_20261119_KO.md).
+- RMW seq 483→484에서 raw source 2964.069ms, RMW receive 2964.057ms, monotonic observer 38.418ms. 수정판 숫자 JSON에는 `cm120.source_raw_gap_max_ms`, `clock_step_evidence`, `host_external_clock_verified=false`를 남긴다.
+- 최신 Student `dcd1299c03bf702712631dc025b868335cadd1c6`, 공개 판정 `71b85c42ea474276fedd9f345521317b8c348b4e`, 실제 L2 [#44433206283](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44433206283) SUCCESS 21/21. CLI 원샷 `4cd36853358bb088263a0b73a0cfa6c8d5ec2d55`는 이 두 커밋과 L2 Run을 고정.
+- Owner `--self-check` = L0, 실제 WSL2 `--run` = 아직 미실행. Guest monotonic 기반 CLOCK_REALTIME 보정은 **안전 인증 아님**; 실제 Windows 호스트 일시정지 부재를 증명하지 못하므로 `host_external_clock_verified=false`. CM/Guard 진짜 지연, 첫 latch 및 감속/정지는 원본으로 다시 검토해야 한다.
+- 검증 전에 `AXIA_MVP_DEMO_ACCEPTED=PASS`를 출력하지 않는다. 실패하면 동일 현장 재실행보다 첫 실패·첫 타이밍 위반을 공개 CI 회귀로 먼저 편입한다. 인증된 HW E-Stop으로 보고하지 않는다.
