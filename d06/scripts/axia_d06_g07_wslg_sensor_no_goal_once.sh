@@ -124,7 +124,7 @@ RX_PID=''; GZ_PID=''
 RX_TOOL=''; GZ_TOOL=''
 if [[ "$RX_WITNESS" == 1 ]];then
   command -v curl >/dev/null || { echo D06_G07_RX_CURL_REQUIRED_NO_GOAL >&2;exit 3; }
-  python3 - <<'PY' || { echo D06_G07_NATIVE_PROBE_IMPORT_MISSING_NO_GOAL >&2;exit 3; }
+  /usr/bin/python3 - <<'PY' || { echo D06_G07_NATIVE_PROBE_IMPORT_MISSING_NO_GOAL >&2;exit 3; }
 from gz.transport13 import Node
 from gz.msgs10.laserscan_pb2 import LaserScan
 from gz.msgs10.clock_pb2 import Clock
@@ -148,12 +148,12 @@ PY
      }
   python3 -m py_compile "$RX_TOOL" "$GZ_TOOL"
   mkdir -p "$RUN_DIR/native"
-  python3 -u "$GZ_TOOL" --topic /scan \
+  /usr/bin/python3 -u "$GZ_TOOL" --topic /scan \
     --out "$RUN_DIR/native/d06_gz_scan_receipts.jsonl" \
     --clock-out "$RUN_DIR/native/d06_gz_clock_receipts.jsonl" \
     > "$RUN_DIR/native/d06_gz_scan_rx.log" 2>&1 &
   GZ_PID=$!
-  python3 -u "$RX_TOOL" --capture \
+  /usr/bin/python3 -u "$RX_TOOL" --capture \
     --ros-jsonl "$RUN_DIR/native/d06_ros_scan_receipts.jsonl" \
     --output "$RUN_DIR/native/d06_ros_rx_unused.json" \
     > "$RUN_DIR/native/d06_ros_scan_rx.log" 2>&1 &
@@ -179,7 +179,7 @@ if [[ "$RX_WITNESS" == 1 ]];then
     echo D06_G07_RX_WITNESS_DID_NOT_FINISH_CLEANLY_NO_GOAL >&2
     RC=3
   fi
-  if ! python3 "$RX_TOOL" --analyze \
+  if ! /usr/bin/python3 "$RX_TOOL" --analyze \
       --ros-jsonl "$RUN_DIR/native/d06_ros_scan_receipts.jsonl" \
       --native-jsonl "$RUN_DIR/native/d06_gz_scan_receipts.jsonl" \
       --output "$RUN_DIR/native/d06_g07_scan_delivery_layer.json" \
