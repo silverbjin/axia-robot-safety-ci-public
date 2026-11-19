@@ -69,8 +69,8 @@ class NativeUnsubscribeBeforeInterpreterShutdown(unittest.TestCase):
     def test_real_fr1_boundary_does_not_claim_gazebo_server_fixed(self):
         self.assertIn("exit134",OLD.read_text().replace(" ",""))
         source=PROBE.read_text()
-        self.assertIn('node.unsubscribe("/scan")',source)
-        self.assertIn('node.unsubscribe("/clock")',source)
+        self.assertIn('for subscribed in ("/scan","/clock"):',source)
+        self.assertIn("node.unsubscribe(subscribed)",source)
         self.assertIn("D06_GZ_NATIVE_SUBSCRIPTIONS_RELEASED",source)
         self.assertNotIn("os._exit(0)",source)
         self.assertNotIn("SIGKILL",source)
