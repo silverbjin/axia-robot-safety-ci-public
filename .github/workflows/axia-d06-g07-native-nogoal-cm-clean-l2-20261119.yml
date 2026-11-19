@@ -13,6 +13,7 @@ on:
       - 'd06/tests/test_d06_localization_manager_callback_probe.py'
       - 'd06/tests/test_d06_student_scan_clock_executor_isolation.py'
       - 'd06/tests/test_d06_c06_two_executor_scan_receipt.py'
+      - 'd06/tests/test_d06_c07_navigation_manager_service_liveness.py'
       - 'd06/tests/test_d06_ci_only_gui_nice.py'
       - 'd06/scripts/axia_d06_g07_wslg_existing_core_once.sh'
   workflow_dispatch:
@@ -59,7 +60,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 4f51d255660359f345028410f758793674aaac1c
+          ref: b9132d51150be31973476ac34ef97d466f17187f
           path: student
           persist-credentials: false
       - name: Exact public Student and official lifecycle offline contract
@@ -67,7 +68,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           test "$(git -C ci rev-parse HEAD)" = "$GITHUB_SHA"
-          test "$(git -C student rev-parse HEAD)" = '4f51d255660359f345028410f758793674aaac1c'
+          test "$(git -C student rev-parse HEAD)" = 'b9132d51150be31973476ac34ef97d466f17187f'
           cd student/block_B/day07/h01_runtime
           set +u; source /opt/ros/jazzy/setup.bash;set -u
           bash -n scripts/p2_no_goal_smoke_ci.sh
@@ -78,6 +79,7 @@ jobs:
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/d06/tests" -p 'test_d06_localization_manager_callback_probe.py' -v
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/d06/tests" -p 'test_d06_student_scan_clock_executor_isolation.py' -v
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/d06/tests" -p 'test_d06_c06_two_executor_scan_receipt.py' -v
+          python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/d06/tests" -p 'test_d06_c07_navigation_manager_service_liveness.py' -v
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/d06/tests" -p 'test_d06_ci_only_gui_nice.py' -v
           echo 'AXIA_D06_G07_ORDERED_SHUTDOWN_SOURCE_L0_PASS_NO_GOAL'
       - name: Actual same-world Gazebo and official Nav2 CM NO_GOAL teardown
