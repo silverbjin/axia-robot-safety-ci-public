@@ -1,0 +1,28 @@
+name: AXIA G07 Owner World Xacro/Gazebo ROS Launch Event L1
+on:
+  push:
+    branches: ['fix/g07-task04-owner-timing-evidence-20261119']
+    paths: ['.github/workflows/axia-g07-task04-owner-world-xacro-l1.yml']
+permissions:
+  contents: read
+jobs:
+  jazzy-launch-event:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: e9e4de09deb544cb19ca4468b68e238400da6dda
+          path: student
+          persist-credentials: false
+      - name: Real Jazzy Launch callback - no Gazebo, Goal, or ROS graph
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          source /opt/ros/jazzy/setup.bash
+          test "$(git -C student rev-parse HEAD)" = 'e9e4de09deb544cb19ca4468b68e238400da6dda'
+          PYTHONDONTWRITEBYTECODE=1 timeout 40s python3 -m unittest discover -v -s student/block_B/tests -p test_g07_task04_world_xacro_launch_l1.py
+          echo 'AXIA_G07_OWNER_WORLD_XACRO_L1_PASS_REAL_ROS_LAUNCH_NO_GAZEBO_NO_GOAL'
