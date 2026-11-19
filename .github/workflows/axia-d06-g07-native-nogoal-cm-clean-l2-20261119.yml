@@ -28,6 +28,7 @@ jobs:
       AXIA_G07_OWNER_SENSOR_TRUTH_NO_GOAL: '1'
       AXIA_G07_CI_SENSOR_TRUTH_NO_GOAL: '1'
       AXIA_G07_NO_GOAL_ORDERED_SHUTDOWN: '1'
+      AXIA_G07_NO_GOAL_WITNESS_HANDOFF: '1'
       AXIA_G07_NO_GOAL_GZ_PAUSE_BEFORE_SIGINT: '1'
       AXIA_G07_CI_SIM_GOAL_ALLOWED: '0'
       AXIA_G07_TASK04_OWNER_MOVING_L3: '0'
@@ -46,7 +47,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: f1f5d932de831d3dabedf9a44a5fa27cf5705f42
+          ref: ea86f4e16f64d8a0c8d77fd6a1f1c51a8af0ee56
           path: student
           persist-credentials: false
       - name: Exact public Student and official lifecycle offline contract
@@ -54,7 +55,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           test "$(git -C ci rev-parse HEAD)" = "$GITHUB_SHA"
-          test "$(git -C student rev-parse HEAD)" = 'f1f5d932de831d3dabedf9a44a5fa27cf5705f42'
+          test "$(git -C student rev-parse HEAD)" = 'ea86f4e16f64d8a0c8d77fd6a1f1c51a8af0ee56'
           cd student/block_B/day07/h01_runtime
           set +u; source /opt/ros/jazzy/setup.bash;set -u
           bash -n scripts/p2_no_goal_smoke_ci.sh
@@ -80,6 +81,9 @@ jobs:
           runner_pid=''
           native_rx_pid=''
           ros_rx_pid=''
+          witness_handoff_done=0
+          native_rx_rc=0
+          ros_rx_rc=0
           cleanup() {
             trap - EXIT
             set +e
@@ -136,6 +140,22 @@ jobs:
           rviz_seen=0;gazebo_seen=0
           for ((i=0;i<730;i++));do
             kill -0 "$runner_pid" 2>/dev/null || break
+            if [[ "$witness_handoff_done" == 0 &&
+                  -f "$GITHUB_WORKSPACE/native/g07_witness_probe_complete.signal" ]];then
+              # Stop instrumentation BEFORE Student shutdown starts.
+              # This is a process scheduling boundary, NOT Scan300/CM120/Guard150.
+              kill -TERM "$native_rx_pid" "$ros_rx_pid" 2>/dev/null || true
+              wait "$native_rx_pid" || native_rx_rc=$?
+              wait "$ros_rx_pid" || ros_rx_rc=$?
+              native_rx_pid='';ros_rx_pid=''
+              witness_handoff_done=1
+              if [[ "$native_rx_rc" == 0 && "$ros_rx_rc" == 0 ]];then
+                printf '%s\\n' 'G07_READONLY_WITNESSES_STOPPED' > "$GITHUB_WORKSPACE/native/g07_witness_stopped.ack"
+                echo 'AXIA_D06_G07_READONLY_WITNESSES_STOPPED_BEFORE_NAV2_ACK'
+              else
+                echo "AXIA_D06_G07_WITNESS_FAILED_BEFORE_NAV2 native=$native_rx_rc ros=$ros_rx_rc" >&2
+              fi
+            fi
             windows="$(timeout 3s xwininfo -root -tree 2>/dev/null || true)"
             grep -Eiq 'RViz' <<< "$windows" && rviz_seen=1
             grep -Eiq 'Gazebo' <<< "$windows" && gazebo_seen=1
@@ -143,14 +163,18 @@ jobs:
           done
           set +e; wait "$runner_pid"; smoke_rc=$?;set -e
           runner_pid=''
-          # Stop independent observers and classify actual FIRST Student
-          # unsafe source stamp, not global startup or post-READY proxy.
-          kill -TERM "$native_rx_pid" "$ros_rx_pid" 2>/dev/null || true
-          native_rx_rc=0; ros_rx_rc=0
-          wait "$native_rx_pid" || native_rx_rc=$?
-          wait "$ros_rx_pid" || ros_rx_rc=$?
-          native_rx_pid='';ros_rx_pid=''
+          # On early startup failure there is no probe-complete marker;
+          # collect whatever evidence exists, but do NOT claim shutdown PASS.
+          if [[ "$witness_handoff_done" == 0 ]];then
+            kill -TERM "$native_rx_pid" "$ros_rx_pid" 2>/dev/null || true
+            wait "$native_rx_pid" || native_rx_rc=$?
+            wait "$ros_rx_pid" || ros_rx_rc=$?
+            native_rx_pid='';ros_rx_pid=''
+          fi
           echo "AXIA_D06_G07_WITNESS_EXIT native=$native_rx_rc ros=$ros_rx_rc"
+          [[ "$witness_handoff_done" == 1 ]] || {
+            echo 'AXIA_D06_G07_READONLY_WITNESS_HANDOFF_NOT_COMPLETED' >&2;exit 3;
+          }
           if [[ "$native_rx_rc" -ne 0 || "$ros_rx_rc" -ne 0 ]];then
             cat "$GITHUB_WORKSPACE/native/d06_gz_scan_rx.log" >&2 || true
             cat "$GITHUB_WORKSPACE/native/d06_ros_scan_rx.log" >&2 || true
@@ -275,6 +299,8 @@ jobs:
             native/d06_gz_clock_receipts.jsonl
             native/d06_gz_scan_rx.log
             native/d06_ros_scan_rx.log
+            native/g07_witness_probe_complete.signal
+            native/g07_witness_stopped.ack
             native/g07_ordered_shutdown.json
             native/g07_ordered_shutdown.log
             native/g07_gz_world_pause.log
