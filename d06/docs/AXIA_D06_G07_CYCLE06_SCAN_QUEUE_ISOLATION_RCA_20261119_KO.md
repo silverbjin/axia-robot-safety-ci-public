@@ -62,3 +62,21 @@ D06_GAZEBO_LIVE_RELEASE=HOLD
 AXIA_MVP_DEMO_ACCEPTED=HOLD
 CERTIFIED_ESTOP=false
 MAIN_MERGED=false
+
+## 6. C06 실 Gazebo L2 완료 — 센서 GREEN/전체 L2 FAIL (원본 추가)
+
+동일 코드 SHA d58bf03044f733c00e281ed14617892e4eae33d3, [실제 Run #44540963499](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44540963499), artifact #14539141620.
+
+- 실제 Jazzy/Harmonic/TB3 Waffle/공식 Nav2+Gazebo GUI+RViz 동시 세션, NO_GOAL.
+- Student **20.024s** qualified Raw199/Safety201: max **119.060/119.308ms**, Safety 201/201 거리 CLEAR (front1.414395m, side2.520718m). 전체 /clock 수신 RTF **0.999071**.
+- READY 후 20s 독립 Gazebo native/ROS Raw/Safety witness: first Scan300 breach **NO_ROS_TTL_VIOLATION_WITNESSED** (이 계측 범위에서만). Previous C05 동일 stamp Student delay 327.465ms 이번 Student 검사에서는 재발하지 않음.
+- 하지만 실 종료: Navigation manager ManageLifecycleNodes SHUTDOWN request_sent=true, **40.000932s SERVICE_TIMEOUT**, Nav/Loc ACK 둘 다 없음. Runner rc3.
+- 원본 native/launch.log의 Navigation Manager **Shutting down managed nodes** 메시지는 요청 이후 SIGINT 전 없음. 시그널 전달 후 preshutdown만 관찰되어 서비스 요청 처리 여부 불확실. Gazebo native server exit0.
+- 안전상 인접 후속 실패: Collision Monitor exit **-11**, Base Guard exit **1**, Supervisor exit0. 부모 GRACEFUL 마커와 별개로 네이티브 종료 FAIL. 최초 종료 실패는 Navigation Manage SHUTDOWN timeout, 후속 CM/Guard 비정상 종료의 독립 원인/스택은 미확보.
+- 결론: **Task A 센서 측 L2 단일 실행 PASS**(정확히 NO_GOAL 20s+READY witness), **동일 세션 전체 L2 FAIL**. 강사 WSL2 GPU SIGSEGV 해결 및 L3 인수 증거로 승격 불가.
+
+공식 Nav2 API는 ManageLifecycleNodes SHUTDOWN에 대한 positive ACK를 요구한다. 관련 ROS 2 middleware issue [ros2/rmw_fastrtps #842](https://github.com/ros2/rmw_fastrtps/issues/842) 및 [ros2/ros2 #1668](https://github.com/ros2/ros2/issues/1668)는 서비스 응답 소실 가능성의 조사 후보이나, 이 실행의 RMW 종류/서버 실제 수신 증거가 없으므로 인과 확정 금지. 다음 가장 작은 계측: Navigation Manager 동일 callback group의 /is_active read-only probe와 실제 RMW identifier를 최초 timeout 뒤 수집. SHUTDOWN 재요청이나 TTL 완화 금지.
+
+D06_GAZEBO_LIVE_RELEASE=HOLD
+AXIA_MVP_DEMO_ACCEPTED=HOLD
+CERTIFIED_ESTOP=false
