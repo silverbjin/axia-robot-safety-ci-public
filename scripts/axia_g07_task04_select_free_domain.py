@@ -36,7 +36,8 @@ def choose_domain(candidates, probe):
                         "candidates":reports,"goal_sent":False}
         except Exception as exc:
             reports.append({"domain_id":domain,"status":"PROBE_ERROR",
-                            "error_type":type(exc).__name__})
+                            "error_type":type(exc).__name__,
+                            "error_detail":str(exc)[:150]})
     return {"schema":"axia.g07.task04.clean_ros_domain_v1",
             "status":"NO_FREE_DOMAIN","domain_id":None,
             "candidates":reports,"goal_sent":False}
