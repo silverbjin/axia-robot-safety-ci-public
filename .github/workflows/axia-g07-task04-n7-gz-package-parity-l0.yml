@@ -1,0 +1,30 @@
+name: AXIA G07 n7 Gazebo Transport 13.6 CI Dependency Parity L0
+on:
+  push:
+    branches: ['fix/g07-task04-owner-timing-evidence-20261119']
+    paths: ['.github/workflows/axia-g07-task04-n7-gz-package-parity-l0.yml']
+permissions:
+  contents: read
+jobs:
+  apt-parity:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+    steps:
+      - name: Native Gazebo version availability - ROS not started
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          echo BEFORE:
+          dpkg-query -W -f='${Package}=${Version}\n' libgz-transport13 libgz-sim8 || true
+          apt-get update -qq
+          echo CURRENT_APT_CANDIDATES:
+          apt-cache policy libgz-transport13 libgz-transport13-dev libgz-sim8-dev
+          echo PINNED_13_6_INSTALL_DRYRUN:
+          apt-get -s install --no-install-recommends --no-upgrade \
+            libgz-transport13=13.6.0-1~noble \
+            libgz-transport13-dev=13.6.0-1~noble libgz-sim8-dev || true
+          echo LEGACY_13_6_ARCHIVE_HEAD:
+          curl -sSIL --max-time 12 'https://packages.osrfoundation.org/gazebo/ubuntu/pool/main/g/gz-transport13/libgz-transport13_13.6.0-1~noble_amd64.deb' | head -n 20 || true
+          echo 'AXIA_G07_N7_GAZEBO_APT_DIAGNOSTIC_L0_ONLY_NO_ROS'
