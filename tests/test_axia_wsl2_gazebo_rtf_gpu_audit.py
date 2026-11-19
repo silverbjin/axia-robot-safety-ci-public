@@ -127,3 +127,21 @@ def test_server_and_gui_roles_are_not_conflated():
     assert m.process_role(["gz", "sim", "-g", "-v", "4"], "gz") == "gazebo_gui"
     assert m.process_role(["rviz2", "-d", "config.rviz"], "rviz2") == "rviz2"
     assert m.process_role(["bash"], "bash") is None
+
+
+def test_owner_wsl2_copy_paste_download_command_is_syntax_checked():
+    guide = (ROOT / "docs/AXIA_WSL2_GAZEBO_RTF_GPU_AUDIT_20261119_KO.md")
+    text = guide.read_text(encoding="utf-8")
+    import re
+    block = re.search(r"(?ms)^~~~bash\n(.*?)\n~~~", text)
+    assert block is not None
+    cmd = block.group(1)
+    result = subprocess.run(["bash", "-n", "-c", cmd], text=True,
+                            capture_output=True, timeout=5)
+    assert result.returncode == 0, result.stderr
+    assert "scripts/axia_wsl2_gazebo_rtf_gpu_audit.py" in cmd
+    assert "9c03b0eb05a1f0047aebbaad53101b24750d9960" in cmd
+    assert "python3" in cmd and "--self-check" in cmd
+    assert "--seconds 20" in cmd
+    assert "python3" in text and "--compare" in text
+    assert "sudo " not in cmd and "pkill " not in cmd and "git reset" not in cmd
