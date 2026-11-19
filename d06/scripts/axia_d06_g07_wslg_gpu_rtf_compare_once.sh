@@ -102,6 +102,57 @@ if warmup:
 if report.get("scan_receipts_compact"):
     (out/"scan_receipts_compact.json").write_text(json.dumps(report["scan_receipts_compact"])+"\n",encoding="utf-8")
 owner=read("nvidia.run.log")
+# Preserve actual first failure, not a guessed root cause from the absence of ROS logs.
+state={}
+for row in read("attempt_state.txt")[:30]:
+    if "=" in row:
+        key,value=row.split("=",1)
+        state[key.strip()]=value.strip()
+summary["first_failure_stage"]=state.get("phase","UNKNOWN_ORIGINAL_STAGE")
+summary["outer_exit_code"]=(int(state["outer_rc"])
+    if state.get("outer_rc","").isdigit() else None)
+summary["owner_exit_code"]=(int(state["owner_rc"])
+    if state.get("owner_rc","").isdigit() else None)
+failure_pattern=re.compile(
+    r"(_MISSING|_BLOCKED|_FAILED|_UNAVAILABLE|_MISMATCH|_DENIED|"
+    r"_INVALID|_HOLD|_ERROR|_FAILURE|_NOT_READY|_NOT_FOUND|"
+    r"Traceback|ModuleNotFoundError|ImportError|Exception|"
+    r"Error:|fatal:|no such file|command not found|Permission denied)",re.I)
+issues=[(i,row) for i,row in enumerate(owner) if failure_pattern.search(row)]
+first_marker=("ORIGINAL_OWNER_LOG_UNAVAILABLE" if not owner else
+    issues[0][1].strip()[:300] if issues else "OWNER_FIRST_FAILURE_UNIDENTIFIED")
+summary["first_owner_failure_marker"]=first_marker
+summary["original_owner_log_present"]=bool(owner)
+summary["original_owner_log_line_count"]=len(owner)
+indices=set(range(min(4,len(owner))))
+for i,_ in issues[:12]:
+    indices.update(range(max(0,i-2),min(len(owner),i+3)))
+indices.update(range(max(0,len(owner)-16),len(owner)))
+def sanitize(v):
+    v=re.sub(r"(gh[pousr]_[A-Za-z0-9_]{12,}|github_pat_[A-Za-z0-9_]{10,})",
+             "[REDACTED_TOKEN]",v)
+    v=re.sub(r"(?i)(authorization[:=]\s*bearer\s+)\S+",
+             r"\1[REDACTED]",v)
+    return v[:360]
+detail=["FIRST_OWNER_FAILURE_MARKER="+sanitize(first_marker),
+        "FIRST_FAILURE_STAGE="+summary["first_failure_stage"],
+        "ORIGINAL_OWNER_LOG_LINE_COUNT="+str(len(owner)),
+        "OWNER_ORIGINAL_RC="+str(summary["owner_exit_code"]),
+        "NOTE: no native sensor verdict means NO_GOAL acceptance is HOLD.",
+        "Original local nvidia.run.log is NOT embedded in this compact TAR."]
+for i in sorted(indices)[:65]:
+    detail.append(str(i+1)+": "+sanitize(owner[i]))
+for file in ("nvidia.preflight.stderr.txt","bootstrap_fetch_errors.txt"):
+    rows=read(file)
+    if rows:
+        detail.append("## "+file)
+        detail.extend(sanitize(v) for v in rows[:12])
+(out/"first_preflight_or_owner_failure.txt").write_text(
+    "\n".join(detail)[:17000]+"\n",encoding="utf-8")
+if (base/"attempt_state.txt").is_file():
+    (out/"attempt_state.txt").write_text(
+        "\n".join(read("attempt_state.txt")[:30])+"\n",encoding="utf-8")
+
 # Reuse original immutable Owner TAR: only small proven-relevant native
 # clock, graph, GUI and teardown files, never a second Gazebo execution.
 import tarfile
@@ -328,6 +379,10 @@ TMP="$(mktemp -d)"
 cleanup() {
   local saved_rc=$?
   trap - EXIT
+  # Failure provenance also on early preflight/checkout/import error.
+  printf "phase=%s\nowner_rc=%s\nouter_rc=%s\nmode=%s\n" \
+    "${D06_STAGE:-UNKNOWN}" "${D06_OWNER_RC:-NOT_STARTED}" "$saved_rc" "$MODE" \
+    > "$RUN_DIR/attempt_state.txt" || true
   # Never turn a failed sensor/teardown process into a success.
   collect_and_package "$RUN_DIR" FUTURE_RUN_SAME_SESSION ||
     echo 'D06_FORENSIC_BUNDLE_FAILED_OR_INCOMPLETE_NO_GOAL' >&2
@@ -335,13 +390,16 @@ cleanup() {
   exit "$saved_rc"
 }
 trap cleanup EXIT
+D06_STAGE=GPU_PREFLIGHT
+D06_OWNER_RC=NOT_STARTED
 # Preflight *actual* GPU selection before ever launching a robot.
 for gpu in "${adapters[@]}";do
-  MESA_D3D12_DEFAULT_ADAPTER_NAME="$gpu" glxinfo -B > "$RUN_DIR/$gpu.preflight.txt"
+  MESA_D3D12_DEFAULT_ADAPTER_NAME="$gpu" glxinfo -B > "$RUN_DIR/$gpu.preflight.txt" 2> "$RUN_DIR/$gpu.preflight.stderr.txt"
   grep -Ei "OpenGL renderer string:.*D3D12.*$gpu" "$RUN_DIR/$gpu.preflight.txt" >/dev/null || {
     echo "D06_GPU_RTF_D3D12_$gpu_UNAVAILABLE_NO_GOAL" >&2;exit 3;
   }
 done
+D06_STAGE=SOURCE_FETCH
 URL="https://raw.githubusercontent.com/silverbjin/axia-robot-safety-ci-public"
 curl -fLsS --retry 3 --max-time 90 "$URL/$OWNER_SHA/d06/scripts/axia_d06_g07_wslg_sensor_no_goal_once.sh" -o "$TMP/owner.sh"
 curl -fLsS --retry 3 --max-time 90 "$URL/$ANALYZER_SHA/d06/tools/axia_d06_lidar_rtf_compare.py" -o "$TMP/compare.py"
@@ -351,14 +409,18 @@ curl -fLsS --retry 3 --max-time 90 "$URL/$ANALYZER_SHA/d06/tools/axia_d06_lidar_
 bash -n "$TMP/owner.sh"
 # New NVIDIA first; the historically unsafe Intel is the last session.
 for gpu in "${adapters[@]}";do
+  D06_STAGE=OWNER_RUNNING
   if [[ "$gpu" == NVIDIA ]];then lc=nvidia; domain=86;else lc=intel;domain=87;fi
   echo "D06_GPU_RTF_AB_CASE_START=$gpu DOMAIN=$domain GOAL_NOT_SENT"
   rc=0
   AXIA_D06_G07_RX_WITNESS="$([[ "$MODE" == --nvidia-causal ]] && echo 1 || echo 0)" MESA_D3D12_DEFAULT_ADAPTER_NAME="$gpu" ROS_DOMAIN_ID="$domain" \
     bash "$TMP/owner.sh" --run > "$RUN_DIR/$lc.run.log" 2>&1 || rc=$?
+  D06_OWNER_RC="$rc"
+  D06_STAGE=OWNER_FINISHED
   [[ "$rc" == 0 || "$rc" == 3 ]] || {
     echo "D06_GPU_RTF_INFRA_FAILURE=$gpu:$rc" >&2;exit 3;
   }
+  D06_STAGE=NATIVE_ARCHIVE_VALIDATION
   archive="$(sed -n 's/^D06_WSLG_NO_GOAL_RAW_ARCHIVE=//p' "$RUN_DIR/$lc.run.log" | tail -1)"
   [[ -n "$archive" && -s "$archive" && -s "$archive.sha256" ]] || {
     echo "D06_GPU_RTF_MISSING_SENSOR_EVIDENCE=$gpu" >&2;exit 3;
