@@ -944,7 +944,9 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 14
     container:
-      image: ros:jazzy-ros-base-noble
+      # Reuse digest already exercised by real G07 Task04 Gazebo/Nav2 L2.
+      # Avoid unbounded Ubuntu APT mirror outages in this source-only job.
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -954,10 +956,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          apt-get update -qq -o APT::Update::Error-Mode=any -o Acquire::Retries=1
-          apt-get install -y -qq --no-install-recommends \
-            git curl ca-certificates ros-jazzy-xacro \
-            ros-jazzy-nav2-minimal-tb3-sim python3
+          set +u;source /opt/ros/jazzy/setup.bash;set -u
+          for binary in git curl xacro ros2 python3; do
+            command -v "$binary" >/dev/null || {
+              echo "D08_G07_PINNED_RUNTIME_MISSING_$binary" >&2; exit 2;
+            }
+          done
+          ros2 pkg prefix nav2_minimal_tb3_sim >/dev/null || {
+            echo D08_G07_PINNED_RUNTIME_MISSING_OFFICIAL_NAV2 >&2; exit 2;
+          }
+          echo D08_G07_PINNED_G07_RUNTIME_IMAGE_JAZZY_READY
           git init -q /tmp/d08-g07-student
           git -C /tmp/d08-g07-student remote add origin https://github.com/silverbjin/axia-robot-safety-student.git
           git -C /tmp/d08-g07-student fetch -q --no-tags --depth 1 origin efff0fb8bf941de74572336d1988dfb0005e11f7
