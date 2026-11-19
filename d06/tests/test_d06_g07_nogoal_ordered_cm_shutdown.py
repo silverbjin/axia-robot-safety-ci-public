@@ -7,7 +7,10 @@ from pathlib import Path
 import unittest
 
 ROOT=Path(__file__).resolve().parents[2]
-STUDENT=ROOT/"student/block_B/day07/h01_runtime"
+# Public L0 checks out student inside repo; real container L2 checks it out
+# beside ci/. Resolve the two explicitly, never silently skip real source.
+STUDENT_ROOT=ROOT/"student" if (ROOT/"student").is_dir() else ROOT.parent/"student"
+STUDENT=STUDENT_ROOT/"block_B/day07/h01_runtime"
 SRC=STUDENT/"scripts/p2_no_goal_smoke_ci.sh"
 AUDIT=STUDENT/"tools/p2_g07_owner_shutdown_audit.py"
 
