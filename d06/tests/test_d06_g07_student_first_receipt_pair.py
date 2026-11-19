@@ -63,7 +63,7 @@ class DualTopicReadinessGate(unittest.TestCase):
             return {"recv":t,"stamp":stamp,"front":1.42,"side":2.52,"near":.05,"beams":360}
         raw=[row(200+i*.1,40+i*.1) for i in range(4)]
         raw += [row(200.74,40.4),row(200.84,40.5),row(201.00,40.6)]
-        raw += [row(201.1+i*.1,40.7+i*.1) for i in range(202)]
+        raw += [row(201.1+i*.1,40.7+i*.1) for i in range(206)]
         safety=[row(201.15+i*.1,40.8+i*.1) for i in range(205)]
         inp={"raw":raw,"safety":safety,"clock":[1,2,3],
              "odom":[{"vx":0,"wz":0} for _ in range(4)]}
