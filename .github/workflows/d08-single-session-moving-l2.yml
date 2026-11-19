@@ -2,16 +2,7 @@
 # Baseline Task03 positive Contact calibration is frozen, not repeated.
 name: AXIA D08 G07 Same-World RGBD Moving L2 (pre-YOLO phase)
 on:
-  push:
-    # Exact public development branch ensures a new fail-closed native L2
-    # job is scheduled for the *tested SHA* even while PR is Draft.
-    branches: ['feat/d08-d04-d07-single-session-20261119']
-    paths:
-      - '.github/workflows/d08-single-session-moving-l2.yml'
-      - 'd08/harness/d08_g07_same_world_adapter.py'
-      - 'd08/harness/d08_live_world.py'
-      - 'd08/scripts/d08_g07_readonly_pregoal.py'
-  workflow_dispatch:
+  workflow_call:
 permissions:
   contents: read
 concurrency:
@@ -21,7 +12,6 @@ jobs:
   build-native-witness:
     # Disposable build job may install OSRF development headers. Never upgrade
     # the G07 moving runtime's locked libgz-transport13=13.6.0-1~noble.
-    if: github.ref_name == 'feat/d08-d04-d07-single-session-20261119' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 16
     container:
@@ -58,7 +48,6 @@ jobs:
 
   one-real-gazebo-moving-gui:
     needs: build-native-witness
-    if: github.ref_name == 'feat/d08-d04-d07-single-session-20261119' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     container:
