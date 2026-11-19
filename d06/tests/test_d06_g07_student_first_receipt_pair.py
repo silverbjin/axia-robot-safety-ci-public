@@ -78,6 +78,43 @@ class DualTopicReadinessGate(unittest.TestCase):
         self.assertNotIn("RAW_RECEIPT_TTL_300MS_BLOCKED",result["reasons"])
         self.assertEqual(result["status"],"NO_GOAL_SENSOR_WINDOW_CLEAR_CANDIDATE")
 
+    def test_real_44473547759_first_safety_355ms_is_not_qualified_ready(self):
+        m=load()
+        def row(recv,stamp):
+            return {"recv":recv,"stamp":stamp,"front":1.414,"side":2.520,
+                    "near":.05,"beams":360}
+        raw=[row(538+i*.1,44.6+i*.1) for i in range(240)]
+        safety=[row(538.049124,44.700),row(538.404659,44.802)]
+        safety += [row(538.504659+i*.1,44.903+i*.1) for i in range(220)]
+        records={"raw":raw,"safety":safety,
+                 "odom":[{"vx":0,"wz":0} for _ in range(4)],
+                 "clock":[1,2,3]}
+        self.assertIn("SAFETY_RECEIPT_TTL_300MS_BLOCKED",
+                      m.assess_window(records)["reasons"])
+        window=m.select_dual_topic_window(records)
+        self.assertTrue(window["both_topics_ready"])
+        self.assertGreaterEqual(window["start_host_monotonic_sec"],538.504659)
+        self.assertGreaterEqual(window["observed_dwell_sec"],20)
+        self.assertTrue(window["pre_ready_breach_evidence_retained"])
+        self.assertAlmostEqual(window["startup_safety_first_breach"]["gap_sec"],
+                               .355535,places=5)
+        self.assertFalse(window["goal_allowed"])
+        self.assertEqual(m.assess_window(window["records"])["status"],
+                         "NO_GOAL_SENSOR_WINDOW_CLEAR_CANDIDATE")
+
+    def test_first_qualified_two_topic_receipts_then_late_safety_355ms_blocks(self):
+        m=load()
+        def row(t):return {"recv":t,"stamp":t,"front":1.414,"side":2.52,"near":.05}
+        raw=[row(100+i*.1) for i in range(240)]
+        safe=[row(100.01+i*.1) for i in range(10)]
+        safe += [row(101.265535+i*.1) for i in range(220)]
+        window=m.select_dual_topic_window({"raw":raw,"safety":safe,
+                     "odom":[{"vx":0,"wz":0} for _ in range(4)],
+                     "clock":[1,2]})
+        self.assertTrue(window["both_topics_ready"])
+        self.assertIn("SAFETY_RECEIPT_TTL_300MS_BLOCKED",
+                      m.assess_window(window["records"])["reasons"])
+
     def test_after_dual_topic_ready_any_gap_over_300ms_still_blocks(self):
         m=load()
         def row(t,stamp):
