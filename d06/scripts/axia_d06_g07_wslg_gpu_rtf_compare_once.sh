@@ -326,6 +326,19 @@ summary["native_no_goal_whole_teardown_clean"]=(
     if (out/"native_teardown_marker.txt").exists() else False
 )
 
+# r6YhIvPx actual WSLg evidence: do NOT confuse the outer collection
+# phase NATIVE_ARCHIVE_VALIDATION with the earlier safety Scan300 violation.
+# The first safety gate and the independent shutdown crash are separate.
+# A SIGSEGV exit alone is never a native GPU driver root-cause stack trace.
+summary["first_actionable_safety_gate"]=(
+    first if first!="EVIDENCE_INCOMPLETE" else "UNMEASURED"
+)
+summary["native_shutdown_first_crash"]=summary["first_native_crash_layer"]
+summary["gazebo_server_crash_stack"]=(
+    "NOT_CAPTURED" if "gazebo_server" in crashes else "NOT_APPLICABLE"
+)
+summary["causal_root_confirmed"]=False
+
 
 (out/"summary.json").write_text(
     json.dumps(summary,indent=2,sort_keys=True,ensure_ascii=False)+"\n",encoding="utf-8")
