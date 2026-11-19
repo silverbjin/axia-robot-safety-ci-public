@@ -47,6 +47,7 @@ class OwnerNativeCacheContract(unittest.TestCase):
                          text=True,capture_output=True,timeout=8)
         self.assertEqual(p.returncode,0,p.stderr)
         self.assertIn("NO_ROS_NO_GAZEBO_NO_GOAL",p.stdout)
+        self.assertIn("AXIA_G07_TASK04_NATIVE_WITNESS_CACHE_V1=",p.stdout)
 
 if __name__=="__main__":
     unittest.main()
