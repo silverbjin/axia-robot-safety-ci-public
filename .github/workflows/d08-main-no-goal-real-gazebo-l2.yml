@@ -1064,17 +1064,249 @@ jobs:
             -p test_d08_g07_cm_tf_wait_candidate.py -v
           echo D08_G07_STUDENT_SINGLE_SESSION_HOOK_L0_PASS_NOT_GAZEBO
 
+  # D08 same-world actual Moving Goal at the exact PR head SHA.
+  # Inline the already reviewed native G07 jobs: reusable workflow is not
+  # registered on the Draft PR base, resulting in an invalid workflow run.
+  # No new Gazebo, Goal, planner, safety threshold or Student answer.
+  build-native-witness:
+    # Disposable build job may install OSRF development headers. Never upgrade
+    # the G07 moving runtime's locked libgz-transport13=13.6.0-1~noble.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: 0890f9717439c839a6fcb7c3d2a931ba10cbf528
+          path: student
+          persist-credentials: false
+      - name: Build exact public native S02 witness away from moving OS
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C student rev-parse HEAD)" = 0890f9717439c839a6fcb7c3d2a931ba10cbf528
+          if ! command -v c++ >/dev/null || ! test -f /usr/include/gz/sim8/gz/sim/System.hh; then
+            apt-get update -qq -o APT::Update::Error-Mode=any -o Acquire::Retries=1
+            DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends cmake g++ libgz-sim8-dev
+          fi
+          cmake -S student/block_B/day07/h01_runtime/tools/native_s02_public -B witness_build -DCMAKE_BUILD_TYPE=Release
+          cmake --build witness_build --parallel 2
+          test -s witness_build/libaxia_g07_s02_ecm_witness.so
+          (cd witness_build && sha256sum libaxia_g07_s02_ecm_witness.so > witness.sha256)
+          echo D08_G07_NATIVE_WITNESS_DISPOSABLE_BUILD_PASS_NOT_MOVING
+      - uses: actions/upload-artifact@v4
+        with:
+          name: d08-g07-witness-${{ github.run_id }}
+          path: |
+            witness_build/libaxia_g07_s02_ecm_witness.so
+            witness_build/witness.sha256
+          retention-days: 7
+          if-no-files-found: error
 
-  g07-one-world-moving-real-l2:
-    # Existing public D08 workflow is registered and verifies L0 and the
-    # EXACT official Jazzy/G07 SDF source first. Reuse its PR event for
-    # a SINGLE native Gazebo Moving Goal instead of a second independent
-    # workflow that may not be registered on the Draft target branch.
-    needs:
-      - l0-human-proxy-red-green
-      - g07-student-single-session-hook-l0
-      - g07-official-source-sdf-adapter-l1
-    if: github.event_name == 'pull_request' && github.head_ref == 'feat/d08-d04-d07-single-session-20261119'
-    uses: ./.github/workflows/d08-single-session-moving-l2.yml
-    permissions:
-      contents: read
+  one-real-gazebo-moving-gui:
+    needs: build-native-witness
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+    env:
+      ROS_DOMAIN_ID: '88'
+      ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+      GZ_PARTITION: axia_p2_task04_moving
+      AXIA_P0_SIM_ONLY: '1'
+      AXIA_P2_G07_PHYSICAL_PREFLIGHT: '1'
+      AXIA_G07_CI_SIM_GOAL_ALLOWED: '1'
+      AXIA_G07_OWNER_STARTUP_PARITY: '1'
+      AXIA_G07_CI_OWNER_OBSERVER_PARITY: '1'
+      AXIA_G07_CI_OWNER_BAG_PARITY: '1'
+      AXIA_P2_G07_OWNER_PARITY_CHECK: '1'
+      AXIA_G07_TASK02_SIMPLE_TF_CANDIDATE: '1'
+      AXIA_G07_TASK03_FORMAL_CI: '1'
+      AXIA_G07_TASK03_ECM_WITNESS: '1'
+      AXIA_G07_TASK04_CI_GUI_MOVING: '1'
+      AXIA_D08_G07_SINGLE_SESSION: '1'
+      AXIA_G07_TASK02_SIMPLE_TF_CANDIDATE: '1'
+      AXIA_D08_G07_CM_TF_WAIT_CANDIDATE: '1'
+      AXIA_D08_G07_ADAPTER_SCRIPT: ${{ github.workspace }}/ci/d08/harness/d08_g07_same_world_adapter.py
+      AXIA_D08_G07_PERSON_MESH: ${{ github.workspace }}/public_evidence/walk.dae
+      AXIA_D08_G07_EXPECTED_PUBLIC_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      AXIA_D08_G07_EXPECTED_STUDENT_SHA: 0890f9717439c839a6fcb7c3d2a931ba10cbf528
+      PYTHONPATH: ${{ github.workspace }}/review:${{ github.workspace }}/ci
+      QT_QPA_PLATFORM: xcb
+      QT_X11_NO_MITSHM: '1'
+      LIBGL_ALWAYS_SOFTWARE: '1'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          path: ci
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: 0890f9717439c839a6fcb7c3d2a931ba10cbf528
+          path: student
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-ci-public
+          ref: 71b85c42ea474276fedd9f345521317b8c348b4e
+          path: review
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: d08-g07-witness-${{ github.run_id }}
+          path: ${{ github.workspace }}/task04-native-build
+      # This is the preexisting G07 strict CM120ms oracle, not a copy or a new validator.
+      - name: Exact public Student source and minimum L0 before physical run
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C student rev-parse HEAD)" = '0890f9717439c839a6fcb7c3d2a931ba10cbf528'
+          test "$(git -C ci rev-parse HEAD)" = "$AXIA_D08_G07_EXPECTED_PUBLIC_SHA"
+          test "$(git -C review rev-parse HEAD)" = 71b85c42ea474276fedd9f345521317b8c348b4e
+          test -s review/d06/diagnostic/g07_task02_strict_gate.py
+          echo D08_G07_PINNED_EXISTING_CM120_REVIEW_SOURCE_PRESENT
+          cd student/block_B/day07/h01_runtime
+          bash -n scripts/p2_no_goal_smoke_ci.sh
+          python3 -m py_compile tools/p2_g07_task04_moving_review.py tools/p2_g07_ci_moving_goal.py
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_owner_shell_contract.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_owner_moving_entry.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task02_simple_tf.py' -v
+          PYTHONPATH="$GITHUB_WORKSPACE/ci${PYTHONPATH:+:$PYTHONPATH}" PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_moving_review_scope.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_pre_goal_odom_readiness.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_shutdown_gui_order.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_ecm_owner_scope.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_localization_shutdown_evidence.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_native_cm_param_one_client.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_owner_gui_d3d12_isolation.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_owner_sensor_renderer_parity.py' -v
+          echo 'AXIA_G07_TASK04_PUBLIC_NATIVE_MOVING_L0_PASS=29'
+      - name: Prepare Xvfb GUI and same Gazebo8 native S02 contact witness
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          set +u;source /opt/ros/jazzy/setup.bash;set -u
+          if ! command -v Xvfb >/dev/null || ! command -v rviz2 >/dev/null || ! command -v xwininfo >/dev/null;then
+            apt-get update -qq
+            DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends --no-upgrade xvfb x11-utils ros-jazzy-rviz2
+          fi
+          # Exact G07 Owner lock: never allow OSRF development headers to
+          # silently upgrade the runtime package from 13.6 to 13.7.
+          actual="$(dpkg-query -W -f='${Version}' libgz-transport13)"
+          test "$actual" = '13.6.0-1~noble' || {
+            echo "D08_G07_MOVING_RUNTIME_TRANSPORT_VERSION_BLOCKED=$actual" >&2; exit 2;
+          }
+          echo D08_G07_MOVING_RUNTIME_GZ_TRANSPORT13_6_LOCK_PRESERVED
+          mkdir -p "$GITHUB_WORKSPACE/public_evidence"
+          curl -fLsS --retry 3 --connect-timeout 15 --max-time 100 \
+            'https://fuel.gazebosim.org/1.0/Mingfei/models/actor/tip/files/meshes/walk.dae' \
+            -o "$GITHUB_WORKSPACE/public_evidence/walk.dae"
+          echo '49af0df3a319d1cb8ca2cebf02dbd00f625e5d5bec820bc5e109925b18b65c6e  '"$GITHUB_WORKSPACE/public_evidence/walk.dae" | sha256sum -c -
+          echo D08_G07_PERSON_MESH_SHA_VERIFIED
+          test -s "$GITHUB_WORKSPACE/task04-native-build/libaxia_g07_s02_ecm_witness.so"
+          (cd "$GITHUB_WORKSPACE/task04-native-build" && sha256sum -c witness.sha256)
+          if ldd "$GITHUB_WORKSPACE/task04-native-build/libaxia_g07_s02_ecm_witness.so" | grep -Fq 'not found';then
+            echo D08_G07_WITNESS_DEPENDENCY_UNRESOLVED >&2; exit 2
+          fi
+          test "$(dpkg-query -W -f='${Version}' libgz-transport13)" = '13.6.0-1~noble'
+          sha256sum "$GITHUB_WORKSPACE/task04-native-build/libaxia_g07_s02_ecm_witness.so" > "$GITHUB_WORKSPACE/task04_witness_SHA256SUMS.txt"
+          echo 'AXIA_G07_TASK04_NATIVE_GZ8_WITNESS_BUILT_NO_GOAL'
+      - name: Exactly one native Gazebo Moving Goal and RViz/Gazebo GUI Xvfb session
+        timeout-minutes: 25
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          set +u;source /opt/ros/jazzy/setup.bash;set -u
+          export DISPLAY=:97 GALLIUM_DRIVER=llvmpipe
+          export PYTHONPATH="$GITHUB_WORKSPACE/ci${PYTHONPATH:+:$PYTHONPATH}"
+          export GZ_PARTITION="axia_p2_task04_moving_$GITHUB_RUN_ID"
+          export GZ_SIM_SYSTEM_PLUGIN_PATH="$GITHUB_WORKSPACE/task04-native-build${GZ_SIM_SYSTEM_PLUGIN_PATH:+:$GZ_SIM_SYSTEM_PLUGIN_PATH}"
+          export AXIA_G07_TASK03_WITNESS_SHA256="$(sha256sum "$GITHUB_WORKSPACE/task04-native-build/libaxia_g07_s02_ecm_witness.so" | cut -d' ' -f1)"
+          export AXIA_P2_SMOKE_RESULTS="$GITHUB_WORKSPACE/native"
+          export AXIA_G07_TASK03_WITNESS_REPORT="$AXIA_P2_SMOKE_RESULTS/s02_ecm_witness.json"
+          mkdir -p "$GITHUB_WORKSPACE/public_evidence"
+          Xvfb :97 -screen 0 1600x900x24 -nolisten tcp > "$GITHUB_WORKSPACE/public_evidence/xvfb.log" 2>&1 &
+          xvfb_pid=$!
+          runner_pid=''
+          cleanup() {
+            trap - EXIT
+            set +e
+            if [[ -n "$runner_pid" ]];then
+              kill -INT -- "-$runner_pid" 2>/dev/null || true
+              sleep 2
+              kill -TERM -- "-$runner_pid" 2>/dev/null || true
+              wait "$runner_pid" 2>/dev/null || true
+            fi
+            kill -TERM "$xvfb_pid" 2>/dev/null || true
+            wait "$xvfb_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+          sleep 2
+          kill -0 "$xvfb_pid"
+          cd "$GITHUB_WORKSPACE/student/block_B/day07/h01_runtime"
+          setsid env -u LD_PRELOAD -u AXIA_G07_TASK01_TF_AVAIL_PROBE timeout --signal=TERM --kill-after=10s 1000s             bash scripts/p2_no_goal_smoke_ci.sh > "$GITHUB_WORKSPACE/public_evidence/moving_stdout.log" 2>&1 &
+          runner_pid=$!
+          rviz_seen=0;gazebo_seen=0
+          for ((i=0;i<780;i++));do
+            kill -0 "$runner_pid" 2>/dev/null || break
+            windows="$(timeout 4s xwininfo -root -tree 2>/dev/null || true)"
+            grep -Eiq 'RViz' <<< "$windows" && rviz_seen=1
+            grep -Eiq 'Gazebo' <<< "$windows" && gazebo_seen=1
+            sleep 1
+          done
+          set +e;wait "$runner_pid";runner_rc=$?;set -e
+          runner_pid=''
+          echo "AXIA_G07_TASK04_NATIVE_ONE_MOVING_RUNNER_RC=$runner_rc RVIZ_X11=$rviz_seen GAZEBO_X11=$gazebo_seen"
+          if [[ "$runner_rc" -eq 0 ]];then
+            test -s "$GITHUB_WORKSPACE/native/d08_unified/manifest.json"
+            grep -Fq D08_G07_SINGLE_WORLD_SOURCE_OVERLAY_READY_NO_GOAL "$GITHUB_WORKSPACE/public_evidence/moving_stdout.log"
+            python3 - "$GITHUB_WORKSPACE/native/d08_unified/manifest.json" <<'PY'
+          import json,sys
+          m=json.load(open(sys.argv[1]))
+          assert m["upstream_g07_lidar_10hz_preserved"] is True
+          assert m["visual_person_same_as_physical_obstacle"] is True
+          assert m["single_world_runtime_claimed"] is False
+          assert m["moving_goal_verified"] is False
+          print("D08_G07_SOURCE_OVERLAY_IN_REAL_MOVING_SESSION_PROVEN_NO_YOLO")
+          PY
+          fi
+          if [[ "$runner_rc" -ne 0 ]];then
+            # Real first failure, not final rclpy cleanup exception.
+            # Actual first Guard/Observer CM age is read-only and allowlisted;
+            # never upload raw bag, full logs, or make a safety PASS.
+            python3 "$GITHUB_WORKSPACE/ci/d08/scripts/d08_g07_first_guard_ttl_review.py" \
+              --in-log "$GITHUB_WORKSPACE/native/g07_ci_moving.log" \
+              --out "$GITHUB_WORKSPACE/public_evidence/first_guard_ttl_boundary.json" || true
+            test -s "$GITHUB_WORKSPACE/public_evidence/first_guard_ttl_boundary.json"
+            sha256sum "$GITHUB_WORKSPACE/public_evidence/first_guard_ttl_boundary.json" \
+              > "$GITHUB_WORKSPACE/public_evidence/first_guard_ttl_boundary.sha256"
+            for f in "$GITHUB_WORKSPACE/native/staged_startup.log"                      "$GITHUB_WORKSPACE/native/g07_ci_moving.log"                      "$GITHUB_WORKSPACE/native/g07_ordered_shutdown.log"                      "$GITHUB_WORKSPACE/native/launch.log"                      "$GITHUB_WORKSPACE/public_evidence/moving_stdout.log";do
+              [[ -f "$f" ]] || continue
+              echo "=== FIRST NATIVE MOVING EVIDENCE === ${f##*/}"
+              tail -n 90 "$f"
+            done
+            exit 3
+          fi
+          windows_count=$((rviz_seen+gazebo_seen))
+          python3 tools/p2_g07_task04_moving_review.py             --motion-root "$GITHUB_WORKSPACE/native"             --witness "$GITHUB_WORKSPACE/native/s02_ecm_witness.json"             --source-sha '0890f9717439c839a6fcb7c3d2a931ba10cbf528'             --gui-windows "$windows_count"             --output "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"
+          sha256sum "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"             > "$GITHUB_WORKSPACE/public_evidence/task04_moving_verdict.sha256"
+          echo 'D08_G07_REAL_MOVING_RGBD_WORLD_L2_PASS_YOLO_D05_NOT_RUN'
+          echo 'AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false'
+      - name: Upload allowlisted numeric verdict only no original raw bag
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: d08-g07-same-world-moving-numeric-${{ github.run_id }}
+          path: |
+            public_evidence/task04_moving_l2_verdict.json
+            public_evidence/task04_moving_verdict.sha256
+            task04_witness_SHA256SUMS.txt
+            public_evidence/first_guard_ttl_boundary.json
+            public_evidence/first_guard_ttl_boundary.sha256
+            native/d08_unified/manifest.json
+            native/d08_overlay.log
+          retention-days: 14
+          if-no-files-found: warn
