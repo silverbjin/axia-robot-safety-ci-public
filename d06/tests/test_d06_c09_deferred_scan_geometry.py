@@ -8,11 +8,13 @@ from pathlib import Path
 import importlib.util
 import math
 import unittest
+import sys
 ROOT=Path(__file__).resolve().parents[2]
 STUDENT=ROOT/"student" if (ROOT/"student").is_dir() else ROOT.parent/"student"
 SRC=STUDENT/"block_B/day07/h01_runtime/tools/g07_wslg_no_goal_sensor_probe.py"
 
 def load():
+    sys.path.insert(0,str(SRC.parent))
     spec=importlib.util.spec_from_file_location("c09_deferred_geometry",SRC)
     m=importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)
