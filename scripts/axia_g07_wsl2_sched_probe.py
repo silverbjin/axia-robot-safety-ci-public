@@ -239,6 +239,22 @@ def evaluate(rows,hosts,root,result,violation):
     matching=([] if target_t is None else
         [r for r in rows if abs(r["mono_ns"]/1e9-target_t)<=.6])
     near_max=max((r.get("gap_ms",0) for r in matching),default=None)
+    # Same wall-time alignment as the original ROS bag, not a run-wide
+    # maximum that could occur minutes away from the actual Scan violation.
+    event_epoch_ms=None
+    if target_t is not None and rows:
+        anchor=min(rows,key=lambda r:abs(r["mono_ns"]/1e9-target_t))
+        if abs(anchor["mono_ns"]/1e9-target_t)<=2:
+            event_epoch_ms=(anchor["realtime_ns"]/1e6+
+                            1000*(target_t-anchor["mono_ns"]/1e9))
+    nearby_hosts=([h for h in hosts
+                   if isinstance(h.get("epoch_ms"),(int,float))
+                   and abs(h["epoch_ms"]-event_epoch_ms)<=600]
+                  if event_epoch_ms is not None else [])
+    nearby_host_gaps=[h["gap_ms"] for h in nearby_hosts
+                      if isinstance(h.get("gap_ms"),(int,float))]
+    nearby_cpu=[h["host_cpu_pct"] for h in nearby_hosts
+                if isinstance(h.get("host_cpu_pct"),(int,float))]
     sampled=[r for r in rows if "steal_jiffies" in r and r["steal_jiffies"] is not None]
     steal=(sampled[-1]["steal_jiffies"]-sampled[0]["steal_jiffies"]
            if len(sampled)>1 else None)
@@ -257,6 +273,8 @@ def evaluate(rows,hosts,root,result,violation):
       "steal_jiffies_delta":steal,
       "steal_zero_does_not_exclude_host_pause":True,
       "cpu_pressure_some_us_delta":psi_delta,
+      "windows_host_max_gap_near_violation_ms":max(nearby_host_gaps,default=None),
+      "windows_host_cpu_peak_pct_near_violation":max(nearby_cpu,default=None),
       "windows_host_sample_count":len(hosts),
       "windows_host_max_sample_gap_ms":max(host_wakes,default=None),
       "windows_host_monitor_available":len(hosts)>3,
