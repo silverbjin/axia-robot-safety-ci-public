@@ -206,6 +206,69 @@ class ForensicOneShot(unittest.TestCase):
             self.assertFalse(v["native_no_goal_whole_teardown_clean"])
             self.assertEqual(v["first_native_crash_layer"],"GAZEBO_SERVER")
 
+    def test_fr1_fresh_scan_clear_but_native_witness_134_gazebo_minus11_stays_hold(self):
+        # Exact, distinct facts from actual Owner fr1FN4YJ archive. No ROS
+        # or Gazebo is started in this L0 replay.
+        with tempfile.TemporaryDirectory() as tmp:
+            home=Path(tmp)
+            d=fake_record(home)
+            v=json.loads((d/"nvidia.g07_wslg_sensor_truth.json").read_text())
+            v["status"]="NO_GOAL_SENSOR_WINDOW_CLEAR_CANDIDATE"
+            v["reasons"]=[]
+            v["dual_topic_actual_wall_observation_sec"]=20.003
+            v["metrics"]["raw"].update({"count":171,"max_receipt_gap_sec":.255948,
+                 "first_receipt_ttl_breach_at_index":None})
+            v["metrics"]["safety"].update({"count":171,"clear_count":171,
+                 "max_receipt_gap_sec":.256287,
+                 "first_receipt_ttl_breach_at_index":None})
+            (d/"nvidia.g07_wslg_sensor_truth.json").write_text(json.dumps(v))
+            (d/"nvidia.launch.log").write_text(
+                "[INFO] [collision_monitor-16]: process has finished cleanly [pid 1650]\n"
+                "[ERROR] [p2_base_guard_node-20]: process has died [pid 1656, exit code 1]\n"
+                "[ERROR] [p2_supervisor_node-19]: process has died [pid 1655, exit code 1]\n"
+                "[ERROR] [gz-21]: process has died [pid 1682, exit code -11]\n"
+            )
+            old=(d/"nvidia.run.log").read_text()
+            (d/"nvidia.run.log").write_text(
+                "D06_G07_WSLG_WITNESS_NONCLEAN_HANDOFF_HOLD\n"
+                "D06_G07_RX_WITNESS_EXIT ros=0 native=134\n"
+                +old)
+            source=d.parent/"d06-native-original.tar.gz"
+            values={}
+            with tarfile.open(source,"r:gz") as src:
+                for entry in src:
+                    if entry.isfile():
+                        values[entry.name]=src.extractfile(entry).read()
+            values.pop("d06-test/native/g07_witness_stopped.ack",None)
+            values["d06-test/native/d06_gz_scan_rx.log"]=(
+                b"terminate called without an active exception\n")
+            with tarfile.open(source,"w:gz") as target:
+                for name,content in values.items():
+                    item=tarfile.TarInfo(name)
+                    item.size=len(content)
+                    target.addfile(item,io.BytesIO(content))
+            import hashlib
+            digest=hashlib.sha256(source.read_bytes()).hexdigest()
+            Path(str(source)+".sha256").write_text(digest+"  "+str(source)+"\n")
+            run=subprocess.run(["bash",str(SCRIPT),"--analyze-existing"],
+                env={"PATH":os.environ["PATH"],"HOME":str(home),
+                     "GITHUB_ACTIONS":"true"},text=True,capture_output=True,timeout=15)
+            self.assertEqual(run.returncode,0,(run.stdout,run.stderr))
+            target=d.parent/("d06-forensic-"+d.name+".tar.gz")
+            with tarfile.open(target,"r:gz") as tar:
+                summary=json.load(tar.extractfile("forensic/summary.json"))
+            self.assertEqual(summary["sensor_status"],
+                             "NO_GOAL_SENSOR_WINDOW_CLEAR_CANDIDATE")
+            self.assertEqual(summary["native_ros_witness_exit_code"],0)
+            self.assertEqual(summary["native_gz_witness_exit_code"],134)
+            self.assertEqual(summary["native_gz_witness_first_error"],
+                             "terminate called without an active exception")
+            self.assertFalse(summary["native_readonly_witness_handoff_ack"])
+            self.assertEqual(summary["native_no_goal_cm_exit_code"],0)
+            self.assertEqual(summary["native_no_goal_gazebo_server_exit_code"],-11)
+            self.assertFalse(summary["native_no_goal_whole_teardown_clean"])
+            self.assertFalse(summary["no_goal_acceptance"])
+
     def test_tcljt2qc_early_failure_preserves_first_owner_log_line_and_stage(self):
         # TCljt2Qc original user archive was 1.3KB and had only summary +
         # original nvidia.run.log SHA256. The actual log bytes were NOT
