@@ -11,6 +11,9 @@ import unittest
 ROOT=pathlib.Path(__file__).resolve().parents[2]
 SRC_ROOT=(ROOT/"student" if (ROOT/"student").is_dir() else ROOT.parent/"student")
 SRC=SRC_ROOT/"block_B/day07/h01_runtime/tools/g07_wslg_no_goal_sensor_probe.py"
+# Match Student's own test import layout (pure assess_window; no ROS started).
+import sys
+sys.path.insert(0,str(SRC.parent))
 
 def load():
     spec=importlib.util.spec_from_file_location("g07_student_first_pair",SRC)
