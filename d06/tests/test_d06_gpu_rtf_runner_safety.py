@@ -42,13 +42,13 @@ class WslgABOneShotSafety(unittest.TestCase):
 
     def test_pin_source_commit_and_git_blobs(self):
         s=SCRIPT.read_text()
-        self.assertIn("8e19742fd7bd80db73a37dc7b1d798768dc33e2a",s)
-        self.assertIn("4fa705782c5fd29e310825c85db0f3d717172b88",s)
+        self.assertIn("64de9dc02e9073dc1c2898b14c973e38c664ba6e",s)
+        self.assertIn("c0c70933a8fea4ac5c5cd885ac57c6b467007878",s)
         self.assertIn("171aad7ce8abe97c93a42f19787042619c06b65e",s)
         self.assertIn('git hash-object "$TMP/owner.sh"',s)
         self.assertIn('git hash-object "$TMP/compare.py"',s)
         o=OWNER.read_text()
-        self.assertIn("8e19742fd7bd80db73a37dc7b1d798768dc33e2a",o)
+        self.assertIn("64de9dc02e9073dc1c2898b14c973e38c664ba6e",o)
         self.assertIn("cb38a2b288b9bf9db80def7b1fe37d975db2cdfa",o)
 
     def test_fr1_native_gz_witness_pinned_unsubscribe_and_proven_before_nav2(self):
@@ -58,6 +58,9 @@ class WslgABOneShotSafety(unittest.TestCase):
         self.assertIn("d06/tools/d06_gz_native_scan_probe_safe.py",o)
         self.assertIn("D06_GZ_NATIVE_SUBSCRIPTIONS_RELEASED",o)
         self.assertIn("D06_GZ_NATIVE_RX_UNSUBSCRIBE_BEFORE_NAV2_SHUTDOWN_PASS",o)
+        self.assertIn("export AXIA_G07_NO_GOAL_GZ_STOP_BEFORE_SIGINT=1",o)
+        self.assertIn("64de9dc02e9073dc1c2898b14c973e38c664ba6e",o)
+        self.assertIn("ca4af428c59716b46b9bc6bde6f25ea47d6d4e68",o)
         self.assertNotIn("D08_RECEIVER_BLOB",o)
         probe=ROOT/"d06/tools/d06_gz_native_scan_probe_safe.py"
         check=subprocess.run(["git","hash-object",str(probe)],capture_output=True,text=True,check=True)
@@ -71,7 +74,7 @@ class WslgABOneShotSafety(unittest.TestCase):
         another physical WSL2 launch.
         """
         text=OWNER.read_text()
-        expected_ref="8e19742fd7bd80db73a37dc7b1d798768dc33e2a"
+        expected_ref="64de9dc02e9073dc1c2898b14c973e38c664ba6e"
         self.assertIn("readonly STUDENT_SHA='"+expected_ref+"'",text)
         student=ROOT/"student"
         self.assertTrue(student.is_dir(),
