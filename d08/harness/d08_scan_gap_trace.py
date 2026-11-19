@@ -585,3 +585,62 @@ def classify_executor_stack_frames(frames):
     else:
         verdict["candidate"]="UNKNOWN_EXECUTOR_PYTHON_STACK"
     return verdict
+
+
+def diagnose_spin_once_during_scan_gap(scan_pair, events):
+    """Read-only rclpy spin_once wall-time vs first Scan receive gap.
+
+    A slow spin_once includes wait, callback, Python scheduling and OS
+    descheduling; this function does NOT identify which subcomponent is
+    causally responsible. Only the same-host time interval is compared.
+    """
+    output={
+        "bracketed":False,
+        "candidate":"INSUFFICIENT_SPIN_TRACE",
+        "root_cause":"UNDETERMINED",
+        "max_spin_wall_sec":{"observer":None,"same_process_ros":None},
+        "max_spin_thread_cpu_sec":{"observer":None,"same_process_ros":None},
+        "spin_calls_in_gap":{"observer":0,"same_process_ros":0},
+        "configured_wait_sec":0.05,
+    }
+    if not isinstance(scan_pair,dict) or not isinstance(events,(list,tuple)):
+        return output
+    import math
+    try:
+        left=float(scan_pair["previous_host_monotonic_sec"])
+        right=float(scan_pair["current_host_monotonic_sec"])
+    except (TypeError,KeyError,ValueError,OverflowError):
+        return output
+    if not all(math.isfinite(x) for x in (left,right)) or right<=left:
+        return output
+    for which in ("observer","same_process_ros"):
+        valid=[]
+        for event in events:
+            if not isinstance(event,dict) or event.get("executor")!=which:
+                continue
+            try:
+                a=float(event["start_sec"])
+                b=float(event["end_sec"])
+                c=float(event["thread_cpu_sec"])
+            except (TypeError,KeyError,ValueError,OverflowError):
+                continue
+            if not all(math.isfinite(x) for x in (a,b,c)) or b<a or c<0:
+                continue
+            if min(right,b)-max(left,a)>0:
+                valid.append((b-a,c))
+        if valid:
+            output["max_spin_wall_sec"][which]=round(max(v[0] for v in valid),6)
+            output["max_spin_thread_cpu_sec"][which]=round(max(v[1] for v in valid),6)
+            output["spin_calls_in_gap"][which]=len(valid)
+    a=output["max_spin_wall_sec"]["observer"]
+    b=output["max_spin_wall_sec"]["same_process_ros"]
+    if a is None or b is None:
+        return output
+    output["bracketed"]=True
+    if a>.12 and b>.12:
+        output["candidate"]="BOTH_EXECUTORS_SPIN_ONCE_OVERRUN"
+    elif a>.12 or b>.12:
+        output["candidate"]="ONE_EXECUTOR_SPIN_ONCE_OVERRUN"
+    else:
+        output["candidate"]="SPIN_PROGRESS_BUT_SCAN_CALLBACK_DELAYED"
+    return output
