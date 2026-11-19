@@ -24,7 +24,7 @@ start)
   # and produced 546,133,504 bytes, while rcl_take has no subscription
   # handle; instead use RMW source/take handles and publish initialization.
   if ! timeout 30s ros2 trace start "$SESSION" --ust \
-      ros2:rcl_publisher_init ros2:rcl_subscription_init \
+      ros2:rcl_node_init ros2:rcl_publisher_init ros2:rcl_subscription_init \
       ros2:rcl_publish ros2:rmw_publish ros2:rmw_take \
       > "$LOG" 2>&1; then
     echo D08_BRIDGE_RCL_TRACE_START_BLOCKED
