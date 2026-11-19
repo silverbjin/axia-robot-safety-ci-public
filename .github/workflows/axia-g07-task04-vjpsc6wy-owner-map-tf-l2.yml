@@ -31,6 +31,9 @@ jobs:
       AXIA_G07_TASK03_FORMAL_CI: '1'
       AXIA_G07_TASK03_ECM_WITNESS: '1'
       AXIA_G07_TASK04_CI_GUI_MOVING: '1'
+      # Reproduce missing late AMCL pose from vJpsc6Wy. This affects only
+      # the extra read-only CI Observer, never the actual AMCL/Nav2 or Owner.
+      AXIA_G07_CI_FORCE_MAP_TF_FALLBACK: '1'
       QT_QPA_PLATFORM: xcb
       QT_X11_NO_MITSHM: '1'
       LIBGL_ALWAYS_SOFTWARE: '1'
@@ -42,7 +45,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 7a74b0072c846161a4f101f1aaf2b2839150b3c6
+          ref: 43a26a2f870c0fd99d66d06887cdf4e706b637b7
           path: student
           persist-credentials: false
       # Exact previously verified G07 reviewer owns the d06.diagnostic
@@ -57,7 +60,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C student rev-parse HEAD)" = '7a74b0072c846161a4f101f1aaf2b2839150b3c6'
+          test "$(git -C student rev-parse HEAD)" = '43a26a2f870c0fd99d66d06887cdf4e706b637b7'
           test "$(git -C ci rev-parse HEAD)" = "$GITHUB_SHA"
           cd student/block_B/day07/h01_runtime
           test "$(git -C "$GITHUB_WORKSPACE/review" rev-parse HEAD)" = 'd60beed5e18d8104b254f17476d47f1d1917a7eb'
@@ -170,7 +173,7 @@ jobs:
                   --motion "$GITHUB_WORKSPACE/native/g07_ci_moving/ci_moving_goal_result.json" \
                   --shutdown "$GITHUB_WORKSPACE/native/g07_ordered_shutdown.json" \
                   --gui-windows 2 \
-                  --source-sha '7a74b0072c846161a4f101f1aaf2b2839150b3c6' \
+                  --source-sha '43a26a2f870c0fd99d66d06887cdf4e706b637b7' \
                   --output "$GITHUB_WORKSPACE/public_evidence/task04_mvp_visual_l2_verdict.json"; then
               sha256sum "$GITHUB_WORKSPACE/public_evidence/task04_mvp_visual_l2_verdict.json" \
                 > "$GITHUB_WORKSPACE/public_evidence/task04_mvp_visual_l2_verdict.sha256"
@@ -185,8 +188,18 @@ jobs:
             done
             exit 3
           fi
+          # This is a REAL-GAZEBO /tf fallback regression, not merely a
+          # successful run which happened to receive a late /amcl_pose.
+          grep -Fq 'G07_CI_REAL_MAP_TF_FALLBACK_REQUIRED' "$GITHUB_WORKSPACE/native/g07_ci_moving.log"
+          grep -Fq 'G07_LIVE_MAP_TF_VERIFIED_BEFORE_GOAL' "$GITHUB_WORKSPACE/native/g07_ci_moving.log"
+          python3 - "$GITHUB_WORKSPACE/native/g07_ci_moving/g07_frame_alignment.json" <<'PY_REAL_TF'
+          import json,sys
+          anchor=json.load(open(sys.argv[1]))
+          assert anchor["map_pose_source"]=="tf_map_base_link",anchor
+          print('AXIA_G07_REAL_MAP_TF_OWNER_FIELD_REGRESSION_PASS map_pose_source=tf_map_base_link')
+          PY_REAL_TF
           windows_count=$((rviz_seen+gazebo_seen))
-          python3 tools/p2_g07_task04_moving_review.py             --motion-root "$GITHUB_WORKSPACE/native"             --witness "$GITHUB_WORKSPACE/native/s02_ecm_witness.json"             --source-sha '7a74b0072c846161a4f101f1aaf2b2839150b3c6'             --gui-windows "$windows_count"             --output "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"
+          python3 tools/p2_g07_task04_moving_review.py             --motion-root "$GITHUB_WORKSPACE/native"             --witness "$GITHUB_WORKSPACE/native/s02_ecm_witness.json"             --source-sha '43a26a2f870c0fd99d66d06887cdf4e706b637b7'             --gui-windows "$windows_count"             --output "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"
           sha256sum "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"             > "$GITHUB_WORKSPACE/public_evidence/task04_moving_verdict.sha256"
           echo 'AXIA_G07_TASK04_NATIVE_MOVING_GUI_XVFB_L2_PASS_OWNER_WSL2_NOT_RUN'
           echo 'AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false'
