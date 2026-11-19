@@ -22,7 +22,7 @@ class ScopedCiGuiPriority(unittest.TestCase):
         self.assertIn('setsid gz sim -g',src)
         self.assertIn('setsid rviz2 -d',src)
         gui_only=src[src.index('  # CI Xvfb-only single hypothesis:'):
-                     src.index('   sleep 3',src.index('  # CI Xvfb-only single hypothesis:'))]
+                     src.index('\n  sleep 3',src.index('  # CI Xvfb-only single hypothesis:'))]
         # Historical Task03 code elsewhere contains taskset; don't reject
         # unrelated, already-proven paths while auditing CI viewer branch.
         self.assertNotIn('renice -n -',gui_only)
