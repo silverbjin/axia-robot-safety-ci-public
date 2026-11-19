@@ -1,0 +1,32 @@
+name: AXIA G07 Task04 demo baseline integrity L0
+on:
+  push:
+    branches:
+      - release/g07-task04-demo-baseline-20261119
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'scripts/axia_g07_task04_owner_moving_l3_once.sh'
+      - 'tests/test_g07_task04_owner_moving_bootstrap.py'
+      - '.github/workflows/axia-g07-task04-demo-baseline-l0-20261119.yml'
+      - 'docs/operations/AXIA_G07_TASK04_DEMO_BASELINE_20261119_KO.md'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  owner-demo-baseline-l0:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Immutable Owner pin, documented scope, and Bash static check
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          bash -n scripts/axia_g07_task04_owner_moving_l3_once.sh
+          grep -Fq 'AXIA-G07-T04-DEMO-BASELINE-20261119-CZObXAdP' docs/operations/AXIA_G07_TASK04_DEMO_BASELINE_20261119_KO.md
+          grep -Fq 'FORMAL_SAFETY_TIMING_ACCEPTANCE=NOT_CLAIMED' docs/operations/AXIA_G07_TASK04_DEMO_BASELINE_20261119_KO.md
+          python3 -m unittest discover -s tests -p 'test_g07_task04_owner_moving_bootstrap.py' -v
+          echo 'AXIA_G07_TASK04_DEMO_BASELINE_L0_PASS=OWNER_PIN_9_CONTRACTS'
+          echo 'OWNER_WSL2_EVIDENCE=EXTERNAL_PRESERVED CERTIFIED_ESTOP=false'
