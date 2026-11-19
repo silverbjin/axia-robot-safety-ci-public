@@ -37,6 +37,7 @@ jobs:
       AXIA_D08_G07_PERSON_MESH: ${{ github.workspace }}/public_evidence/walk.dae
       AXIA_D08_G07_EXPECTED_PUBLIC_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       AXIA_D08_G07_EXPECTED_STUDENT_SHA: 8f5e262151f570e02d23646487504dafaa169b63
+      PYTHONPATH: ${{ github.workspace }}/review:${{ github.workspace }}/ci
       QT_QPA_PLATFORM: xcb
       QT_X11_NO_MITSHM: '1'
       LIBGL_ALWAYS_SOFTWARE: '1'
@@ -52,12 +53,22 @@ jobs:
           ref: 8f5e262151f570e02d23646487504dafaa169b63
           path: student
           persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-ci-public
+          ref: 71b85c42ea474276fedd9f345521317b8c348b4e
+          path: review
+          persist-credentials: false
+      # This is the preexisting G07 strict CM120ms oracle, not a copy or a new validator.
       - name: Exact public Student source and minimum L0 before physical run
         shell: bash
         run: |
           set -Eeuo pipefail
           test "$(git -C student rev-parse HEAD)" = '8f5e262151f570e02d23646487504dafaa169b63'
           test "$(git -C ci rev-parse HEAD)" = "$AXIA_D08_G07_EXPECTED_PUBLIC_SHA"
+          test "$(git -C review rev-parse HEAD)" = 71b85c42ea474276fedd9f345521317b8c348b4e
+          test -s review/d06/diagnostic/g07_task02_strict_gate.py
+          echo D08_G07_PINNED_EXISTING_CM120_REVIEW_SOURCE_PRESENT
           cd student/block_B/day07/h01_runtime
           bash -n scripts/p2_no_goal_smoke_ci.sh
           python3 -m py_compile tools/p2_g07_task04_moving_review.py tools/p2_g07_ci_moving_goal.py
