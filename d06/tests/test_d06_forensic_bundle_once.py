@@ -135,9 +135,30 @@ class ForensicOneShot(unittest.TestCase):
                 self.assertEqual(summary["native_no_goal_navigation_ack"], True)
                 self.assertEqual(summary["native_no_goal_localization_ack"], True)
                 self.assertEqual(summary["native_no_goal_cm_exit_code"], 0)
-                self.assertEqual(summary["native_no_goal_cm_clean_candidate"], True)
+                self.assertEqual(summary["native_no_goal_cm_clean_candidate"], False)  # launch exit -11 overrides self-reported audit
                 self.assertFalse(any("native_full" in m or ".sdf.xacro" in m
                                      for m in members))
+
+    def test_actual_cm_clean_launch_can_be_scoped_candidate_even_if_scan_ttl_fails(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home=Path(tmp)
+            d=fake_record(home)
+            (d / "nvidia.launch.log").write_text(
+                "[INFO] [collision_monitor-16]: process has finished cleanly [pid 1760]\\n"
+                "[INFO] [gz-21]: process has finished cleanly [pid 1798]\\n")
+            run=subprocess.run(["bash",str(SCRIPT),"--analyze-existing"],
+                env={"PATH":os.environ["PATH"],"HOME":str(home),"GITHUB_ACTIONS":"true"},
+                capture_output=True,text=True,timeout=15)
+            self.assertEqual(run.returncode,0,(run.stdout,run.stderr))
+            archive=d.parent/("d06-forensic-"+d.name+".tar.gz")
+            with tarfile.open(archive,"r:gz") as tar:
+                v=json.load(tar.extractfile("forensic/summary.json"))
+            self.assertTrue(v["native_no_goal_navigation_ack"])
+            self.assertTrue(v["native_no_goal_localization_ack"])
+            self.assertEqual(v["native_no_goal_cm_exit_code"],0)
+            self.assertTrue(v["native_no_goal_cm_clean_candidate"])
+            self.assertIn("SAFETY_RECEIPT_TTL_300MS_BLOCKED",v["all_sensor_reasons"])
+            self.assertFalse(v["no_goal_acceptance"])
 
     def test_absent_real_evidence_fails_without_simulation(self):
         with tempfile.TemporaryDirectory() as tmp:
