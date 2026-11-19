@@ -43,8 +43,8 @@ class C09DeferredScanGeometry(unittest.TestCase):
         self.assertNotIn('enumerate(msg.ranges)',hot)
         self.assertIn('enrich_scan_geometry(records)',s)
         self.assertLess(s.index('scan_stopped=scan_executor.shutdown'),
-                        s.index('enrich_scan_geometry(records)'))
-        self.assertLess(s.index('enrich_scan_geometry(records)'),
+                        s.index('        enrich_scan_geometry(records)'))
+        self.assertLess(s.index('        enrich_scan_geometry(records)'),
                         s.index('stable=select_dual_topic_window(records)'))
 
     def test_deferred_geometry_same_safety_clear_and_preserves_receipt(self):
