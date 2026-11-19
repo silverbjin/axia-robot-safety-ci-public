@@ -62,8 +62,8 @@ Student `block_B/day07/h01_runtime/ros2_ws/src/axia_safety_bringup/launch/axia_t
 ## 6. 실제 Gazebo L2 및 출고
 
 - 최종 Student 소스: `bcebc5d1f3a7d00860a541507e263dd05b27a9a3`.
-- 2-Job 공개 실제 L2 [#44440932197](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44440932197) — **결과는 GitHub 완료 후 확인하여 이 섹션을 확정해야 한다.** 원래 `libgz-transport13=13.6.0` 런타임은 그대로, 별도 Native Witness 빌드를 재사용한다.
-- 기존 Owner SHA `4cd368...`는 **새 launch 수정 전 배포본**이므로 신규 WSL2에서 사용하면 안 된다. 새 L2 실제 21/21 + 단일 Goal/Contact0/GUI2 + Bootstrap L0가 모두 성공한 뒤에만 새 Owner SHA 고정.
+- 첫 2-Job 실제 L2 [#44440932197](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44440932197)는 **주행·감속·STOP·정확한 Goal UUID 취소까지 성공**했지만 Localization Shutdown service 30.001s TIMEOUT으로 **FAIL**했다. 진단 포함 두 번째 [#44442176276](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44442176276)도 Localization 30.003s TIMEOUT. 원래 `libgz-transport13=13.6.0` 런타임은 그대로, 별도 Native Witness 빌드 재사용.
+- 이전 Owner SHA `4cd368...`는 **새 Xacro 순서 수정 전 배포본**이며 재사용 금지. 후속 Localization 종료 ACK 이슈의 별도 RED→GREEN과 최종 실제 21/21 L2 후 원샷 SHA `1816fbbbfdb972e52c5168ade26c768167998556` 확정.
 - 이 보고서의 구현/정적 테스트 사실이 `OWNER_WSL2_L3=PASS`를 의미하지 않는다. 실물 인증 E-Stop 아님.
 
 ## 7. 인수 경계
@@ -71,7 +71,8 @@ Student `block_B/day07/h01_runtime/ros2_ws/src/axia_safety_bringup/launch/axia_t
 ```ini
 PUBLIC_CI_L0_WORLD_XACRO_ORDER=PASS
 PUBLIC_CI_L1_ROS_JAZZY_LAUNCH_EVENT=PASS_NO_GAZEBO
-PUBLIC_CI_L2_NEW_STUDENT_SHA=CHECK_RUN_44440932197
+PUBLIC_CI_L2_XACRO_ONLY=BLOCKED_LOCALIZATION_ACK_30S
+PUBLIC_CI_L2_XACRO_PLUS_ACK_CLIENT=PASS_21_OF_21_RUN_44449459417
 OWNER_WSL2_NEW_L3=NOT_RUN
 AXIA_MVP_DEMO_ACCEPTED=HOLD
 CERTIFIED_ESTOP=false
@@ -79,3 +80,25 @@ MAIN_MERGED=false
 ```
 
 현장 새 오류 발생 시에는 최초 Gazebo/Xacro 이벤트와 최초 Safety FSM 전이·최초 주기 위반을 원본 TAR/진단 ZIP으로 확인한 뒤 공개 CI 회귀 RED→GREEN으로 재편입한다. 다른 안전 계층 타이밍을 확인하지 못했다면 전체 인수 미검증 표시.
+
+## 8. 최초 SDF 경쟁 조건 수정 뒤의 후속 Localization ACK 및 최종 시연 통합 인수
+
+Xacro 완료 뒤에만 Gazebo를 실행하도록 한 변경은 실제 시뮬레이션에서 World·Clock·센서 준비, Clear→Slow→Stop, 실제 odom 이동, Goal 취소까지 실증했지만, 첫 두 공개 CI 실행에서 Nav2 Localization 관리 서비스 종료 ACK가 30초 만료됐다. 이를 별개의 실패 경계로 남기고 신규 테스트 RED [#44443257191](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44443257191) → 6/6 GREEN [#44443374979](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44443374979)으로 처리했다.
+
+- 최종 Student `6579e2eef7e99691da558cd2de1964fd26a04621`.
+- 실제 Gazebo/Nav2 Moving Goal+Gazebo/RViz Xvfb CI [#44449459417](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44449459417) **SUCCESS**. 기존 21개 엄격 gate, runner rc0, GUI2, Goal cancel, native Contact0, Navigation/Localization 종료 ACK 및 CM clean exit, `first_failure=NONE`.
+- CI의 read-only 엄격 판정 commit `71b85c42ea474276fedd9f345521317b8c348b4e`; 이번 L2와 앞선 n7 실제 주행 증거에 설정된 safety TTL과 기준선 변경 없음.
+- 현장 실행기 코드 source `1816fbbbfdb972e52c5168ade26c768167998556`. 공개 ROS 미실행 bootstrap [#44450173850](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44450173850) 8/8 PASS.
+- 별도 교육용 종료 문제 해결 보고서: `docs/operations/AXIA_G07_TASK04_OZG_LOCALIZATION_SHUTDOWN_ACK_RED_GREEN_20261119_KO.md`.
+
+```ini
+PUBLIC_CI_L0_XACRO_RACE=PASS_5_OF_5
+PUBLIC_CI_L1_ROS_LAUNCH=PASS_3_OF_3_NO_GAZEBO
+PUBLIC_CI_L0_LOCALIZATION_ACK=PASS_6_OF_6
+PUBLIC_CI_REAL_GAZEBO_MOVING_L2=PASS_21_OF_21
+OWNER_BOOTSTRAP_L0=PASS_8_OF_8
+OWNER_WSL2_L3=NOT_RUN
+AXIA_MVP_DEMO_ACCEPTED=HOLD
+CERTIFIED_ESTOP=false
+MAIN_MERGED=false
+```
