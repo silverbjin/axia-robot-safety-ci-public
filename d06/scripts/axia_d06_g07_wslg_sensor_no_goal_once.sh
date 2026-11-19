@@ -6,9 +6,9 @@ MODE="${1:---run}"
 [[ $# -le 1 && ( "$MODE" == --run || "$MODE" == --self-check ) ]] || {
   echo 'D06_WSLG_SENSOR_USAGE=--self-check|--run' >&2;exit 2;
 }
-readonly STUDENT_SHA='8e19742fd7bd80db73a37dc7b1d798768dc33e2a'
+readonly STUDENT_SHA='64de9dc02e9073dc1c2898b14c973e38c664ba6e'
 readonly PROBE_BLOB='cb38a2b288b9bf9db80def7b1fe37d975db2cdfa'
-readonly SMOKE_BLOB='9cb5baf6c766a79cf6fd5134707981e32bb23e85'
+readonly SMOKE_BLOB='ca4af428c59716b46b9bc6bde6f25ea47d6d4e68'
 readonly LAUNCH_BLOB='b2886cdf509d99ea62528cd013669258764b05e0'
 readonly REPO='https://github.com/silverbjin/axia-robot-safety-student.git'
 readonly REL='block_B/day07/h01_runtime'
@@ -109,6 +109,9 @@ export AXIA_G07_NO_GOAL_ORDERED_SHUTDOWN=1
 # Gazebo 8 documented WorldControl pause before launch SIGINT.
 # Never changes Scan300/CM120/Guard150 limits or authorizes Goal.
 export AXIA_G07_NO_GOAL_GZ_PAUSE_BEFORE_SIGINT=1
+# Gazebo 8 ServerControl stop after official Nav2 ACK and pause;
+# software launch SIGINT cannot replace a positive child exit0 proof.
+export AXIA_G07_NO_GOAL_GZ_STOP_BEFORE_SIGINT=1
 export AXIA_G07_CI_SIM_GOAL_ALLOWED=0
 export AXIA_G07_TASK04_OWNER_MOVING_L3=0
 export AXIA_G07_TASK04_CI_GUI_MOVING=0
