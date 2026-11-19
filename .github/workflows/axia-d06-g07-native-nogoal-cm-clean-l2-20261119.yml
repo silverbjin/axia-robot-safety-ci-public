@@ -28,6 +28,7 @@ jobs:
       AXIA_G07_OWNER_SENSOR_TRUTH_NO_GOAL: '1'
       AXIA_G07_CI_SENSOR_TRUTH_NO_GOAL: '1'
       AXIA_G07_NO_GOAL_ORDERED_SHUTDOWN: '1'
+      AXIA_G07_NO_GOAL_GZ_PAUSE_BEFORE_SIGINT: '1'
       AXIA_G07_CI_SIM_GOAL_ALLOWED: '0'
       AXIA_G07_TASK04_OWNER_MOVING_L3: '0'
       AXIA_G07_TASK04_CI_GUI_MOVING: '0'
@@ -45,7 +46,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 835a5285c49300a8d9943d2e19d0c07f3fa06901
+          ref: d60838c3fac7879bd2a0db5cd8a96a26c62b36ac
           path: student
           persist-credentials: false
       - name: Exact public Student and official lifecycle offline contract
@@ -53,7 +54,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           test "$(git -C ci rev-parse HEAD)" = "$GITHUB_SHA"
-          test "$(git -C student rev-parse HEAD)" = '835a5285c49300a8d9943d2e19d0c07f3fa06901'
+          test "$(git -C student rev-parse HEAD)" = 'd60838c3fac7879bd2a0db5cd8a96a26c62b36ac'
           cd student/block_B/day07/h01_runtime
           set +u; source /opt/ros/jazzy/setup.bash;set -u
           bash -n scripts/p2_no_goal_smoke_ci.sh
@@ -146,10 +147,13 @@ jobs:
           assert not re.search(r"\[gz-\d+\].*exit code -11",log)
           # The original ZOAgryLW owner log had GRACEFUL parent marker but
           # gz sim server -11. Positive child exit0 is REQUIRED for scoped L2.
-          gz_clean=bool(re.search(r"\\[INFO\\]\\s*\\[gz-\\d+\\]:\\s*process has finished cleanly",log))
-          gz_bad=re.findall(r"\\[ERROR\\]\\s*\\[gz-\\d+\\]:\\s*process has died[^\\n]*",log)
+          gz_clean=any('[gz-' in row and 'process has finished cleanly' in row for row in log.splitlines())
+          gz_bad=[row for row in log.splitlines() if '[gz-' in row and 'process has died' in row]
           print("AXIA_D06_G07_REAL_GAZEBO_CHILD_EXIT0="+str(gz_clean)+
                 " bad="+repr(gz_bad[:2]))
+          pause=(root/"g07_gz_world_pause.log")
+          assert pause.is_file(), "G07_NO_GOAL_GAZEBO_PAUSE_PROOF_MISSING"
+          assert "data: true" in pause.read_text(), "G07_NO_GOAL_GAZEBO_PAUSE_ACK_MISSING"
           assert gz_clean and not gz_bad, "GAZEBO_SERVER_EXIT0_NOT_PROVEN_L2"
           print("AXIA_D06_G07_ACTUAL_NAV2_CM_CHILD_EXIT0_L2_PASS_NO_GOAL_SENSOR_TTL_INDEPENDENT")
           print("D06_GAZEBO_LIVE_RELEASE=HOLD CERTIFIED_ESTOP=false OWNER_WSLG_L3_NOT_RUN")
@@ -164,6 +168,8 @@ jobs:
             native/g07_wslg_sensor_truth.json
             native/g07_ordered_shutdown.json
             native/g07_ordered_shutdown.log
+            native/g07_gz_world_pause.log
+            native/g07_gz_world_pause_err.log
             native/g07_shutdown_audit.json
             native/teardown.txt
             native/teardown_processes.txt
