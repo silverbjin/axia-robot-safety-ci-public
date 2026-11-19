@@ -114,7 +114,15 @@ def _stream_bracket(events,start,end):
     # contain some samples on both sides of the first observer violation.
     if start-a>0.6 or b-end>0.6:
         return {"bracketed":False,"gap_sec":None,"samples":len(rows)}
-    return {"bracketed":True,"gap_sec":round(b-a,6),
+    # Do not label the entire first-violation window as an RMW outage:
+    # RMW may have published many Scan samples *within* that window.
+    samples=[float(row["host_monotonic_sec"]) for row in rows
+             if a-1e-6<=float(row["host_monotonic_sec"])<=b+1e-6]
+    gaps=[right-left for left,right in zip(samples,samples[1:])]
+    if not gaps:
+        return {"bracketed":False,"gap_sec":None,"samples":len(rows)}
+    return {"bracketed":True,"gap_sec":round(max(gaps),6),
+            "bracketing_span_sec":round(b-a,6),
             "before_at":round(a,6),"after_at":round(b,6),
             "samples":len(rows),"event_matches_laserscan_header":False}
 
