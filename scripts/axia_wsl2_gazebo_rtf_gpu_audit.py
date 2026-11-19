@@ -221,6 +221,23 @@ def choose_server(processes: list[dict], target_pid: int | None,
             ("SERVER_AUTO" if len(matching) == 1 else "SERVER_PID_AMBIGUOUS")
     if not servers:
         return None, None, "NO_GAZEBO_SERVER"
+    # Owner WSL2 may retain a previous Gazebo server in another partition.
+    # Pair a unique active GUI partition with a unique server *in that same*
+    # GZ_PARTITION. Multiple GUI wrappers in one partition are still one demo.
+    # Never infer "latest" from PID, nor join GUI to a different world.
+    gui_partitions = {
+        p["env"].get("GZ_PARTITION") for p in processes
+        if p["role"] == "gazebo_gui" and p["env"].get("GZ_PARTITION")
+    }
+    paired = partitions & gui_partitions
+    if len(paired) == 1:
+        selected = next(iter(paired))
+        matched = [p for p in servers if p["env"].get("GZ_PARTITION") == selected]
+        if len(matched) == 1:
+            return matched[0], selected, "AUTO_PAIRED_SERVER_GUI_PARTITION"
+        return None, None, "PAIRED_PARTITION_SERVER_PID_AMBIGUOUS"
+    if len(paired) > 1:
+        return None, None, "MULTIPLE_ACTIVE_GAZEBO_GUI_SESSIONS"
     return None, None, "MULTIPLE_OR_UNIDENTIFIED_GAZEBO_PARTITIONS"
 
 
