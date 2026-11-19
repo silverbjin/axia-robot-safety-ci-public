@@ -42,6 +42,16 @@ class ForeignClockDomain(unittest.TestCase):
         outcome=self.mod.choose_domain([88],probe=lambda d: {'status':'ERROR'})
         self.assertEqual(outcome['status'],'NO_FREE_DOMAIN')
 
+    def test_owner_domain_helper_pin_matches_exact_git_blob(self):
+        import re
+        import subprocess
+        src=OWNER.read_text()
+        pin=re.search(r"readonly DOMAIN_HELPER_GIT_BLOB='([0-9a-f]{40})'",src)
+        self.assertIsNotNone(pin)
+        actual=subprocess.run(["git","hash-object",str(HELPER)],
+                              text=True,capture_output=True,check=True).stdout.strip()
+        self.assertEqual(pin.group(1),actual)
+
     def test_owner_replaces_default_domain_86_before_launch(self):
         src=OWNER.read_text()
         self.assertIn('axia_g07_task04_select_free_domain.py',src)
