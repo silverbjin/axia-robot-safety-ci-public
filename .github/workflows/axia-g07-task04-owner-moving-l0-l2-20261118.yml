@@ -1,0 +1,43 @@
+# Task04 minimal RED/GREEN gate: pin the public Student source, never fake Owner TTY.
+name: AXIA G07 Task04 Owner Moving Entry L0
+on:
+  push:
+    branches: ['fix/g07-task04-owner-wsl2-public-pregate-20261118']
+    paths:
+      - '.github/workflows/axia-g07-task04-owner-moving-l0-l2-20261118.yml'
+      - 'tests/test_g07_task04_pregoal_first_failure_contract.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  owner-moving-entry-l0:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          path: ci
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: ef6ffe58ddacb89ed37b225279f8e86453cf82b7
+          path: student
+          persist-credentials: false
+      - name: Exact Student SHA and ROS-free GREEN contract (Owner consent never simulated)
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C student rev-parse HEAD)" = 'ef6ffe58ddacb89ed37b225279f8e86453cf82b7'
+          cd student/block_B/day07/h01_runtime
+          bash -n scripts/p2_no_goal_smoke_ci.sh
+          AXIA_G07_STUDENT_RUNTIME="$PWD" PYTHONDONTWRITEBYTECODE=1 python3 "$GITHUB_WORKSPACE/ci/tests/test_g07_task04_pregoal_first_failure_contract.py" -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_owner_shell_contract.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_owner_moving_entry.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task02_simple_tf.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_pre_goal_odom_readiness.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_shutdown_gui_order.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_ecm_owner_scope.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_localization_shutdown_evidence.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_native_cm_param_one_client.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_owner_gui_d3d12_isolation.py' -v
