@@ -192,6 +192,25 @@ jobs:
           assert sensor["goal_sent"] is False and sensor["fixture_moved"] is False
           assert sensor["metrics"]["raw"]["count"]>=20
           assert sensor["metrics"]["safety"]["count"]>=20
+          # Previous runs silently passed the shutdown-only L2 while the
+          # original Raw/Safety Scan300 safety window was HOLD. This
+          # integrated NO_GOAL candidate MUST pass both, without changing TTL.
+          assert rc==0, ("REAL_NO_GOAL_SMOKE_RC",rc,sensor.get("reasons"))
+          assert sensor["status"]=="NO_GOAL_SENSOR_WINDOW_CLEAR_CANDIDATE",sensor
+          assert not sensor["reasons"],sensor["reasons"]
+          startup=sensor["startup_pre_both_scan_diagnostics"]
+          assert startup["both_topics_ready"] is True
+          assert startup["pre_ready_observations_not_motion_authority"] is True
+          assert sensor["dual_topic_actual_wall_observation_sec"]>=20
+          assert sensor["dual_topic_required_observation_sec"]==20
+          assert sensor["metrics"]["safety"]["clear_count"]==sensor["metrics"]["safety"]["count"]
+          assert sensor["metrics"]["safety"]["front_median_m"]>.75
+          assert sensor["metrics"]["safety"]["side_median_m"]>1.2
+          for topic in ("raw","safety"):
+            assert sensor["metrics"][topic]["max_receipt_gap_sec"]<=.3,(
+              "REAL_SCAN300_BLOCK",topic,sensor["metrics"][topic])
+            assert sensor["metrics"][topic]["first_receipt_ttl_breach_at_index"] is None
+
           paired=json.loads((root/"d06_g07_scan_delivery_layer.json").read_text())
           assert paired["native_count"]>=20 and paired["observer_raw_count"]>=20
           assert paired["observer_safety_count"]>=20 and paired["native_clock_count"]>=20
