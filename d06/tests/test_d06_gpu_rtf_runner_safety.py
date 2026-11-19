@@ -1,5 +1,6 @@
 """The GPU comparison is precisely one no-goal session per verified adapter."""
 import pathlib
+import re
 import subprocess
 import unittest
 ROOT=pathlib.Path(__file__).resolve().parents[2]
@@ -49,6 +50,36 @@ class WslgABOneShotSafety(unittest.TestCase):
         o=OWNER.read_text()
         self.assertIn("8e19742fd7bd80db73a37dc7b1d798768dc33e2a",o)
         self.assertIn("f7534b191b78cba4f20aac55e9d227268504a25f",o)
+
+    def test_tcljt2qc_student_source_probe_hash_matches_actual_checkout(self):
+        """Regression: TCljt2Qc first error was frozen source blob mismatch.
+
+        L0 CI explicitly checks out the exact Student commit. Validate all
+        three blobs against actual bytes so future pin drift fails before
+        another physical WSL2 launch.
+        """
+        text=OWNER.read_text()
+        expected_ref="8e19742fd7bd80db73a37dc7b1d798768dc33e2a"
+        self.assertIn("readonly STUDENT_SHA='"+expected_ref+"'",text)
+        student=ROOT/"student"
+        self.assertTrue(student.is_dir(),
+                        "PUBLIC_CI_STUDENT_PINNED_CHECKOUT_REQUIRED")
+        manifest={
+            "PROBE_BLOB":"tools/g07_wslg_no_goal_sensor_probe.py",
+            "SMOKE_BLOB":"scripts/p2_no_goal_smoke_ci.sh",
+            "LAUNCH_BLOB":"ros2_ws/src/axia_safety_bringup/launch/axia_tb3_p2.launch.py"
+        }
+        runtime=student/"block_B/day07/h01_runtime"
+        for name,relative in manifest.items():
+            match=re.search(r"readonly "+name+r"='([0-9a-f]{40})'",text)
+            self.assertIsNotNone(match,name)
+            target=runtime/relative
+            self.assertTrue(target.is_file(),relative)
+            proc=subprocess.run(["git","hash-object",str(target)],
+                                text=True,capture_output=True,timeout=5,
+                                check=True)
+            self.assertEqual(match.group(1),proc.stdout.strip(),
+                             "D06_TCLJT2QC_PIN_DRIFT_"+name+" "+relative)
 
     def test_single_wslg_owner_stops_external_witnesses_before_official_shutdown(self):
         o=OWNER.read_text()
