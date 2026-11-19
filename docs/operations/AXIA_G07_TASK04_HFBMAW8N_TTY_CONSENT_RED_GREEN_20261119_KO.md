@@ -49,16 +49,17 @@ AXIA_G07_HFBM_PTY_L0_GREEN_REAL_PTY_NO_ROS_NO_GOAL
 
 ## 5. 실제 Gazebo L2 및 출고 판정
 
-- 실제 Gazebo Harmonic + ROS 2 Jazzy + 공식 Nav2 + TB3 Waffle + Gazebo/RViz Xvfb의 **동일 21개 안전/물리/종료 게이트**를 검증하기 위해 기존 `.github/workflows/axia-g07-task04-owner-n7-parity-native-l2-20261119.yml` 재사용. Student 정확한 SHA `72f58fd67fe57a808ec11100c5f6c04e3a8de4cc` 고정.
+- 실제 Gazebo Harmonic + ROS 2 Jazzy + 공식 Nav2 + TB3 Waffle + Gazebo/RViz Xvfb의 **동일 21개 안전/물리/종료 게이트**를 검증하기 위해 기존 `.github/workflows/axia-g07-task04-owner-n7-parity-native-l2-20261119.yml` 재사용. Student 최종 소스 정확한 SHA `efff0fb8bf941de74572336d1988dfb0005e11f7` 고정.
 - 네이티브 Contact 빌드용 임시 컨테이너와 실제 `libgz-transport13=13.6.0` Gazebo 런타임 분리 유지.
-- **공개 Run [#44455342926](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44455342926)의 실제 완전한 결과는 완료 뒤 확정 기입**. CI L2 성공 전에는 Owner 새 SHA 배포 금지.
+- 첫 새 L2 [#44455342926](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44455342926)은 실제 Gazebo를 실행하기 전에 구형 정적 테스트가 여전히 `YES-P2-G07-GOAL`/`read -r` 문구를 **실행기 파일 내부에만** 요구해 1/5 FAIL. 실행기와 새 helper를 **함께 검사**하도록 테스트를 강화·갱신했으며 기존 수동 승인의 기능을 삭제/완화하지 않음. 최종 Student SHA `efff0fb8bf941de74572336d1988dfb0005e11f7`에서 공개 [#44455880013](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44455880013) **18/18 PASS** (CI 5 + PTY 8 + 기존 shell 5).
+- 같은 최종 SHA로 새 실제 Gazebo L2 [#44455960504](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44455960504) 수행 중. 실제 완료 상태·21개 게이트 및 artifact SHA를 확인한 후에만 본 보고서 최종 판정을 업데이트할 것. CI L2 성공 전에는 Owner 새 SHA 배포 금지.
 - 성공해야 하는 조건: World/SDF/Clock/Scan/Odom/TF, 실제 Moving Goal CLEAR→SLOW→STOP, 정확 Goal UUID 취소, Native Contact 0, CM source+observer 120ms, Guard 내부 150ms, Scan/Odom/Clock 300ms, zero odom dwell >=1sec, Navigation/Localization ACK, Collision Monitor 종료, SQLite14, GUI2, **21/21 strict**.
 - Owner WSL2 실제 L3 원본 타이밍·TTY 화면 포커스·실제 Goal 승인은 공개 CI로 증명할 수 없으며, 출고 후 현장 1회 원본 TAR·ZIP으로 별도 인수.
 
 ```ini
 HFBM_PTY_RED=REPRODUCED_12_FAILURES
 HFBM_PTY_GREEN=PASS_13_OF_13
-PUBLIC_NATIVE_GAZEBO_L2_NEW_STUDENT_SHA=AWAIT_RUN_44455342926
+PUBLIC_NATIVE_GAZEBO_L2_NEW_STUDENT_SHA=AWAIT_RUN_44455960504
 OWNER_BOOTSTRAP_NEW_PIN_L0=NOT_YET_RUN
 OWNER_WSL2_L3=NOT_RUN
 AXIA_MVP_DEMO_ACCEPTED=HOLD
