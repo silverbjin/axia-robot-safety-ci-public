@@ -6,10 +6,10 @@
 set -Eeuo pipefail
 umask 077
 readonly STUDENT_REPO='silverbjin/axia-robot-safety-student'
-readonly STUDENT_SHA='6579e2eef7e99691da558cd2de1964fd26a04621'
+readonly STUDENT_SHA='efff0fb8bf941de74572336d1988dfb0005e11f7'
 readonly REVIEW_REPO='silverbjin/axia-robot-safety-ci-public'
 readonly REVIEW_SHA='71b85c42ea474276fedd9f345521317b8c348b4e'
-readonly CI_L2_RUN=44449459417
+readonly CI_L2_RUN=44455960504
 MODE="${1:---run}"
 if [[ $# -gt 1 ]];then echo 'AXIA_G07_TASK04_FIRST_FAILURE=BAD_ARGUMENTS' >&2;exit 3;fi
 case "$MODE" in
@@ -225,8 +225,9 @@ REVIEW_CACHE="$HOME/.cache/axia/g07_task04_moving_ci/$REVIEW_SHA"
 fetch_pinned "$STUDENT_REPO" "$STUDENT_SHA" "$STUDENT_CACHE" STUDENT
 fetch_pinned "$REVIEW_REPO" "$REVIEW_SHA" "$REVIEW_CACHE" PUBLIC_CI
 RUNTIME="$STUDENT_CACHE/block_B/day07/h01_runtime"
-[[ -r "$RUNTIME/scripts/p2_no_goal_smoke_ci.sh" && -r "$RUNTIME/tools/p2_g07_task04_moving_review.py" ]] || hold RUNTIME_FILES_MISSING
+[[ -r "$RUNTIME/scripts/p2_no_goal_smoke_ci.sh" && -r "$RUNTIME/tools/p2_g07_task04_moving_review.py" && -r "$RUNTIME/tools/p2_g07_owner_tty_consent.sh" ]] || hold RUNTIME_FILES_MISSING
 bash -n "$RUNTIME/scripts/p2_no_goal_smoke_ci.sh" || hold STUDENT_SHELL_SYNTAX
+bash -n "$RUNTIME/tools/p2_g07_owner_tty_consent.sh" || hold STUDENT_TTY_HELPER_SYNTAX
 export PYTHONPATH="$REVIEW_CACHE${PYTHONPATH:+:$PYTHONPATH}"
 
 # Verify the exact official 25 Debian versions + five official file digests
