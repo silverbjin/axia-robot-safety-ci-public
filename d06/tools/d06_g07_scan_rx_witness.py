@@ -48,7 +48,53 @@ def first_gap(records, limit=TTL):
     return None
 
 
-def classify(native, raw, safety, limit=TTL):
+def native_clock_window(left, right, clock):
+    """Independent same-host Gazebo /clock receive witness around first native scan gap.
+
+    Its instantaneous RTF describes observed sim progress, NOT Gazebo internal
+    sensor publisher or the underlying resource contention root cause.
+    Diagnostic .6 threshold never changes any Scan/CM/Guard admission TTL.
+    """
+    r={"native_clock_progress":"UNMEASURED",
+       "native_clock_window_rtf":None,
+       "native_clock_max_host_gap_sec":None,
+       "native_clock_bracketed":False}
+    if not isinstance(clock,(tuple,list)):return r
+    pairs=[]
+    for x in clock:
+        if not isinstance(x,dict):continue
+        h=x.get("host_monotonic_sec")
+        stamp=x.get("sim_stamp_ns")
+        if isinstance(h,(int,float)) and math.isfinite(h) and isinstance(stamp,int) and stamp>0:
+            pairs.append((float(h),stamp))
+    pairs.sort()
+    if len(pairs)<3:return r
+    before=min(pairs,key=lambda z:abs(z[0]-left))
+    after=min(pairs,key=lambda z:abs(z[0]-right))
+    if abs(before[0]-left)>.08 or abs(after[0]-right)>.08 or after[0]<=before[0]:
+        return r
+    bracket=[z for z in pairs if before[0]<=z[0]<=after[0]]
+    if len(bracket)<3:return r
+    if any(b[0]<=a[0] or b[1]<=a[1] for a,b in zip(bracket,bracket[1:])):
+        return r
+    span=after[0]-before[0]
+    simspan=(after[1]-before[1])/1e9
+    if span<=0 or simspan<=0:return r
+    rate=simspan/span
+    r.update({
+      "native_clock_progress":"SLOW" if rate<.6 else "NORMAL_OR_FAST",
+      "native_clock_window_rtf":round(rate,6),
+      "native_clock_max_host_gap_sec":round(
+          max(b[0]-a[0] for a,b in zip(bracket,bracket[1:])),6),
+      "native_clock_bracketed":True,
+      "native_clock_window_host_sec":round(span,6),
+      "native_clock_sim_progress_sec":round(simspan,6),
+      "native_clock_internal_sensor_publish_measured":False,
+    })
+    return r
+
+
+def classify(native, raw, safety, limit=TTL, native_clock=None):
     """Compare same source stamps on the same host; never claim bridge send proof."""
     r = {
         "schema": "axia.d06.g07.native_ros_first_scan_ttl.v1",
@@ -59,6 +105,8 @@ def classify(native, raw, safety, limit=TTL):
         "publisher_send_timing_proven": False,
         "bridge_dds_send_measured": False,
         "ttl_sec": limit, "release": "HOLD", "goal_allowed": False,
+        "native_clock_progress": "UNMEASURED", "native_clock_window_rtf": None,
+        "native_clock_max_host_gap_sec": None, "native_clock_bracketed": False,
     }
     raw_first=first_gap(raw,limit)
     safety_first=first_gap(safety,limit)
@@ -98,6 +146,7 @@ def classify(native, raw, safety, limit=TTL):
     r["native_to_ros_after_sec"]=round(float(after["host_monotonic_sec"])-right,6)
     r["candidate"]=("AT_OR_BEFORE_NATIVE_TRANSPORT_RX"
                      if gap>limit else "AFTER_NATIVE_TRANSPORT_RX")
+    r.update(native_clock_window(left, right, native_clock))
     return r
 
 
@@ -119,6 +168,7 @@ def read_jsonl(path, max_lines=4096):
 def observe(path,max_events=4096,max_seconds=180):
     """Read-only ROS observer; no implicit approval if it fails."""
     import rclpy
+    from rclpy.executors import ExternalShutdownException
     from rclpy.qos import qos_profile_sensor_data
     from sensor_msgs.msg import LaserScan
     if path.exists():raise ValueError("D06_G07_RX_OUTPUT_EXISTS")
@@ -149,10 +199,14 @@ def observe(path,max_events=4096,max_seconds=180):
             print("D06_G07_ROS_RX_WITNESS_READY_NO_GOAL",flush=True)
             while not stop[0] and time.monotonic()<deadline:
                 rclpy.spin_once(node,timeout_sec=.10)
+        except (KeyboardInterrupt, ExternalShutdownException):
+            # ROS 2 shutdown signal handler has already ended the context.
+            # The completed read-only evidence is preserved, not a system PASS.
+            print("D06_G07_ROS_RX_EXTERNAL_SHUTDOWN_HANDLED_NO_GOAL",flush=True)
         finally:
             for sub in subs:node.destroy_subscription(sub)
             node.destroy_node()
-            rclpy.shutdown()
+            rclpy.try_shutdown()
     print("D06_G07_ROS_RX_WITNESS_STOP "+json.dumps(counts,sort_keys=True),flush=True)
     return 0 if all(v>0 for v in counts.values()) else 3
 
@@ -165,6 +219,7 @@ def main():
     g.add_argument("--self-check",action="store_true")
     p.add_argument("--ros-jsonl",type=Path)
     p.add_argument("--native-jsonl",type=Path)
+    p.add_argument("--native-clock-jsonl",type=Path)
     p.add_argument("--output",type=Path)
     a=p.parse_args()
     if a.self_check:
@@ -180,7 +235,9 @@ def main():
     safe=[x for x in scans if x.get("topic")=="safety"]
     # Analyze complete same-session trace. Captures startup too;
     # never equate this first gap with the Student probe first gap.
-    report=classify(native,raw,safe)
+    native_clock=read_jsonl(a.native_clock_jsonl,4096) if a.native_clock_jsonl else []
+    report=classify(native,raw,safe,native_clock=native_clock)
+    report["native_clock_count"]=len(native_clock)
     report["observer_raw_count"]=len(raw)
     report["observer_safety_count"]=len(safe)
     report["native_count"]=len(native)
@@ -188,6 +245,8 @@ def main():
     a.output.parent.mkdir(parents=True,exist_ok=True)
     a.output.write_text(json.dumps(report,indent=2,sort_keys=True)+"\n")
     print("D06_G07_FIRST_SCAN_TTL_HOLD candidate="+report["candidate"]+
+          " native_clock="+report["native_clock_progress"]+
+          " local_rtf="+str(report["native_clock_window_rtf"])+
           " release=HOLD no_goal=true",flush=True)
     return 0
 
