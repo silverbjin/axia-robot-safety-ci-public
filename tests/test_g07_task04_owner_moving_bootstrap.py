@@ -4,8 +4,8 @@ import subprocess
 import unittest
 
 SCRIPT=Path(__file__).resolve().parents[1]/"scripts/axia_g07_task04_owner_moving_l3_once.sh"
-SHA="6579e2eef7e99691da558cd2de1964fd26a04621"
-RUN=44449459417
+SHA="efff0fb8bf941de74572336d1988dfb0005e11f7"
+RUN=44455960504
 REVIEW_SHA='71b85c42ea474276fedd9f345521317b8c348b4e'
 
 class OwnerMovingBootstrap(unittest.TestCase):
@@ -57,6 +57,9 @@ class OwnerMovingBootstrap(unittest.TestCase):
         self.assertIn("task04_owner_verdict.json",s)
         self.assertIn("SHA256SUMS",s)
         self.assertIn("CORE_PARITY_PASS",s)
+        self.assertIn("p2_g07_owner_tty_consent.sh",s)
+        self.assertIn("STUDENT_TTY_HELPER_SYNTAX",s)
+        self.assertIn("owner_consent_first_failure()",s)
 
     def test_small_separate_diagnostic_zip_without_raw_bag(self):
         s=SCRIPT.read_text()
