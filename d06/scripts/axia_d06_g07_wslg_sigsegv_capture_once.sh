@@ -78,7 +78,8 @@ for ent in \
     echo "D06_WSLG_CORE_ONCE_HOLD_SOURCE_BLOB_MISMATCH=$key" >&2;exit 3;
   }
 done
-bash -n "$TMP/owner" "$TMP/triage"
+bash -n "$TMP/owner"
+bash -n "$TMP/triage"
 python3 -m py_compile "$TMP/finder"
 listing() {
   local dest="$1"
