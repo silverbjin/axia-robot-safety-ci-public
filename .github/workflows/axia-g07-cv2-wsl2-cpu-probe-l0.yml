@@ -1,0 +1,26 @@
+name: AXIA G07 CV2 WSL2 CPU preemption diagnostic no-ROS L0
+on:
+  push:
+    branches: ['fix/g07-task04-owner-timing-evidence-20261119']
+    paths:
+      - '.github/workflows/axia-g07-cv2-wsl2-cpu-probe-l0.yml'
+      - 'tests/test_g07_wsl2_cpu_preemption_probe.py'
+      - 'scripts/axia_g07_wsl2_cpu_preemption_once.sh'
+      - 'scripts/axia_g07_wsl2_sched_probe.py'
+      - 'scripts/axia_g07_windows_host_cpu_probe.ps1'
+permissions:
+  contents: read
+jobs:
+  minimal-wsl2-scheduler-diagnostic:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Linux scheduler test without ROS, Gazebo, privileges or goals
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -v -s tests -p test_g07_wsl2_cpu_preemption_probe.py
+          echo 'AXIA_G07_CV2_CPU_PREEMPTION_L0_PASS_DIAG_ONLY_NO_ROS_NO_GOAL'
