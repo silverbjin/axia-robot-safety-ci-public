@@ -13,14 +13,14 @@
 | 실제 Gazebo Harmonic + Nav2 + Waffle + RViz Xvfb L2 | https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44449459417 |
 | 출고 Owner 원샷 Bootstrap L0 | [#44450173850 — 8/8 PASS](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44450173850) |
 | L2 원본 공개 수치·SHA256 artifact | https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44449459417/artifacts/14495301259 |
-| 강사 실제 WSL2 L3 | **n7 원본 19/21 HOLD / 신규 timing 수정판 미실행** |
+| 강사 실제 WSL2 L3 | **oZG 원본 Gazebo SDF 로드 실패 / 최신 Xacro+ACK 수정판 아직 미실행** |
 | main | **병합 안 함** |
 
 기존 Task01~03 성공 증거를 보존하고 반복하지 않는다. 최신 종료 ACK 수정판은 공개 CI #44449459417에서 **실제 Gazebo/Nav2 Moving Goal+GUI 21/21 안전 검증**을 완료했다. Xvfb CI는 Owner WSLg D3D12가 아니므로 L3 승격 불가.
 
 과거 CI #44359652805의 이동 0.198562m, 정지 1.013681초, CM Source 59.330ms, Observer 86.805ms, Guard age 36.842ms는 **이전 실행의 보존된 기록**이다. 최신 #44449459417은 새 Student SHA의 21개 조건 true, first_failure=NONE, rc=0 및 GUI2를 확인하였으며 새 수치 JSON 아티팩트를 별도로 보존했다.
 
-**현장 경계:** S75의 0.538428m/0.626332m 근거리 오검출은 n7 원본에서 1.414623m/2.523533m CLEAR로 개선되었다. 이번 n7의 남은 실패는 **엄격 CM Owner 스키마·Guard 내부 age 증거 누락 및 WSL2 RMW wall-clock step**이며 새 WSL2 실행은 아직 미검증이다.
+**현장 경계:** 과거 S75의 LiDAR 오검출은 n7에서 CLEAR로 개선됐고, n7의 CM/Guard 엄격 증거 누락도 이전 단계에서 수정됐다. 그 다음 강사 oZG 원본의 최초 실패는 **임시 SDF를 읽지 못한 Gazebo 서버 exit 255**였다. 최신 소스는 공개 Gazebo L2 21/21 PASS이지만, 강사 WSL2 WSLg 실행에서는 Xacro/SDF 시작·종료 Lifecycle ACK 및 안전 타이밍을 아직 실증하지 않았다.
 
 기존 실행 명령에서 사용했던 원샷 커밋 `e56bbad873e0e37c83f34ecbcc206cc8a648e63d`은 WSLg D3D12 변수를 전역 export하는 이전 배포 후보이므로 **현장 신규 실행에 사용하지 않는다.** 새 고정 SHA는 동일 Student SHA의 공개 L2 및 원샷 Bootstrap L0를 통과했다.
 
