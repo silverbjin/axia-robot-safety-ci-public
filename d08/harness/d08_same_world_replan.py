@@ -15,7 +15,8 @@ from d08_scan_gap_trace import (first_scan_receive_gap, diagnose_first_receive_b
                                 compare_worst_scan_pair_receivers,
                                 scan_gap_operation_overlaps,
                                 analyze_process_heartbeat_gap,
-                                classify_executor_stack_frames)
+                                classify_executor_stack_frames,
+                                diagnose_spin_once_during_scan_gap)
 import json
 import math
 from pathlib import Path
@@ -207,12 +208,27 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
     exe=SingleThreadedExecutor()
     exe.add_node(node)
 
+    spin_once_events=deque(maxlen=1024)
+
     def bounded_spin(executor):
-        # Read-only L2 A/B: wake the rclpy wait-set at most every 50ms.
-        # This is not a change to sensor/CM/Guard safety TTL.
+        # Record wall vs THREAD CPU duration. A 50ms timeout limits the
+        # configured wait; it cannot guarantee OS/GIL wake-up latency.
+        label=("observer" if executor is exe else "same_process_ros")
         try:
             while rclpy.ok():
-                executor.spin_once(timeout_sec=.05)
+                wall_start=time.monotonic()
+                cpu_start=time.thread_time()
+                try:
+                    executor.spin_once(timeout_sec=.05)
+                finally:
+                    wall_end=time.monotonic()
+                    spin_once_events.append({
+                        "executor":label,
+                        "start_sec":round(wall_start,6),
+                        "end_sec":round(wall_end,6),
+                        "thread_cpu_sec":round(
+                            max(0.,time.thread_time()-cpu_start),6),
+                    })
         except (ShutdownException, ExternalShutdownException):
             return
 
@@ -814,6 +830,29 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
                     pair,operation_spans)
                 cmp["process_heartbeat"]=analyze_process_heartbeat_gap(
                     pair,list(process_heartbeat_samples))
+                spin_events=list(spin_once_events)
+                cmp["executor_spin_once_worst_gap"]=(
+                    diagnose_spin_once_during_scan_gap(pair,spin_events))
+                result["executor_spin_once_trace_summary"]={
+                    "sample_count":len(spin_events),
+                    "history_complete":len(spin_events)<1024,
+                    "max_observer_spin_once_wall_sec":round(max(
+                        (x["end_sec"]-x["start_sec"] for x in spin_events
+                         if x["executor"]=="observer"),default=0.),6),
+                    "max_same_process_spin_once_wall_sec":round(max(
+                        (x["end_sec"]-x["start_sec"] for x in spin_events
+                         if x["executor"]=="same_process_ros"),default=0.),6),
+                }
+                result["executor_spin_once_gap_evidence"]=[
+                    x for x in spin_events
+                    if x["end_sec"]>=pair["previous_host_monotonic_sec"]-.06
+                    and x["start_sec"]<=pair["current_host_monotonic_sec"]+.06
+                ][:32]
+                if len(spin_events)>=1024 or not cmp[
+                        "executor_spin_once_worst_gap"]["bracketed"]:
+                    result["status"]="HOLD"
+                    result.setdefault("first_boundary",
+                        "D08_EXECUTOR_SPIN_ONCE_TRACE_INCOMPLETE")
                 scoped_stacks=[item for item in executor_stall_stack_samples
                     if pair["previous_host_monotonic_sec"]<=
                        item["host_monotonic_sec"]<=
