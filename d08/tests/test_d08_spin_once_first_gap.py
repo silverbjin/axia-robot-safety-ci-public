@@ -46,7 +46,7 @@ def test_spin_once_instrumentation_keeps_existing_safety_fail_closed():
     src=(Path(__file__).resolve().parents[1]/
          "harness/d08_same_world_replan.py").read_text()
     assert "time.thread_time()" in src
-    assert "spin_once_events=deque(maxlen=1024)" in src
+    assert "spin_once_events=new_spin_once_event_buffer()" in src
     assert "diagnose_spin_once_during_scan_gap(" in src
     assert "executor_spin_once_worst_gap" in src
     assert "first_scan_receive_gap(" in src
