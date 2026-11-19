@@ -25,9 +25,9 @@ SUB = re.compile(r"\bsubscription_handle\s*=\s*(0x[0-9a-fA-F]+|\d+)")
 RMW_PUB = re.compile(r"\brmw_publisher_handle\s*=\s*(0x[0-9a-fA-F]+|\d+)")
 RMW_SUB = re.compile(r"\brmw_subscription_handle\s*=\s*(0x[0-9a-fA-F]+|\d+)")
 TAKEN_TRUE = re.compile(r"\btaken\s*=\s*1\b")
-SOURCE_TS = re.compile(r"\\b(?:source_timestamp|timestamp)\\s*=\\s*[1-9][0-9]*\\b")
-PUB_SOURCE_STAMP = re.compile(r"\\btimestamp\\s*=\\s*(\\d+)")
-TAKE_SOURCE_STAMP = re.compile(r"\\bsource_timestamp\\s*=\\s*(\\d+)")
+SOURCE_TS = re.compile(r"\b(?:source_timestamp|timestamp)\s*=\s*[1-9][0-9]*\b")
+PUB_SOURCE_STAMP = re.compile(r"\btimestamp\s*=\s*(\d+)")
+TAKE_SOURCE_STAMP = re.compile(r"\bsource_timestamp\s*=\s*(\d+)")
 MAX_SCAN_RMW_TRACE_EVENTS = 12000
 
 
