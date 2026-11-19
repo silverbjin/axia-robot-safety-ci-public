@@ -1133,7 +1133,6 @@ jobs:
       AXIA_G07_TASK03_ECM_WITNESS: '1'
       AXIA_G07_TASK04_CI_GUI_MOVING: '1'
       AXIA_D08_G07_SINGLE_SESSION: '1'
-      AXIA_G07_TASK02_SIMPLE_TF_CANDIDATE: '1'
       AXIA_D08_G07_CM_TF_WAIT_CANDIDATE: '1'
       AXIA_D08_G07_ADAPTER_SCRIPT: ${{ github.workspace }}/ci/d08/harness/d08_g07_same_world_adapter.py
       AXIA_D08_G07_PERSON_MESH: ${{ github.workspace }}/public_evidence/walk.dae
@@ -1230,7 +1229,8 @@ jobs:
           export PYTHONPATH="$GITHUB_WORKSPACE/ci${PYTHONPATH:+:$PYTHONPATH}"
           export GZ_PARTITION="axia_p2_task04_moving_$GITHUB_RUN_ID"
           export GZ_SIM_SYSTEM_PLUGIN_PATH="$GITHUB_WORKSPACE/task04-native-build${GZ_SIM_SYSTEM_PLUGIN_PATH:+:$GZ_SIM_SYSTEM_PLUGIN_PATH}"
-          export AXIA_G07_TASK03_WITNESS_SHA256="$(sha256sum "$GITHUB_WORKSPACE/task04-native-build/libaxia_g07_s02_ecm_witness.so" | cut -d' ' -f1)"
+          AXIA_G07_TASK03_WITNESS_SHA256="$(sha256sum "$GITHUB_WORKSPACE/task04-native-build/libaxia_g07_s02_ecm_witness.so" | cut -d' ' -f1)"
+          export AXIA_G07_TASK03_WITNESS_SHA256
           export AXIA_P2_SMOKE_RESULTS="$GITHUB_WORKSPACE/native"
           export AXIA_G07_TASK03_WITNESS_REPORT="$AXIA_P2_SMOKE_RESULTS/s02_ecm_witness.json"
           mkdir -p "$GITHUB_WORKSPACE/public_evidence"
