@@ -158,7 +158,8 @@ def new_independent_rx_buffers():
 def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
     import rclpy
     from rclpy.action import ActionClient
-    from rclpy.executors import MultiThreadedExecutor, SingleThreadedExecutor
+    from rclpy.executors import (SingleThreadedExecutor,
+                                 ShutdownException, ExternalShutdownException)
     from rclpy.node import Node
     from rclpy.parameter import Parameter
     from rclpy.qos import (qos_profile_sensor_data, QoSProfile,
@@ -205,6 +206,16 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
                    durability=DurabilityPolicy.TRANSIENT_LOCAL))
     exe=SingleThreadedExecutor()
     exe.add_node(node)
+
+    def bounded_spin(executor):
+        # Read-only L2 A/B: wake the rclpy wait-set at most every 50ms.
+        # This is not a change to sensor/CM/Guard safety TTL.
+        try:
+            while rclpy.ok():
+                executor.spin_once(timeout_sec=.05)
+        except (ShutdownException, ExternalShutdownException):
+            return
+
     thread=None
     moved=False
     operation_spans=[]
@@ -299,7 +310,7 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
     action=ActionClient(node,ComputePathToPose,"/compute_path_to_pose")
     tfbuf=Buffer()
     listener=TransformListener(tfbuf,node,spin_thread=False)
-    thread=threading.Thread(target=exe.spin,daemon=True)
+    thread=threading.Thread(target=lambda:bounded_spin(exe),daemon=True)
 
     # Read-only, independent ROS callback witness. Different executor thread
     # still shares the host/GIL, so it cannot prove native publisher/RMW gaps.
@@ -337,7 +348,7 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
             qos_profile_sensor_data),
     ]
     independent_thread=threading.Thread(
-        target=independent_executor.spin,daemon=True)
+        target=lambda:bounded_spin(independent_executor),daemon=True)
 
     def independent_snapshot():
         with independent_lock:
