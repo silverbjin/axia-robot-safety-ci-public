@@ -21,12 +21,18 @@ Python 3 기본 라이브러리만 사용하며 ROS/GPU/OS 설정을 수정하�
 ~~~bash
 (
   set -Eeuo pipefail
-  DIAG="$(mktemp --suffix=.py)"
-  trap 'rm -f -- "$DIAG"' EXIT
-  curl -fLsS --retry 3 --max-time 60 \
-    "https://raw.githubusercontent.com/silverbjin/axia-robot-safety-ci-public/9c03b0eb05a1f0047aebbaad53101b24750d9960/scripts/axia_wsl2_gazebo_rtf_gpu_audit.py" \
-    -o "$DIAG"
-  python3 -m py_compile "$DIAG"
+  BIN="$HOME/axia_gpu_rtf_diagnostics/bin"
+  mkdir -p "$BIN"
+  DIAG="$BIN/axia_wsl2_gazebo_rtf_gpu_audit_9c03b0eb.py"
+  if [[ ! -s "$DIAG" ]]; then
+    TMP="$(mktemp "$BIN/.gpu_audit.XXXXXXXX.py")"
+    trap 'rm -f -- "$TMP"' EXIT
+    curl -fLsS --retry 3 --max-time 60 \
+      "https://raw.githubusercontent.com/silverbjin/axia-robot-safety-ci-public/9c03b0eb05a1f0047aebbaad53101b24750d9960/scripts/axia_wsl2_gazebo_rtf_gpu_audit.py" \
+      -o "$TMP"
+    python3 -m py_compile "$TMP"
+    mv -- "$TMP" "$DIAG"
+  fi
   python3 "$DIAG" --self-check
   python3 "$DIAG" --seconds 20
 )
@@ -55,7 +61,7 @@ NO_UNIQUE_GAZEBO_PARTITION 등으로 기록된다. 이때 summary.json을 확인
 3. ZIP 두 개를 같은 진단 Python 파일로 비교한다. 두 Gazebo를 동시에 시작하지 않는다.
 
 ~~~bash
-python3 axia_wsl2_gazebo_rtf_gpu_audit.py --compare \
+python3 "$HOME/axia_gpu_rtf_diagnostics/bin/axia_wsl2_gazebo_rtf_gpu_audit_9c03b0eb.py" --compare \
   "/path/to/90percent.zip" "/path/to/20percent.zip"
 ~~~
 
