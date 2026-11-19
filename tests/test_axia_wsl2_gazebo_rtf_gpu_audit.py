@@ -140,9 +140,10 @@ def test_owner_wsl2_copy_paste_download_command_is_syntax_checked():
                             capture_output=True, timeout=5)
     assert result.returncode == 0, result.stderr
     assert "scripts/axia_wsl2_gazebo_rtf_gpu_audit.py" in cmd
-    assert "9c03b0eb05a1f0047aebbaad53101b24750d9960" in cmd
+    assert "5d428e1a043e14fa88f22cdc4073d23f75ed86a5" in cmd
     assert "python3" in cmd and "--self-check" in cmd
     assert "--seconds 20" in cmd
+    assert "env -u GZ_PARTITION" in cmd
     assert "python3" in text and "--compare" in text
     assert "sudo " not in cmd and "pkill " not in cmd and "git reset" not in cmd
 
