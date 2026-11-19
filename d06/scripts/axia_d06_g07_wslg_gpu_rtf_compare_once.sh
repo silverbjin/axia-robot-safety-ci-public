@@ -4,16 +4,16 @@ set -Eeuo pipefail
 umask 077
 MODE=--compare
 if [[ $# -gt 0 ]]; then MODE="$1";fi
-[[ $# -le 1 && ( "$MODE" == --compare || "$MODE" == --nvidia-only || "$MODE" == --analyze-existing || "$MODE" == --self-check ) ]] || exit 2
+[[ $# -le 1 && ( "$MODE" == --compare || "$MODE" == --nvidia-only || "$MODE" == --nvidia-causal || "$MODE" == --analyze-existing || "$MODE" == --self-check ) ]] || exit 2
 # Reuse the D08 Owner-proven NVIDIA WSLg profile as one isolated
 # NO_GOAL diagnostic; do not repeat the historically failed Intel run.
 adapters=(NVIDIA Intel)
-if [[ "$MODE" == --nvidia-only ]];then
+if [[ "$MODE" == --nvidia-only || "$MODE" == --nvidia-causal ]];then
   adapters=(NVIDIA)
   echo 'D06_GPU_RTF_NVIDIA_ONLY_NO_GOAL OWNER_L3_NOT_ACCEPTED'
 fi
-readonly OWNER_SHA='b711562c4c7f4c229b6a4079f74c3a912ca8b5e7'
-readonly OWNER_BLOB='3ec8925d13e9357ffeb45e3d75e5f862b54e931a'
+readonly OWNER_SHA='290e087ae21f250f864c898d95df5f4434de1918'
+readonly OWNER_BLOB='34ba4405def9da9ac39342e9c28ee17f29747f1b'
 readonly ANALYZER_SHA='615bcd81b8f74a478daa2baeaf9f27ca02c94f11'
 readonly ANALYZER_BLOB='171aad7ce8abe97c93a42f19787042619c06b65e'
 readonly STUDENT_SHA='e4c2007064bec2103bb743bd27cdbdf0955961b7'
@@ -233,7 +233,7 @@ for gpu in "${adapters[@]}";do
   if [[ "$gpu" == NVIDIA ]];then lc=nvidia; domain=86;else lc=intel;domain=87;fi
   echo "D06_GPU_RTF_AB_CASE_START=$gpu DOMAIN=$domain GOAL_NOT_SENT"
   rc=0
-  MESA_D3D12_DEFAULT_ADAPTER_NAME="$gpu" ROS_DOMAIN_ID="$domain" \
+  AXIA_D06_G07_RX_WITNESS="$([[ "$MODE" == --nvidia-causal ]] && echo 1 || echo 0)" MESA_D3D12_DEFAULT_ADAPTER_NAME="$gpu" ROS_DOMAIN_ID="$domain" \
     bash "$TMP/owner.sh" --run > "$RUN_DIR/$lc.run.log" 2>&1 || rc=$?
   [[ "$rc" == 0 || "$rc" == 3 ]] || {
     echo "D06_GPU_RTF_INFRA_FAILURE=$gpu:$rc" >&2;exit 3;
@@ -281,6 +281,26 @@ print("D06_GPU_RTF_CLEAR_COUNT="+str(safe.get("clear_count"))+"/"+str(safe.get("
 print("D06_GPU_RTF_FRONT_SIDE_MEDIAN_M="+str(safe.get("front_median_m"))+"/"+str(safe.get("side_median_m")))
 PY
   echo "D06_GPU_RTF_AB_CASE_FINISHED=$gpu SENSOR_EXIT=$rc NO_GOAL"
+  # D08 unchanged native receiver and independent ROS scan witness from
+  # this EXACT SAME Gazebo simulation; no second run and no Goal.
+  if [[ "$MODE" == --nvidia-causal ]];then
+    if ! tar -xOf "$archive" "$sub/native/d06_g07_scan_delivery_layer.json" \
+        > "$RUN_DIR/$lc.d06_g07_scan_delivery_layer.json";then
+      echo D06_G07_NATIVE_RX_NO_LAYER_REPORT_NO_GOAL >&2;exit 3
+    fi
+    python3 - "$RUN_DIR/$lc.d06_g07_scan_delivery_layer.json" <<'PY'
+import json,sys
+v=json.load(open(sys.argv[1],encoding="utf-8"))
+print("D06_G07_FIRST_SCAN_TTL_HOLD candidate="+str(v.get("candidate","UNMEASURED"))+
+      " native_gap_sec="+str(v.get("native_gap_sec"))+
+      " raw_gap_sec="+str(v.get("raw_gap_sec"))+
+      " safety_gap_sec="+str(v.get("safety_gap_sec"))+
+      " GOAL_NOT_SENT")
+assert v.get("release")=="HOLD" and v.get("goal_allowed") is False
+assert v.get("observer_raw_count",0)>=20 and v.get("observer_safety_count",0)>=20
+assert v.get("native_count",0)>=20
+PY
+  fi
   # A fatal shutdown after NVIDIA must not be followed by another session.
   if grep -Eiq 'exit code -11|SIGSEGV|Segmentation fault' "$RUN_DIR/$lc.launch.log";then
     echo "D06_GPU_RTF_NATIVE_SHUTDOWN_SEGV_HOLD=$gpu" >&2
@@ -299,7 +319,7 @@ PY
 done
 # A single NVIDIA session tests only the D08-proven adapter choice.
 # It does NOT prove Intel-vs-NVIDIA causality, CM120/Guard150 or Moving L3.
-if [[ "$MODE" == --nvidia-only ]];then
+if [[ "$MODE" == --nvidia-only || "$MODE" == --nvidia-causal ]];then
   python3 - "$RUN_DIR/nvidia.g07_wslg_sensor_truth.json" <<'PY'
 import json,sys
 r=json.load(open(sys.argv[1],encoding='utf-8'))
