@@ -81,7 +81,12 @@ class SafetyGapNativeWitness(unittest.TestCase):
     def test_native_d08_probe_is_real_reused_no_private_clone(self):
         owner=(ROOT/"d06/scripts/axia_d06_g07_wslg_sensor_no_goal_once.sh").read_text()
         self.assertIn("AXIA_D06_G07_RX_WITNESS",owner)
-        self.assertIn("d08_gz_native_scan_probe.py",owner)
+        self.assertIn("d06_gz_native_scan_probe_safe.py",owner)
+        safe=(ROOT/"d06/tools/d06_gz_native_scan_probe_safe.py").read_text()
+        self.assertIn("Based on D08 probe at 30fad621",safe)
+        self.assertIn("node.unsubscribe(subscribed)",safe)
+        self.assertNotIn("create_publisher(",safe)
+        self.assertNotIn("send_goal_async(",safe)
         self.assertIn("d06_g07_scan_rx_witness.py",owner)
         self.assertIn("d06_g07_scan_delivery_layer.json",owner)
         self.assertIn("D06_G07_NATIVE_PROBE_IMPORT_MISSING_NO_GOAL",owner)
