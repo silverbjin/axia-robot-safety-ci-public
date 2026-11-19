@@ -41,3 +41,17 @@
 - Moving Goal, Collision Monitor120/Guard150 안전 데이터 전달 주기, 인증 E-Stop 미검증.
 
 `D06_GAZEBO_LIVE_RELEASE=HOLD`, `AXIA_MVP_DEMO_ACCEPTED=HOLD`, `CERTIFIED_ESTOP=false`; `main` 미병합.
+
+## 5. 같은 C07 코드의 실제 Gazebo L2 최종 결과 — FAIL (신규 실제 증거)
+
+[Run #44561289931](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44561289931) — 원본 artifact #14550390779, tested code SHA `81e4d467ad1ef53950f230fc51745cecc2032a0a`. 배포 HOLD.
+
+- 실제 Jazzy/Harmonic/TB3 Waffle/Nav2/Gazebo GUI+RViz(NO_GOAL) 실행. Navigation SHUTDOWN **ACK 2.139624초**, Localization SHUTDOWN **ACK 0.250491초**, CM exit0, Supervisor/Guard/Gazebo child exit0 및 소유 witness unsubscribe 완료. RMW 구현체 `rmw_fastrtps_cpp` 실측. 이전처럼 Navigation이 40초 TIMEOUT되지는 않음. 따라서 이번 L2에서는 C07의 timeout 후 read-only 진단이 발동하지 않았으며 **원래 intermittent 장애 원인 해결은 미증명**.
+- Student **20.009초** qualified Raw199/Safety200: 최대 간격 Raw **132.818ms**, Safety **133.149ms**. Safety 200/200 거리 CLEAR; global ROS Clock RTF **0.998467**. 이는 별도 20초 qualified 관측만 PASS.
+- 그 이전 **Nav2 READY (host monotonic161.058초) 직후** Gazebo native exact source stamp **36.801→36.900초**: native 161.735915→162.038143 = **302.228ms**, ROS Raw 161.736441→162.038917 = **302.476ms**, ROS Safety 161.737678→162.039124 = **301.446ms**. 로컬 native Clock 수신 기준 0.081초(sim)/0.281112초(wall) = 국소 RTF **0.288141**. /clock global RTF 정상이라는 이유로 첫 Safety300 위반을 무효화할 수 없음.
+- 분류 `AT_OR_BEFORE_NATIVE_TRANSPORT_RX`, bridge DDS send timestamp 미계측, root cause `UNDETERMINED`. 같은 source stamp native 수신부터 이미 TTL300을 넘었다는 경계만 확인.
+- 실제 CI 종료 stdout `P2_L2_SMOKE_RC=0` 및 Nav2 양쪽 ACK/CM0/Gazebo0은 사실이나, 통합 L2 엄격 검사 `POST_READY_NATIVE_SCAN300_FIRST_BREACH`로 **FAIL**. 이 단일 실행을 Safety TTL 인수 PASS로 승격 금지.
+
+이번 실측의 첫 native gap은 GUI/RViz viewer가 Nav2 READY **이후** 연결되고 아직 Student qualified window 시작 이전에 발생한다. 이는 **GUI viewer 초기 렌더링과 Gazebo 시뮬레이터 리소스 경합**에 대한 다음 단일 가설을 지지할 *가능성*은 있지만, GUI 측 CPU/GPU 샘플 없이 인과 확정은 금지. 새 후보는 공개 CI Xvfb에서만 viewer를 Nav2 READY 이전에 이미 구동시키는 실행 순서 조정이며, 안전 TTL/센서 Hz/ROS QoS/공식 Nav2를 변경하지 않고 실 L2에서 first READY 300ms를 검증할 것.
+
+최종 `D06_GAZEBO_LIVE_RELEASE=HOLD` `AXIA_MVP_DEMO_ACCEPTED=HOLD` `CERTIFIED_ESTOP=false`.
