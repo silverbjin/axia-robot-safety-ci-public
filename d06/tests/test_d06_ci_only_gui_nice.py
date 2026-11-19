@@ -21,8 +21,14 @@ class ScopedCiGuiPriority(unittest.TestCase):
         self.assertIn('setsid nice -n 15 rviz2 -d',src)
         self.assertIn('setsid gz sim -g',src)
         self.assertIn('setsid rviz2 -d',src)
-        self.assertNotIn('renice -n -',src)
-        self.assertNotIn('taskset -c',src)
+        gui_only=src[src.index('  # CI Xvfb-only single hypothesis:'):
+                     src.index('   sleep 3',src.index('  # CI Xvfb-only single hypothesis:'))]
+        # Historical Task03 code elsewhere contains taskset; don't reject
+        # unrelated, already-proven paths while auditing CI viewer branch.
+        self.assertNotIn('renice -n -',gui_only)
+        self.assertNotIn('taskset -c',gui_only)
+        self.assertNotIn('nice -n -',gui_only)
+        self.assertIn('  else\n     setsid gz sim -g',gui_only)
 
     def test_actual_l2_explicitly_opts_in_nice_without_safety_change(self):
         w=WF.read_text()
