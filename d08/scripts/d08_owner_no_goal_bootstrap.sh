@@ -263,6 +263,23 @@ cleanup() {
     trace_rc=2
     echo D08_OWNER_FIRST_BOUNDARY_RMW_CLASSIFIER_BLOCKED >&2
   fi
+  echo "D08_OWNER_FIRST_BOUNDARY_RMW_VERDICT=$AXIA_D08_TRACE_OUT/owner_first_gap_verdict.json"
+  # A real first >500ms violation with missing/expired RMW trace is HOLD,
+  # even if the separate no-Goal GUI code exited zero.
+  if ! python3 - "$AXIA_D08_TRACE_OUT/owner_first_gap_verdict.json" <<'PY'
+import json,sys
+from pathlib import Path
+p=Path(sys.argv[1])
+if not p.is_file():
+    sys.exit(2)
+x=json.loads(p.read_text())
+if x.get("first_500ms_violation_retained") and x.get("candidate")=="EVIDENCE_INCOMPLETE":
+    sys.exit(2)
+PY
+  then
+    trace_rc=2
+    echo D08_OWNER_FIRST_SCAN_CAPTURE_INCOMPLETE_HOLD >&2
+  fi
   # Always create a bounded PRIVATE diagnostics ZIP on Owner GUI exit,
   # including Ctrl+C and first timing failures. Raw CTF, JSONL, .git,
   # models, binaries, full run logs are NEVER in the outgoing ZIP.
