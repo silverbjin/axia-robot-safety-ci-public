@@ -13,7 +13,8 @@ from d08_scan_gap_trace import (first_scan_receive_gap, diagnose_first_receive_b
                                 diagnose_native_clock_during_first_gap,
                                 compare_isolated_ros_first_gap,
                                 compare_worst_scan_pair_receivers,
-                                scan_gap_operation_overlaps)
+                                scan_gap_operation_overlaps,
+                                analyze_process_heartbeat_gap)
 import json
 import math
 from pathlib import Path
@@ -206,6 +207,21 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
     thread=None
     moved=False
     operation_spans=[]
+    process_heartbeat_samples=deque(maxlen=2048)
+    process_heartbeat_stop=threading.Event()
+
+    def heartbeat_process_loop():
+        # CI-only low-overhead 20ms witness; detects whether ALL Python
+        # threads pause or only ROS executor callbacks are delayed.
+        while not process_heartbeat_stop.is_set():
+            process_heartbeat_samples.append({
+                "host_monotonic_sec":time.monotonic(),
+                "process_cpu_sec":time.process_time(),
+            })
+            process_heartbeat_stop.wait(.02)
+
+    process_heartbeat_thread=threading.Thread(
+        target=heartbeat_process_loop,daemon=True)
 
     def record_span(name,start):
         # Bounded diagnostic of exact host-monotonic synchronous operations.
@@ -495,6 +511,8 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
             until(isolated_has_samples,"ISOLATED_ROS_SCAN_RX_NOT_READY",9)
         result["probe_armed_at_host_monotonic_sec"]=round(time.monotonic(),6)
         result["first_gap_probes_armed_before_observer"]=True
+        if isolated_enabled:
+            process_heartbeat_thread.start()
         thread.start()
         independent_thread.start()
         result["observer_executor_started_at_monotonic_sec"]=round(time.monotonic(),6)
@@ -617,6 +635,9 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
         result["first_boundary"]=type(exc).__name__+":"+str(exc)[:250]
         print("D08_REAL_THREE_PATHS_HOLD "+result["first_boundary"],flush=True)
     finally:
+        if process_heartbeat_thread.ident is not None:
+            process_heartbeat_stop.set()
+            process_heartbeat_thread.join(timeout=1)
         if moved:
             try:
                 move("cleanup_restore",FAR_WORLD)
@@ -754,6 +775,8 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
                     after["entry_at"]-before["entry_at"],6)
                 cmp["operation_overlap_report"]=scan_gap_operation_overlaps(
                     pair,operation_spans)
+                cmp["process_heartbeat"]=analyze_process_heartbeat_gap(
+                    pair,list(process_heartbeat_samples))
                 result["worst_scan_causal_pair"]=cmp
                 result["worst_scan_pair_source_stamps"]=pair
                 print("D08_REAL_WORST_SCAN_SOURCE_PAIR "
@@ -777,6 +800,18 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
                 k:result["isolated_ros_process_scan_rx"][k] for k in
                 ("sample_count","max_host_receive_gap_sec","history_complete")
             },sort_keys=True),flush=True)
+        result["process_heartbeat_summary"]={
+            "enabled":bool(isolated_enabled),
+            "sample_count":len(process_heartbeat_samples),
+            "history_complete":len(process_heartbeat_samples)<2048,
+            "source":"same_python_process_monotonic_and_process_time",
+        }
+        if isolated_enabled and (
+                len(process_heartbeat_samples)<20 or
+                len(process_heartbeat_samples)>=2048):
+            result["status"]="HOLD"
+            result.setdefault("first_boundary",
+                              "D08_PROCESS_HEARTBEAT_EVIDENCE_INCOMPLETE")
         result["read_only_operation_spans"]=operation_spans[:48]
         # No synthetic /scan or arbitrary ROS cmd_vel publisher is created here.
         (out/"verdict.json").write_text(json.dumps(result,indent=2,sort_keys=True)+"\n")
