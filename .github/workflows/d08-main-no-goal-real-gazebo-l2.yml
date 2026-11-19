@@ -96,6 +96,7 @@ jobs:
             d08/tests/test_d08_g07_same_world_adapter.py \
             d08/tests/test_d08_g07_readonly_pregoal.py \
             d08/tests/test_d08_g07_first_guard_ttl_review.py \
+            d08/tests/test_d08_x11_window_titles.py \
             d08/tests/test_d08_g07_lidar_visible_proxy.py \
             d08/tests/test_d08_rgbd_alignment_evidence.py \
             d08/tests/test_d08_live_public_harness.py
@@ -1119,9 +1120,56 @@ jobs:
           retention-days: 7
           if-no-files-found: error
 
+  build-host-x11-bundle:
+    # Prior no-network host test #44535462815 confirms Ubuntu24 runner Xvfb.
+    # Package the host's distro executable+ldd libs, NOT untrusted software.
+    # Same-run artifact avoids both Ubuntu mirror outages and expiring pins.
+    if: github.event_name == 'pull_request' && github.head_ref == 'feat/d08-d04-d07-single-session-20261119'
+    needs:
+      - l0-human-proxy-red-green
+      - g07-student-single-session-hook-l0
+      - g07-official-source-sdf-adapter-l1
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Reuse verified Ubuntu24 Xvfb and matching loader, no APT
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test -x /usr/bin/Xvfb
+          dpkg-query -S /usr/bin/Xvfb | grep -Eq '^xvfb:'
+          stage="$RUNNER_TEMP/d08-host-xvfb"
+          mkdir -p "$stage" "$RUNNER_TEMP/d08-host-xvfb-artifact"
+          cp -L --parents /usr/bin/Xvfb "$stage"
+          python3 - <<'PY' | while IFS= read -r library;do
+          from pathlib import Path
+          import subprocess
+          output=subprocess.check_output(["ldd","/usr/bin/Xvfb"],text=True)
+          libraries=set()
+          for line in output.splitlines():
+              for item in line.replace("=>"," ").split():
+                  if item.startswith("/") and Path(item).is_file():
+                      libraries.add(item)
+          for library in sorted(libraries):
+              print(library)
+          PY
+            test -f "$library"
+            cp -L --parents "$library" "$stage"
+          done
+          test -x "$stage/lib64/ld-linux-x86-64.so.2"
+          tar -C "$stage" -czf "$RUNNER_TEMP/d08-host-xvfb-artifact/xvfb-ubuntu24.tgz" .
+          (cd "$RUNNER_TEMP/d08-host-xvfb-artifact" && sha256sum xvfb-ubuntu24.tgz > SHA256SUMS)
+          echo D08_G07_HOST_XVFB_BUNDLE_NO_UBUNTU_APT_SOURCE_PASS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: d08-host-xvfb-${{ github.run_id }}
+          path: ${{ runner.temp }}/d08-host-xvfb-artifact/
+          retention-days: 7
+          if-no-files-found: error
+
   one-real-gazebo-moving-gui:
     if: github.event_name == 'pull_request' && github.head_ref == 'feat/d08-d04-d07-single-session-20261119'
-    needs: build-native-witness
+    needs: [build-native-witness, build-host-x11-bundle]
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     container:
@@ -1176,6 +1224,10 @@ jobs:
         with:
           name: d08-g07-witness-${{ github.run_id }}
           path: ${{ github.workspace }}/task04-native-build
+      - uses: actions/download-artifact@v4
+        with:
+          name: d08-host-xvfb-${{ github.run_id }}
+          path: ${{ github.workspace }}/d08-host-xvfb-bundle
       # This is the preexisting G07 strict CM120ms oracle, not a copy or a new validator.
       - name: Exact public Student source and minimum L0 before physical run
         shell: bash
@@ -1206,35 +1258,41 @@ jobs:
         run: |
           set -Eeuo pipefail
           set +u;source /opt/ros/jazzy/setup.bash;set -u
-          missing_gui=()
-          for tool in Xvfb rviz2 xwininfo;do
-            command -v "$tool" >/dev/null 2>&1 || missing_gui+=("$tool")
-          done
-          if (( ${#missing_gui[@]} > 0 ));then
-            echo "D08_G07_GUI_PACKAGES_MISSING=${missing_gui[*]}"
-            # Cycle09 #44531908665: archive.ubuntu.com HTTP/80 connection
-            # failure before any Gazebo; use only official Ubuntu HTTPS
-            # mirrors and fail closed under bounded network timeouts.
-            for sources in /etc/apt/sources.list /etc/apt/sources.list.d/*.sources;do
-              [[ -f "$sources" ]] || continue
-              sed -i \
-                -e 's|http://archive.ubuntu.com/ubuntu/|https://archive.ubuntu.com/ubuntu/|g' \
-                -e 's|http://security.ubuntu.com/ubuntu/|https://security.ubuntu.com/ubuntu/|g' \
-                "$sources"
-            done
-            timeout --signal=TERM --kill-after=5s 140s apt-get update -qq \
-              -o APT::Update::Error-Mode=any -o Acquire::Retries=2 \
-              -o Acquire::https::Timeout=22 -o Acquire::http::Timeout=22 || {
-                echo D08_G07_GUI_APT_HTTPS_MIRROR_FAILED_BEFORE_GAZEBO >&2;exit 2;
-              }
-            timeout --signal=TERM --kill-after=5s 140s \
-              env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
-              --no-install-recommends --no-upgrade xvfb x11-utils ros-jazzy-rviz2 || {
-                echo D08_G07_GUI_APT_PACKAGES_FAILED_BEFORE_GAZEBO >&2;exit 2;
-              }
-          fi
-          for tool in Xvfb rviz2 xwininfo;do command -v "$tool" >/dev/null || exit 2;done
-          echo D08_G07_GUI_RUNTIME_BINARIES_VERIFIED_BEFORE_MOVING
+          # No APT. GitHub host Ubuntu24 Xvfb is supplied as an attested
+          # same-run artifact, because HTTPS AND HTTP Ubuntu mirrors both
+          # failed in #44531908665 / #44533365775 before any real Gazebo.
+          bundle="$GITHUB_WORKSPACE/d08-host-xvfb-bundle"
+          test -s "$bundle/xvfb-ubuntu24.tgz"
+          (cd "$bundle" && sha256sum -c SHA256SUMS)
+          root=/tmp/axia_d08_xvfb_host_bundle
+          bin=/tmp/axia_d08_xvfb_wrapper
+          mkdir -p "$root" "$bin"
+          tar -C "$root" -xzf "$bundle/xvfb-ubuntu24.tgz"
+          test -x "$root/usr/bin/Xvfb"
+          test -x "$root/lib64/ld-linux-x86-64.so.2"
+          cat > "$bin/Xvfb" <<'X11_WRAPPER'
+          #!/usr/bin/env bash
+          set -Eeuo pipefail
+          root=/tmp/axia_d08_xvfb_host_bundle
+          exec "$root/lib64/ld-linux-x86-64.so.2" --library-path \
+            "$root/lib/x86_64-linux-gnu" "$root/usr/bin/Xvfb" "$@"
+          X11_WRAPPER
+          chmod 755 "$bin/Xvfb"
+          export PATH="$bin:$PATH"
+          echo "$bin" >> "$GITHUB_PATH"
+          command -v Xvfb >/dev/null && command -v rviz2 >/dev/null
+          # Verify a REAL X11 server socket in the same container, not just
+          # a filename. This smoke does NOT launch Gazebo or claim L2.
+          Xvfb :98 -screen 0 640x480x24 -nolisten tcp \
+            > "$GITHUB_WORKSPACE/d08-host-xvfb-smoke.log" 2>&1 &
+          smoke_pid=$!
+          sleep 2
+          kill -0 "$smoke_pid" && test -S /tmp/.X11-unix/X98 || {
+            cat "$GITHUB_WORKSPACE/d08-host-xvfb-smoke.log" >&2;exit 2;
+          }
+          kill -TERM "$smoke_pid" 2>/dev/null || true
+          wait "$smoke_pid" 2>/dev/null || true
+          echo D08_G07_GUI_XVFB_REAL_SOCKET_PASS_NO_APT_NOT_GAZEBO
           # Exact G07 Owner lock: never allow OSRF development headers to
           # silently upgrade the runtime package from 13.6 to 13.7.
           actual="$(dpkg-query -W -f='${Version}' libgz-transport13)"
@@ -1295,7 +1353,7 @@ jobs:
           rviz_seen=0;gazebo_seen=0
           for ((i=0;i<780;i++));do
             kill -0 "$runner_pid" 2>/dev/null || break
-            windows="$(timeout 4s xwininfo -root -tree 2>/dev/null || true)"
+            windows="$(timeout 4s python3 "$GITHUB_WORKSPACE/ci/d08/scripts/d08_x11_window_titles.py" 2>/dev/null || true)"
             grep -Eiq 'RViz' <<< "$windows" && rviz_seen=1
             grep -Eiq 'Gazebo' <<< "$windows" && gazebo_seen=1
             sleep 1
