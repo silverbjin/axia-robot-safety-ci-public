@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""Streaming, bounded summary of actual Jazzy ros2:rcl_* userspace LTTng events.
+"""Bounded official Jazzy rcl/rmw topic-handle trace summarizer (diagnostic only).
 
-Not a per-LaserScan message join. PID/handle/topic inference requires init
-tracepoints; without them report attribution unavailable, never DDS PASS.
+ROS rcl_take has only message pointer, not subscription_handle: it cannot
+be mapped to /scan. Instead join rcl_subscription_init.rmw_subscription_handle
+to rmw_take and rcl_publisher_init.rmw_publisher_handle to rmw_publish.
+Nothing here proves matching LaserScan identity or DDS latency root cause.
 """
 from __future__ import annotations
 import argparse
@@ -12,85 +14,111 @@ import re
 import sys
 from pathlib import Path
 
-EVENT = re.compile(r"\bros2:(rcl_publisher_init|rcl_subscription_init|rcl_publish|rcl_take):")
+EVENT = re.compile(r"\bros2:(rcl_publisher_init|rcl_subscription_init|rcl_publish|rcl_take|rmw_publish|rmw_take):")
 TIME = re.compile(r"\[(?:(?:\d{4}-\d{2}-\d{2})\s+)?(\d\d):(\d\d):(\d\d)\.(\d+)\]")
 PID = re.compile(r"\bvpid\s*=\s*(\d+)")
 PROC = re.compile(r'\bprocname\s*=\s*"([^"]+)"')
 TOPIC = re.compile(r'\btopic_name\s*=\s*"([^"]+)"')
 PUB = re.compile(r"\bpublisher_handle\s*=\s*(0x[0-9a-fA-F]+|\d+)")
 SUB = re.compile(r"\bsubscription_handle\s*=\s*(0x[0-9a-fA-F]+|\d+)")
+RMW_PUB = re.compile(r"\brmw_publisher_handle\s*=\s*(0x[0-9a-fA-F]+|\d+)")
+RMW_SUB = re.compile(r"\brmw_subscription_handle\s*=\s*(0x[0-9a-fA-F]+|\d+)")
+TAKEN_TRUE = re.compile(r"\btaken\s*=\s*1\b")
+SOURCE_TS = re.compile(r"\b(?:source_timestamp|timestamp)\s*=\s*[1-9][0-9]*\b")
 
 
 def parse_events(lines):
-    owners = {"publish": {}, "take": {}}
-    event_counts = collections.Counter()
-    scan_events = {"publish": collections.defaultdict(list),
-                   "take": collections.defaultdict(list)}
-    proc_names = {}
-    parseable_time_count = 0
+    rcl_owner = {"publish": {}, "take": {}}
+    rmw_owner = {"publish": {}, "take": {}}
+    counts = collections.Counter()
+    streams = {"publish": {}, "take": {}}
+    processes = {}
+    parsed = 0
     for line in lines:
         match = EVENT.search(line)
         if not match:
             continue
         kind = match.group(1)
-        event_counts[kind] += 1
-        pid_match = PID.search(line)
-        pid = pid_match.group(1) if pid_match else "UNKNOWN_PID"
-        p = PROC.search(line)
-        if p:
-            proc_names[pid] = p.group(1)
-        handle_match = PUB.search(line) if "publish" in kind else SUB.search(line)
-        handle = handle_match.group(1) if handle_match else None
+        counts[kind] += 1
+        m_pid = PID.search(line)
+        pid = m_pid.group(1) if m_pid else "UNKNOWN_PID"
+        m_proc = PROC.search(line)
+        if m_proc:
+            processes[pid] = m_proc.group(1)
         if kind in ("rcl_publisher_init", "rcl_subscription_init"):
-            tm = TOPIC.search(line)
-            if handle and tm:
-                owners["publish" if kind == "rcl_publisher_init" else "take"][(pid,handle)] = tm.group(1)
+            direction = "publish" if kind == "rcl_publisher_init" else "take"
+            m_topic = TOPIC.search(line)
+            m_rcl = (PUB if direction == "publish" else SUB).search(line)
+            m_rmw = (RMW_PUB if direction == "publish" else RMW_SUB).search(line)
+            if m_topic and m_rcl:
+                rcl_owner[direction][(pid,m_rcl.group(1))] = m_topic.group(1)
+            if m_topic and m_rmw:
+                rmw_owner[direction][(pid,m_rmw.group(1))] = m_topic.group(1)
             continue
-        tm = TIME.search(line)
-        if not tm or handle is None:
+
+        if kind == "rcl_take":
+            # Official rcl_take provides only a message pointer.
+            # Never assign these events to an arbitrary /scan subscription.
             continue
-        hours, mins, secs, decimals = tm.groups()
-        t = int(hours)*3600 + int(mins)*60 + int(secs) + float("0."+decimals)
-        parseable_time_count += 1
-        direction = "publish" if kind == "rcl_publish" else "take"
-        topic = owners[direction].get((pid,handle))
-        if topic in ("scan", "/scan"):
-            rows = scan_events[direction][(pid,handle)]
-            if not rows:
-                rows.extend([t, 0, 0.0, []])
-            else:
-                gap = t - rows[0]
-                if gap < -80000:
-                    gap += 86400
-                rows[0] = t
-                if gap >= 0:
-                    rows[2] = max(rows[2],gap)
-                    top = rows[3]
-                    if gap > .3:
-                        top.append(round(gap,6))
-                        top.sort(reverse=True)
-                        del top[10:]
-            rows[1] += 1
-    summaries = []
-    for direction, entries in scan_events.items():
-        for (pid,handle), row in entries.items():
-            summaries.append({"direction":direction,"pid":pid,
-                              "process":proc_names.get(pid),
-                              "topic":"/scan","count":row[1],
-                              "max_consecutive_rcl_event_gap_sec":round(row[2],6),
-                              "largest_gaps_over_300ms_sec":row[3],
-                              "message_identity_correlated":False})
-    summaries.sort(key=lambda x:(x["direction"],x["pid"]))
-    return {"status":"DIAGNOSTIC_ONLY_CAUSE_UNDETERMINED",
-            "trace_event_counts":dict(sorted(event_counts.items())),
-            "parseable_time_event_count":parseable_time_count,
-            "scan_topic_streams":summaries,
-            "scan_bridge_publisher_identity_verified":False,
-            "rcl_publish_to_rcl_take_same_message_join_verified":False,
-            "publisher_rmw_cadence_measured":False,
-            "cm_internal_receiver_ttl_verified":False,
-            "owner_wsl2_l3_verified":False,
-            "limitations":"rcl init topic handles and rcl events only; not source-stamp message joins or RMW scheduling proofs"}
+        if kind == "rmw_take" and not TAKEN_TRUE.search(line):
+            continue
+
+        direction = "publish" if kind in ("rcl_publish","rmw_publish") else "take"
+        m_handle = (RMW_PUB if kind == "rmw_publish" else
+                    RMW_SUB if kind == "rmw_take" else PUB).search(line)
+        m_time = TIME.search(line)
+        if not m_handle or not m_time:
+            continue
+        topic_owner = rmw_owner if kind.startswith("rmw_") else rcl_owner
+        if topic_owner[direction].get((pid,m_handle.group(1))) not in ("scan","/scan"):
+            continue
+        hh,mm,ss,us = m_time.groups()
+        t = int(hh)*3600+int(mm)*60+int(ss)+float("0."+us)
+        parsed += 1
+        key = (pid,m_handle.group(1),kind)
+        row = streams[direction].setdefault(key,{"last":None,"count":0,"max":0.0,
+                                                 "large":[],"source_ts":0})
+        if row["last"] is not None:
+            gap = t - row["last"]
+            if gap < -80000:
+                gap += 86400
+            if gap >= 0:
+                row["max"] = max(row["max"],gap)
+                if gap > .3:
+                    row["large"].append(round(gap,6))
+                    row["large"].sort(reverse=True)
+                    del row["large"][10:]
+        row["last"] = t
+        row["count"] += 1
+        if kind.startswith("rmw_") and SOURCE_TS.search(line):
+            row["source_ts"] += 1
+
+    result_streams = []
+    for direction,entries in streams.items():
+        for (pid,handle,kind),row in entries.items():
+            gap = round(row["max"],6)
+            result_streams.append({
+                "direction":direction,"pid":pid,"process":processes.get(pid),
+                "event_type":kind,"topic":"/scan","count":row["count"],
+                "max_consecutive_rcl_event_gap_sec":gap,
+                "max_consecutive_trace_event_gap_sec":gap,
+                "nonzero_source_timestamp_events":row["source_ts"],
+                "largest_gaps_over_300ms_sec":row["large"],
+                "message_identity_correlated":False})
+    result_streams.sort(key=lambda v:(v["direction"],v["pid"],v["event_type"]))
+    return {
+        "status":"DIAGNOSTIC_ONLY_CAUSE_UNDETERMINED",
+        "trace_event_counts":dict(sorted(counts.items())),
+        "parseable_time_event_count":parsed,
+        "scan_topic_streams":result_streams,
+        "rmw_scan_publish_event_gap_measured":any(s["event_type"]=="rmw_publish" for s in result_streams),
+        "rmw_scan_take_event_gap_measured":any(s["event_type"]=="rmw_take" for s in result_streams),
+        "scan_bridge_publisher_identity_verified":False,
+        "rcl_publish_to_rcl_take_same_message_join_verified":False,
+        "publisher_rmw_cadence_measured":False,
+        "cm_internal_receiver_ttl_verified":False,
+        "owner_wsl2_l3_verified":False,
+        "limitations":"RMW event intervals are per topic but NOT identical LaserScan source-message joins or DDS scheduling proof"}
 
 
 def main():
