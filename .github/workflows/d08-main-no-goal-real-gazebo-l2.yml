@@ -578,6 +578,43 @@ jobs:
         run: |
           set -euo pipefail
           bash d08/scripts/d08_ros_trace_live_ci.sh stop
+      - name: Contract check Owner first-gap classifier using same-run real Gazebo RMW evidence
+        if: success() && github.head_ref == 'fix/d08-owner-rmw-one-shot-20261119'
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n d08/scripts/d08_owner_no_goal_bootstrap.sh
+          bash -n d08/scripts/d08_ros_trace_live_ci.sh
+          test -s results/d08-ros-trace-live/rmw_source_rows.jsonl
+          python3 - <<'PY'
+          from pathlib import Path
+          import shutil
+          source=Path('results/d08-official-nav2-sameworld')
+          dest=Path('results/d08-owner-rmw-real-ci-contract')/'live_evidence'
+          dest.mkdir(parents=True,exist_ok=True)
+          shutil.copytree(source/'ci_owner_replan_cycles',dest/'owner_replan_cycles')
+          shutil.copytree(source/'official_path_phases',dest/'official_path_phases')
+          shutil.copy2(source/'official_nav2_before_path.json',dest/'official_nav2_before_path.json')
+          PY
+          python3 d08/scripts/d08_owner_rmw_first_gap.py \
+            --phase finalize --run results/d08-owner-rmw-real-ci-contract \
+            --rows results/d08-ros-trace-live/rmw_source_rows.jsonl \
+            --trace-summary results/d08-ros-trace-live/summary.json \
+            --out results/d08-owner-rmw-real-ci-contract/owner_first_gap_verdict.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          path=Path('results/d08-owner-rmw-real-ci-contract/owner_first_gap_verdict.json')
+          report=json.loads(path.read_text())
+          summary=json.loads(Path('results/d08-ros-trace-live/summary.json').read_text())
+          assert summary['rmw_scan_source_stamp_join']['matched_unique_pairs']>0,summary
+          assert report['cause']=='UNDETERMINED',report
+          assert report['owner_wsl2_accepted'] is False,report
+          assert report['trace_event_count']>0,report
+          assert report['certified_estop'] is False,report
+          assert report['cm_internal_receive_ttl_verified'] is False,report
+          print('D08_OWNER_RMW_PUBLIC_L2_OFFLINE_CONTRACT_PASS_NOT_WSL2')
+          PY
       - uses: actions/upload-artifact@v4
         if: always() && (github.head_ref == 'diag/d08-live-rcl-publish-take-20261119' || github.head_ref == 'fix/d08-owner-rmw-one-shot-20261119')
         with:
@@ -590,6 +627,7 @@ jobs:
             results/d08-ros-trace-live/raw-trace-sha256.txt
             results/d08-ros-trace-live/raw-archive-verdict.txt
             results/d08-ros-trace-live/summary.json
+            results/d08-owner-rmw-real-ci-contract/owner_first_gap_verdict.json
             results/d08-ros-trace-live/ctf-small.tar.gz
           retention-days: 7
           if-no-files-found: warn
