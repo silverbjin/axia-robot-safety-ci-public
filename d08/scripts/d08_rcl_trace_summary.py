@@ -15,7 +15,7 @@ import sys
 import time
 from pathlib import Path
 
-EVENT = re.compile(r"\bros2:(rcl_publisher_init|rcl_subscription_init|rcl_publish|rcl_take|rmw_publish|rmw_take):")
+EVENT = re.compile(r"\bros2:(rcl_node_init|rcl_publisher_init|rcl_subscription_init|rcl_publish|rcl_take|rmw_publish|rmw_take):")
 TIME = re.compile(r"\[(?:(?:\d{4}-\d{2}-\d{2})\s+)?(\d\d):(\d\d):(\d\d)\.(\d+)\]")
 PID = re.compile(r"\bvpid\s*=\s*(\d+)")
 PROC = re.compile(r'\bprocname\s*=\s*"([^"]+)"')
@@ -24,6 +24,8 @@ PUB = re.compile(r"\bpublisher_handle\s*=\s*(0x[0-9a-fA-F]+|\d+)")
 SUB = re.compile(r"\bsubscription_handle\s*=\s*(0x[0-9a-fA-F]+|\d+)")
 RMW_PUB = re.compile(r"\brmw_publisher_handle\s*=\s*(0x[0-9a-fA-F]+|\d+)")
 RMW_SUB = re.compile(r"\brmw_subscription_handle\s*=\s*(0x[0-9a-fA-F]+|\d+)")
+NODE_HANDLE = re.compile(r"\bnode_handle\s*=\s*(0x[0-9a-fA-F]+|\d+)")
+NODE_NAME = re.compile(r'\b(?:node_name|name)\s*=\s*"([^"]+)"')
 TAKEN_TRUE = re.compile(r"\btaken\s*=\s*1\b")
 SOURCE_TS = re.compile(r"\b(?:source_timestamp|timestamp)\s*=\s*[1-9][0-9]*\b")
 PUB_SOURCE_STAMP = re.compile(r"\btimestamp\s*=\s*(\d+)")
@@ -56,6 +58,8 @@ def parse_events(lines, clock_anchor=None):
     counts = collections.Counter()
     streams = {"publish": {}, "take": {}}
     processes = {}
+    node_names = {}
+    receiver_node_handles = {}
     parsed = 0
     rmw_scan_events = []
     rmw_scan_event_overflow = False
@@ -70,6 +74,12 @@ def parse_events(lines, clock_anchor=None):
         m_proc = PROC.search(line)
         if m_proc:
             processes[pid] = m_proc.group(1)
+        if kind == "rcl_node_init":
+            node_handle = NODE_HANDLE.search(line)
+            node_name = NODE_NAME.search(line)
+            if node_handle and node_name:
+                node_names[(pid,node_handle.group(1))]=node_name.group(1)
+            continue
         if kind in ("rcl_publisher_init", "rcl_subscription_init"):
             direction = "publish" if kind == "rcl_publisher_init" else "take"
             m_topic = TOPIC.search(line)
@@ -79,6 +89,10 @@ def parse_events(lines, clock_anchor=None):
                 rcl_owner[direction][(pid,m_rcl.group(1))] = m_topic.group(1)
             if m_topic and m_rmw:
                 rmw_owner[direction][(pid,m_rmw.group(1))] = m_topic.group(1)
+            if direction == "take" and m_rmw:
+                node_handle=NODE_HANDLE.search(line)
+                if node_handle:
+                    receiver_node_handles[(pid,m_rmw.group(1))]=node_handle.group(1)
             continue
 
         if kind == "rcl_take":
@@ -174,8 +188,10 @@ def parse_events(lines, clock_anchor=None):
         if latency < 0 or latency > 10:
             unmatched += 1
             continue
-        matched.append((round(latency,6),pid,stamp,round(sent,6),round(vals[0],6)))
+        matched.append((round(latency,6),pid,stamp,round(sent,6),round(vals[0],6),handle))
     worst=max(matched,key=lambda x:x[0]) if matched else None
+    receiver_node=(node_names.get((worst[1],receiver_node_handles.get((worst[1],worst[5]))))
+                   if worst else None)
     joined={
         "state":("SOURCE_TIMESTAMP_JOIN_ONLY"
                  if len(matched)>=2 and not rmw_scan_event_overflow
@@ -183,6 +199,9 @@ def parse_events(lines, clock_anchor=None):
         "matched_unique_pairs":len(matched),
         "max_publish_to_take_sec":worst[0] if worst else None,
         "max_pair":({"receiver_pid":worst[1], "source_timestamp":worst[2],
+                     "receiver_subscription_rmw_handle":worst[5],
+                     "receiver_node":receiver_node,
+                     "receiver_node_identified":receiver_node is not None,
                      "publish_time_of_day_sec":worst[3], "take_time_of_day_sec":worst[4]}
                     if worst else None),
         "duplicate_publisher_source_timestamps":duplicate_pub,
