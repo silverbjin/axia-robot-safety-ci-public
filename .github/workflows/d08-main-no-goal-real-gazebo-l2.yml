@@ -970,9 +970,9 @@ jobs:
           echo D08_G07_PINNED_G07_RUNTIME_IMAGE_JAZZY_READY
           git init -q /tmp/d08-g07-student
           git -C /tmp/d08-g07-student remote add origin https://github.com/silverbjin/axia-robot-safety-student.git
-          git -C /tmp/d08-g07-student fetch -q --no-tags --depth 1 origin bae5b4d02b7dcd09c54b523b015a24b3428012ac
+          git -C /tmp/d08-g07-student fetch -q --no-tags --depth 1 origin 0890f9717439c839a6fcb7c3d2a931ba10cbf528
           git -C /tmp/d08-g07-student -c advice.detachedHead=false checkout -q --detach FETCH_HEAD
-          test "$(git -C /tmp/d08-g07-student rev-parse HEAD)" = bae5b4d02b7dcd09c54b523b015a24b3428012ac
+          test "$(git -C /tmp/d08-g07-student rev-parse HEAD)" = 0890f9717439c839a6fcb7c3d2a931ba10cbf528
           mkdir -p results/d08-g07-official-source-bridge
           curl -fLsS --retry 3 --max-time 100 \
             -o /tmp/d08-g07-walk.dae \
@@ -1000,7 +1000,7 @@ jobs:
             --world "$OUT/g07_scene_world.sdf.xacro" \
             --robot "$OUT/g07_robot.sdf.xacro" \
             --actor /tmp/d08-g07-walk.dae --out "$OUT/d08_unified" \
-            --student-sha bae5b4d02b7dcd09c54b523b015a24b3428012ac
+            --student-sha 0890f9717439c839a6fcb7c3d2a931ba10cbf528
           xacro "$OUT/d08_unified/axia_d08_p2_person_world.sdf.xacro" \
             headless:=true > "$OUT/expanded_world.sdf"
           xacro "$OUT/d08_unified/axia_d08_waffle_rgbd.sdf.xacro" \
@@ -1048,14 +1048,14 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: d11eac53f5ce4e322f4e37a50c367e5afabadcc6
+          ref: 0890f9717439c839a6fcb7c3d2a931ba10cbf528
           path: student
           persist-credentials: false
       - name: Exact independent Student source and fail-closed new opt-in
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C student rev-parse HEAD)" = d11eac53f5ce4e322f4e37a50c367e5afabadcc6
+          test "$(git -C student rev-parse HEAD)" = 0890f9717439c839a6fcb7c3d2a931ba10cbf528
           cd student/block_B/day07/h01_runtime
           bash -n scripts/p2_no_goal_smoke_ci.sh
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools \
