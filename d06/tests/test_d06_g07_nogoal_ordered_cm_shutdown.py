@@ -68,6 +68,24 @@ class NoGoalCMShutdownRegression(unittest.TestCase):
         self.assertIn('G07_READONLY_WITNESSES_STOPPED',w)
         self.assertIn('[[ "$witness_handoff_done" == 1 ]]',w)
 
+    def test_gazebo8_server_control_stop_after_nav2_ack_before_group_sigint(self):
+        # Gazebo Harmonic ServerControl(stop:true) is a documented
+        # non-signal shutdown path. No change to Scan300/CM120/Guard150.
+        src=SRC.read_text()
+        self.assertIn("AXIA_G07_NO_GOAL_GZ_STOP_BEFORE_SIGINT",src)
+        self.assertIn("gz.msgs.ServerControl",src)
+        self.assertIn("stop: true",src)
+        self.assertIn("/server_control",src)
+        self.assertIn("G07_NO_GOAL_GAZEBO_SERVER_STOP_ACK_BEFORE_SIGINT",src)
+        block=src[src.index("cleanup() {"):src.index("trap cleanup EXIT")]
+        self.assertLess(block.index("G07_NO_GOAL_GAZEBO_SERVER_STOP_ACK_BEFORE_SIGINT"),
+                        block.index('kill -INT -- "-$LAUNCH_PID"'))
+        self.assertIn("G07_NO_GOAL_GAZEBO_SERVER_STOP_FAILED_HOLD",block)
+        wf=(ROOT/".github/workflows/axia-d06-g07-native-nogoal-cm-clean-l2-20261119.yml").read_text()
+        self.assertIn("AXIA_G07_NO_GOAL_GZ_STOP_BEFORE_SIGINT: '1'",wf)
+        self.assertIn("g07_gz_server_stop.log",wf)
+        self.assertIn("G07_NO_GOAL_GAZEBO_SERVER_STOP_ACK",wf)
+
     def test_real_l2_requires_full_20s_dual_topic_safe_gate_not_just_cm_exit0(self):
         w=(ROOT/".github/workflows/axia-d06-g07-native-nogoal-cm-clean-l2-20261119.yml").read_text()
         self.assertIn('assert rc==0',w)
