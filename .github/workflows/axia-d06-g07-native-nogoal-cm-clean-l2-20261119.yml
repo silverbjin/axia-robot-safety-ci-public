@@ -7,6 +7,10 @@ on:
       - 'd06/tests/test_d06_g07_nogoal_ordered_cm_shutdown.py'
       - 'd06/tools/d06_gz_native_scan_probe_safe.py'
       - 'd06/tests/test_d06_gz_native_witness_teardown.py'
+      - 'd06/tools/d06_g07_scan_rx_witness.py'
+      - 'd06/tests/test_d06_g07_student_first_receipt_pair.py'
+      - 'd06/tests/test_d06_existing_gazebo_core_triage.py'
+      - 'd06/scripts/axia_d06_g07_wslg_existing_core_once.sh'
   workflow_dispatch:
 permissions:
   contents: read
@@ -64,6 +68,8 @@ jobs:
           bash -n scripts/p2_no_goal_smoke_ci.sh
           python3 -m py_compile tools/p2_g07_ordered_shutdown.py tools/p2_g07_owner_shutdown_audit.py
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/d06/tests" -p 'test_d06_g07_nogoal_ordered_cm_shutdown.py' -v
+          python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/d06/tests" -p 'test_d06_g07_student_first_receipt_pair.py' -v
+          python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/d06/tests" -p 'test_d06_existing_gazebo_core_triage.py' -v
           echo 'AXIA_D06_G07_ORDERED_SHUTDOWN_SOURCE_L0_PASS_NO_GOAL'
       - name: Actual same-world Gazebo and official Nav2 CM NO_GOAL teardown
         shell: bash
