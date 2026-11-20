@@ -105,7 +105,8 @@ def sources(session: Path, run: Path | None):
     for name in ("yolo_native.log", "yolo_build.log", "rmw_trace_stop.log",
                  "rmw_trace_watchdog.log", "owner_gpu_probe.txt"):
         yield "logs/" + name + ".excerpt.txt", run / name, "log"
-    for name in ("d08_official_nav2_one_world.log", "gazebo_server.log"):
+    for name in ("d08_official_nav2_one_world.log", "gazebo_server.log",
+                 "d08_owner_gazebo_gui.log"):
         yield "logs/" + name + ".excerpt.txt", run / "live_evidence" / name, "log"
     for rel in (
         "rmw_trace/owner_first_gap_verdict.json",
