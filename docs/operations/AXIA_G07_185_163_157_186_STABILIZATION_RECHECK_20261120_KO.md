@@ -131,3 +131,31 @@
 ### 6.2 다음 실제 원인 검증에 필요한 좁은 증거
 
 첫 `UPSTREAM_STALE_AFTER_MOTION` 전후의 **동일 세션**에서 CM 프로세스 내부 마지막 출력 publish host-monotonic, ROS RMW source timestamp/sequence, 독립 Observer 수신, Guard 수신·Tick을 같은 시간축에 맞춰 확보해야 함. 기존 `d06/diagnostic/g07_task02_strict_gate.py`, D08-derived receipt witness, Student native Guard `cm_age_sec` 필드를 우선 재사용. 이 증거 없이 새 퍼블리셔/스케줄러 설정이나 Safety TTL 변경 금지. Root cause는 여전히 OPEN/HOLD.
+
+
+## 7. Nav2 Jazzy ZERO 발행 중단과 #157 최초 Guard Latch: 원인 가설 검증
+
+### 7.1 공식 Nav2 코드에 확인된 설계 경계
+
+- 공식 Jazzy `nav2_collision_monitor/src/collision_monitor_node.cpp` `publishVelocity()` ([소스](https://api.nav2.org/nav2-jazzy/html/collision__monitor__node_8cpp_source.html#l00213)): 현재 출력 `req_vel`이 ZERO로 바뀌면 `stop_stamp_=this->now()` 기록, 이후 ZERO가 유지되어 `this->now()-stop_stamp_>stop_pub_timeout_`이면 **ZERO cmd_vel 출력 자체를 중단**함. 공식 [설정 문서](https://docs.nav2.org/jazzy/configuration_and_development/configuration_guide/core_servers/collision_monitor/configuring_collision_monitor_node/)도 종료 동작을 명시.
+- 기존 실 Gazebo Moving #44652034063 동일 세션에서 활성 `stop_pub_timeout=5.0` 읽기 확인. 최초 Guard `UPSTREAM_STALE_AFTER_MOTION`, `cm_age_sec=188.577986ms>150ms`, Supervisor 입력은 당시 정상 수신. Guard는 ZERO로 fail-closed.
+- 따라서 **CM의 의도된 ZERO 발행 종료**와 **Guard의 지속적 150ms 수신 요구** 사이에 설정상 호환성 위험이 있음. 단, 실패 원본의 최초 CM ZERO 전환 시각과 `stop_stamp_`은 원본 제한 공개 로그에 없어 **#44652034063의 실제 주 원인으로는 아직 미확정**.
+- CM stop timeout은 ROS sim `now()` 기준이므로 **Host monotonic 5초를 그대로 비교하면 오판**할 수 있음. 소스 `/clock`을 동일 세션 기준으로 interpolation하여 실제 5 *sim*초를 비교해야 함.
+
+### 7.2 RED → GREEN (실제 첫 원인 판정이 아닌 구분 가능한 회귀)
+
+- **RED commit** `7ebaeb67d52ff3645a5c27cf5398e3754462c9c6`, `tests/test_g07_cm_stop_pub_boundary.py`; [실제 공개 Python CI #44668014337](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44668014337) `ModuleNotFoundError: No module named 'd06.diagnostic.g07_cm_stop_pub_boundary'`. Baseline 테스트·Canary 별도 PASS. 이는 ROS/Gazebo가 아닌 예상된 L0 import RED.
+- **GREEN commit** `8f012a52b3daa1e6f5a7d2e998df500ebaf580de`, `d06/diagnostic/g07_cm_stop_pub_boundary.py`: 새 **읽기 전용** 분석기는 기존 `actual_ros_events.jsonl`의 CM 연속 ZERO *이전 비ZERO→이후 연속 ZERO* 구간, `/clock` sim timestamp, 실제 활성 `stop_pub_timeout` readback, 최초 Guard `first_latch_trace`를 비교. `CM_STOP_PUB_TIMEOUT_COMPATIBLE_UNPROVEN` / `...TIMING_INCOMPATIBLE` / `...UNVERIFIED` 모두 **root_cause_confirmed=false, release=HOLD**. `stop_stamp_` 내부 시각이 없으면 확정 불가.
+- [실제 공개 Python #44668393503](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44668393503): **225 passed / 3 skipped**. Guard/CM 실제 소스 또는 안전 TTL 변경 없음.
+- L2 workflow `.github/workflows/axia-g07-fv17-owner-evidence-parity-native-l2.yml` 최소 연결 commit `fa0c6915740838e6953a19cfadf02ea60d883506`: 기존 Student SHA/공식 Nav2/동일 real-Gazebo Moving Goal 2-cycle·CM/Guard 안전 게이트 보존, 종료 후 원본 events를 **읽기 전용** 분석하고 공개 가능한 작은 `cm_stop_pub_first_latch.json`만 업로드. 원본 raw bag 업로드·안전 출고 권한 없음.
+- **실제 Gazebo/Nav2 L2 #44668565391**: 두 독립 사이클 모두 **SUCCESS**. Cycle1 Guard 실제 내부 CM age 최대 **13.328436ms**, Cycle2 **31.634086ms**; 원본 코드 그대로 실제 RViz/Gazebo Xvfb GUI 2개, Goal·종료 및 필수 Guard TTL 게이트 통과. 두 번 모두 진짜 `stop_pub_timeout` readback 확인. 새 진단 결과는 두 번 모두 `CM_STOP_PUB_FIRST_BOUNDARY_UNVERIFIED`, `root_cause_confirmed=false`, `release=HOLD` — 왜냐하면 **기존 실패 래치 자체가 재현되지 않았기 때문**. L2 PASS로 원래 실패 #44652034063을 소급 PASS하지 않음.
+- 독립 최근 L0 성공과 기존 강사 `jrCIgoGl` 교육용 21/21 Accepted 보존. **이번 실 Gazebo L2가 Nvidia WSLg GPU의 SIGSEGV 해결 증거는 아님**.
+
+### 7.3 이후 원인 확정 및 수정 게이트
+
+1. 현재 raw 원본에서 `first_zero` 또는 네이티브 `stop_stamp_`를 확인할 수 없다면, 위 구분 가설은 `UNDETERMINED`. 임의로 `stop_pub_timeout`/Guard TTL 증감 금지.
+2. 새로운 동일 가상 시뮬레이션 원본 래치가 발생하고 `sim_zero_to_latch_sec>=5.0`, `sim_zero_to_last_output_sec<=5.0+증거 오차` 및 실제 CMS callback/source 타임라인이 함께 있으면 그때 **publisher deliberate zero cessation**의 원인 후보를 검토. `stop_stamp_` 또는 공식 CM 내부 분기 증거가 없는 한 인과 확정 금지.
+3. Guard CM age 초과가 ZERO 발행 중단 후라면 **기존 안전 fail-closed ZERO 유지**, CM120ms/Guard150ms/Scan300ms 절대 완화 금지. 시연 컨트롤러의 STOP→Odometry dwell→정확한 Goal Cancel 흐름이 기존 5 sim초 내 종료되는지 증거를 먼저 검토. 추가 기능이 아니라 기존 지연 경계만 최소 수정.
+4. #185/#163 기존 독립 read-only ManageLifecycleNodes probe와 #186 WSLg 코어 스택은 별도 미해결. C16 별도 NVIDIA 동등 runner 부재이므로 #186 최종 해결을 주장할 수 없음.
+
+**검증 상태:** `G07_EDUCATIONAL_BASELINE=ACCEPTED`, `TASK03_CM_ZERO_TIMEOUT_HYPOTHESIS=UNPROVEN`, `G07_SHUTDOWN_STABILIZATION=HOLD`, `WSLG_GPU_CRASH=HOLD`, `NEW_L2_PUBLIC_MOVING_TWO_CYCLES=PASS`, `NEW_OWNER_WSL2=NOT_RUN`, `CERTIFIED_ESTOP=false`, `MAIN_MERGED=false`.
