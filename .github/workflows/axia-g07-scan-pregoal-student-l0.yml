@@ -18,7 +18,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 37a24d2c83d86390ddc1963062999e8e7f0f4778
+          ref: 5d0e7755d623c037368e02aeb4b4e8a79d020094
           path: student
           persist-credentials: false
       - name: Student read-only Scan pregoal 12s synthetic tests (NO ROS, NO Goal)
