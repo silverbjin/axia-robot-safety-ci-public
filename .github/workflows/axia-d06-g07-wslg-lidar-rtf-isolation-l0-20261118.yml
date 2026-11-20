@@ -30,6 +30,7 @@ on:
       - 'd06/tests/test_d06_c09_deferred_scan_geometry.py'
       - 'd06/tests/test_d06_c10_ci_rmw_comparison.py'
       - 'd06/tests/test_d06_c11_wslg_core_once.py'
+      - 'd06/tests/test_d06_c12_field_missing_coredumpctl.py'
       - 'd06/scripts/axia_d06_g07_wslg_sigsegv_capture_once.sh'
       - 'd06/tools/d06_wslg_latest_gz_sigsegv_core.py'
       - 'd06/tests/test_d06_l2_apt_https_bootstrap.py'
@@ -122,6 +123,7 @@ jobs:
           python3 -m unittest discover -s d06/tests -p 'test_d06_c09_deferred_scan_geometry.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_c10_ci_rmw_comparison.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_c11_wslg_core_once.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_c12_field_missing_coredumpctl.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_l2_apt_https_bootstrap.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_ci_only_gui_nice.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_g07_no_goal_manager_discovery.py' -v
