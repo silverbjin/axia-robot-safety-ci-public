@@ -61,7 +61,9 @@ class C12FieldDependencyRegression(unittest.TestCase):
 
     def test_real_noble_package_manifest_must_not_be_empty(self):
         workflow=(ROOT/".github/workflows/axia-d06-c12-coredump-cli-compat-ubuntu2404.yml").read_text()
-        self.assertIn('docker run --rm ubuntu:24.04',workflow)
+        self.assertIn('docker run --rm',workflow)
+        self.assertIn('ubuntu:24.04',workflow)
+        self.assertIn('target=/workspace,readonly',workflow)
         self.assertIn('apt-get install -y -qq --no-install-recommends systemd-coredump',workflow)
         self.assertIn('dpkg-query -W systemd-coredump',workflow)
         self.assertIn('grep -Eq "^systemd-coredump[[:space:]]+[^[:space:]]+"',workflow)
