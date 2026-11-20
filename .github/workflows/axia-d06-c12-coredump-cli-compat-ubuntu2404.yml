@@ -65,9 +65,9 @@ jobs:
             # exporting its stopped inferior as a core. A Docker container
             # does NOT prove systemd-coredump backend, WSLg or Gazebo behavior.
             cat > /tmp/axia-c14-synthetic-sigsegv.c <<C14SRC
-#include <signal.h>
-int main(void) { raise(SIGSEGV); return 0; }
-C14SRC
+          #include <signal.h>
+          int main(void) { raise(SIGSEGV); return 0; }
+          C14SRC
             gcc -g -O0 -o /tmp/axia-c14-synthetic-sigsegv /tmp/axia-c14-synthetic-sigsegv.c
             gdb -nx -q -batch \
               -ex "set confirm off" \
