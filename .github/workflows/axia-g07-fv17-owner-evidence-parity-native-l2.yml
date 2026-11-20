@@ -74,7 +74,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 803cdd99fa0f781998442fbc37be9f59fde82364
+          ref: 59f8ab6acb5107dcdcfd2bf37b7c16b881b7130c
           path: student
           persist-credentials: false
       # Keep the historic reviewer for older unrelated imports; the current
@@ -89,7 +89,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C student rev-parse HEAD)" = '803cdd99fa0f781998442fbc37be9f59fde82364'
+          test "$(git -C student rev-parse HEAD)" = '59f8ab6acb5107dcdcfd2bf37b7c16b881b7130c'
           test "$(git -C ci rev-parse HEAD)" = "$GITHUB_SHA"
           test "$FASTDDS_BUILTIN_TRANSPORTS" = UDPv4
           [[ -z "${FASTRTPS_DEFAULT_PROFILES_FILE:-}" && -z "${FASTDDS_DEFAULT_PROFILES_FILE:-}" ]] || {
@@ -103,6 +103,8 @@ jobs:
           export PYTHONPATH="$GITHUB_WORKSPACE/ci:$GITHUB_WORKSPACE/review${PYTHONPATH:+:$PYTHONPATH}"
           bash -n scripts/p2_no_goal_smoke_ci.sh
           python3 -m unittest discover -s tools -p 'test_g07_scan_wall_pregoal.py' -v
+          python3 -m unittest discover -s tools -p 'test_g07_nav_early_manage_client.py' -v
+          python3 -m unittest discover -s tools -p 'test_g07_navigation_warm_participant_shutdown_ab.py' -v
           python3 -m py_compile tools/p2_g07_task04_moving_review.py tools/p2_g07_ci_moving_goal.py
           python3 -m py_compile "$GITHUB_WORKSPACE/ci/scripts/axia_g07_mvp_visual_verdict.py"
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_owner_shell_contract.py' -v
@@ -281,7 +283,7 @@ jobs:
           import json,sys
           result=json.load(open(sys.argv[1]))
           assert result.get("goal_sent") is True,result
-          assert result.get("source_sha")=="803cdd99fa0f781998442fbc37be9f59fde82364",result
+          assert result.get("source_sha")=="59f8ab6acb5107dcdcfd2bf37b7c16b881b7130c",result
           print('AXIA_G07_REAL_OWNER_AMCL_PRIMARY_PATH_PASS actual_goal_sent=true')
           PY_REAL_TF
           # Real Guard 20Hz timing facts must be present in the actual
@@ -333,7 +335,7 @@ jobs:
                   --motion "$GITHUB_WORKSPACE/native/g07_ci_moving/ci_moving_goal_result.json" \
                   --shutdown "$GITHUB_WORKSPACE/native/g07_ordered_shutdown.json" \
                   --gui-windows 2 \
-                  --source-sha '803cdd99fa0f781998442fbc37be9f59fde82364' \
+                  --source-sha '59f8ab6acb5107dcdcfd2bf37b7c16b881b7130c' \
                   --output "$GITHUB_WORKSPACE/public_evidence/task04_mvp_visual_l2_verdict.json"; then
               sha256sum "$GITHUB_WORKSPACE/public_evidence/task04_mvp_visual_l2_verdict.json" \
                 > "$GITHUB_WORKSPACE/public_evidence/task04_mvp_visual_l2_verdict.sha256"
@@ -355,7 +357,7 @@ jobs:
           fi
           verify_real_goal_and_guard_evidence || exit 3
           windows_count=$((rviz_seen+gazebo_seen))
-          python3 tools/p2_g07_task04_moving_review.py             --motion-root "$GITHUB_WORKSPACE/native"             --witness "$GITHUB_WORKSPACE/native/s02_ecm_witness.json"             --source-sha '803cdd99fa0f781998442fbc37be9f59fde82364'             --gui-windows "$windows_count"             --output "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"
+          python3 tools/p2_g07_task04_moving_review.py             --motion-root "$GITHUB_WORKSPACE/native"             --witness "$GITHUB_WORKSPACE/native/s02_ecm_witness.json"             --source-sha '59f8ab6acb5107dcdcfd2bf37b7c16b881b7130c'             --gui-windows "$windows_count"             --output "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"
           sha256sum "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"             > "$GITHUB_WORKSPACE/public_evidence/task04_moving_verdict.sha256"
           echo 'AXIA_G07_TASK04_NATIVE_MOVING_GUI_XVFB_L2_PASS_OWNER_WSL2_NOT_RUN'
           echo 'AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false'
