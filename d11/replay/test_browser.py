@@ -35,6 +35,7 @@ def main()->int:
             assert page.locator("#ifResult").inner_text().find("숨김")>=0
             assert page.locator("#aeResult").inner_text().find("숨김")>=0
             assert page.locator("#truthArea").inner_text().find("숨겨져")>=0
+            assert not page.locator("#metricsArea").is_visible(), "confusion must not leak before truth reveal"
             assert page.locator("#windowStrip .win").count()==10
             page.select_option("#traceSelect",label="TST_A_00 · 신호 관찰")
             for _ in range(4):page.click("#next")
@@ -47,6 +48,7 @@ def main()->int:
             assert page.locator("#aeResult").inner_text()=="WARNING"
             page.click("#showTruth")
             assert "합성 이상" in page.locator("#truthArea").inner_text()
+            assert page.locator("#metricsArea").is_visible()
             conf=page.locator("#ifConfusion").text_content() or ""
             assert "FP" in conf, ("D11_IF_CONFUSION_VISIBILITY",repr(conf),page.locator("#metricsArea").get_attribute("hidden"))
             page.screenshot(path=str(opt.output/"d11_desktop_1920x1080.png"))
@@ -64,6 +66,7 @@ def main()->int:
             assert "NORMAL"==page.locator("#aeResult").inner_text()
             page.click("#resetAnswers")
             assert "숨김" in page.locator("#aeResult").inner_text()
+            assert not page.locator("#metricsArea").is_visible(), "reset must re-hide confusion"
             # Four quality traces are not scored in either model.
             page.select_option("#traceSelect",label="TST_Q_01 · 품질 조사")
             page.click("#showIF");page.click("#showAE");page.click("#showTruth")
