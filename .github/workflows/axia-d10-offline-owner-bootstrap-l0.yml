@@ -53,7 +53,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           bash -n public/d10/offline/d10_instructor_offline_once.sh
-          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s public/d10/offline \
+          AXIA_D10_TEST_AUTO_BOOTSTRAP=1 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s public/d10/offline \
             -p test_d10_owner_entrypoint.py -v 2>&1 | tee evidence/owner_l0.log
           echo D10_OWNER_CWD_LOG_FIRST_FAILURE_PUBLIC_FAKE_CONTRACT_PASS | tee evidence/owner_verdict.log
           echo D10_L0_SCOPE_PRIVATE_MODEL_NOT_RUN_ROS_NOT_RUN_GAZEBO_NOT_RUN | tee -a evidence/owner_verdict.log
