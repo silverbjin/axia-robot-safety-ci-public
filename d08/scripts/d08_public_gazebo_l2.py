@@ -689,6 +689,19 @@ def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=Fals
                 spawn_xy=(spawn['x'],spawn['y']))
             result['official_nav2_before_path']=json.loads(proof.read_text())
             if path_rc!=0:
+                # Preserve the FIRST observed Nav2 lifecycle transition
+                # before the later Planner "inactive" summary or SIGINT
+                # teardown can overwrite/obscure the real handoff boundary.
+                from d08_cm_native_probe_isolated import (
+                    classify_nav2_lifecycle_first_boundary)
+                navlog=out/'d08_official_nav2_one_world.log'
+                startup_boundary=classify_nav2_lifecycle_first_boundary(
+                    navlog.read_text(errors='replace') if navlog.is_file() else '')
+                result['nav2_cm_startup_boundary']=startup_boundary
+                (out/'nav2_cm_startup_boundary.json').write_text(
+                    json.dumps(startup_boundary,indent=2,sort_keys=True)+'\n')
+                print('D08_NAV2_CM_FIRST_LIFECYCLE_HANDOFF '
+                      +json.dumps(startup_boundary,sort_keys=True),flush=True)
                 raise RuntimeError('D08_OFFICIAL_NAV2_BEFORE_PATH_FIRST_BOUNDARY:'
                                    +str(result['official_nav2_before_path'].get('blocker','not_succeeded')))
             print('D08_OFFICIAL_NAV2_SAME_WORLD_BEFORE_PATH_L2_CANDIDATE',
