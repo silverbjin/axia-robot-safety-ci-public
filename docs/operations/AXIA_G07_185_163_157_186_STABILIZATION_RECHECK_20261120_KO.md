@@ -159,3 +159,26 @@
 4. #185/#163 기존 독립 read-only ManageLifecycleNodes probe와 #186 WSLg 코어 스택은 별도 미해결. C16 별도 NVIDIA 동등 runner 부재이므로 #186 최종 해결을 주장할 수 없음.
 
 **검증 상태:** `G07_EDUCATIONAL_BASELINE=ACCEPTED`, `TASK03_CM_ZERO_TIMEOUT_HYPOTHESIS=UNPROVEN`, `G07_SHUTDOWN_STABILIZATION=HOLD`, `WSLG_GPU_CRASH=HOLD`, `NEW_L2_PUBLIC_MOVING_TWO_CYCLES=PASS`, `NEW_OWNER_WSL2=NOT_RUN`, `CERTIFIED_ESTOP=false`, `MAIN_MERGED=false`.
+
+
+## 8. 통합 REVIEW 및 CI 중복 실행 방지 — 종료 보고 (2026-11-20)
+
+- 공개 실제 Gazebo/Nav2 Moving 2-cycle **#44668565391**: Cycle1 runner RC=0, RViz/Gazebo 각각 1개, 실제 Guard 내부 최대 CM age **13.328436ms**; Cycle2 runner RC=0, GUI 각각 1개, Guard 내부 최대 **31.634086ms**. 두 세션 모두 Goal·Nav2 종료·CM/Guard 및 native witness를 기존 엄격 L2로 검증했고, 독립 ZERO 발행 가설 분석기의 출력은 `CM_STOP_PUB_FIRST_BOUNDARY_UNVERIFIED` + 활성 파라미터 readback=true. **정상 실행이 간헐 원인을 재현하거나 설명하지 못했으므로 근본 원인 FIXED 아님**.
+- `pull_request` 경로 필터는 PR 전체 diff를 매 synchronize마다 비교하므로 문서 커밋에서도 오래 걸리는 Gazebo L2가 중복 실행되는 현상 확인. `49bb593a6ee2d3a5188263675cc8aff2f319efc0`에서 실 L2 트리거를 해당 작업 브랜치의 **push + 정확한 코드/테스트/workflow 경로 변경**으로 한정. 기존 `fix/g07-task04-fv17-evidence-contract-20261120` 브랜치 트리거도 보존. 후속 보고서만 커밋할 때 재실행되지 않도록 개선했으며, 테스트·로봇 런타임과 안전 파라미터에는 영향 없음. GitHub [push/PR 경로 차이 공식 설명](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow).
+- 최종 계약 CI `#44669300694` **225 passed, 3 skipped**, Baseline `#44669300693` PASS, Canary `#44669300751` PASS; 성공한 학생 `5c7983598fa3bcd7148433a06f37a4e78b091273` 소스 및 공식 Nav2 코드 **무수정**.
+- 기존 실패 #44652034063은 Guard 내부 188.577986ms에서 ZERO Latch, 실제 환경 고정 `stop_pub_timeout=5.0`; 최초 ZERO 발생 시각/CM 내부 stop_stamp, 네트워크 publish timestamps가 빠진 한 **원인 확정은 금지**.
+- **#185/#163** : 기존 30s Localization/40s Navigation timeout 읽기 전용 진단은 PR #177에 이미 존재. 정상 ACK 단기 L2만으로 intermittent DDS/서버 callback 원인 해결 선언 금지.
+- **D07 Context** : 기존 `p2_shutdown_context.py`의 정확한 invalid WaitSet `RCLError`는 유지, 원래 `Destroyable` future 경고는 스택 동일성이 입증되지 않아 무변경.
+- **#186** : 별도 RTX NVIDIA WSLg/G3 하드웨어와 최초 실제 SIGSEGV/SIGABRT core stack이 없으며, C11 기존 `--server-only` first core/GDB 증거 수집기와 C16 환경 사전검사만 보존. Linux Xvfb PASS를 WSLg crash 해결 증거로 대체 금지.
+- **WSL2 현장 release gate** : 현재 승인된 교육용 `jrCIgoGl` 원본 Baseline은 보존하지만, **새 안정화 출고 원샷을 RELEASE하지 않음**. 첫 원인별 수정과 동등 CI 증거 확보 전 실행기 배포는 사용자가 요구한 CI-first 정책에 반함.
+- 작업 브랜치: `docs/g07-185-163-157-186-stabilization-recheck-20261120`, 공개 Draft PR #199. 사용자 승인 전 main 병합 금지.
+
+`G07_EDUCATIONAL_MVP_BASELINE=ACCEPTED`  
+`ISSUE_157_FIRST_LATCH_L0_REPRO=PASS`  
+`ISSUE_157_CM_STOP_PUB_HYPOTHESIS=UNPROVEN`  
+`ISSUES_185_163_SERVER_CALLBACK_CAUSAL_ROOT=UNDETERMINED`  
+`ISSUE_186_GPU_SIGSEGV_FIRST_STACK=NOT_CAPTURED`  
+`STABILIZATION_ROOT_CAUSE_CLOSED=false`  
+`NEW_WSL2_RELEASE=HOLD`  
+`MAIN_MERGED=false`  
+`CERTIFIED_ESTOP=false`
