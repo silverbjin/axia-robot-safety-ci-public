@@ -48,7 +48,7 @@ jobs:
             apt-get update -qq -o Acquire::Retries=2 -o Acquire::http::Timeout=20
             apt-get install -y -qq --no-install-recommends \
               systemd-coredump gdb mesa-utils curl git python3 \
-              procps coreutils grep sed tar
+              procps coreutils grep sed tar gcc
             command -v coredumpctl
             dpkg-query -W systemd-coredump | tee /tmp/axia-c12-package-manifest.txt
             grep -Eq "^systemd-coredump[[:space:]]+[^[:space:]]+" /tmp/axia-c12-package-manifest.txt
@@ -61,7 +61,42 @@ jobs:
               grep -Fx "D06_WSLG_CORE_ONCE_TOOLCHAIN_L0_OK_BACKEND_NOT_VERIFIED"
             echo "D06_C12_UBUNTU2404_COREDUMPCTL_CLI_PACKAGE_PASS_BACKEND_NOT_VERIFIED"
             echo "D06_C13_ACTUAL_NOBLE_PINNED_LAUNCHER_CLI_GREEN"
+            # C14: Generate a real synthetic SIGSEGV under GDB, explicitly
+            # exporting its stopped inferior as a core. A Docker container
+            # does NOT prove systemd-coredump backend, WSLg or Gazebo behavior.
+            cat > /tmp/axia-c14-synthetic-sigsegv.c <<C14SRC
+#include <signal.h>
+int main(void) { raise(SIGSEGV); return 0; }
+C14SRC
+            gcc -g -O0 -o /tmp/axia-c14-synthetic-sigsegv /tmp/axia-c14-synthetic-sigsegv.c
+            gdb -nx -q -batch \
+              -ex "set confirm off" \
+              -ex "set disable-randomization off" \
+              -ex "run" \
+              -ex "generate-core-file /tmp/axia-c14-synthetic.core" \
+              --args /tmp/axia-c14-synthetic-sigsegv \
+              > /tmp/axia-c14-core-generator.log 2>&1 || true
+            test -s /tmp/axia-c14-synthetic.core
+            export HOME=/tmp/axia-c14-isolated-home
+            mkdir -p "$HOME"
+            bash /workspace/d06/scripts/axia_d06_g07_wslg_existing_core_once.sh --core /tmp/axia-c14-synthetic.core --exe /tmp/axia-c14-synthetic-sigsegv |
+              tee /tmp/axia-c14-triage.txt
+            grep -Fx "D06_WSLG_CORE_TRIAGE_STACK=CAPTURED" /tmp/axia-c14-triage.txt
+            triage_archive="$(sed -n "s/^D06_WSLG_CORE_TRIAGE_ARCHIVE=//p" /tmp/axia-c14-triage.txt | tail -1)"
+            test -s "$triage_archive"
+            sha256sum -c "$triage_archive.sha256"
+            tar -tzf "$triage_archive" > /tmp/axia-c14-tar-list.txt
+            grep -Fx "gdb_backtrace.log" /tmp/axia-c14-tar-list.txt
+            ! grep -Eq "private[.]core|axia-c14-synthetic[.]core" /tmp/axia-c14-tar-list.txt
+            tar -xOzf "$triage_archive" gdb_backtrace.log |
+              grep -E "SIGSEGV|Segmentation fault"
+            tar -xOzf "$triage_archive" gdb_backtrace.log |
+              grep -E "^#0[[:space:]]"
+            tar -xOzf "$triage_archive" summary.txt |
+              grep -Fx "core_not_archived=true"
+            echo "D06_C14_REAL_GDB_SIGSEGV_CORE_AND_TEXT_TAR_GREEN"
           '
+          echo 'D06_C14_NOT_WSLG_GPU_NOT_REAL_GAZEBO_SERVER_CORE'
       - name: Scope disclaimer
         run: |
           echo 'D06_C13_NOT_WSLG_GPU_NOT_REAL_CORE_NOT_GAZEBO'
