@@ -94,7 +94,7 @@ class TakeDispatchRegression(unittest.TestCase):
         wrapper=(ROOT/"d08/scripts/d08_owner_take_dispatch_wsl2_one_shot.sh")
         self.assertTrue(wrapper.exists(),"WSL2 GitHub one-shot missing")
         src=wrapper.read_text()
-        self.assertIn("d6a9c490ffb1430cd49443a2648577459fa667bf",src)
+        self.assertIn("c3373bbd66c67cc5d59e99a18127ddc6c58a0d3f",src)
         self.assertNotIn("0998978174f9b40ad83bc2fe7907d5dab62115bc",src)
         self.assertIn("1a17ddaab0eac123188e29cf031c819187c4f82d",src)
         self.assertIn("142c4dcc820a04accdf869b4cc903f62c7977b2c",src)
