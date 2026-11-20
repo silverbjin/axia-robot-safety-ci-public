@@ -20,6 +20,21 @@ def _ns_from_float(value):
 def _safe_msec(value):
     return round(value/1_000_000,6) if type(value) is int and value>=0 else None
 
+def _bag_max_rx_gap_ms(rows, topic):
+    """Only adjacent receive intervals from one rosbag recorder's clock."""
+    samples=rows.get(topic,[]) if isinstance(rows,dict) else []
+    if not isinstance(samples,list) or len(samples)<2:
+        return None
+    stamps=[row.get("rx_ns") for row in samples if isinstance(row,dict)
+            and type(row.get("rx_ns")) is int and row["rx_ns"]>0]
+    if len(stamps)<2 or len(stamps)!=len(samples):
+        return None
+    gaps=[b-a for a,b in zip(stamps,stamps[1:])]
+    if any(g<=0 for g in gaps):
+        return None
+    return _safe_msec(max(gaps))
+
+
 def _out(status,**fields):
     result=dict(schema="axia.g07.scan_exact_rosbag_receive_first_pair.v1",
                 status=status,root_cause="UNDETERMINED",
@@ -36,9 +51,24 @@ def _out(status,**fields):
     result.update(fields)
     return result
 
-def classify(first_pair, rows):
-    if not isinstance(first_pair,dict) or not isinstance(rows,dict):
+def classify(first_pair, rows, *, pregoal_report=None):
+    if not isinstance(rows,dict):
         return _out("EXACT_LASERSCAN_BAG_PAIR_UNVERIFIED_HOLD")
+    clock_max=_bag_max_rx_gap_ms(rows,"/clock")
+    odom_max=_bag_max_rx_gap_ms(rows,"/odom")
+    if not isinstance(first_pair,dict):
+        reported=(pregoal_report if isinstance(pregoal_report,dict) else {})
+        first=reported.get("first_delivery_violation")
+        channel=first.get("channel") if isinstance(first,dict) else None
+        if channel in ("clock","odom") and (clock_max is not None or odom_max is not None):
+            return _out("CLOCK_ODOM_ROSBAG_INTERVALS_NO_EXACT_SCAN_PAIR_HOLD",
+                        independent_bag_clock_max_gap_ms=clock_max,
+                        independent_bag_odom_max_gap_ms=odom_max,
+                        observer_first_delivery_channel=channel,
+                        observer_clock_max_wall_gap_ms=reported.get("clock_max_wall_gap_ms"),
+                        observer_odom_max_wall_gap_ms=reported.get("odom_max_wall_gap_ms"),
+                        same_first_rosbag_record_pair_proven=False)
+        return _out("PREG0AL_FIRST_SCAN_PAIR_NOT_AVAILABLE_HOLD")
     h0=_ns_from_float(first_pair.get("previous_header_sim"))
     h1=_ns_from_float(first_pair.get("current_header_sim"))
     gap=first_pair.get("gap_ms")
@@ -76,6 +106,8 @@ def classify(first_pair, rows):
     clock=rows.get("/clock",[])
     odom=rows.get("/odom",[])
     return _out(status,matched_exact_first_header_pair=True,
+                independent_bag_clock_max_gap_ms=clock_max,
+                independent_bag_odom_max_gap_ms=odom_max,
                 observer_first_scan_gap_ms=round(float(gap),6),
                 expected_first_scan_header_gap_ms=_safe_msec(h1-h0),
                 independent_bag_scan_gap_ms=scan,
@@ -121,10 +153,12 @@ def _load_bag_numeric(bag_root, first):
             continue
         if topic not in msgtypes:
             continue
-        msg=deserialize_message(payload,msgtypes[topic])
-        stamp=int(msg.header.stamp.sec)*1_000_000_000+int(msg.header.stamp.nanosec)
         h0=_ns_from_float(first.get("previous_header_sim"))
         h1=_ns_from_float(first.get("current_header_sim"))
+        if h0 is None or h1 is None:
+            continue  # Clock/Odom-only first violation: do not decode RGB/LaserScan.
+        msg=deserialize_message(payload,msgtypes[topic])
+        stamp=int(msg.header.stamp.sec)*1_000_000_000+int(msg.header.stamp.nanosec)
         if stamp in (h0,h1):
             out[topic].append({"rx_ns":int(rx_ns),"header_sim_ns":stamp})
     return out,seen,storage_id
@@ -140,11 +174,13 @@ def main(argv=None):
         if a.first_report.is_file() and a.first_report.stat().st_size<65536:
             report=json.loads(a.first_report.read_text())
         first=report.get("first_scan_timing_boundary")
-        if not isinstance(first,dict):
+        first_delivery=report.get("first_delivery_violation")
+        if not isinstance(first,dict) and not isinstance(first_delivery,dict):
             result=_out("PREG0AL_FIRST_SCAN_PAIR_NOT_AVAILABLE_HOLD")
         else:
-            rows,count,storage=_load_bag_numeric(a.bag_root,first)
-            result=classify(first,rows)
+            rows,count,storage=_load_bag_numeric(
+                a.bag_root,first if isinstance(first,dict) else {})
+            result=classify(first,rows,pregoal_report=report)
             result["bag_rows_inspected"]=count
             result["bag_storage_id"]=storage
     except (OSError,ValueError,RuntimeError,ImportError) as exc:
