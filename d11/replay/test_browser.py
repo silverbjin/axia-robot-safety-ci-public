@@ -60,7 +60,7 @@ def main()->int:
             assert "숨김" in page.locator("#aeResult").inner_text()
             assert "숨겨져" in page.locator("#truthArea").inner_text()
             page.click("#showIF");page.click("#showAE")
-            assert "WARNING"==page.locator("#ifResult").inner_text()
+            assert "NORMAL"==page.locator("#ifResult").inner_text()  # PUBLIC_FAKE_IF, not instructor reference
             assert "NORMAL"==page.locator("#aeResult").inner_text()
             page.click("#resetAnswers")
             assert "숨김" in page.locator("#aeResult").inner_text()
