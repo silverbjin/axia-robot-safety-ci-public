@@ -68,5 +68,36 @@ class LatestOwnerEvidenceTests(unittest.TestCase):
                 mod.extract(Path(folder) / "missing", Path(folder) / "out.zip")
 
 
+    def test_gazebo_gui_segv_first_fault_witness_is_not_dropped(self):
+        # Regression from WSL2 run_20261120T021303Z_tJM9UQ.
+        # Old allowlist kept server/Nav2 logs but OMITTED the actual GUI log.
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            session = root / "once_20261120T021259Z_795"
+            live = session / "run_20261120T021303Z_tJM9UQ" / "live_evidence"
+            live.mkdir(parents=True)
+            (session / "owner_console.log").write_text(
+                "D08_OWNER_GUI_REPLAN_LOOP_READY\n"
+                "D08_REAL_GAZEBO_L2_BLOCKED RuntimeError:D08_OWNER_GUI_GAZEBO_CLIENT_EXITED\n")
+            (live / "d08_owner_gazebo_gui.log").write_text(
+                "[GUI] Loading plugin [gz-rendering-ogre2]\n"
+                "Stack trace (most recent call last):\n"
+                "Segmentation fault (Address not mapped to object)\n")
+            (live / "verdict.json").write_text(json.dumps({
+                "status": "BLOCKED",
+                "blocker": "RuntimeError:D08_OWNER_GUI_GAZEBO_CLIENT_EXITED",
+                "process_exit": {"d08_owner_gazebo_gui": -11, "gazebo_server": -11}
+            }))
+            output = root / "gui-fault.zip"
+            mod.extract(root, output)
+            with zipfile.ZipFile(output) as archive:
+                gui = "logs/d08_owner_gazebo_gui.log.excerpt.txt"
+                self.assertIn(gui, archive.namelist())
+                self.assertIn(b"Segmentation fault", archive.read(gui))
+                self.assertIn(b"REPLAN_LOOP_READY",
+                              archive.read("session/owner_console.excerpt.txt"))
+                self.assertIn(b'"d08_owner_gazebo_gui": -11',
+                              archive.read("run/live_evidence/verdict.json"))
+
 if __name__ == "__main__":
     unittest.main()
