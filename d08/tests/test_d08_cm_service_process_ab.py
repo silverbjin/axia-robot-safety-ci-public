@@ -65,9 +65,9 @@ class CMServiceABTest(unittest.TestCase):
         cycles=[]
         for i in range(8):
             cycles.append({
+                **self._real_witness_shape(),
                 "status":"D08_REAL_THREE_OFFICIAL_NAV2_PATH_PHASES_L2_PASS_NO_GOAL",
                 "cm_service_probe_mode":"in_process" if i%2==0 else "isolated_process",
-                **self._real_witness_shape(),
                 "first_scan_timing_boundary":None,
                 "worst_scan_pair_source_stamps":{"receive_gap_sec":.165+i*.005},
             })
