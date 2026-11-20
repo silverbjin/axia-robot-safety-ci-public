@@ -9,7 +9,6 @@
   "guard_last_cm_rx_monotonic_sec": 255.17650511,
   "cm_observer_last_rx_monotonic_sec": 255.191618005,
   "guard_ttl_ms": 150,
-  "cm_observer_ttl_ms": 120,
   "cm_observer_newer_samples": 1,
   "supervisor_age_ms": 40.541022,
   "guard_fail_closed_zero": true,
@@ -19,5 +18,9 @@
   "root_cause": "UNDETERMINED",
   "formal_timing_accepted": false,
   "certified_estop": false,
-  "first_latch_after_motion": true
+  "first_latch_after_motion": true,
+  "cm_observer_interarrival_ceiling_ms": 120,
+  "cm_observer_last_rx_derived_from_age": true,
+  "last_unlatched_guard_status_monotonic_sec": 255.328142,
+  "first_latched_guard_status_monotonic_sec": 255.381865
 }
