@@ -4,8 +4,8 @@
 set -Eeuo pipefail
 umask 077
 MODE="${1:---self-check}"
-[[ $# -le 1 && ( "$MODE" == --self-check || "$MODE" == --check-tools || "$MODE" == --run-once ) ]] || {
-  echo 'D06_WSLG_CORE_ONCE_USAGE=--self-check|--check-tools|--run-once' >&2;exit 2;
+[[ $# -le 1 && ( "$MODE" == --self-check || "$MODE" == --check-tools || "$MODE" == --run-once || "$MODE" == --existing-only ) ]] || {
+  echo 'D06_WSLG_CORE_ONCE_USAGE=--self-check|--check-tools|--run-once|--existing-only' >&2;exit 2;
 }
 if [[ "$MODE" == --self-check ]];then
   echo 'D06_WSLG_CORE_ONCE_L0_PASS_NO_ROS_NO_GAZEBO'
@@ -151,6 +151,24 @@ listing "$RUN/before_cores.json" || {
 }
 before="$(core_pid "$RUN/before_cores.json" || true)"
 STAGE=FIRST_CORE_CHECK
+# C19: exact Gazebo-server PID from the immutable failed Owner archive.
+# This is an OFFLINE ONLY mode: even when the core is missing or stale,
+# never enter the Owner re-launch branch. No new Gazebo/ROS process starts.
+if [[ "$MODE" == --existing-only ]];then
+  expected="${AXIA_D06_EXPECTED_GAZEBO_PID:-}"
+  if [[ ! "$expected" =~ ^[1-9][0-9]*$ ]];then
+    echo 'D06_WSLG_CORE_ONCE_EXISTING_ONLY_TARGET_PID_REQUIRED_NO_REPLAY' | tee -a "$RUN/summary.txt"
+    exit 3
+  fi
+  if [[ -z "$before" ]];then
+    echo 'D06_WSLG_CORE_ONCE_EXISTING_ONLY_MISSING_CORE_NO_REPLAY' | tee -a "$RUN/summary.txt"
+    exit 3
+  fi
+  if [[ "$before" != "$expected" ]];then
+    echo "D06_WSLG_CORE_ONCE_EXISTING_ONLY_TARGET_PID_MISMATCH_NO_REPLAY actual=$before expected=$expected" | tee -a "$RUN/summary.txt"
+    exit 3
+  fi
+fi
 if [[ -n "$before" ]];then
   echo "D06_WSLG_CORE_ONCE_EXISTING_GZ_SIGSEGV_PID=$before NO_REPLAY" | tee -a "$RUN/summary.txt"
   after="$before"
