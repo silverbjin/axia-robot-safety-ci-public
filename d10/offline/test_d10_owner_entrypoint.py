@@ -98,6 +98,8 @@ class EntryPointTest(unittest.TestCase):
         self.assertNotEqual(p.returncode,0,p.stdout)
         self.assertIn('D10_OWNER_HOLD',p.stdout)
         self.assertIn('C02_FAKE_FIRST_FAILURE',p.stdout)
+        self.assertIn('D10_STAGE=C02_FEATURES',p.stdout)
+        self.assertNotIn('D10_STAGE=C03_ISOLATION_FOREST',p.stdout)
         self.assertNotIn('C03_IF_PASS',p.stdout)
         logs=list((self.work/'evidence').glob('run-*/session.log'))
         self.assertTrue(logs)
