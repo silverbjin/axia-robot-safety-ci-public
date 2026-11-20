@@ -1,0 +1,27 @@
+name: D08 Isolated Scan Callback File IO Boundary L0
+on:
+  push:
+    branches: [fix/d08-isolated-witness-buffered-io-20261120]
+    paths:
+      - d08/tests/test_d08_isolated_scan_buffered_io.py
+      - d08/harness/d08_ros_isolated_scan_probe.py
+      - .github/workflows/d08-isolated-scan-buffer-l0.yml
+  pull_request:
+    paths:
+      - d08/tests/test_d08_isolated_scan_buffered_io.py
+      - d08/harness/d08_ros_isolated_scan_probe.py
+      - .github/workflows/d08-isolated-scan-buffer-l0.yml
+permissions:
+  contents: read
+jobs:
+  independent-real-rx-io-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fail closed when isolated Scan callback writes per-message
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest discover -v -s d08/tests -p test_d08_isolated_scan_buffered_io.py
+          python3 -m py_compile d08/harness/d08_ros_isolated_scan_probe.py
+          echo D08_ISOLATED_ROS_SCOPED_BUFFERED_LOG_L0_PASS_NOT_ACTUAL_ROS
