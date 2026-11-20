@@ -5,6 +5,12 @@ on:
   push:
     branches: ['fix/g07-task04-fv17-evidence-contract-20261120']
     paths: ['.github/workflows/axia-g07-fv17-owner-evidence-parity-native-l2.yml']
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/axia-g07-fv17-owner-evidence-parity-native-l2.yml'
+      - 'd06/diagnostic/g07_cm_stop_pub_boundary.py'
+      - 'tests/test_g07_cm_stop_pub_boundary.py'
 permissions:
   contents: read
 concurrency:
@@ -89,6 +95,7 @@ jobs:
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_native_cm_param_one_client.py' -v
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_owner_gui_d3d12_isolation.py' -v
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_owner_sensor_renderer_parity.py' -v
+          python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/tests" -p 'test_g07_cm_stop_pub_boundary.py' -v
           echo 'AXIA_G07_TASK04_PUBLIC_NATIVE_MOVING_L0_PASS=29_PLUS_MVP_STAGE'
       # Check the pinned CI image before installing build-only Gazebo dev packages.
       # OSRF apt currently upgrades libgz-transport13 13.6 -> 13.7 for headers.
@@ -270,6 +277,19 @@ jobs:
           sha256sum "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"             > "$GITHUB_WORKSPACE/public_evidence/task04_moving_verdict.sha256"
           echo 'AXIA_G07_TASK04_NATIVE_MOVING_GUI_XVFB_L2_PASS_OWNER_WSL2_NOT_RUN'
           echo 'AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false'
+      - name: Read-only CM ZERO timeout timing vs first Guard latch (HOLD if unproven)
+        if: always()
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/public_evidence"
+          python3 "$GITHUB_WORKSPACE/ci/d06/diagnostic/g07_cm_stop_pub_boundary.py" \
+            --events "$GITHUB_WORKSPACE/native/g07_ci_moving/actual_ros_events.jsonl" \
+            --report "$GITHUB_WORKSPACE/native/g07_ci_moving/ci_moving_goal_result.json" \
+            --readback-log "$GITHUB_WORKSPACE/public_evidence/moving_stdout.log" \
+            --output "$GITHUB_WORKSPACE/public_evidence/cm_stop_pub_first_latch.json"
+          # This is solely an evidence classifier. Any missing source-pair
+          # or non-reproduced latch remains UNVERIFIED, never a timing PASS.
       - name: Upload allowlisted numeric verdict only no original raw bag
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -278,6 +298,7 @@ jobs:
           path: |
             public_evidence/task04_mvp_visual_l2_verdict.json
             public_evidence/task04_mvp_visual_l2_verdict.sha256
+            public_evidence/cm_stop_pub_first_latch.json
             public_evidence/task04_moving_l2_verdict.json
             public_evidence/task04_moving_verdict.sha256
             task04_witness_SHA256SUMS.txt
