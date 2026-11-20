@@ -95,6 +95,50 @@ def summarize_cm_ab(cycles:list[dict])->dict:
             "certified_estop":False}
 
 
+
+def classify_nav2_lifecycle_first_boundary(nav2_log:str)->dict:
+    """First OBSERVED Nav2 manager→CM configure handoff, not fault attribution.
+
+    In real CI #44766088696 the Planner itself was configured, but stayed
+    inactive because navigation manager's last logged request was configuring
+    Collision Monitor. CM on_configure entry and manager's reply were absent.
+    Never convert missing logs or a secondary planner inactive state to PASS.
+    """
+    text=nav2_log or ""
+    requested="Configuring collision_monitor" in text
+    entered=("[collision_monitor]: Configuring" in text)
+    parameter_error=(
+        entered and "Error while getting parameters" in text and
+        "collision_monitor" in text)
+    manager_active=any(
+        "lifecycle_manager_navigation" in line and
+        "Managed nodes are active" in line
+        for line in text.splitlines())
+    status="D08_NAV2_CM_STARTUP_EVIDENCE_INCOMPLETE"
+    boundary="NOT_RECORDED"
+    if requested:
+        boundary="lifecycle_manager_navigation:Configuring collision_monitor"
+        if parameter_error:
+            status="D08_NAV2_CM_CONFIGURATION_PARAMETER_ERROR_HOLD"
+        elif not entered:
+            status="D08_NAV2_CM_CONFIGURE_REQUEST_NO_CALLBACK_ENTRY_OBSERVED_HOLD"
+        elif not manager_active:
+            status="D08_NAV2_CM_CONFIGURE_CALLBACK_ENTERED_RESPONSE_UNVERIFIED_HOLD"
+        else:
+            status="D08_NAV2_CM_HANDOFF_LOGS_PRESENT_NOT_SAFETY_PASS"
+    return {
+        "status":status,
+        "first_lifecycle_boundary":boundary,
+        "navigation_manager_requested_cm_configure":requested,
+        "cm_configure_callback_entry_observed":entered,
+        "cm_navigation_activation_proven":manager_active,
+        "planner_lifecycle_root_cause_confirmed":False,
+        "root_cause":"UNDETERMINED",
+        "owner_wsl2_accepted":False,
+        "cm_internal_120ms_verified":False,
+        "guard_150ms_verified":False,
+    }
+
 def _wait_for_reply(node,future,timeout_s:float,code:str):
     import rclpy
     end=time.monotonic()+timeout_s
