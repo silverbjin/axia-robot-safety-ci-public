@@ -85,6 +85,16 @@ class D08OwnerFullParity(unittest.TestCase):
         self.assertIn("D08_CYCLONE_RMW_OWNER_ISOLATED_COMPARISON_L2_CANDIDATE",job)
         self.assertIn("RMW_IMPLEMENTATION",job)
 
+    def test_07_actual_ros_python_rmw_probe_sources_jazzy_before_import(self):
+        workflow=(ROOT/".github/workflows/d08-main-no-goal-real-gazebo-l2.yml").read_text()
+        live=workflow.split("  real-gazebo-rgb-pinned-upstream-yolo-ros:")[1].split(
+            "  d08-owner-parity-release-gate:")[0]
+        begin=live.index("export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp")
+        check=live.index("D08_CYCLONE_RMW_OWNER_ISOLATED_COMPARISON_L2_CANDIDATE",begin)
+        self.assertIn("source /opt/ros/jazzy/setup.bash",live[begin:check])
+        self.assertNotIn("/usr/bin/python3 -c 'import rclpy",live[begin:check])
+        self.assertIn("python3 -c 'import rclpy",live[begin:check])
+
     def test_05_wrapper_is_pinned_and_does_not_inflate_diagnostics(self):
         script=ROOT/"d08/scripts/d08_owner_full_parity_b_wsl2_once.sh"
         self.assertTrue(script.exists())
