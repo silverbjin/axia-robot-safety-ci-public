@@ -1,0 +1,28 @@
+name: AXIA G07 163 Early Nav Manager Endpoint L0
+on:
+  push:
+    branches: ['fix/g07-wsl2-first-scan300-20261121']
+    paths:
+      - '.github/workflows/axia-g07-163-early-nav-endpoint-l0.yml'
+permissions:
+  contents: read
+jobs:
+  early-client-no-retry-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with: {path: ci, persist-credentials: false}
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: 59f8ab6acb5107dcdcfd2bf37b7c16b881b7130c
+          path: student
+          persist-credentials: false
+      - name: Existing Navigation ACK regression and fresh client endpoint behavior
+        run: |
+          set -Eeuo pipefail
+          cd student/block_B/day07/h01_runtime
+          python3 -m unittest discover -s tools -p 'test_g07_nav_early_manage_client.py' -v
+          python3 -m unittest discover -s tools -p 'test_g07_navigation_warm_participant_shutdown_ab.py' -v
+          echo 'AXIA_G07_163_NAV_EARLY_ENDPOINT_L0_PASS_NO_ACTUAL_L2'

@@ -8,9 +8,9 @@ import unittest
 
 ROOT=Path(__file__).resolve().parents[1]
 SCRIPT=ROOT/"scripts/axia_g07_stabilization_wsl2_final_once.sh"
-STUDENT="4f4d07f6daf878dd8076f89669698f61f52a802b"
-HEAD="fe2e4b2599c2fe3e136ffbd06899733a5ba17906"
-RUN=44706879509
+STUDENT="891bf65349cf8dfb203bb8b97ffe0346b3fb8b3f"
+HEAD="a54c40c630b14bc2b71449f3030c5c194a5f8408"
+RUN=44830956042
 NAME="AXIA G07 FV17 Independent 2-cycle Real Moving Goal Guard TTL L2"
 
 
@@ -116,6 +116,17 @@ fi
         self.assertIn("readonly CI_L2_HEAD='"+HEAD+"'",script)
         self.assertIn("FASTDDS_BUILTIN_TRANSPORTS: UDPv4",flow)
         self.assertIn("AXIA_G07_NAV_WARM_PARTICIPANT_CI_AB: '1'",flow)
+
+    def test_actual_two_cycle_one_failed_response_is_denied_offline(self):
+        # Synthetic regression for historic missing Navigation ACK boundary;
+        # reject one failed job despite the pinned real run being 2/2 PASS.
+        # unauthenticated GitHub API network access in the CI runner.
+        run,jobs=inputs(conclusion="failure",second="success")
+        jobs["jobs"][0]["conclusion"]="failure"
+        r=self._gate(run,jobs)
+        self.assertEqual(r.returncode,3,r.stdout+r.stderr)
+        self.assertIn("HOLD_NO_NEW_WSL2_MOVING_RELEASE",r.stdout)
+        self.assertNotIn("OWNER_MOVING_L3=PASS",r.stdout)
 
     def test_bad_command_refused(self):
         r=subprocess.run(["bash",str(SCRIPT),"--force-run"],

@@ -1,0 +1,29 @@
+name: AXIA G07 Scan300 WSL2 HOLD candidate offline L0
+on:
+  push:
+    branches: ['fix/g07-wsl2-first-scan300-20261121']
+    paths:
+      - '.github/workflows/axia-g07-scan300-owner-wrapper-l0.yml'
+      - 'tests/test_g07_scan300_owner_wrapper.py'
+      - 'scripts/axia_g07_stabilization_wsl2_final_once.sh'
+permissions:
+  contents: read
+jobs:
+  candidate-must-block-failed-two-cycle:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Pin failed strict 2-cycle, six compact files, static no-goal and bash syntax
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest discover -s tests -p 'test_g07_scan300_owner_wrapper.py' -v
+          python3 -m unittest discover -s tests -p 'test_g07_stabilization_wsl2_release.py' -v
+          # Actual #44764186378 was 1/2 FAILURE: tested via exact mocked
+          # response in test_g07_stabilization_wsl2_release.py, since GitHub
+          # may return 403 to an unauthenticated CI runner. A real Owner
+          # live-API 403 also fails closed, so it cannot admit any Goal.
+          echo 'AXIA_G07_SCAN300_OWNER_RELEASE_GATE_1_OF_2_FAIL_OFFLINE_REPRO_PASS'
+          echo 'G07_SCAN300_WSL2_CANDIDATE_L0_PASS_FIELD_L3_HOLD'

@@ -1,0 +1,22 @@
+name: AXIA G07 163 First Nav Shutdown Server Log L0
+on:
+  push:
+    branches: ['fix/g07-wsl2-first-scan300-20261121']
+    paths:
+      - '.github/workflows/axia-g07-163-first-server-log-l0.yml'
+      - 'tests/test_g07_nav_shutdown_first_server_boundary.py'
+      - 'd06/diagnostic/g07_nav_shutdown_first_server_boundary.py'
+permissions:
+  contents: read
+jobs:
+  no-ack-first-nav-server-boundary:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with: {persist-credentials: false}
+      - name: Distinguish no callback log vs entry vs finish, never infer ACK
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest discover -s tests -p 'test_g07_nav_shutdown_first_server_boundary.py' -v
+          echo 'AXIA_G07_163_FIRST_SERVER_BOUNDARY_L0_PASS_NOT_NATIVE_STACK_PROVEN'

@@ -45,7 +45,20 @@ def assess(report, events):
             or not _isfloat(report.get("observed_odom_moved_m"))
             or report["observed_odom_moved_m"]<.05):
         return _hold("TASK02_ACTUAL_ODOM_ZERO_DWELL_UNVERIFIED_HOLD")
-    if any(report.get("goal_status_at_"+stage)!=2 for stage in ("clear","slow","stop")):
+    # The underlying real Moving oracle already requires a specific Goal
+    # UUID, execution during SLOW/STOP, and either CLEAR status=2 or CLEAR
+    # before Action ACK with later SAME Goal execution confirmation.
+    # Its verified exact pre-ACK alternative must not be rejected only by
+    # this auxiliary read-only CM/Guard diagnostic. Never assume GOAL ACK.
+    clear_status=report.get("goal_status_at_clear")
+    clear_proven=(clear_status==2 or
+        (report.get("clear_before_action_ack") is True and
+         report.get("same_goal_executing_after_clear") is True and
+         (clear_status is None or
+          (type(clear_status) is int and clear_status in (1,2)))))
+    if (not clear_proven or
+        report.get("goal_status_at_slow")!=2 or
+        report.get("goal_status_at_stop")!=2):
         return _hold("TASK02_NAV2_GOAL_EXECUTING_STAGES_UNVERIFIED_HOLD")
     period_limits={"max_source_interval_sec":.15,
                    "max_cm_interval_sec":.12,

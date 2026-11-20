@@ -1,15 +1,17 @@
 #!/usr/bin/env bash
-# AXIA G07 Task04 — exact-public-SHA Owner Moving Goal L3 candidate.
+# AXIA G07 Task04 — exact-public-L2-verified ONE Owner WSL2 L3 acceptance candidate.
+# Strict Gazebo Moving 2/2 PASS: #44830956042, exact public HEAD a54c40c6...
+# --run RECHECKS run+2 matrix jobs against GitHub API; 403/failed job -> NO GOAL.
 # Simulation-only. Manual controlling TTY consent is performed by the
 # identical Student scenario runner AFTER real Nav2 and safety node readiness.
 # No CI credentials, no second Gazebo server, no global process kill.
 set -Eeuo pipefail
 umask 077
 readonly STUDENT_REPO='silverbjin/axia-robot-safety-student'
-readonly STUDENT_SHA='4f4d07f6daf878dd8076f89669698f61f52a802b'
+readonly STUDENT_SHA='891bf65349cf8dfb203bb8b97ffe0346b3fb8b3f'
 readonly REVIEW_REPO='silverbjin/axia-robot-safety-ci-public'
-readonly REVIEW_SHA='362da68e31dd163a8d321601e191069c0d0a438b'
-readonly CI_L2_RUN=44706879509
+readonly REVIEW_SHA='90e809e858e04adee3c72cee36c5dc7dd9f3d632'
+readonly CI_L2_RUN=44830956042
 MODE="${1:---run}"
 if [[ $# -gt 1 ]];then echo 'AXIA_G07_TASK04_FIRST_FAILURE=BAD_ARGUMENTS' >&2;exit 3;fi
 case "$MODE" in
@@ -19,7 +21,7 @@ esac
 # RELEASE ADMISSION: an educational visual HOLD cannot authorize a new
 # field run. Public CI must have both actual Gazebo Moving Goal matrix jobs
 # SUCCESS on the exact candidate Student source, with formal fallback exiting 3.
-readonly CI_L2_HEAD='fe2e4b2599c2fe3e136ffbd06899733a5ba17906'
+readonly CI_L2_HEAD='a54c40c630b14bc2b71449f3030c5c194a5f8408'
 ci_l2_release_gate() {
   local run_json jobs_json rc=0
   run_json="$(mktemp)" || return 3
@@ -101,6 +103,15 @@ record={"schema":"axia_g07_task04_owner_l3_local_hold_v1",
 Path(sys.argv[1]).write_text(json.dumps(record,sort_keys=True,indent=2)+"\n")
 PY
     fi
+    # Candidate-only: derive six allowlisted numeric first-boundary files.
+    # This is never a safety/Goal acceptance check and must never replace
+    # native original evidence. At any pre-Goal failure, retain HOLD records.
+    if [[ -n "${REVIEW_CACHE:-}" && -r "$REVIEW_CACHE/d06/diagnostic/g07_scan_compact_bundle.py" ]];then
+      python3 "$REVIEW_CACHE/d06/diagnostic/g07_scan_compact_bundle.py" \
+        --root "$OUT" --student-sha "$STUDENT_SHA" --l2-run "$CI_L2_RUN" \
+        > "$OUT/scan_compact_diagnostic.log" 2>&1 || \
+        echo 'AXIA_G07_SCAN300_COMPACT_RECORDS_HOLD' >&2
+    fi
     (
       cd "$OUT"
       find . -type f ! -name SHA256SUMS -print0 | sort -z |
@@ -136,6 +147,11 @@ names=[
     'native/g07_ci_moving/ci_moving_goal_result.json',
     'native/g07_ordered_shutdown.json','native/g07_shutdown_audit.json',
     'native/staged_startup.log','native/g07_ordered_shutdown.log',
+    'native/g07_ci_scan_pregoal.json','native/g07_ci_scan_pregoal.log',
+    'first_scan_timing_boundary.json','scan_wall_sim_rtf_summary.json',
+    'scan_pipeline_first_failure.json','guard_supervisor_first_state_transition.json',
+    'native_shutdown_verdict.json','release_scope.json',
+    'scan_compact_diagnostic.log',
 ]
 names.extend(str(p.relative_to(root)) for p in
              (root/'native/g07_ci_pregoal').glob('gz_pose_*.log')
@@ -162,6 +178,10 @@ with zipfile.ZipFile(dest,'w',compression=zipfile.ZIP_DEFLATED,
         zf.writestr(rel,payload)
         hashes.append(hashlib.sha256(payload).hexdigest()+'  '+rel)
     zf.writestr('SHA256SUMS','\n'.join(hashes)+'\n')
+if dest.stat().st_size>8*1024*1024:
+    dest.unlink()
+    print('AXIA_G07_TASK04_DIAGNOSTIC_BUNDLE_OVER_8MIB_HOLD',flush=True)
+    raise SystemExit(3)
 print('AXIA_G07_TASK04_DIAGNOSTIC_BUNDLE_WRITTEN',flush=True)
 PY_DIAGNOSTICS
     if [[ -s "$OUT.diagnostics.zip" ]];then
@@ -201,7 +221,7 @@ export AXIA_G07_CI_SIM_GOAL_ALLOWED=0
 export AXIA_P0_SIM_ONLY=1
 export AXIA_P2_G07_PHYSICAL_PREFLIGHT=1
 export AXIA_G07_OWNER_STARTUP_PARITY=1
-# Exact Student 4f4d07f6... uses a CI/Owner-separated single-request
+# Exact Student 891bf653... uses a CI/Owner-separated single-request
 # navigation Lifecycle SHUTDOWN on the DDS participant already proven by
 # read-only /get_parameters. Owner never spoofs GITHUB_ACTIONS or CI Goal.
 unset AXIA_G07_NAV_WARM_PARTICIPANT_CI_AB
@@ -210,6 +230,8 @@ export AXIA_G07_CI_OWNER_BAG_PARITY=1
 export AXIA_P2_G07_RELOCATED_OBSTACLE=1
 export AXIA_G07_TASK02_SIMPLE_TF_CANDIDATE=1
 export AXIA_G07_TASK04_OWNER_MOVING_L3=1
+# Scan 300ms strict NO_GOAL observation is in the SAME running Gazebo graph.
+export AXIA_G07_SCAN_PREFLIGHT_STRICT=1
 export AXIA_G07_TASK03_ECM_WITNESS=1
 export AXIA_NAV2_USE_COMPOSITION=False
 unset AXIA_G07_TASK03_FORMAL_CI AXIA_G07_TASK03_POSITIVE_ONLY AXIA_D07_H01_GUI_NO_GOAL AXIA_G07_TASK04_CI_GUI_MOVING || true
