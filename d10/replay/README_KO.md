@@ -7,12 +7,12 @@
 
 ## 1. 강사 WSL2 원샷 — 공개 CI 확인된 40자리 SHA 사용
 
-강사 저장소 접근권한이 필요합니다. 이미 `~/axia_d10_course/axia-robot-safety-instructor` 또는 `~/axia_d09_course/axia-robot-safety-instructor`를 클론했다면 재클론하지 않습니다. 다음 예시에서 `<CI_GREEN_PUBLIC_SHA>`를 해당 PR의 **검증된 40자리 커밋 SHA**로 바꾸십시오. 첫 설치 시 비공개 GitHub 인증이 필요할 수 있습니다.
+강사 저장소 접근권한이 필요합니다. 이미 `~/axia_d10_course/axia-robot-safety-instructor` 또는 `~/axia_d09_course/axia-robot-safety-instructor`를 클론했다면 재클론하지 않습니다. **아래는 공개 CI Run #44527076604에서 확인한 불변 40자리 소스 SHA**이므로 자리표시자를 바꾸지 않고 복사할 수 있습니다. 첫 설치 시 비공개 GitHub 인증이 필요할 수 있습니다.
 
 ```bash
 (
   set -Eeuo pipefail
-  export AXIA_D10_REPLAY_PUBLIC_SHA="<CI_GREEN_PUBLIC_SHA>"
+  export AXIA_D10_REPLAY_PUBLIC_SHA="db6710b1e1a11f5355edbc66d6b152bc045d286a"
   SH="$(mktemp --suffix=.sh)"
   trap 'rm -f "$SH"' EXIT
   curl -fLsS --retry 3 --max-time 90 \
