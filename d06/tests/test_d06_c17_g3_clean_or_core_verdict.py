@@ -58,7 +58,7 @@ class C17G3Proof(unittest.TestCase):
 
     def test_guardrails_syntax_and_self_check(self):
         s=SCRIPT.read_text()
-        for required in ("G3_HOST_CANDIDATE_NOT_ACCEPTED",
+        for required in ("G3_HOST_CANDIDATE_NOT_ACCEPTED","AXIA_G3_ISOLATED_HOST_ACK",
                          "d06/scripts/axia_d06_g07_wslg_sigsegv_capture_once.sh",
                          "git hash-object","sha256sum -c","--run-once",
                          "D06_G3_NATIVE_NO_GOAL_CLEAN_CANDIDATE_NOT_MOVING_L3",
@@ -68,6 +68,11 @@ class C17G3Proof(unittest.TestCase):
                           "RMW_IMPLEMENTATION=","send_goal","set_pose"):
             self.assertNotIn(forbidden,s)
         self.assertEqual(subprocess.run(["bash","-n",str(SCRIPT)]).returncode,0)
+        rejected=subprocess.run(["bash",str(SCRIPT),"--run-once"],
+                                capture_output=True,text=True,timeout=6)
+        self.assertEqual(rejected.returncode,3)
+        self.assertIn("D06_G3_ISOLATED_HOST_ATTESTATION_MISSING_NO_GAZEBO",
+                      rejected.stderr)
         with tempfile.TemporaryDirectory() as td:
             env=os.environ.copy(); env["HOME"]=td
             r=subprocess.run(["bash",str(SCRIPT),"--self-check"],env=env,
