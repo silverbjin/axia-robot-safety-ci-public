@@ -46,7 +46,8 @@ main{max-width:1740px;margin:auto;padding:18px 24px 48px}button,select,input{fon
  <div class="scoreCard" id="ifCard"><div class="scoreHead"><strong>D10 · Isolation Forest</strong><span class="muted small">고립 위험도 · 독립 척도</span></div>
  <div class="scoreValue"><b id="ifScore">비공개</b><span id="ifLimit"></span></div><canvas class="scoreChart" id="ifChart" role="img" aria-label="IF 점수 그래프"></canvas><div id="ifResult" class="result locked">학생이 먼저 예측 · 판정 숨김</div></div>
  <div class="scoreCard" id="aeCard"><div class="scoreHead"><strong>D11 · AutoEncoder</strong><span class="muted small">정규화 복원 MSE · 독립 척도</span></div>
- <div class="scoreValue"><b id="aeScore">비공개</b><span id="aeLimit"></span></div><canvas class="scoreChart" id="aeChart" role="img" aria-label="AE MSE 그래프"></canvas><div id="aeResult" class="result locked">학생이 먼저 예측 · 판정 숨김</div></div>
+ <div class="scoreValue"><b id="aeScore">비공개</b><span id="aeLimit"></span></div><canvas class="scoreChart" id="aeChart" role="img" aria-label="AE MSE 그래프"></canvas><div id="aeResult" class="result locked">학생이 먼저 예측 · 판정 숨김</div><div class="cue">AE 학습 원리: 정상 x(6) → Encoder 6→8→3 → Decoder 3→8→6 → 복원 x̂(6) → 정규화 MSE. <strong>이 Replay의 점수는 사전 기록값이며, 개별 x̂ 벡터는 제공되지 않습니다.</strong></div>
+ </div>
  <div class="buttons"><button class="primary" id="showIF">IF 판정 공개</button><button class="primary" id="showAE">AE 판정 공개</button><button id="showTruth">정답·오차 해설 공개</button><button class="warningBtn" id="resetAnswers">다시 숨기기</button></div>
  <div class="cue">각 모델의 Y축과 cutoff는 별도입니다. IF와 AE 원점수의 크기를 직접 비교하지 않습니다.</div>
 </section>
