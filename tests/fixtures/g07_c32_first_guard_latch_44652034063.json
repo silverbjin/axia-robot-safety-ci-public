@@ -1,0 +1,23 @@
+{
+  "schema": "axia.g07.c32.real_public_l2_first_guard_latch_v1",
+  "run_id": 44652034063,
+  "job_id": 136009021796,
+  "evidence_url": "https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44652034063",
+  "scenario_scope": "actual_public_gazebo_harmonic_nav2_moving_goal",
+  "first_transition": "UPSTREAM_STALE_AFTER_MOTION",
+  "guard_tick_monotonic_sec": 255.365083096,
+  "guard_last_cm_rx_monotonic_sec": 255.17650511,
+  "cm_observer_last_rx_monotonic_sec": 255.191618005,
+  "guard_ttl_ms": 150,
+  "cm_observer_ttl_ms": 120,
+  "cm_observer_newer_samples": 1,
+  "supervisor_age_ms": 40.541022,
+  "guard_fail_closed_zero": true,
+  "exact_goal_cancel_accepted": false,
+  "cm_publisher_stopped_proven": false,
+  "cm_source_publication_pair_proven": false,
+  "root_cause": "UNDETERMINED",
+  "formal_timing_accepted": false,
+  "certified_estop": false,
+  "first_latch_after_motion": true
+}
