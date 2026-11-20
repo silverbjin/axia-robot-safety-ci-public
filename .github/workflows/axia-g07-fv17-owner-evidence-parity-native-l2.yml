@@ -3,10 +3,9 @@
 name: AXIA G07 FV17 Independent 2-cycle Real Moving Goal Guard TTL L2
 on:
   push:
-    branches: ['fix/g07-task04-fv17-evidence-contract-20261120']
-    paths: ['.github/workflows/axia-g07-fv17-owner-evidence-parity-native-l2.yml']
-  pull_request:
-    branches: [main]
+    branches:
+      - 'fix/g07-task04-fv17-evidence-contract-20261120'
+      - 'docs/g07-185-163-157-186-stabilization-recheck-20261120'
     paths:
       - '.github/workflows/axia-g07-fv17-owner-evidence-parity-native-l2.yml'
       - 'd06/diagnostic/g07_cm_stop_pub_boundary.py'
