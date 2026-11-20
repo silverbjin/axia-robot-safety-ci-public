@@ -19,7 +19,7 @@ class FormalReleaseGate(unittest.TestCase):
         s=WORKFLOW.read_text()
         self.assertIn("fail-fast: false",s)
         self.assertIn("cycle: [1, 2]",s)
-        self.assertIn("edd805e84f15a7eae9b14454803fc0912ec0ccf8",s)
+        self.assertIn("9d8afed4182d3997d77b3cfca04383d3dd6db74c",s)
         self.assertIn("AXIA_G07_TASK04_NATIVE_MOVING_GUI_XVFB_L2_PASS",s)
         self.assertIn("verify_real_goal_and_guard_evidence || exit 3",s)
         self.assertIn("AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false",s)
