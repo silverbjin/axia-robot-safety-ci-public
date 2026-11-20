@@ -6,12 +6,14 @@ on:
       - d08/tests/test_d08_rcl_take_dispatch_probe.py
       - d08/harness/d08_rcl_take_dispatch_probe.py
       - d08/harness/d08_same_world_replan.py
+      - d08/scripts/d08_owner_take_dispatch_wsl2_one_shot.sh
       - .github/workflows/d08-exact-scan-take-dispatch-l0.yml
   pull_request:
     paths:
       - d08/tests/test_d08_rcl_take_dispatch_probe.py
       - d08/harness/d08_rcl_take_dispatch_probe.py
       - d08/harness/d08_same_world_replan.py
+      - d08/scripts/d08_owner_take_dispatch_wsl2_one_shot.sh
       - .github/workflows/d08-exact-scan-take-dispatch-l0.yml
   workflow_dispatch:
 permissions:
@@ -26,4 +28,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           python3 -m unittest discover -s d08/tests -p test_d08_rcl_take_dispatch_probe.py -v
+          bash -n d08/scripts/d08_owner_take_dispatch_wsl2_one_shot.sh
+          bash d08/scripts/d08_owner_take_dispatch_wsl2_one_shot.sh --self-check
+          test "$(git hash-object d08/scripts/d08_owner_no_goal_bootstrap.sh)" = 1a17ddaab0eac123188e29cf031c819187c4f82d
           echo D08_EXACT_RCLPY_TAKE_CALLBACK_L0_PASS_NOT_L2_NOT_WSL2
