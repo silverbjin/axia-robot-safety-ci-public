@@ -890,7 +890,10 @@ jobs:
             apt-get install -y -qq --no-install-recommends \
               ros-jazzy-rmw-cyclonedds-cpp
             export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
-            /usr/bin/python3 -c 'import rclpy; x=rclpy.get_rmw_implementation_identifier(); assert x=="rmw_cyclonedds_cpp",x; print("D08_CYCLONE_RMW_OWNER_ISOLATED_COMPARISON_L2_CANDIDATE")'
+            # Official rclpy is in the ROS overlay's Python path, not
+            # necessarily /usr/bin/python3's site-packages before sourcing.
+            source /opt/ros/jazzy/setup.bash
+            python3 -c 'import rclpy; x=rclpy.get_rmw_implementation_identifier(); assert x=="rmw_cyclonedds_cpp",x; print("D08_CYCLONE_RMW_OWNER_ISOLATED_COMPARISON_L2_CANDIDATE")'
           fi
           mkdir -p /tmp/axia-d08-live-assets
           curl --fail --location --retry 3 --connect-timeout 15 --max-time 100 \
