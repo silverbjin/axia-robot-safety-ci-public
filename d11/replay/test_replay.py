@@ -7,7 +7,12 @@ from sys import path as syspath
 HERE = Path(__file__).resolve().parent
 PUBLIC_ROOT = HERE.parents[1]
 syspath.insert(0, str(PUBLIC_ROOT / "d10/replay"))
-from test_replay import write_public_smoke_scores
+import importlib.util
+d10_test_path=PUBLIC_ROOT/"d10/replay/test_replay.py"
+d10_spec=importlib.util.spec_from_file_location("axia_d10_replay_smoke_fixture",d10_test_path)
+d10_mod=importlib.util.module_from_spec(d10_spec)
+d10_spec.loader.exec_module(d10_mod)
+write_public_smoke_scores=d10_mod.write_public_smoke_scores
 
 def fake_ae_scores(raw, manifest, path):
     """Independent fake UI score, NEVER trained AE and NEVER instructor values."""
