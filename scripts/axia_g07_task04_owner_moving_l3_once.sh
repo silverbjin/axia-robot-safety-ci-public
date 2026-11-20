@@ -6,10 +6,10 @@
 set -Eeuo pipefail
 umask 077
 readonly STUDENT_REPO='silverbjin/axia-robot-safety-student'
-readonly STUDENT_SHA='43a26a2f870c0fd99d66d06887cdf4e706b637b7'
+readonly STUDENT_SHA='5c7983598fa3bcd7148433a06f37a4e78b091273'
 readonly REVIEW_REPO='silverbjin/axia-robot-safety-ci-public'
-readonly REVIEW_SHA='d60beed5e18d8104b254f17476d47f1d1917a7eb'
-readonly CI_L2_RUN=44557868822
+readonly REVIEW_SHA='362da68e31dd163a8d321601e191069c0d0a438b'
+readonly CI_L2_RUN=44653465671
 MODE="${1:---run}"
 if [[ $# -gt 1 ]];then echo 'AXIA_G07_TASK04_FIRST_FAILURE=BAD_ARGUMENTS' >&2;exit 3;fi
 case "$MODE" in
@@ -75,6 +75,7 @@ names=[
     'domain_selection.json','domain_selection.log',
     'task04_owner_verdict.json','task04_owner_numeric_review.json',
     'task04_mvp_visual_verdict.json',
+    'task04_owner_mvp_scope.json','owner_mvp_scope.log',
     'owner_numeric_review.log','owner_parity.json',
     'native/runtime.txt','native/clock_diagnostics.json',
     'native/g07_ci_pregoal/pregoal_baseline.json',
@@ -481,7 +482,53 @@ grep -Fxq 'gazebo=1' "$OUT/gui_windows.txt" && GZ=1 || true
 [[ "$RV" == 1 && "$GZ" == 1 ]] || hold MOVING_GUI_WINDOWS_MISSING
 echo 'AXIA_G07_TASK04_OWNER_WSLG_GAZEBO_RVIZ_WINDOWS_PASS'
 
-python3 "$RUNTIME/tools/p2_g07_task04_moving_review.py" --motion-root "$OUT/native" --witness "$OUT/native/s02_ecm_witness.json" --source-sha "$STUDENT_SHA" --gui-windows 2 --output "$OUT/task04_owner_numeric_review.json" > "$OUT/owner_numeric_review.log" 2>&1 || hold NATIVE_NUMERICAL_REVIEW_BLOCKED
+# Strict formal numeric verifier ALWAYS runs first. FV17z53O showed a
+# REAL, completed physical Goal but original Owner/CI evidence profiles
+# disagreed; after parity repair, a cross-topic RMW wall-clock regression may
+# still be a FORMAL HOLD. Never replace that raw fact with a safety PASS.
+OWNER_REVIEW_RC=0
+python3 "$RUNTIME/tools/p2_g07_task04_moving_review.py" --motion-root "$OUT/native" --witness "$OUT/native/s02_ecm_witness.json" --source-sha "$STUDENT_SHA" --gui-windows 2 --output "$OUT/task04_owner_numeric_review.json" > "$OUT/owner_numeric_review.log" 2>&1 || OWNER_REVIEW_RC=$?
+if [[ "$OWNER_REVIEW_RC" -ne 0 ]];then
+  # Only the actual RMW timebase HOLD may qualify as a *classroom* demo
+  # candidate, and only if every other physical/safety test is truly PASS.
+  # Missing real Guard internal CM TTL, CM callback violation, invalid Goal,
+  # nav shutdown failure, or any other HOLD remains a hard block.
+  if python3 "$REVIEW_CACHE/scripts/axia_g07_task04_owner_demo_scope.py" \
+       --numeric "$OUT/task04_owner_numeric_review.json" \
+       --output "$OUT/task04_owner_mvp_scope.json" \
+       > "$OUT/owner_mvp_scope.log" 2>&1;then
+    python3 - "$OUT/task04_owner_mvp_scope.json" "$OUT/task04_owner_verdict.json" "$STUDENT_SHA" "$CI_L2_RUN" <<'PY_TIMEBASE'
+import json,sys
+from pathlib import Path
+scope=json.loads(Path(sys.argv[1]).read_text())
+assert scope["status"]=="MVP_OWNER_PHYSICAL_NUMERICAL_CANDIDATE_FORMAL_TIMEBASE_HOLD"
+assert scope["formal_first_hold"]=="cm_source_and_observer_120ms"
+assert scope["formal_safety_timing_accepted"] is False
+assert scope["guard_actual_internal_cm_age_under_150ms"] is True
+assert scope["owner_wsl2_l3_accepted"] is False
+assert scope["axia_mvp_demo_accepted"] is False
+assert scope["certified_estop"] is False
+assert scope["source_sha"]==sys.argv[3]
+v={"schema":"axia.g07.task04.owner_scoped_review_pending_v1",
+   "status":"HOLD_RAW_REVIEW_AND_VISUAL_PENDING",
+   "owner_moving_numeric_candidate":"DEMO_SCOPED_FORMAL_RMW_TIMEBASE_HOLD",
+   "source_sha":sys.argv[3],"public_ci_native_l2_run":int(sys.argv[4]),
+   "first_failure":"FORMAL_RMW_TIMEBASE_HOLD",
+   "formal_first_hold":scope["formal_first_hold"],
+   "original_numeric_first_failure":scope["first_failure_preserved"],
+   "formal_safety_timing_accepted":False,
+   "owner_moving_l3_accepted":False,"axia_mvp_demo_accepted":False,
+   "visual_content_verified":False,"certified_estop":False}
+Path(sys.argv[2]).write_text(json.dumps(v,sort_keys=True,indent=2)+"\n")
+print("AXIA_G07_TASK04_OWNER_FORMAL_RMW_TIMEBASE_HOLD "
+      "PHYSICAL_GOAL_CANDIDATE_ONLY CERTIFIED_ESTOP=false")
+PY_TIMEBASE
+    FIRST_FAILURE='FORMAL_RMW_TIMEBASE_HOLD_ONLY'
+    NUMERICAL='PHYSICAL_DEMO_CANDIDATE_FORMAL_RMW_HOLD'
+    exit 0
+  fi
+  hold NATIVE_NUMERICAL_REVIEW_BLOCKED
+fi
 python3 - "$OUT/task04_owner_numeric_review.json" "$OUT/task04_owner_verdict.json" "$STUDENT_SHA" "$CI_L2_RUN" <<'PY'
 import json,sys
 from pathlib import Path
@@ -492,6 +539,7 @@ assert all(data.get("checks",{}).values()) and data.get("scenario_scope")=="owne
 v={"schema":"axia_g07_task04_owner_l3_local_review_pending_v1",
    "status":"HOLD_RAW_REVIEW_AND_VISUAL_PENDING",
    "owner_moving_numeric_candidate":"PASS_SCOPED",
+   "formal_safety_timing_accepted":False,
    "source_sha":sys.argv[3],"public_ci_native_l2_run":int(sys.argv[4]),
    "first_failure":"NONE","native_checks":data["checks"],
    "numerical_review":"task04_owner_numeric_review.json",
