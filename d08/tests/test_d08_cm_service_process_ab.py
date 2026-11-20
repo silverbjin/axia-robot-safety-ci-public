@@ -114,7 +114,8 @@ class CMServiceABTest(unittest.TestCase):
     def test_actual_gazebo_eight_cycle_job_is_armed_for_ab_branch(self):
         w=(ROOT/".github/workflows/d08-main-no-goal-real-gazebo-l2.yml").read_text()
         self.assertIn("feat/d08-cm-service-ab-isolation-20261121",w)
-        self.assertIn('AXIA_D08_CM_AB_MODE: "1"',w)
+        self.assertIn("AXIA_D08_CM_AB_MODE:",w)
+        self.assertIn("github.head_ref == 'feat/d08-cm-service-ab-isolation-20261121' && '1' || '0'",w)
         self.assertIn("D08_CM_AB_EIGHT_CYCLES_L2_PASS_NOT_ROOT_CAUSE",w)
         self.assertIn("d08-cm-service-ab-comparison.json",w)
         self.assertIn("AXIA_D08_NATIVE_RX_PROBE",w)
