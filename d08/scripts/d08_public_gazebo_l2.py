@@ -774,6 +774,8 @@ def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=Fals
                     # immediately: never mask a safety/startup fault.
                     first_gap=cycle.get('first_scan_timing_boundary')
                     if (cm_ab and isinstance(first_gap,dict)
+                        and "D08_FIRST_REAL_SCAN_RECEIVE_GAP_OVER_500MS"
+                            in str(cycle.get("first_boundary",""))
                         and first_gap.get("kind")=="ROS_LASERSCAN_FIRST_RECEIVE_GAP"
                         and float(first_gap.get("receive_gap_sec",0))>.5):
                         print("D08_CM_AB_SCAN_FIRST_FAIL_RETAINED "+
