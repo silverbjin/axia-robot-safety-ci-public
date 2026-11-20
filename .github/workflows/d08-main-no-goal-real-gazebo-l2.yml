@@ -108,7 +108,7 @@ jobs:
           echo D08_PUBLIC_MAIN_NO_GOAL_L0_PASS
   gazebo-contact-positive-once:
     needs: l0-human-proxy-red-green
-    if: (github.head_ref != 'diag/d08-live-rcl-publish-take-20261119' && github.head_ref != 'fix/d08-owner-rmw-one-shot-20261119') && github.head_ref != 'fix/d08-first-scan-gap-boundary-20261119' && github.head_ref != 'fix/d08-native-scan-first-gap-20261119' && github.head_ref != 'fix/d08-scan-independent-ros-process-20261119' && github.head_ref != 'fix/d08-executor-spin-timing-20261119' && github.head_ref != 'diag/d08-ros-trace-preflight-20261119'
+    if: (github.head_ref != 'diag/d08-live-rcl-publish-take-20261119' && github.head_ref != 'fix/d08-owner-rmw-one-shot-20261119') && github.head_ref != 'fix/d08-first-scan-gap-boundary-20261119' && github.head_ref != 'fix/d08-native-scan-first-gap-20261119' && github.head_ref != 'fix/d08-scan-independent-ros-process-20261119' && github.head_ref != 'fix/d08-executor-spin-timing-20261119' && github.head_ref != 'diag/d08-ros-trace-preflight-20261119' && github.head_ref != 'fix/d08-owner-gui-renderer-isolation-20261120'
     runs-on: ubuntu-24.04
     timeout-minutes: 22
     container:
