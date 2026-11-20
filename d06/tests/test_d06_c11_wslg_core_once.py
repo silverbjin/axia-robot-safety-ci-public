@@ -72,6 +72,19 @@ class C11CoreOnce(unittest.TestCase):
         self.assertNotIn("set_pose",src)
         self.assertNotIn("send_goal",src)
         self.assertEqual(subprocess.run(["bash","-n",str(SCRIPT)],capture_output=True).returncode,0)
+    def test_existing_only_requires_exact_gazebo_server_pid_and_never_replays(self):
+        s=SCRIPT.read_text()
+        self.assertIn('"$MODE" == --existing-only',s)
+        self.assertIn('AXIA_D06_EXPECTED_GAZEBO_PID',s)
+        self.assertIn('D06_WSLG_CORE_ONCE_EXISTING_ONLY_MISSING_CORE_NO_REPLAY',s)
+        self.assertIn('D06_WSLG_CORE_ONCE_EXISTING_ONLY_TARGET_PID_MISMATCH_NO_REPLAY',s)
+        self.assertIn('D06_WSLG_CORE_ONCE_EXISTING_ONLY_TARGET_PID_REQUIRED_NO_REPLAY',s)
+        # Ensure the branch on missing core occurs before any launch command.
+        self.assertLess(
+            s.index('D06_WSLG_CORE_ONCE_EXISTING_ONLY_MISSING_CORE_NO_REPLAY'),
+            s.index('D06_WSLG_CORE_ONCE_SINGLE_NVIDIA_NO_GOAL_FORENSIC_START'))
+        self.assertIn('timeout --signal=TERM --kill-after=5s 900s',s)
+
     def test_single_upload_contains_sha_verified_bounded_stack_not_core(self):
         s=SCRIPT.read_text()
         self.assertIn('sha256sum -c --status "$triage_archive.sha256"',s)
