@@ -87,13 +87,76 @@ main() {
   fi
   STAGE=PYTHON_DEPENDENCIES
   printf 'D10_STAGE=%s\n' "$STAGE"
-  command -v "$py" >/dev/null 2>&1 || fail 'python3_missing'
-  if ! "$py" -c 'import sys,numpy,sklearn;print("python="+sys.version.split()[0]+" numpy="+numpy.__version__+" sklearn="+sklearn.__version__)' >"$RUN/versions.log" 2>&1; then
-    cat "$RUN/versions.log"
-    fail 'numpy_or_sklearn_missing; use a Python venv with numpy and scikit-learn'
+  # Never install into system Python or ROS 2. Prefer course-owned virtualenv.
+  local owned_venv="$WORK/.venv-d10" base_py='' explicit_py=0
+  if [[ -n "${AXIA_D10_PYTHON:-}" ]]; then
+    py="$AXIA_D10_PYTHON"; explicit_py=1
+  elif [[ -x "$owned_venv/bin/python" ]]; then
+    py="$owned_venv/bin/python"
+  elif [[ -x "$WORK/.venv/bin/python" ]]; then
+    py="$WORK/.venv/bin/python"
+  elif command -v python3.12 >/dev/null 2>&1; then
+    py="$(command -v python3.12)"
+  else
+    py="$(command -v python3 || true)"
   fi
-  vers="$(cat "$RUN/versions.log")"; printf 'D10_RUNTIME=%s\n' "$vers"
-  case "$vers" in python=3.12.*) ;; *) printf '%s\n' 'D10_PYTHON_VERSION_NOTE expected_course_python=3.12; compare numeric results before acceptance' ;; esac
+  [[ -n "$py" ]] && command -v "$py" >/dev/null 2>&1 || fail 'python_missing; install Ubuntu 24.04 Python 3.12'
+  if ! "$py" -c 'import sys;raise SystemExit(0 if sys.version_info[:2]==(3,12) else 2)' >"$RUN/python_version_probe.log" 2>&1; then
+    "$py" --version >"$RUN/python_version_actual.log" 2>&1 || true
+    cat "$RUN/python_version_actual.log"
+    fail 'python_3_12_required; use Ubuntu 24.04 Python 3.12 (do not replace system Python)'
+  fi
+  if ! "$py" -c 'import sys,numpy,sklearn;print("python="+sys.version.split()[0]+" numpy="+numpy.__version__+" sklearn="+sklearn.__version__)' >"$RUN/versions.log" 2>&1; then
+    cp "$RUN/versions.log" "$RUN/initial_dependency_error.log"
+    printf 'D10_PYTHON_DEPENDENCY_MISSING py=%s; numpy/scikit-learn unavailable\n' "$py"
+    if [[ "$MODE" == --doctor ]]; then
+      fail 'doctor_only_missing_dependencies; --run can prepare course venv without sudo'
+    fi
+    if [[ "${AXIA_D10_AUTO_INSTALL:-1}" != 1 ]]; then
+      fail 'auto_install_disabled; provide a venv using AXIA_D10_PYTHON or enable AXIA_D10_AUTO_INSTALL=1'
+    fi
+    if (( explicit_py )) && [[ "$py" != "$owned_venv/bin/python" && "$py" != "$WORK/.venv/bin/python" ]]; then
+      fail 'explicit_python_missing_dependencies; install into your selected venv or omit AXIA_D10_PYTHON for automatic course venv'
+    fi
+    STAGE=PYTHON_BOOTSTRAP
+    printf 'D10_STAGE=%s\n' "$STAGE"
+    if [[ -x "$WORK/.venv/bin/python" && "$py" == "$WORK/.venv/bin/python" ]]; then
+      printf 'D10_VENV_REUSE path=%s\n' "$WORK/.venv"
+    else
+      if [[ ! -x "$owned_venv/bin/python" ]]; then
+        if [[ -e "$owned_venv" ]]; then
+          fail 'course_venv_path_exists_but_invalid; rename it manually after preserving evidence'
+        fi
+        if command -v python3.12 >/dev/null 2>&1; then
+          base_py="$(command -v python3.12)"
+        else
+          base_py="$py"
+        fi
+        printf 'D10_VENV_CREATE path=%s python=%s\n' "$owned_venv" "$base_py"
+        if ! "$base_py" -m venv "$owned_venv" >"$RUN/venv_create.log" 2>&1; then
+          cat "$RUN/venv_create.log"
+          fail 'venv_creation_failed; install python3.12-venv using apt and retry'
+        fi
+      fi
+      py="$owned_venv/bin/python"
+      printf 'D10_VENV_REUSE path=%s\n' "$owned_venv"
+    fi
+    printf 'D10_PIP_INSTALL_BEGIN python=%s requirements=numpy>=1.26,<3;scikit-learn==1.8.0\n' "$py"
+    if ! "$py" -m pip install --disable-pip-version-check --no-input --only-binary=:all: \
+        --retries 2 --timeout 30 'numpy>=1.26,<3' 'scikit-learn==1.8.0' >"$RUN/python_install.log" 2>&1; then
+      tail -n 55 "$RUN/python_install.log"
+      fail 'pip_install_failed; inspect python_install.log and network/proxy; no system Python changed'
+    fi
+    printf 'D10_PIP_INSTALL_PASS evidence=%s\n' "$RUN/python_install.log"
+    if ! "$py" -c 'import sys,numpy,sklearn;print("python="+sys.version.split()[0]+" numpy="+numpy.__version__+" sklearn="+sklearn.__version__)' >"$RUN/versions.log" 2>&1; then
+      cat "$RUN/versions.log"
+      fail 'post_install_import_failed; inspect versions.log'
+    fi
+  fi
+  vers="$(cat "$RUN/versions.log")"; printf 'D10_RUNTIME=%s py=%s\n' "$vers" "$py"
+  if [[ "$vers" != *"sklearn=1.8.0"* ]]; then
+    printf '%s\n' 'D10_SKLEARN_VERSION_NOTE expected_reference=1.8.0; C03 reference check remains authoritative'
+  fi
   [[ -f "$root/fixtures/generator.py" && -f "$root/day09/eda_pipeline.py" && \
     -f "$root/day10/isolation_forest_pipeline.py" ]] || fail 'required_instructor_files_missing'
   if [[ "$MODE" == --doctor ]]; then
