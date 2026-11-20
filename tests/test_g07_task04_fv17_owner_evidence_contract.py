@@ -7,6 +7,7 @@ import copy
 from pathlib import Path
 import unittest
 from d06.diagnostic.g07_task02_strict_gate import assess
+from scripts.axia_g07_task04_owner_demo_scope import assess_owner_demo_scope
 
 FIELD_PREV=1795134992890347373   # actual pre_guard seq132
 FIELD_NEXT=1795134986208843701   # actual pre_guard seq133
@@ -89,5 +90,54 @@ class OwnerRmwVerifierParity(unittest.TestCase):
         rows=events();rows[12].pop("rmw_source_ns")
         self.assertNotEqual(assess(report("owner"),rows)["status"],
                             "TASK02_PUBLIC_L2_NUMERICAL_CANDIDATE")
+
+
+class OwnerScopedDemoWhenFormalTimebaseUnreliable(unittest.TestCase):
+    def candidate(self):
+        # Synthetic *numerical review* only, real physical evidence is not
+        # faked by this test. The owner reviewer must have proved 20 gates.
+        checks={name:True for name in
+             ("single_goal_actual_action","exact_goal_cancel","sqlite_14",
+             "cm_source_and_observer_120ms","guard_internal_150ms",
+             "s02_actual_native_contact_zero","cli_shared_moving_result",
+             "no_unexpected_guard_latch","first_timing_violation_none",
+             "odom_moved","odom_zero_dwell","cm_callback_120ms",
+             "guard_150ms","scan_300ms","odom_300ms","clock_300ms",
+             "nav_lifecycle_ack","loc_lifecycle_ack",
+             "collision_monitor_child_clean","both_actual_gui_windows",
+             "exact_source_sha")}
+        checks["cm_source_and_observer_120ms"]=False
+        return {"status":"HOLD","scenario_scope":"owner","first_failure":"cm_source_and_observer_120ms",
+                "checks":checks,"cm120":{"status":"TASK02_RMW_TIMEBASE_DISCONTINUITY_HOLD"},
+                "goal_uuid":"a"*32,"gui_windows_seen":2,"odom_moved_m":.134,
+                "stopped_dwell_sec":1.016,"source_sha":"f"*40,
+                "certified_estop":False,"owner_wsl2_l3_accepted":False}
+
+    def test_educational_goal_evidence_is_reported_without_formal_timing_pass(self):
+        result=assess_owner_demo_scope(self.candidate())
+        self.assertEqual(result["status"],
+           "MVP_OWNER_PHYSICAL_NUMERICAL_CANDIDATE_FORMAL_TIMEBASE_HOLD")
+        self.assertEqual(result["formal_first_hold"],"cm_source_and_observer_120ms")
+        self.assertEqual(result["first_failure_preserved"],"cm_source_and_observer_120ms")
+        self.assertFalse(result["formal_safety_timing_accepted"])
+        self.assertFalse(result["owner_wsl2_l3_accepted"])
+        self.assertFalse(result["axia_mvp_demo_accepted"])
+        self.assertFalse(result["certified_estop"])
+
+    def test_missing_guard_internal_age_can_never_be_reclassified_as_demo_ready(self):
+        x=self.candidate();x["checks"]["guard_internal_150ms"]=False
+        self.assertEqual(assess_owner_demo_scope(x)["status"],"HOLD")
+
+    def test_real_cm_ttl_failure_cannot_be_reclassified_as_wall_time_anomaly(self):
+        x=self.candidate()
+        x["cm120"]["status"]="TASK02_CM120_SOURCE_OR_OBSERVER_FIRST_VIOLATION_HOLD"
+        self.assertEqual(assess_owner_demo_scope(x)["status"],"HOLD")
+
+    def test_corrupted_goal_or_wrong_source_never_pass(self):
+        for key in ("exact_goal_cancel","exact_source_sha","scan_300ms","collision_monitor_child_clean"):
+            x=self.candidate();x["checks"][key]=False
+            self.assertEqual(assess_owner_demo_scope(x)["status"],"HOLD")
+        x=self.candidate();x["scenario_scope"]="ci"
+        self.assertEqual(assess_owner_demo_scope(x)["status"],"HOLD")
 
 if __name__=="__main__":unittest.main()
