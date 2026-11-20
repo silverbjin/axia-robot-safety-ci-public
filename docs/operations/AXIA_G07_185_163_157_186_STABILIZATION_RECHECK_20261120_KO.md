@@ -281,3 +281,30 @@
 - Public Branch `docs/g07-185-163-157-186-stabilization-recheck-20261120` / Draft PR #199, Student Draft PR #71 SHA `0f6e6bd...`. 공개 `main` 및 학생용 `main` 병합 **없음**.
 - 유효 범위는 신규 L0 진단 함수 및 **이미 성공이 확인된** 별도 실제 L2 cycle의 해당 성공 조건뿐. 동일 원본에서 재발했을 때만 첫 RMW pair의 분류를 증거로 사용. 실제 GPU WSLg #186, Nav/Loc 서버 최초 Callback #185/#163은 독립 HOLD 유지.
 - `AXIA_G07_EDUCATIONAL_BASELINE=ACCEPTED`; `G07_RMW_FIRST_GAP_DIAGNOSTIC_L0=PASS`; `G07_RMW_ROOT_CAUSE=UNDETERMINED`; `G07_NEW_OWNER_WSL2=NOT_RUN`; `CERTIFIED_ESTOP=false`; `MAIN_MERGED=false`.
+
+
+## 12. 2026-11-20 strict WSL2 출고 및 최초 RMW 수신 경계
+
+### 기존 원인·최소 변경
+
+- 기존 Student Moving Goal source에서 실제 #44679704946는 Navigation/Localization ACK 및 Collision Monitor exit0 후 runner 외부 1000초 타임아웃(rc124). scripts/p2_no_goal_smoke_ci.sh의 두 소유 GUI process-group에 SIGINT 후 제한 없는 wait가 있어 별도로 재현 가능한 정체 결함. Student PR #71 수정 후보 148635b40c69a40feb8174306cacba6755c88c92는 **자신의 setsid RViz/Gazebo GUI**에 대해서만 bounded SIGINT→TERM→KILL 및 zombie 상태 점검 후 wait. 센서·Guard TTL, Nav2 ACK와 Goal 검증은 무변경.
+- RED 공개 CI [#44682844977](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44682844977), GREEN [#44683181819](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44683181819), 기존 GUI 종료 순서 검사 보존 후 [#44683528218](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44683528218) GREEN. 최초 GUI 문제의 근본 원인 확정은 아님.
+- 새 공개 strict L2 workflow는 visual demonstration HOLD를 전체 CI PASS로 승격시키던 기존 exit0 예외 경로를 exit3으로 변경 (SHA 310c8932bde167a1a63ad6305a72057d070d4fb1). RED [#44683671614](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44683671614), GREEN [#44683748090](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44683748090).
+
+### 실제 최초 수신 위반 / 원인 범위
+
+- **실제 strict Gazebo L2 #44683741133 = FAIL (2/2)**. Cycle1 실제 Goal 이전 NAVIGATION_START lifecycle rejected, 창 탐색 0/0, Goal 미발행. Cycle2 실제 Goal 도중 최초 Odom 간격 **361.484255ms > Odom300**, 7개 Observer 토픽 동시 수신 공백.
+- 같은 Cycle2 정확한 CM pre-guard 연속 발행 seq gap=1, RMW publisher source gap **48.499371ms**, RMW received timestamp gap **356.887562ms**, Observer callback gap **362.069145ms**. 이 최초 pair는 CM publisher 5초 ZERO timeout 가설과 맞지 않으며, 발행 이후 RMW 수신 또는 Observer 실행 경계의 문제 후보. RMW 수신 timestamp만으로 DDS transport vs host scheduling root가 증명되는 것은 아님. 실제 Guard FIRST latch 여부도 미증명.
+- 숫자 고정 테스트: tests/test_g07_rmw_first_gap_pair.py와 tests/fixtures/g07_44683741133_first_rmw_receipt.json. RED [#44684409420](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44684409420), GREEN 후속 CI로 검증. raw bag/UUID/GID 공개 없음.
+
+### WSL2 최종 인수 원샷의 상태
+
+- 공개 파일 scripts/axia_g07_stabilization_wsl2_final_once.sh, 정확한 Student 148635b40c69a40feb8174306cacba6755c88c92, reviewer 362da68e31dd163a8d321601e191069c0d0a438b, strict L2 run #44683741133 및 workflow SHA 310c8932bde167a1a63ad6305a72057d070d4fb1 고정. 기존 실제 Owner 단일 Moving Goal, 수동 TTY 동의, WSLg/Ubuntu/Jazzy/Gazebo 검사, 증거 보존 및 소형 ZIP 재사용.
+- CLI: --self-check (ROS/Gazebo 없음), --ci-check (공개 GH API에서 strict run 완료/성공 및 2 matrix job 각각 성공 확인), --run (앞의 CI gate가 성공한 경우에만 실제 WSL2 세션 시작). CI 실패/잘못된 SHA/원격 불가 시 **Goal 전 exit3**, 절대 시연 PASS 주장 금지.
+- 공개 workflow .github/workflows/axia-g07-stabilization-wsl2-release-l0.yml [#44684045295](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44684045295) 실제 L0 PASS. tests/test_g07_stabilization_wsl2_release.py에서 fake CI 두 job PASS/한 job FAIL/허위 SHA를 검증. 구동 대상 ROS/Gazebo/WSLg L3는 미실행.
+- 현 시점 strict L2 #44683741133는 FAIL이므로 소스는 출고 준비됐으나 **WSL2 --run 승인 상태는 HOLD**. CI-first 원칙에 따라 실제 최종 시연 인수 성공·스크립트 완전 릴리스라고 보고하지 않음.
+
+### 분리 HOLD
+
+- #185/#163 Nav2 첫 callback 서비스 실패는 독립 원인 미확정, #186 GPU NVIDIA WSLg native SIGABRT/SIGSEGV 원본 스택 없음; 별도 C11-C17 수집기는 기존 성공 보존. D07 Context 제한된 WaitSet 경계 L0 PASS, 다른 Destroyable 경고 스택 동일성 미확정.
+- SW Stop ≠ 인증된 E-Stop. Guard150/CM120/Scan300/Odom300/Clock300 엄격 기준 유지. 공개·학생 main 미병합.
