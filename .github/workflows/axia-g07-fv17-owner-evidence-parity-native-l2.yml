@@ -46,7 +46,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: d76668e43a516ed96316d0c6a99ab461eb00ae94
+          ref: 5c7983598fa3bcd7148433a06f37a4e78b091273
           path: student
           persist-credentials: false
       # Keep the historic reviewer for older unrelated imports; the current
@@ -61,7 +61,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C student rev-parse HEAD)" = 'd76668e43a516ed96316d0c6a99ab461eb00ae94'
+          test "$(git -C student rev-parse HEAD)" = '5c7983598fa3bcd7148433a06f37a4e78b091273'
           test "$(git -C ci rev-parse HEAD)" = "$GITHUB_SHA"
           cd student/block_B/day07/h01_runtime
           test "$(git -C "$GITHUB_WORKSPACE/review" rev-parse HEAD)" = 'd60beed5e18d8104b254f17476d47f1d1917a7eb'
@@ -174,7 +174,7 @@ jobs:
                   --motion "$GITHUB_WORKSPACE/native/g07_ci_moving/ci_moving_goal_result.json" \
                   --shutdown "$GITHUB_WORKSPACE/native/g07_ordered_shutdown.json" \
                   --gui-windows 2 \
-                  --source-sha 'd76668e43a516ed96316d0c6a99ab461eb00ae94' \
+                  --source-sha '5c7983598fa3bcd7148433a06f37a4e78b091273' \
                   --output "$GITHUB_WORKSPACE/public_evidence/task04_mvp_visual_l2_verdict.json"; then
               sha256sum "$GITHUB_WORKSPACE/public_evidence/task04_mvp_visual_l2_verdict.json" \
                 > "$GITHUB_WORKSPACE/public_evidence/task04_mvp_visual_l2_verdict.sha256"
@@ -212,7 +212,7 @@ jobs:
           import json,sys
           result=json.load(open(sys.argv[1]))
           assert result.get("goal_sent") is True,result
-          assert result.get("source_sha")=="d76668e43a516ed96316d0c6a99ab461eb00ae94",result
+          assert result.get("source_sha")=="5c7983598fa3bcd7148433a06f37a4e78b091273",result
           print('AXIA_G07_REAL_OWNER_AMCL_PRIMARY_PATH_PASS actual_goal_sent=true')
           PY_REAL_TF
           # Real Guard 20Hz timing facts must be present in the actual
@@ -244,13 +244,12 @@ jobs:
              common_g07_ci_oracle_status="CI_GAZEBO_MOVING_GOAL_CANDIDATE")
           owner=assess(projected,rows)
           assert owner["status"]==ci["status"],owner
-          Path("$GITHUB_WORKSPACE").exists()  # No simulated ROS in analyzer
           print("AXIA_G07_FV17_REAL_GAZEBO_GUARD_INTERNAL_TTL_PASS "
                 f"samples={internal['samples']} max_cm_age_ms={internal['max_cm_age_ms']}")
           print("AXIA_G07_FV17_OWNER_CI_PROFILE_NUMERICAL_PARITY_PASS_OWNER_L3_NOT_RUN")
           PY_GUARD_OWNER_CONTRACT
           windows_count=$((rviz_seen+gazebo_seen))
-          python3 tools/p2_g07_task04_moving_review.py             --motion-root "$GITHUB_WORKSPACE/native"             --witness "$GITHUB_WORKSPACE/native/s02_ecm_witness.json"             --source-sha 'd76668e43a516ed96316d0c6a99ab461eb00ae94'             --gui-windows "$windows_count"             --output "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"
+          python3 tools/p2_g07_task04_moving_review.py             --motion-root "$GITHUB_WORKSPACE/native"             --witness "$GITHUB_WORKSPACE/native/s02_ecm_witness.json"             --source-sha '5c7983598fa3bcd7148433a06f37a4e78b091273'             --gui-windows "$windows_count"             --output "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"
           sha256sum "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"             > "$GITHUB_WORKSPACE/public_evidence/task04_moving_verdict.sha256"
           echo 'AXIA_G07_TASK04_NATIVE_MOVING_GUI_XVFB_L2_PASS_OWNER_WSL2_NOT_RUN'
           echo 'AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false'
