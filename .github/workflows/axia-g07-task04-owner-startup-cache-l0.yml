@@ -1,0 +1,27 @@
+name: AXIA G07 Owner startup native cache RED GREEN L0
+on:
+  push:
+    branches: ['perf/g07-task04-owner-native-witness-cache-20261119']
+  pull_request:
+    branches: ['main']
+    paths:
+      - 'scripts/axia_g07_task04_owner_moving_l3_once.sh'
+      - 'tests/test_g07_task04_owner_startup_performance.py'
+      - '.github/workflows/axia-g07-task04-owner-startup-cache-l0.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  owner-startup-cache-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Owner startup cache contract
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          bash -n scripts/axia_g07_task04_owner_moving_l3_once.sh
+          python3 -m unittest discover -s tests -p 'test_g07_task04_owner_startup_performance.py' -v
+          python3 -m unittest discover -s tests -p 'test_g07_task04_owner_native_cache_runtime.py' -v
+          python3 -m unittest discover -s tests -p 'test_g07_task04_owner_moving_bootstrap.py' -v
