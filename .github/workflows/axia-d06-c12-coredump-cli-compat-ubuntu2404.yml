@@ -48,7 +48,7 @@ jobs:
             apt-get update -qq -o Acquire::Retries=2 -o Acquire::http::Timeout=20
             apt-get install -y -qq --no-install-recommends \
               systemd-coredump gdb mesa-utils curl git python3 \
-              procps coreutils grep sed tar gcc
+              procps coreutils grep sed tar gcc libc6-dev
             command -v coredumpctl
             dpkg-query -W systemd-coredump | tee /tmp/axia-c12-package-manifest.txt
             grep -Eq "^systemd-coredump[[:space:]]+[^[:space:]]+" /tmp/axia-c12-package-manifest.txt
