@@ -8,9 +8,9 @@ import unittest
 
 ROOT=Path(__file__).resolve().parents[1]
 SCRIPT=ROOT/"scripts/axia_g07_stabilization_wsl2_final_once.sh"
-STUDENT="148635b40c69a40feb8174306cacba6755c88c92"
-HEAD="310c8932bde167a1a63ad6305a72057d070d4fb1"
-RUN=44683741133
+STUDENT="4f4d07f6daf878dd8076f89669698f61f52a802b"
+HEAD="fe2e4b2599c2fe3e136ffbd06899733a5ba17906"
+RUN=44706879509
 NAME="AXIA G07 FV17 Independent 2-cycle Real Moving Goal Guard TTL L2"
 
 
@@ -106,6 +106,16 @@ fi
                 r=self._gate(*payload)
                 self.assertNotEqual(r.returncode,0,r.stdout+r.stderr)
                 self.assertIn("HOLD_NO_NEW_WSL2_MOVING_RELEASE",r.stdout)
+
+    def test_strict_native_run_and_owner_source_share_exact_committed_sha(self):
+        flow=(ROOT/".github/workflows/axia-g07-fv17-owner-evidence-parity-native-l2.yml").read_text()
+        script=SCRIPT.read_text()
+        self.assertIn("ref: "+STUDENT,flow)
+        self.assertIn("readonly STUDENT_SHA='"+STUDENT+"'",script)
+        self.assertIn("readonly CI_L2_RUN="+str(RUN),script)
+        self.assertIn("readonly CI_L2_HEAD='"+HEAD+"'",script)
+        self.assertIn("FASTDDS_BUILTIN_TRANSPORTS: UDPv4",flow)
+        self.assertIn("AXIA_G07_NAV_WARM_PARTICIPANT_CI_AB: '1'",flow)
 
     def test_bad_command_refused(self):
         r=subprocess.run(["bash",str(SCRIPT),"--force-run"],
