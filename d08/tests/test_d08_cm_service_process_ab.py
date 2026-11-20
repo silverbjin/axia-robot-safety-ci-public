@@ -24,7 +24,7 @@ class CMServiceABTest(unittest.TestCase):
             "official_cm_active_scan_configured":True,
             "cm_native_lifecycle_state":"active",
             "cm_native_observation_sources":["scan"],
-            "cm_actual_configured_scan_topic":"/scan",
+            "cm_actual_configured_scan_topic":"scan",  # actual WSL2 official CM config
             "cm_internal_receive_gap_verified":False,
             "cm_action_state_verified":False,
         }
@@ -43,7 +43,7 @@ class CMServiceABTest(unittest.TestCase):
         payload=self._real_witness_shape()
         result=parse("preflight\nD08_CM_NATIVE_ISOLATED_RESULT="+json.dumps(payload)+"\n")
         self.assertEqual(result["cm_native_lifecycle_state"],"active")
-        self.assertEqual(result["cm_actual_configured_scan_topic"],"/scan")
+        self.assertEqual(result["cm_actual_configured_scan_topic"],"scan")
         for key,value in (
             ("cm_native_lifecycle_state","inactive"),
             ("cm_actual_configured_scan_topic","/fake_scan"),
