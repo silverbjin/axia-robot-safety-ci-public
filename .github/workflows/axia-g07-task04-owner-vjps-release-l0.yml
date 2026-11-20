@@ -5,6 +5,7 @@ on:
     paths:
       - 'scripts/axia_g07_task04_owner_moving_l3_once.sh'
       - 'tests/test_g07_task04_owner_moving_bootstrap.py'
+      - 'docs/operations/AXIA_G07_TASK04_VJPSC6WY_AMCL_MAP_TF_AND_SHUTDOWN_RCA_20261120_KO.md'
       - '.github/workflows/axia-g07-task04-owner-vjps-release-l0.yml'
   workflow_dispatch:
 permissions:
