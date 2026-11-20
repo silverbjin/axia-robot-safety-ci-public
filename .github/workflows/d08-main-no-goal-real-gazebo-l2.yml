@@ -330,7 +330,7 @@ jobs:
     # skipped Nav2/AMCL here even while the overall public workflow was GREEN.
     # On this exact PR, one real official Nav2 same-world job is REQUIRED.
     # Other branches retain their existing manual diagnostic scope.
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && (github.head_ref == 'feat/d08-unified-sensor-cm-path-20261118' || github.head_ref == 'fix/d08-first-scan-gap-boundary-20261119' || github.head_ref == 'fix/d08-native-scan-first-gap-20261119' || github.head_ref == 'fix/d08-scan-independent-ros-process-20261119' || github.head_ref == 'fix/d08-executor-spin-timing-20261119' || (github.head_ref == 'diag/d08-ros-trace-preflight-20261119' || (github.head_ref == 'diag/d08-live-rcl-publish-take-20261119' || github.head_ref == 'fix/d08-owner-rmw-one-shot-20261119'))))
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && (github.head_ref == 'fix/d08-owner-gui-renderer-isolation-20261120' || github.head_ref == 'feat/d08-unified-sensor-cm-path-20261118' || github.head_ref == 'fix/d08-first-scan-gap-boundary-20261119' || github.head_ref == 'fix/d08-native-scan-first-gap-20261119' || github.head_ref == 'fix/d08-scan-independent-ros-process-20261119' || github.head_ref == 'fix/d08-executor-spin-timing-20261119' || (github.head_ref == 'diag/d08-ros-trace-preflight-20261119' || (github.head_ref == 'diag/d08-live-rcl-publish-take-20261119' || github.head_ref == 'fix/d08-owner-rmw-one-shot-20261119'))))
     runs-on: ubuntu-24.04
     timeout-minutes: 22
     container:
