@@ -42,6 +42,7 @@ class IsolatedScanEvidence:
 def run(out:Path,max_samples:int=1024)->int:
     import rclpy
     from rclpy.qos import qos_profile_sensor_data
+    from rclpy.executors import ShutdownException, ExternalShutdownException
     from sensor_msgs.msg import LaserScan
 
     if not 50<=max_samples<=4096:
@@ -72,9 +73,18 @@ def run(out:Path,max_samples:int=1024)->int:
             sub=node.create_subscription(
                 LaserScan,"/scan",on_scan,qos_profile_sensor_data)
             print("D08_ISOLATED_ROS_SCAN_PROCESS_READY",flush=True)
-            while not stop.is_set():
-                rclpy.spin_once(node,timeout_sec=.05)
-            evidence.write_remaining(dst,start=1)
+            try:
+                while not stop.is_set():
+                    rclpy.spin_once(node,timeout_sec=.05)
+            except (ShutdownException, ExternalShutdownException):
+                # rclpy.init can own SIGTERM and close the ROS context before
+                # our Python signal callback runs. Never lose buffered rows.
+                if rclpy.ok() and not stop.is_set():
+                    raise
+            finally:
+                # Preserve all EXACT source stamps even on ROS shutdown.
+                # The file is still open inside this finally.
+                evidence.write_remaining(dst,start=1)
             counter={"accepted":len(evidence.rows),"dropped":evidence.dropped}
             print("D08_ISOLATED_ROS_SCAN_PROCESS_STOP "
                   +json.dumps(counter,sort_keys=True),flush=True)
