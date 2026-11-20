@@ -4,7 +4,7 @@
 set -Eeuo pipefail
 if [[ $# -gt 0 ]]; then MODE="$1"; else MODE="--run"; fi
 case "$MODE" in --self-check|--doctor|--run) ;; *) echo 'D08_OWNER_USAGE=--self-check|--doctor|--run' >&2;exit 2;; esac
-RUNTIME_SHA="0998978174f9b40ad83bc2fe7907d5dab62115bc"
+RUNTIME_SHA="d6a9c490ffb1430cd49443a2648577459fa667bf"
 OWNER_BLOB="1a17ddaab0eac123188e29cf031c819187c4f82d"
 EXTRACT_SHA="2b3080510dfee6c9da80cf515da29663f19d27a3"
 EXTRACT_BLOB="142c4dcc820a04accdf869b4cc903f62c7977b2c"
