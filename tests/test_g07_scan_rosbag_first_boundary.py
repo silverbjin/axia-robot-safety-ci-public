@@ -46,4 +46,33 @@ class SameExactBagPair(unittest.TestCase):
         self.assertTrue(r["all_clock_intervals_same_rosbag_receive_timebase"])
         self.assertFalse(r["host_monotonic_minus_rosbag_epoch_subtracted"])
 
+    def test_clock_odom_first_violation_without_scan_pair_still_compares_independent_bag(self):
+        # Real #44773940465: first /clock334.226ms, /odom335.862ms.
+        # No first Scan violation must NOT imply the raw bag was unexamined.
+        d=rows()
+        a=10_000_000_000
+        d["/clock"]=[{"rx_ns":a},{"rx_ns":a+9_000_000},
+                     {"rx_ns":a+350_000_000},{"rx_ns":a+360_000_000}]
+        d["/odom"]=[{"rx_ns":a},{"rx_ns":a+340_000_000},
+                    {"rx_ns":a+390_000_000}]
+        pre={"first_delivery_violation":{"channel":"clock","gap_ms":334.226257},
+             "clock_max_wall_gap_ms":334.226257,
+             "odom_max_wall_gap_ms":335.861632}
+        r=classify(None,d,pregoal_report=pre)
+        self.assertEqual(r["status"],"CLOCK_ODOM_ROSBAG_INTERVALS_NO_EXACT_SCAN_PAIR_HOLD")
+        self.assertEqual(r["independent_bag_clock_max_gap_ms"],341.0)
+        self.assertEqual(r["independent_bag_odom_max_gap_ms"],340.0)
+        self.assertEqual(r["observer_first_delivery_channel"],"clock")
+        self.assertFalse(r["root_cause_proven"])
+        self.assertFalse(r["host_monotonic_minus_rosbag_epoch_subtracted"])
+
+    def test_clock_odom_no_scan_pair_bag_healthy_still_holds(self):
+        pre={"first_delivery_violation":{"channel":"odom","gap_ms":335.861632},
+             "clock_max_wall_gap_ms":110.0,"odom_max_wall_gap_ms":335.861632}
+        r=classify(None,rows(),pregoal_report=pre)
+        self.assertEqual(r["status"],"CLOCK_ODOM_ROSBAG_INTERVALS_NO_EXACT_SCAN_PAIR_HOLD")
+        self.assertLess(r["independent_bag_odom_max_gap_ms"],300)
+        self.assertEqual(r["release"],"HOLD")
+        self.assertFalse(r["observer_callback_root_proven"])
+
 if __name__=="__main__":unittest.main()
