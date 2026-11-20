@@ -4,6 +4,8 @@ All test rows synthetic; actual same-session first pair joins only on exact
 callback times and consecutive RMW seq. Never equates system and steady epochs,
 never relaxes CM120/Guard150/Scan/Odom/Clock300, never proves Guard TTL root.
 """
+import json
+from pathlib import Path
 import unittest
 from d06.diagnostic.g07_first_actual_delivery_gap import classify_rmw_first_pair
 
@@ -69,6 +71,25 @@ class FirstActualRmwVsCallback(unittest.TestCase):
         p["current_rx_monotonic"]=9.0
         self.assertEqual(classify_rmw_first_pair(rows,p)["status"],
                          "RMW_FIRST_PAIR_UNVERIFIED")
+
+
+    def test_actual_44683741133_first_rmw_receipt(self):
+        """Actual native Moving CI derived intervals, not invented RMW epochs."""
+        path=Path(__file__).parent/"fixtures/g07_44683741133_first_rmw_receipt.json"
+        v=json.loads(path.read_text())
+        self.assertEqual(v["run_id"],44683741133)
+        self.assertEqual(v["job_id"],136113019310)
+        self.assertEqual(v["first_violation"]["channel"],"odom")
+        self.assertAlmostEqual(v["rmw"]["source_gap_ms"],48.499371,places=5)
+        self.assertAlmostEqual(v["rmw"]["received_gap_ms"],356.887562,places=5)
+        self.assertAlmostEqual(v["rmw"]["callback_gap_ms"],362.069145,places=5)
+        self.assertEqual(v["rmw"]["publication_seq_gap"],1)
+        self.assertEqual(v["rmw"]["status"],"RMW_RECEIPT_GAP_CANDIDATE")
+        self.assertFalse(v["rmw"]["publisher_stall_proven"])
+        self.assertFalse(v["rmw"]["rmw_transport_root_proven"])
+        self.assertFalse(v["first_guard_latch_proven"])
+        self.assertEqual(v["status"],"HOLD_FIRST_ACTUAL_RMW_RECEIPT_GAP")
+        self.assertEqual(v["release"],"HOLD")
 
 
 if __name__=="__main__":
