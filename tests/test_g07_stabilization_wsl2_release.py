@@ -55,6 +55,16 @@ class SafeOwnerRelease(unittest.TestCase):
         self.assertLess(text.index("export FASTDDS_BUILTIN_TRANSPORTS=UDPv4"),
                         text.index("source /opt/ros/jazzy/setup.bash",text.index("OUT=''")))
 
+    def test_wsl2_owner_nav_warm_participant_does_not_spoof_public_ci(self):
+        text=SCRIPT.read_text()
+        self.assertIn("export AXIA_G07_NAV_WARM_PARTICIPANT_OWNER=1",text)
+        self.assertIn("unset AXIA_G07_NAV_WARM_PARTICIPANT_CI_AB",text)
+        self.assertIn("export AXIA_G07_CI_SIM_GOAL_ALLOWED=0",text)
+        self.assertIn("OWNER_CONTROLLING_TTY_REQUIRED",text)
+        self.assertLess(
+            text.index("export AXIA_G07_NAV_WARM_PARTICIPANT_OWNER=1"),
+            text.index("source /opt/ros/jazzy/setup.bash",text.index("OUT=''")))
+
     def _gate(self,run,jobs):
         with tempfile.TemporaryDirectory() as d:
             p=Path(d)
