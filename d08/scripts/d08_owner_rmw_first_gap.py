@@ -160,6 +160,14 @@ def correlate_first_boundary(first,events,capture_complete):
           "guard_ttl_verified":False,
           "rmw_trace_capture_complete":bool(capture_complete),
           "source_stamp_is_not_laserscan_header_stamp":True,
+          # This node is in the ORIGINAL Observer Python process on a
+          # DIFFERENT executor thread. Do not confuse it with the real
+          # d08_ros_isolated_scan_probe.py process, whose header stamps are
+          # matched separately by the same-world harness.
+          "independent_ros_origin":
+              "SAME_PYTHON_PROCESS_DIFFERENT_RCLPY_NODE_EXECUTOR",
+          "independent_ros_separate_process":False,
+          "isolated_os_process_not_represented_here":True,
           "first_observer_gap":first}
     if first.get("kind")!="ROS_LASERSCAN_FIRST_RECEIVE_GAP":
         base["candidate"]="NO_FIRST_GAP_IN_AVAILABLE_VERDICTS"
