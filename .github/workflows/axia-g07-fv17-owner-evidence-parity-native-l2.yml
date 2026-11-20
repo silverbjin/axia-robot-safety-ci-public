@@ -42,10 +42,7 @@ jobs:
       AXIA_G07_CI_SIM_GOAL_ALLOWED: '1'
       AXIA_G07_OWNER_STARTUP_PARITY: '1'
       AXIA_G07_CI_OWNER_OBSERVER_PARITY: '1'
-      # Scoped real Jazzy A/B after FastDDS sample #44683741133:
-      # default Student/Owner remains unchanged; this test selects only
-      # the existing Observer single executor, not any safety node.
-      AXIA_G07_OBSERVER_EXECUTOR_AB: 'single'
+      # Original 2-thread Observer plus read-only independent DDS witness.
       AXIA_G07_CI_OWNER_BAG_PARITY: '1'
       AXIA_P2_G07_OWNER_PARITY_CHECK: '1'
       AXIA_G07_TASK02_SIMPLE_TF_CANDIDATE: '1'
@@ -67,7 +64,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 0cc5f45110b1b0169cd5c200574c8d669a1d9256
+          ref: 148635b40c69a40feb8174306cacba6755c88c92
           path: student
           persist-credentials: false
       # Keep the historic reviewer for older unrelated imports; the current
@@ -82,7 +79,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C student rev-parse HEAD)" = '0cc5f45110b1b0169cd5c200574c8d669a1d9256'
+          test "$(git -C student rev-parse HEAD)" = '148635b40c69a40feb8174306cacba6755c88c92'
           test "$(git -C ci rev-parse HEAD)" = "$GITHUB_SHA"
           cd student/block_B/day07/h01_runtime
           test "$(git -C "$GITHUB_WORKSPACE/review" rev-parse HEAD)" = 'd60beed5e18d8104b254f17476d47f1d1917a7eb'
@@ -166,6 +163,14 @@ jobs:
               kill -TERM -- "-$runner_pid" 2>/dev/null || true
               wait "$runner_pid" 2>/dev/null || true
             fi
+            if [[ -n "${isolated_cm_pid:-}" ]];then
+              kill -INT "$isolated_cm_pid" 2>/dev/null || true
+              sleep 1
+              kill -TERM "$isolated_cm_pid" 2>/dev/null || true
+              sleep 1
+              kill -KILL "$isolated_cm_pid" 2>/dev/null || true
+              wait "$isolated_cm_pid" 2>/dev/null || true
+            fi
             kill -TERM "$xvfb_pid" 2>/dev/null || true
             wait "$xvfb_pid" 2>/dev/null || true
           }
@@ -173,6 +178,22 @@ jobs:
           sleep 2
           kill -0 "$xvfb_pid"
           cd "$GITHUB_WORKSPACE/student/block_B/day07/h01_runtime"
+          # Independent read-only DDS participant, using D08 #202 pattern.
+          python3 "$GITHUB_WORKSPACE/ci/d06/diagnostic/g07_independent_cm_rmw_witness.py" \
+            --out "$GITHUB_WORKSPACE/public_evidence/independent_cm_rmw.jsonl" \
+            --max-samples 12000 > "$GITHUB_WORKSPACE/public_evidence/independent_cm_rmw.log" 2>&1 &
+          isolated_cm_pid=$!
+          for ((k=0;k<30;k++));do
+            grep -Fq 'AXIA_G07_INDEPENDENT_CM_RMW_PROCESS_READY' \
+              "$GITHUB_WORKSPACE/public_evidence/independent_cm_rmw.log" && break
+            kill -0 "$isolated_cm_pid" 2>/dev/null || break
+            sleep .1
+          done
+          grep -Fq 'AXIA_G07_INDEPENDENT_CM_RMW_PROCESS_READY' \
+            "$GITHUB_WORKSPACE/public_evidence/independent_cm_rmw.log" || {
+            echo 'G07_INDEPENDENT_CM_RMW_STARTUP_BLOCKED' >&2;exit 3;
+          }
+          echo 'AXIA_G07_INDEPENDENT_CM_RMW_READY_NO_NEW_GOAL'
           setsid env -u LD_PRELOAD -u AXIA_G07_TASK01_TF_AVAIL_PROBE timeout --signal=TERM --kill-after=10s 1000s             bash scripts/p2_no_goal_smoke_ci.sh > "$GITHUB_WORKSPACE/public_evidence/moving_stdout.log" 2>&1 &
           runner_pid=$!
           rviz_seen=0;gazebo_seen=0
@@ -185,6 +206,23 @@ jobs:
           done
           set +e;wait "$runner_pid";runner_rc=$?;set -e
           runner_pid=''
+          kill -INT "$isolated_cm_pid" 2>/dev/null || true
+          for ((k=0;k<30;k++));do
+            kill -0 "$isolated_cm_pid" 2>/dev/null || break
+            sleep .1
+          done
+          if kill -0 "$isolated_cm_pid" 2>/dev/null;then
+            kill -TERM "$isolated_cm_pid" 2>/dev/null || true
+            sleep .5
+          fi
+          if kill -0 "$isolated_cm_pid" 2>/dev/null;then
+            kill -KILL "$isolated_cm_pid" 2>/dev/null || true
+            echo 'G07_INDEPENDENT_CM_RMW_FORCED_EXIT_HOLD'
+          fi
+          wait "$isolated_cm_pid" 2>/dev/null || true
+          isolated_cm_pid=''
+          [[ -s "$GITHUB_WORKSPACE/public_evidence/independent_cm_rmw.jsonl" ]] \
+            || echo 'G07_INDEPENDENT_CM_RMW_NO_EXACT_PAIR_HOLD'
           echo "AXIA_G07_TASK04_NATIVE_ONE_MOVING_RUNNER_RC=$runner_rc RVIZ_X11=$rviz_seen GAZEBO_X11=$gazebo_seen"
           verify_real_goal_and_guard_evidence() {
           # Field teardown vJpsc6Wy: the parent "GRACEFUL" marker coexisted
@@ -210,7 +248,7 @@ jobs:
           import json,sys
           result=json.load(open(sys.argv[1]))
           assert result.get("goal_sent") is True,result
-          assert result.get("source_sha")=="0cc5f45110b1b0169cd5c200574c8d669a1d9256",result
+          assert result.get("source_sha")=="148635b40c69a40feb8174306cacba6755c88c92",result
           print('AXIA_G07_REAL_OWNER_AMCL_PRIMARY_PATH_PASS actual_goal_sent=true')
           PY_REAL_TF
           # Real Guard 20Hz timing facts must be present in the actual
@@ -262,7 +300,7 @@ jobs:
                   --motion "$GITHUB_WORKSPACE/native/g07_ci_moving/ci_moving_goal_result.json" \
                   --shutdown "$GITHUB_WORKSPACE/native/g07_ordered_shutdown.json" \
                   --gui-windows 2 \
-                  --source-sha '0cc5f45110b1b0169cd5c200574c8d669a1d9256' \
+                  --source-sha '148635b40c69a40feb8174306cacba6755c88c92' \
                   --output "$GITHUB_WORKSPACE/public_evidence/task04_mvp_visual_l2_verdict.json"; then
               sha256sum "$GITHUB_WORKSPACE/public_evidence/task04_mvp_visual_l2_verdict.json" \
                 > "$GITHUB_WORKSPACE/public_evidence/task04_mvp_visual_l2_verdict.sha256"
@@ -284,7 +322,7 @@ jobs:
           fi
           verify_real_goal_and_guard_evidence || exit 3
           windows_count=$((rviz_seen+gazebo_seen))
-          python3 tools/p2_g07_task04_moving_review.py             --motion-root "$GITHUB_WORKSPACE/native"             --witness "$GITHUB_WORKSPACE/native/s02_ecm_witness.json"             --source-sha '0cc5f45110b1b0169cd5c200574c8d669a1d9256'             --gui-windows "$windows_count"             --output "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"
+          python3 tools/p2_g07_task04_moving_review.py             --motion-root "$GITHUB_WORKSPACE/native"             --witness "$GITHUB_WORKSPACE/native/s02_ecm_witness.json"             --source-sha '148635b40c69a40feb8174306cacba6755c88c92'             --gui-windows "$windows_count"             --output "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"
           sha256sum "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"             > "$GITHUB_WORKSPACE/public_evidence/task04_moving_verdict.sha256"
           echo 'AXIA_G07_TASK04_NATIVE_MOVING_GUI_XVFB_L2_PASS_OWNER_WSL2_NOT_RUN'
           echo 'AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false'
@@ -313,6 +351,32 @@ jobs:
             --output "$GITHUB_WORKSPACE/public_evidence/first_delivery_actual_pairs.json"
           # Report is derived timing metadata only; no raw bag, UUID or
           # client/source packet contents leave the native job workspace.
+      - name: Compare original/independent exact CM DDS sample pair (read-only)
+        if: always()
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          PYTHONPATH="$GITHUB_WORKSPACE/ci" python3 - \
+            "$GITHUB_WORKSPACE/native/g07_ci_moving/actual_ros_events.jsonl" \
+            "$GITHUB_WORKSPACE/public_evidence/first_delivery_actual_pairs.json" \
+            "$GITHUB_WORKSPACE/public_evidence/independent_cm_rmw.jsonl" \
+            "$GITHUB_WORKSPACE/public_evidence/independent_cm_pair_verdict.json" <<'PY_G07_INDEP'
+          import json,sys
+          from pathlib import Path
+          from d06.diagnostic.g07_independent_cm_rmw_witness import compare_same_cm_pair
+          o,f,i,out=map(Path,sys.argv[1:])
+          rows=lambda p:[json.loads(x) for x in p.read_text().splitlines()]
+          if all(p.is_file() for p in (o,f,i)):
+              pair=json.loads(f.read_text()).get("first_pairs",{}).get("pre_guard")
+              v=(compare_same_cm_pair(rows(o),rows(i),
+                 pair["previous_rx_monotonic"],pair["current_rx_monotonic"])
+                 if pair else compare_same_cm_pair([],[],0,1))
+          else:
+              v=compare_same_cm_pair([],[],0,1)
+          out.write_text(json.dumps(v,sort_keys=True,indent=2)+"\n")
+          print("AXIA_G07_INDEPENDENT_CM_RMW_PAIR "+json.dumps(v,sort_keys=True))
+          PY_G07_INDEP
+          # This report never turns the strict 2-cycle TTL failure into PASS.
       - name: Upload allowlisted numeric verdict only no original raw bag
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -323,6 +387,8 @@ jobs:
             public_evidence/task04_mvp_visual_l2_verdict.sha256
             public_evidence/cm_stop_pub_first_latch.json
             public_evidence/first_delivery_actual_pairs.json
+            public_evidence/independent_cm_pair_verdict.json
+            public_evidence/independent_cm_rmw.jsonl
             public_evidence/task04_moving_l2_verdict.json
             public_evidence/task04_moving_verdict.sha256
             task04_witness_SHA256SUMS.txt
