@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # AXIA G07 Task04 — CI-BLOCKED diagnostic candidate, NOT released for Owner L3.
-# Strict Gazebo 2-cycle #44764186378 is FAILED 1/2 (Nav2 ACK timeout).
+# Strict Gazebo 2-cycle #44770998324 requires exact 2/2 admission; NO RELEASE until verified.
 # --ci-check/--run MUST hold until a DIFFERENT exact successful CI L2 SHA.
 # Simulation-only. Manual controlling TTY consent is performed by the
 # identical Student scenario runner AFTER real Nav2 and safety node readiness.
@@ -8,10 +8,10 @@
 set -Eeuo pipefail
 umask 077
 readonly STUDENT_REPO='silverbjin/axia-robot-safety-student'
-readonly STUDENT_SHA='803cdd99fa0f781998442fbc37be9f59fde82364'
+readonly STUDENT_SHA='589ebaea166130c1fba233c8f3af02352fa0211c'
 readonly REVIEW_REPO='silverbjin/axia-robot-safety-ci-public'
 readonly REVIEW_SHA='90e809e858e04adee3c72cee36c5dc7dd9f3d632'
-readonly CI_L2_RUN=44764186378
+readonly CI_L2_RUN=44770998324
 MODE="${1:---run}"
 if [[ $# -gt 1 ]];then echo 'AXIA_G07_TASK04_FIRST_FAILURE=BAD_ARGUMENTS' >&2;exit 3;fi
 case "$MODE" in
@@ -21,7 +21,7 @@ esac
 # RELEASE ADMISSION: an educational visual HOLD cannot authorize a new
 # field run. Public CI must have both actual Gazebo Moving Goal matrix jobs
 # SUCCESS on the exact candidate Student source, with formal fallback exiting 3.
-readonly CI_L2_HEAD='57b70acbc1e6a549d64cf5508b199634ac2cd4cd'
+readonly CI_L2_HEAD='44b5b704be2722f54beec9b7436ab8e705ceec3d'
 ci_l2_release_gate() {
   local run_json jobs_json rc=0
   run_json="$(mktemp)" || return 3
