@@ -26,4 +26,6 @@ jobs:
           set -Eeuo pipefail
           cd student/block_B/day07/h01_runtime
           python3 -m unittest discover -s tools -p 'test_g07_scan_wall_pregoal.py' -v
+          cd "$GITHUB_WORKSPACE/ci"
+          python3 -m unittest discover -s tests -p 'test_g07_scan_pregoal_artifact_contract.py' -v
           echo 'AXIA_G07_SCAN_PREFLIGHT_STUDENT_L0_PASS_REAL_ROS_NOT_RUN'
