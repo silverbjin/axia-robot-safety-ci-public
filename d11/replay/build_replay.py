@@ -83,20 +83,7 @@ def assert_reference_baseline(payload:dict, metrics_path:Path|None=None):
         raise ValueError("D11_PRIVATE_AE_CONFUSION_MISMATCH")
     if not math.isclose(payload["models"]["AE"]["threshold"],0.90363125,abs_tol=1e-8):
         raise ValueError("D11_PRIVATE_AE_THRESHOLD_MISMATCH")
-    # Ground example windows in actual immutable private score records.
-    by={x["id"]:x for x in payload["traces"]}
-    def is_case(trace,w,which,pred,truth):
-        item=by[trace]["windows"][w]
-        return item[which]["prediction"]==pred and item["truth"]==truth
-    for name,w,kind,pred,truth in [
-        ("TST_A_00",4,"if","NORMAL",1),("TST_A_00",4,"ae","WARNING",1),
-        ("TST_A_00",5,"if","WARNING",1),
-        ("TST_N_02",4,"if","NORMAL",0),("TST_N_02",4,"ae","WARNING",0),
-        ("TST_A_04",8,"if","WARNING",0),("TST_A_04",8,"ae","WARNING",0),
-        ("TST_Q_01",0,"ae","INSUFFICIENT_DATA",-1)
-    ]:
-        if not is_case(name,w,kind,pred,truth):
-            raise ValueError(f"D11_PRIVATE_STORY_WINDOW_MISMATCH {name}/{w}/{kind}")
+    # Specific classroom cases are checked in the private instructor repository.
     if metrics_path is None:
         raise ValueError("D11_AE_METRICS_REQUIRED_FOR_PRIVATE_ACCEPTANCE")
     m=json.loads(metrics_path.read_text(encoding="utf-8"))
