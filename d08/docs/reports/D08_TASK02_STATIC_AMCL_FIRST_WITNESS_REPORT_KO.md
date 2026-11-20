@@ -1,0 +1,23 @@
+# AXIA D08 Task02 — 정지 로봇 AMCL 최초 Pose / 현재 TF 정합 최초 실패·수정 중간보고서
+
+## 기준
+- Public CI `silverbjin/axia-robot-safety-ci-public`, branch `feat/d08-unified-sensor-cm-path-20261118`, PR #166, main base `62e366b51c64da25ad0216328fe1e019b78e0bef`.
+- 이전 성공 3상 공식 Nav2 + RGBD Gazebo L2: `d37d1a36507cfe5c99cd41f4384cc9c7cac3c5ca`, Run #44227457087; 실제 YOLO + registered Depth ROI 2 VALID+1 UNKNOWN 자료 전달 (거리 차 불합격): `d06c00a3846b1fcdcc8a5f3532b54a523de78283`, Run #44229304083.
+- 최신 실제 최초 RED HEAD `8e0c3c2340319ac7b374c345ea42d2b525598453`, Run https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44231766775, same-world exact checkout SHA `5811c7688ac0a880cb79c631c0bbbd5c3e206eb3`, world `default`, ROS_DOMAIN_ID=69, GZ_PARTITION=`axia_d08_ci_12493`. Actual L0 **79 passed**, Gazebo sensor L2 PASS, same-world live combined L2 FAIL before D05 stage: `D08_AMCL_REAL_MAP_BASE_TF_NOT_READY:AMCL_POSE_STALE`. Raw artifact `d08-same-world-live-person-range-cm-nav2-evidence` #14395254641 (7d).
+
+## PLAN → RED → GREEN → REFACTOR → REVIEW → COMMIT
+- PLAN documented in master `D08_INTEGRATION_MASTER_PLAN_20261118_KO.md` v1.9 commit `6b2f8a0477a4c44f3a45dd7bd60ff6bf4a336e9c`.
+- Native first-event log: official AMCL `initialPoseReceived` sim 8.247s, `Setting pose (8.247000): -2.000 -0.500 0.000`, TF map chain first observable around sim 9.301; planner lifecycle active thereafter. Startup post-shutdown errors are downstream; cannot call Planner unlaunched. Last error names AMCL Pose stale, but pose was a real one-shot event.
+- Source diagnosis (not guessed): official ros-navigation/navigation2 Jazzy `nav2_amcl/src/amcl_node.cpp` current `jazzy` source blob `e9c29ccac44b927e0687ee2ca16ed5cc27b3ba64`, lines ~693–748: `publishAmclPose` only when resampled/force publication/first pose; a stationary robot can publish **map→odom TF per new LaserScan without republishing AMCL Pose**. Previous D08 gate required source-fresh AMCL Pose and live TF to be simultaneously observed within 1s wall time; this wrongly treated an initial pose estimate as a periodic safety sensor.
+- Actual TDD RED commit `8c9b217e4b7b87e4785346546ef4d14ed6db19a7` and public CI Run https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44235514176: `ImportError: cannot import name assess_static_amcl_witness` (L0 failure), real Gazebo jobs SKIPPED.
+- Minimal GREEN candidate: only `d08/harness/d08_amcl_initial_pose.py` uses actual `/set_initial_pose` **once**, records first real post-request `/amcl_pose` header/frame/source-time age <=1s **at callback**, then independently waits for actual TF2 `map→base_link` stamped chain. At acceptance time, real `/scan` & `/odom` callback host ages remain <=0.5s, required source stamps nonzero, and any first receive gap >0.5s fails closed. One-shot event never presented as live sensor. Actual initial map free-space checks, robot stationary, ROS action/transform sources still required. No synthetic TF, second init request, sleep/retry, safety TTL change.
+- RED/GREEN commands: `python -m pytest -q d08/tests/test_d08_static_amcl_witness.py d08/tests/test_d08_amcl_initial_pose.py d08/tests/test_d08_amcl_tf_subscription_order.py`; same-source public actual live Gazebo action `python3 -u d08/scripts/d08_public_gazebo_l2.py --actor /tmp/axia-d08-live-assets/walk.dae --out results/d08-live-person-nav2-e2e --official-nav2 --official-path-phases --live-person-range`.
+- Review: same exact Waffle/World/physical person; Nav2 official AMCL/Planner/Costmap/CM untouched, no goal/cmd_vel, scan/odom freshness original 0.5s and CM/Guard 120/150ms original safety gates untouched; public tests contain no sealed Instructor code; no false static L0→L2 promotion.
+- GREEN exact HEAD L0/L2 result: NOT_RUN until new CI; report commit SHA will be written in PR comment.
+
+## 실제 증거·미검증·다음
+- World / phase / stamps: old run #44231766775 remained in AMCL first-stage P0; new farther/stop ROI run NOT_REACHED. Do not reuse older valid distance as current successful range.
+- Prior actual official Nav2 three Paths + read-only source graph L2 success survives as referenced, but integrated D05 distance physical ordering & 2 VALID/1 UNKNOWN and current same-run Scan/Costmap Path must be reconfirmed with new HEAD.
+- CM *ROS /scan subscription discovered* is NOT an official CM internal receive-gap/state/Guard safety TTL verification; no real slowdown or robot motion.
+- Owner WSLg visual NOT_RUN, Task03 G07 Moving strict HOLD; all main merges NO.
+- If new run still fails, capture first post-request Pose timestamp/age, first TF stamp, and first live scan/odom gap (new source prints diagnostic) before changing anything. Do not blindly retry or loosen safety TTL.

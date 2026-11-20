@@ -29,7 +29,7 @@ def assess_path(poses,goal=GOAL_MAP):
             'start_xy':list(pts[0]),'end_xy':list(pts[-1]),
             'goal_xy':list(goal)}
 
-def run(out:Path,timeout_s=25):
+def run(out:Path,timeout_s=25,*,initialize_amcl=False,spawn_xy=None):
     import rclpy
     from rclpy.action import ActionClient
     from rclpy.parameter import Parameter
@@ -61,6 +61,21 @@ def run(out:Path,timeout_s=25):
             rclpy.spin_once(node,timeout_sec=.15)
         if node.get_clock().now().nanoseconds<=0:
             raise RuntimeError('D08_NAV2_PLANNER_SIM_CLOCK_NOT_READY')
+        if initialize_amcl:
+            # Public D07-H01 P0 contract: one officially-acknowledged initial
+            # map pose, followed by genuine AMCL + map->base_link TF.
+            # No synthetic transform / Twist / moving goal.
+            if (not isinstance(spawn_xy,(tuple,list)) or len(spawn_xy)!=2
+                or any(not math.isfinite(float(v)) for v in spawn_xy)):
+                raise ValueError('D08_AMCL_PINNED_SPAWN_REQUIRED')
+            from d08_amcl_initial_pose import admit_actual_amcl
+            verdict['real_amcl_and_tf']=admit_actual_amcl(
+                node,float(spawn_xy[0]),float(spawn_xy[1]),
+                timing_out=out.parent/'amcl_receive_timing.json')
+            if not verdict['real_amcl_and_tf']['localization_verified']:
+                raise RuntimeError('D08_AMCL_INITIAL_POSE_ACK_NOT_LOCALIZATION')
+            print('D08_OFFICIAL_AMCL_REAL_TF_READY_NO_GOAL '+json.dumps(
+                verdict['real_amcl_and_tf'],sort_keys=True),flush=True)
         goal=ComputePathToPose.Goal()
         goal.goal.header.frame_id='map'
         goal.goal.header.stamp=node.get_clock().now().to_msg()
