@@ -6,6 +6,8 @@ on:
       - '.github/workflows/axia-g07-scan-exact-bag-first-l0.yml'
       - 'tests/test_g07_scan_rosbag_first_boundary.py'
       - 'd06/diagnostic/g07_scan_rosbag_first_boundary.py'
+      - 'tests/test_g07_scan_bag_l2_capture_contract.py'
+      - '.github/workflows/axia-g07-fv17-owner-evidence-parity-native-l2.yml'
 permissions:
   contents: read
 jobs:
@@ -19,4 +21,5 @@ jobs:
         run: |
           set -Eeuo pipefail
           python3 -m unittest discover -s tests -p 'test_g07_scan_rosbag_first_boundary.py' -v
+          python3 -m unittest discover -s tests -p 'test_g07_scan_bag_l2_capture_contract.py' -v
           echo 'AXIA_G07_SCAN_BAG_EXACT_FIRST_PAIR_L0_PASS_ROOT_UNPROVEN'
