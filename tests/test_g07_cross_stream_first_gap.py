@@ -56,5 +56,34 @@ class FirstRealDeliveryGap(unittest.TestCase):
                          "FIRST_DELIVERY_BOUNDARY_NOT_VERIFIED_HOLD")
 
 
+    def test_real_44676844639_first_odom_seven_channel_pair(self):
+        """Actual strict Moving L2 cycle2, NOT a synthetic publisher-stall fix."""
+        file=Path(__file__).parent/"fixtures/g07_44676844639_cycle2_first_7_stream_pairs.json"
+        actual=json.loads(file.read_text())
+        self.assertEqual(actual["run_id"],44676844639)
+        self.assertEqual(actual["job_id"],136090592168)
+        self.assertEqual(actual["status"],"HOLD_FIRST_ODOM300_CROSS_STREAM")
+        self.assertFalse(actual["first_guard_latch_observed"])
+        self.assertFalse(actual["cm_source_publication_pair_available"])
+        self.assertEqual(actual["root_cause"],"UNDETERMINED")
+        rows=[]
+        for name,pair in actual["first_pairs"].items():
+            rows.append({"kind":name,"t":pair["previous_rx_monotonic"]})
+            rows.append({"kind":name,"t":pair["current_rx_monotonic"]})
+        verdict=classify(rows,start=210.8,end=211.4)
+        self.assertEqual(verdict["status"],"CROSS_STREAM_GAP_CANDIDATE_HOLD")
+        self.assertEqual(verdict["first_violation"]["channel"],"odom")
+        self.assertAlmostEqual(verdict["first_violation"]["gap_ms"],342.757876,places=4)
+        self.assertEqual(set(verdict["cross_stream_breaches"]),
+                         {"clock","scan","odom","pre_guard",
+                          "supervised","guard","supervisor"})
+        self.assertFalse(verdict["publisher_delay_proven"])
+        self.assertFalse(verdict["observer_scheduling_delay_proven"])
+        self.assertFalse(verdict["guard_internal_first_latch_cause_proven"])
+        self.assertEqual(verdict["root_cause"],"UNDETERMINED")
+        self.assertEqual(verdict["release"],"HOLD")
+
+
+
 if __name__=="__main__":
     unittest.main()
