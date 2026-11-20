@@ -50,6 +50,39 @@ class D08OwnerFullParity(unittest.TestCase):
         self.assertIn("D08_OWNER_GUI_AUTO_COMPLETE_AFTER_ONE_CYCLE",source)
         self.assertIn("D08_OWNER_FIRST_CYCLE_NOT_COMPLETED_HOLD",source)
 
+    def test_05_actual_first_map_lifecycle_reply_timeout_precedes_planner_and_cm_summary(self):
+        # Sanitized REAL CI #44831417211: Map I/O succeeded, Fast DDS
+        # failed to send the /map_server/change_state service response.
+        from d08_cm_native_probe_isolated import classify_nav2_lifecycle_first_boundary
+        log="\n".join([
+            "[lifecycle_manager_localization]: Configuring map_server",
+            "[map_server]: Configuring",
+            "[map_io]: Read map ...: 384 X 384 map @ 0.05 m/cell",
+            "[map_server.rclcpp]: failed to send response to /map_server/change_state (timeout): client will not receive response, at ./src/rmw_response.cpp:153",
+            "[lifecycle_manager_navigation]: Configuring collision_monitor",
+            "[collision_monitor]: Configuring",
+            "[lifecycle_manager_navigation]: Activating planner_server",
+            "[global_costmap.global_costmap]: Timed out waiting for transform from base_link to map"])
+        v=classify_nav2_lifecycle_first_boundary(log)
+        self.assertEqual(v["status"],
+            "D08_NAV2_MAP_SERVER_CHANGE_STATE_RESPONSE_TIMEOUT_HOLD")
+        self.assertEqual(v["first_lifecycle_boundary"],
+                         "/map_server/change_state:response_timeout")
+        self.assertEqual(v["rmw_root_cause"],"UNDETERMINED")
+        self.assertFalse(v["owner_wsl2_accepted"])
+        self.assertFalse(v["cm_internal_120ms_verified"])
+
+    def test_06_rmw_comparison_is_only_enabled_on_scoped_full_parity_branch(self):
+        workflow=(ROOT/".github/workflows/d08-main-no-goal-real-gazebo-l2.yml").read_text()
+        target="fix/d08-owner-full-parity-b-wsl2-once-20261121"
+        job=workflow.split("  real-gazebo-rgb-pinned-upstream-yolo-ros:")[1].split(
+            "  d08-owner-parity-release-gate:")[0]
+        self.assertIn("RMW_IMPLEMENTATION=rmw_cyclonedds_cpp",job)
+        self.assertIn("ros-jazzy-rmw-cyclonedds-cpp",job)
+        self.assertIn(target,job)
+        self.assertIn("D08_CYCLONE_RMW_OWNER_ISOLATED_COMPARISON_L2_CANDIDATE",job)
+        self.assertIn("RMW_IMPLEMENTATION",job)
+
     def test_05_wrapper_is_pinned_and_does_not_inflate_diagnostics(self):
         script=ROOT/"d08/scripts/d08_owner_full_parity_b_wsl2_once.sh"
         self.assertTrue(script.exists())
