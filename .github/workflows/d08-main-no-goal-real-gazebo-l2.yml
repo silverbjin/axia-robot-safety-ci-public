@@ -96,6 +96,7 @@ jobs:
             d08/tests/test_d08_g07_lidar_visible_proxy.py \
             d08/tests/test_d08_rgbd_alignment_evidence.py \
             d08/tests/test_d08_live_public_harness.py
+            d08/tests/test_d08_owner_d05_field_parity.py
           python -m compileall -q d08/harness/d08_live_world.py \
             d08/harness/d08_amcl_initial_pose.py \
             d08/harness/d08_same_world_replan.py \
