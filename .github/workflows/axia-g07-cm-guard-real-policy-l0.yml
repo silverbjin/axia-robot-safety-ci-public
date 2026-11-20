@@ -1,0 +1,32 @@
+name: AXIA G07 CM zero-stop vs real Guard policy L0
+on:
+  push:
+    branches: [docs/g07-185-163-157-186-stabilization-recheck-20261120]
+    paths:
+      - '.github/workflows/axia-g07-cm-guard-real-policy-l0.yml'
+      - 'd06/tests/test_d06_g07_cm_stop_pub_guard_real_policy.py'
+permissions:
+  contents: read
+jobs:
+  real-pinned-guard-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          path: ci
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: 5c7983598fa3bcd7148433a06f37a4e78b091273
+          path: student
+          persist-credentials: false
+      - name: Exact Student Guard source and deterministic host-monotonic safety contract
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C student rev-parse HEAD)" = '5c7983598fa3bcd7148433a06f37a4e78b091273'
+          test -s ci/d06/tests/test_d06_g07_cm_stop_pub_guard_real_policy.py
+          python3 -m unittest discover -s ci/d06/tests -p 'test_d06_g07_cm_stop_pub_guard_real_policy.py' -v
+          echo 'G07_CM_STOP_REAL_GUARD_CHARACTERIZATION_L0_PASS_NO_RELEASE'
