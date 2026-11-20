@@ -1,5 +1,20 @@
 # AXIA G07 Task04 — 강사 WSL2 교육용 시연 기준선 / 공개 CI 인수 기록
 
+## 최신 교육용 MVP Baseline — 2026-11-20 `jrCIgoGl`
+
+**최신 현장 기준선 ID: `AXIA-G07-T04-DEMO-BASELINE-20261120-jrCIgoGl` — 교육용 실물 Moving Goal 및 수치 검증 ACCEPTED (범위 한정).** 아래의 `CZObXAdP`는 이전에 인수된 교육용 기준선으로 그대로 보존하며, 과거 Scan 339.177ms 위반 증거를 소급 변경하지 않습니다.
+
+- 강사 실제 WSL2 `owner-moving-jrCIgoGl` TAR/ZIP SHA256 및 내부 141개 SHA256 manifest **모두 일치**, rosbag 14토픽 SQLite `quick_check=ok`, **21/21** Owner 엄격 수치 검사 true, `first_failure=NONE`.
+- 실제 Nav2 Goal `EXECUTING`→ 동일 UUID `CANCELED(5)`. CLEAR 이동 0.120132m, 총 실제 Odom 0.137285m, LiDAR SLOW 0.662775m·STOP 0.384303m, ZERO dwell 1.029446초. Guard Latch 없음. Navigation/Localization 종료 ACK, Collision Monitor exit0, Gazebo/RViz 창 각 1개.
+- 실제 Scan 간격 최대 **253.822ms/300ms**, CM RMW 소스 **68.093ms/120ms**, 독립 CM Observer **70.981ms/120ms**, Guard 내부 CM 수신 나이 **47.653ms/150ms**. `/clock` 및 주요 RMW source 역행 0회.
+- 원본 자동기계 판정 `HOLD_RAW_REVIEW_AND_VISUAL_PENDING`, `owner_moving_l3_accepted=false`, `visual_content_verified=false`는 **원형 보존**. 이번 문서상의 교육용 기능·수치 Baseline ACCEPTED는 원본 값을 바꾸는 것이 아니며, 실제 GUI 내용의 시각 품질을 검증했다고 주장하지 않습니다. RViz2 GLSL 오류 및 종료 후 rclpy Destroyable 경고도 보고서에 보존.
+- 실제 다른 공개 CI에서 Guard 내부 CM age **188.578ms >150ms** 래치가 발생했던 [Issue #157](https://github.com/silverbjin/axia-robot-safety-ci-public/issues/157)은 여전히 OPEN. 정식 안전 시간인수 또는 반복 안정성 보증이 아님.
+- **`AXIA_G07_TASK04_DEMO_BASELINE=ACCEPTED`**, **`FORMAL_SAFETY_TIMING_ACCEPTANCE=NOT_CLAIMED`**, **`CERTIFIED_ESTOP=false`**, `GUI_CONTENT_VISUAL_VERIFICATION=NOT_EVIDENCED`.
+- 자세한 최초 오류·수치 검증·제한 사항: [2026-11-20 강사 WSL2 인수 보고서](AXIA_G07_TASK04_JRCIGOL_OWNER_MVP_ACCEPTANCE_20261120_KO.md). 원본 rosbag과 WSL2 경로는 공개 GitHub에 업로드하지 않습니다.
+
+---
+
+
 **기준선 ID:** `AXIA-G07-T04-DEMO-BASELINE-20261119-CZObXAdP`
 
 **2026-11-19 교육용 MVP 시연 판정: ACCEPTED (범위 한정).** 학습 목표는 TurtleBot3 Waffle의 실제 Gazebo/Nav2 주행과 장애물 감속·정지, 해당 Goal 취소를 학생에게 시연하는 것입니다. **정식 안전/실물 E-Stop 인증 판정과 분리합니다.**
