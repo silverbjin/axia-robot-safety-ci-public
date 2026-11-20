@@ -11,8 +11,8 @@ from scripts.axia_g07_task04_owner_demo_scope import assess_owner_demo_scope
 
 FIELD_PREV=1795134992890347373   # actual pre_guard seq132
 FIELD_NEXT=1795134986208843701   # actual pre_guard seq133
-FIELD_SUP_PREV=1795134992890087700
-FIELD_SUP_NEXT=1795134986208495000
+FIELD_SUP_PREV=1795134992888535010
+FIELD_SUP_NEXT=1795134986207769576
 
 def report(mode):
     r={"schema":"axia_g07_public_ci_moving_goal_v1",
