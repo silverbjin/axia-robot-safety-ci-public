@@ -18,10 +18,8 @@ import time
 
 class BoundedCmEvidence:
     def __init__(self,max_samples=12000):
-        if type(max_samples) is not int or not 100 <= max_samples <= 20000:
-            # Smaller bound permitted for pure unit tests without ROS.
-            if type(max_samples) is not int or not 1 <= max_samples < 100:
-                raise ValueError("CM_WITNESS_BOUNDED_SAMPLE_COUNT_REQUIRED")
+        if type(max_samples) is not int or not 1 <= max_samples <= 20000:
+            raise ValueError("CM_WITNESS_BOUNDED_SAMPLE_COUNT_REQUIRED")
         self.rows=deque(maxlen=max_samples)
         self.dropped=0
 
