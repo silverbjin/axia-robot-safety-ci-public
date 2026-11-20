@@ -25,12 +25,14 @@ jobs:
           set -Eeuo pipefail
           # Keep package installation and systemd changes OUT of the runner
           # and OUT of the instructor WSL2; only this disposable container.
-          docker run --rm ubuntu:24.04 /bin/bash -ec '
+          docker run --rm ubuntu:24.04 /bin/bash -euo pipefail -c '
             export DEBIAN_FRONTEND=noninteractive
             apt-get update -qq -o Acquire::Retries=2 -o Acquire::http::Timeout=20
             apt-get install -y -qq --no-install-recommends systemd-coredump
             command -v coredumpctl
-            dpkg-query -W -f="PACKAGE_NAME=${binary:Package}\nPACKAGE_VERSION=${Version}\n" systemd-coredump
+            dpkg-query -W systemd-coredump | tee /tmp/axia-c12-package-manifest.txt
+            grep -Eq "^systemd-coredump[[:space:]]+[^[:space:]]+" /tmp/axia-c12-package-manifest.txt
+            dpkg -s systemd-coredump | grep -Fx "Status: install ok installed"
             coredumpctl --help | grep -F -- "--json"
             echo "D06_C12_UBUNTU2404_COREDUMPCTL_CLI_PACKAGE_PASS_BACKEND_NOT_VERIFIED"
           '
