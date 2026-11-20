@@ -1,0 +1,27 @@
+name: D08 WSL2 first 500.535ms process-boundary diagnostic L0
+on:
+  push:
+    branches: [diag/d08-owner-first-500ms-process-boundary-20261121]
+    paths:
+      - d08/tests/test_d08_wsl2_first_500ms_process_boundary.py
+      - d08/scripts/d08_owner_rmw_first_gap.py
+      - .github/workflows/d08-wsl2-first-500ms-classifier-l0.yml
+  pull_request:
+    paths:
+      - d08/tests/test_d08_wsl2_first_500ms_process_boundary.py
+      - d08/scripts/d08_owner_rmw_first_gap.py
+      - .github/workflows/d08-wsl2-first-500ms-classifier-l0.yml
+permissions:
+  contents: read
+jobs:
+  scoped-first-process-boundary:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Exact 500.535ms WSL2 first Scan numeric regression (not ROS L2)
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest discover -s d08/tests \
+            -p 'test_d08_wsl2_first_500ms_process_boundary.py' -v
+          echo D08_WSL2_FIRST_500MS_BOUNDARY_CLASSIFIER_L0_PASS_NOT_GAZEBO_NOT_L3
