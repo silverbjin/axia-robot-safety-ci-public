@@ -1,0 +1,24 @@
+name: AXIA G07 WSL2 first Scan wall gap L0 fail-closed
+on:
+  push:
+    branches: ['fix/g07-wsl2-first-scan300-20261121']
+    paths:
+      - 'tests/test_g07_scan_sim_wall_gap_regression.py'
+      - 'tests/fixtures/g07_wsl2_first_scan_wall_gap_20261120.json'
+      - 'd06/diagnostic/g07_scan_sim_wall_gap.py'
+      - '.github/workflows/axia-g07-wsl2-first-scan-wall-gap-l0.yml'
+permissions:
+  contents: read
+jobs:
+  actual-owner-first-numeric-failure:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Actual WSL2 reported 317.943ms first Scan breach, no ROS or Gazebo
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest discover -s tests -p 'test_g07_scan_sim_wall_gap_regression.py' -v
+          echo 'AXIA_G07_WSL2_FIRST_SCAN_WALL_BOUNDARY_L0_PASS_OWNER_L3_NOT_RUN'
