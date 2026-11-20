@@ -182,3 +182,53 @@
 `NEW_WSL2_RELEASE=HOLD`  
 `MAIN_MERGED=false`  
 `CERTIFIED_ESTOP=false`
+
+
+## 9. 2026-11-20 후속 안정화: 실제 Guard·신규 /clock 최초 위반·Context 범위
+
+### P0 — 공식 CM ZERO 발행과 실제 Student Guard 정책: 결정적 L0
+
+- 공식 [Jazzy CollisionMonitor::publishVelocity()](https://api.nav2.org/nav2-jazzy/html/collision__monitor__node_8cpp_source.html#l00213)에서 `stop_pub_timeout`은 **sim-time** 기준으로 ZERO 출력 발행 중단. 같은 입력 공백은 실제 Collision Monitor 고장으로도 발생하므로 `Twist`에 정지 원인 정보가 없는 Guard는 둘을 구별할 수 없음.
+- 기존 Student 정확한 SHA `5c7983598fa3bcd7148433a06f37a4e78b091273`의 진짜 `p2_base_guard_policy.State`를 별도 개발·복사하지 않고 import해 수행한 결정적 구성요소 테스트. `d06/tests/test_d06_g07_cm_stop_pub_guard_real_policy.py`, 전용 공개 `.github/workflows/axia-g07-cm-guard-real-policy-l0.yml`.
+- RED `28cd695522aec9f4b066d3558d7edda32ff393fb`, 공개 CI [#44674659405](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44674659405): 요구한 테스트 미존재로 명시적 `test -s` 검증 실패 (의도한 구조적 RED). GREEN `7f59f0b6753a9515ddf78407cec562c526692ceb`, [#44674762165](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44674762165): **4/4 PASS**.
+- 실 CM의 정상 ZERO 연속 5 sim초 이후 입력 중단, 갑작스러운 CM 고장, STOP 이전 정상 CM ZERO 수신, 실제 보호 STOP 네 가지에서 **기존 Guard 안전 ZERO/래치 동작 PASS**. 이는 공식 CM process를 호출한 L1/L2가 아니라 **실 Student 정책 + 공식 분기에서 파생된 입력 일정**의 L0 검증. 실제 실패 #44652034063의 STOP 5초 원인은 증명하지 않음.
+- CM/Guard TTL, 공식 Nav2, 기존 구현, 시연 속도/센서 Hz **변경 없음**. 정지를 위해 ZERO 메시지를 의도적으로 생략하는 경우와 고장 수신 공백의 구분 불가능성이 있으므로 안전 래치 무력화 금지.
+
+### P0 — 신규 실제 Moving L2 실패의 최초 Clock300 경계
+
+- [실제 공개 Gazebo #44674827354](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44674827354): 한 cycle 실제 CLEAR/SLOW/STOP 및 Goal CANCELED 확인 후, 동일 세션 오라클에서 메시지 주기 위반으로 FAIL (다른 cycle 성공은 이 실패를 덮지 못함).
+- **최초 증거**: `/clock` host callback `465.863223669 → 466.197405698` = **334.182029ms > Clock300**. 동일 프로세스의 관측 최대 `pre_guard CM=369.606081ms`, `supervised source=369.591385ms`, `Guard status=361.675863ms`, `/odom=340.649158ms`, `/scan=369.681761ms`, Supervisor=369.628101ms. 다른 토픽의 정확한 최초 쌍이 로그에 없으므로 공통 퍼블리셔 중단 vs DDS/RMW vs Observer callback starvation 중 **원인 UNDETERMINED**.
+- 첫 Guard 안전 Latch 관측 없음; Guard가 정상 수신한 상태에서 **독립 Observer만 0.3초 지연된 것인지** 알 수 없음. 단일 실패를 근거로 Guard TTL 변경·Observer 판정값 무시 금지.
+- 최소 재현 RED `a453f03eb1c200cd70084f4a7e9be5c282dc4e90` [공개 CI #44675344294](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44675344294): 새 read-only 분석기 import 실패. 중간 RED [#44675433563](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44675433563): 파생 fixture 미존재. GREEN `4a5cbda6f30f444747ec828840c9c4a17704bcd8` [공개 #44675464705](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44675464705): **229 PASS, 3 SKIP**.
+- 새 파일 `d06/diagnostic/g07_first_actual_delivery_gap.py` + `tests/test_g07_cross_stream_first_gap.py` + 공개 파생 fixture `tests/fixtures/g07_44674827354_cycle2_first_gap.json`. 원본 이벤트가 같은 Host Monotonic 기반으로 제공될 때 최초 Clock/CM/Scan/Odom/Guard 수신 쌍과 상관 시각을 **읽기 전용** 추출하며 `root_cause=UNDETERMINED, release=HOLD` 고정.
+- 실제 기존 L2 workflow `.github/workflows/axia-g07-fv17-owner-evidence-parity-native-l2.yml`에 종료 후 **`if: always()`** bounded numeric `first_delivery_actual_pairs.json` 기록을 연결. 원본 rosbag, Goal UUID, 메시지 본문 공개 저장 금지. **본 진단기 연계 이후 L2 통합 결과는 별도로 확인해야 하며, L0 GREEN으로 L2 PASS 주장 금지**.
+- D08 별도 PR [#202](https://github.com/silverbjin/axia-robot-safety-ci-public/pull/202)에서 ROS witness 콜백 내 디스크 기록을 줄인 사례를 먼저 재사용 조사함. 보고서 자체가 root cause 미확정으로 표시하고 있으므로 G07 Observer의 실제 I/O 정체를 입증하기 전 수정 복사 금지.
+
+### P1 — #185·#163 Ordered Shutdown: 기존 검증 재사용 / 서버 원인 미확정
+
+- PR [#177](https://github.com/silverbjin/axia-robot-safety-ci-public/pull/177) 기존 `d06/tests/test_d06_g07_nogoal_ordered_cm_shutdown.py`, `test_d06_c07_navigation_manager_service_liveness.py`, `test_d06_localization_manager_callback_probe.py` 확인.
+- 공식 [Nav2 Jazzy LifecycleManager](https://api.nav2.org/nav2-jazzy/html/lifecycle__manager_8cpp_source.html)는 `manage_nodes`와 `is_active`를 같은 MutuallyExclusive Callback Group에서 생성. `/get_parameters` 정상만으로 manager callback ACK를 판정하지 않음. 기존 read-only 동일 그룹 `/is_active` 진단은 별도 server callback 정체를 구분하는 관측이고 실제 `shutdown` ACK 대체 불가.
+- 실제 #44491751936 Localization 30.000493s TIMEOUT, #44073078458 Navigation 40.000372s TIMEOUT 독립 최초 경계 보존. 기존 GREEN L0 #44502886416/#44504764400, 실제 Nav/Loc ACK·CM/Gz exit0 [#44503070174](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44503070174) 재사용. 신규 종료 관리자, retry, Timeout 증가, 공식 Nav2 포크 없음. 최초 서버 Callback enter/finish와 RMW 응답 원본이 없으므로 intermittent root **HOLD**.
+
+### P2 — D07 ROS Context: 정확한 예외만 보호 / 경고 원인 미확정
+
+- 기존 Student `p2_shutdown_context.py::is_context_waitset_shutdown()`을 그대로 import해 실제 조건 `RCLError` + `context_ok=False` + 정확한 WaitSet 오류 문자열에서만 True를 반환하도록 시험.
+- RED `6664446c9c407ca14355c4a424b32808691347d5` [공개 CI #44675725871](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44675725871): 신규 검사 파일 부재. GREEN `acc92fc6c7cd21df13e2717120bb8b306672e1e5` [#44675770130](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44675770130): 4개 신규 TEST PASS (기존 실 Guard 4개도 PASS).
+- 별도 `cannot use Destroyable because destruction was requested` 경고, 활성 Context 오류, 다른 RCLError는 기존 함수가 **숨기지 않음**. 해당 미래 객체/Task 진짜 발생 위치는 미확인 → Student 런타임 코드 **NO_CHANGE**.
+
+### P3 — #186 NVIDIA WSLg
+
+- 기존 PR #177 `d06/scripts/axia_d06_g3_independent_wslg_nogoal_once.sh` 및 `d06/tools/d06_g3_wslg_gpu_capability.py`, `d06/scripts/axia_d06_g07_wslg_existing_core_once.sh` 등 기존 C11~C17 검증기 확인. 기존 독립 GPU 호스트가 없고 최초 실제 Gazebo server SIGSEGV / native witness SIGABRT 코어 스택도 미확보.
+- 기존 C17 실제 합성 CLI/분류 검증은 실 NVIDIA WSLg 충돌 스택을 대신하지 않으며 강사 WSL2 반복 실행 금지. 새 GPU/렌더러/LD_PRELOAD 변경, 신규 WSL2 최종 인수 스크립트 출고 없음. `FIRST_SIGSEGV_STACK=NOT_CAPTURED`, `FIRST_SIGABRT_STACK=NOT_CAPTURED`, `ROOT_CAUSE=UNDETERMINED`.
+
+### 현 상태
+
+`AXIA_G07_EDUCATIONAL_BASELINE=ACCEPTED`  
+`G07_CM_STOP_REAL_GUARD_L0=PASS`  
+`G07_D07_EXACT_CONTEXT_L0=PASS`  
+`G07_FIRST_CLOCK300_L0=PASS_ROOT_UNDETERMINED`  
+`G07_SHUTDOWN_STABILIZATION=HOLD`  
+`G07_CM_GUARD_TIMING=HOLD`  
+`G07_NVIDIA_WSLG_CRASH=HOLD`  
+`MAIN_MERGED=false`  
+`CERTIFIED_ESTOP=false`
