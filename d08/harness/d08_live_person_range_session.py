@@ -100,6 +100,16 @@ def run_session(out:Path, env:dict, source_sha:str, robot_sdf:Path, scan_probe):
                 scan=scan_probe(timeout_s=35)
                 (out/(stage+"_scan.json")).write_text(
                     json.dumps(scan,indent=2,sort_keys=True)+"\n")
+                # Keep FIRST source-stamp-matched receive violation even
+                # though no D05 stage is appended before this fail-closed gate.
+                first_scan=scan.get("first_rx_gap_over_500ms")
+                if isinstance(first_scan,dict):
+                    v.setdefault("first_scan_timing_boundary",
+                        {**first_scan,"stage":stage,
+                         "source":"D05_ACTUAL_ROS_SCAN_RECEIVER"})
+                    print("D08_LIVE_D05_FIRST_SCAN_RX_GAP "+
+                          json.dumps(v["first_scan_timing_boundary"],
+                                     sort_keys=True),flush=True)
                 if (scan.get("scan_count",0)<20 or
                     scan.get("wall_gap_max_sec",999)>=.5 or
                     scan.get("no_synthetic_scan") is not True):
