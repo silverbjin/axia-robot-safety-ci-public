@@ -1,0 +1,22 @@
+name: AXIA G07 Scan300 exact native bag first pair L0
+on:
+  push:
+    branches: ['fix/g07-wsl2-first-scan300-20261121']
+    paths:
+      - '.github/workflows/axia-g07-scan-exact-bag-first-l0.yml'
+      - 'tests/test_g07_scan_rosbag_first_boundary.py'
+      - 'd06/diagnostic/g07_scan_rosbag_first_boundary.py'
+permissions:
+  contents: read
+jobs:
+  first-real-oracle-and-bag-exact-header-pair:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with: {persist-credentials: false}
+      - name: Same header pair, independent bag receive clocks, no ROS
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest discover -s tests -p 'test_g07_scan_rosbag_first_boundary.py' -v
+          echo 'AXIA_G07_SCAN_BAG_EXACT_FIRST_PAIR_L0_PASS_ROOT_UNPROVEN'
