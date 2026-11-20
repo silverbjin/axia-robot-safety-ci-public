@@ -35,6 +35,10 @@ jobs:
       image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
     env:
       ROS_DOMAIN_ID: '88'
+      # Fast DDS issue #6535: 2.14.7 SHM healthy-port open may stall
+      # participant send mutex for ~333 ms. Scope this A/B to the whole
+      # same-run ROS graph, NEVER an individual Observer process only.
+      FASTDDS_BUILTIN_TRANSPORTS: UDPv4
       ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
       GZ_PARTITION: axia_p2_task04_moving
       AXIA_P0_SIM_ONLY: '1'
@@ -81,6 +85,13 @@ jobs:
           set -Eeuo pipefail
           test "$(git -C student rev-parse HEAD)" = '148635b40c69a40feb8174306cacba6755c88c92'
           test "$(git -C ci rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$FASTDDS_BUILTIN_TRANSPORTS" = UDPv4
+          [[ -z "${FASTRTPS_DEFAULT_PROFILES_FILE:-}" && -z "${FASTDDS_DEFAULT_PROFILES_FILE:-}" ]] || {
+            echo 'G07_FASTDDS_UDP_ONLY_XML_OVERRIDE_UNVERIFIED_HOLD' >&2; exit 3;
+          }
+          echo 'AXIA_G07_FASTDDS_BUILTIN_TRANSPORTS=UDPv4 SHM_UNSELECTED_CI_AB_NO_ROOT_PROOF'
+          dpkg-query -W -f='\${Package}=\${Version}\n' 'libfastrtps*' 2>/dev/null || true
+
           cd student/block_B/day07/h01_runtime
           test "$(git -C "$GITHUB_WORKSPACE/review" rev-parse HEAD)" = 'd60beed5e18d8104b254f17476d47f1d1917a7eb'
           export PYTHONPATH="$GITHUB_WORKSPACE/ci:$GITHUB_WORKSPACE/review${PYTHONPATH:+:$PYTHONPATH}"
