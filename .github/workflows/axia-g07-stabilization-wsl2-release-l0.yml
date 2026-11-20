@@ -23,4 +23,7 @@ jobs:
           bash -n scripts/axia_g07_stabilization_wsl2_final_once.sh
           python3 -m unittest discover -s tests -p 'test_g07_stabilization_wsl2_release.py' -v
           bash scripts/axia_g07_stabilization_wsl2_final_once.sh --self-check
-          echo 'AXIA_G07_WSL2_RELEASE_BOOTSTRAP_L0_PASS_L3_NOT_RUN'
+          # This ONLY reads the public exact native 2-cycle's conclusion and
+          # both matrix job statuses. No ROS, Gazebo, Goal, WSLg or TTY.
+          bash scripts/axia_g07_stabilization_wsl2_final_once.sh --ci-check
+          echo 'AXIA_G07_WSL2_RELEASE_BOOTSTRAP_L0_AND_PUBLIC_NATIVE_ADMISSION_PASS_L3_NOT_RUN'
