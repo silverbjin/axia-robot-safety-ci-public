@@ -1,0 +1,37 @@
+{
+  "schema": "axia.g07.real_native_moving_first_gap_derived_v1",
+  "run_id": 44674827354,
+  "job_id": 136084064914,
+  "evidence_url": "https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44674827354",
+  "status": "HOLD_FIRST_CLOCK300",
+  "first_violation": {
+    "channel": "clock",
+    "start_monotonic": 465.863223669,
+    "end_monotonic": 466.197405698,
+    "duration_ms": 334.182029,
+    "limit_ms": 300
+  },
+  "max_gaps_ms": {
+    "clock": 334.182029,
+    "cm": 369.606081,
+    "guard": 361.675863,
+    "odom": 340.649158,
+    "scan": 369.681761,
+    "source": 369.591385,
+    "supervisor": 369.628101
+  },
+  "cross_stream_first_pairs_available": false,
+  "first_guard_latched": false,
+  "real_gazebo_moving_stages": [
+    "CLEAR",
+    "SLOW",
+    "STOP"
+  ],
+  "exact_goal_terminal_canceled_observed": true,
+  "actual_ros_simulation": true,
+  "cause_candidate": "OBSERVATION_OR_HOST_COMMON_GAP_UNPROVEN",
+  "root_cause": "UNDETERMINED",
+  "safety_ttl_changed": false,
+  "certified_estop": false,
+  "formal_safety_timing_accepted": false
+}
