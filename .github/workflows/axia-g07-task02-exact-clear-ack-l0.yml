@@ -1,0 +1,22 @@
+name: AXIA G07 Task02 exact CLEAR-before-ACK parity L0
+on:
+  push:
+    branches: ['fix/g07-wsl2-first-scan300-20261121']
+    paths:
+      - '.github/workflows/axia-g07-task02-exact-clear-ack-l0.yml'
+      - 'tests/test_g07_task02_exact_clear_ack_contract.py'
+      - 'd06/diagnostic/g07_task02_strict_gate.py'
+permissions:
+  contents: read
+jobs:
+  original-real-core-exact-clear-ack:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with: {persist-credentials: false}
+      - name: Real Moving early CLEAR evidence parity - no acceptance shortcuts
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest discover -s tests -p 'test_g07_task02_exact_clear_ack_contract.py' -v
+          echo 'AXIA_G07_TASK02_CLEAR_EXACT_ORACLE_L0_PASS_NOT_OWNER_ACCEPTED'
