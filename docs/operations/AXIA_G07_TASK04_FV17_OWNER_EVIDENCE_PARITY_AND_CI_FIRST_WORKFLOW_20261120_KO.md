@@ -72,3 +72,18 @@
 - 신규 공개 CI 원샷 출고는 `STUDENT_SHA=5c7983598fa3bcd7148433a06f37a4e78b091273`, `REVIEW_SHA=362da68e31dd163a8d321601e191069c0d0a438b`, `CI_L2_RUN=44652361407`로 고정하며, 원본 엄격 사후검증이 FIRST, 교육용 Scope classifier는 오직 진단된 RMW timebase HOLD + 그 외 20가지 실제 조건 참일 때만. `FIRST_FAILURE=FORMAL_RMW_TIMEBASE_HOLD_ONLY`와 원래 `cm_source_and_observer_120ms` 실패명 모두 증거에 보존.
 - **새 Student/Owner WSL2 현장 L3 NOT_RUN**, 공식 safety timing 인수 NOT_CLAIMED. L2 1회 성공과 별도의 Guard 래치 실패가 있어 전 조건에서 반복 안전성 PASS를 주장하지 않음.
 - Owner 원샷 새 Student SHA/Review SHA 고정 및 사용자 WSL2 L3: 검증 성공 전까지 출고 금지, 미실행. 기존 교육용 baseline은 ACCEPTED 유지.
+
+
+## 8. 재현된 간헐 Guard 래치와 최종 공개 CI 출고 게이트
+
+User WSL2 최초 `FV17z53O`와 별개의 **실제 공개 CI** [#44652034063](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44652034063)에서는 STOP 중 최초 Guard `UPSTREAM_STALE_AFTER_MOTION` 상태 전이가 발생하였다.
+
+- Guard 실제 `cm_age_sec=0.188577986`초 **> 150ms** (실제 안전 타이밍 위반)
+- 독립 Observer `CM age=0.173465091`초, 약 15.112895ms 더 최근 CM 수신 사실. Supervisor age `0.040541022`초, Supervisor는 정상 연속 수신
+- `observer_newer_cm_samples=1`, 따라서 CM publisher 종료로 단정할 수 없음. 원인 후보는 CM 소스 일시 지연 / 독립 Observer와 Guard의 DDS-RMW 전달 차이 / 프로세스 스케줄링. Guard는 **정책대로 안전 ZERO + 영구 latch**를 적용했으며 Goal 취소 시연은 해당 실행에서 완료되지 않았음.
+- 다른 실제 공개 CI [#44652361407](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44652361407)은 실제 Moving Goal·양 GUI·정상 종료·Guard 실제 129틱 / 최대 11.071574ms의 CM age로 **SCOPED PASS**. 이전 실패를 성공으로 덮어쓰면 안 됨.
+- 이 간헐 안전 이슈는 기존 공개 [OPEN Issue #157](https://github.com/silverbjin/axia-robot-safety-ci-public/issues/157)과 연결하며, 인증된 하드웨어 E-Stop이라고 오인해서는 안 됨.
+
+**추가 최종 공개 CI 게이트:** `.github/workflows/axia-g07-fv17-owner-evidence-parity-native-l2.yml`의 하나의 source SHA를 별도 Ubuntu 24.04 + Gazebo Harmonic 컨테이너 두 개에서 독립 실행(matrix cycle 1/2)한다. 두 사이클 모두 실제 Gazebo Waffle LiDAR/TF, AMCL/Nav2 Goal, Goal 정확취소, 14토픽 rosbag, 실제 Guard 내부 CM 150ms, CM 발행/Observer 120ms, Scan 300ms, 양 안전 노드 exit0, 공식 Nav2 lifecycle ACK를 **실제로** 검사한 경우만 해당 출고 게이트를 성공으로 판단한다. 한 사이클이라도 보호 래치 또는 서비스 ACK 오류 시 **출고 HOLD**, 재시도 반복 대신 해당 최초 안전 상태 전이/타이밍 위반을 공개 CI 이슈에 추가한다. 테스트 실행 후 증거 URL·각 job verdict·고정 SHA를 보고한다.
+
+이는 MVP 검증을 과도하게 늘리는 것이 아니라, 실제로 관측된 간헐 Guard 188.578ms 안전 경계 한 가지를 **강사 WSL2 대신 공개 CI에서 차단하기 위한 최소 2회 독립 게이트**다. 공식 CM/Guard TTL과 기존 물리 시연 경로는 불변이다.
