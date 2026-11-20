@@ -10,6 +10,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 import tarfile
@@ -17,6 +18,44 @@ import tempfile
 
 PID = 1424
 MAX_OUTPUT = 100000
+
+
+def summarize_wsl2_layers(kernel_release, pid1, dxg_present, wslg_visible,
+                          glx_output, persistent_journal, volatile_journal):
+    """Read-only layer inventory; no result here proves core capture or Gazebo.
+
+    Ubuntu distro and WSLg system distro do not share the same GUI service
+    process boundary. A present D3D12 renderer is not an exit0 or safety proof.
+    """
+    renderer = "UNAVAILABLE"
+    if "OpenGL renderer string:" in glx_output:
+        raw = next((line for line in glx_output.splitlines()
+                    if "OpenGL renderer string:" in line), "")
+        value = raw.split(":", 1)[1].strip().lower()
+        if "d3d12" in value and "nvidia" in value:
+            renderer = "D3D12_NVIDIA"
+        elif "d3d12" in value:
+            renderer = "D3D12_OTHER"
+        elif "llvmpipe" in value:
+            renderer = "SOFTWARE_LLVMPIPE"
+        else:
+            renderer = "OTHER_GL"
+    storage = ("PERSISTENT_DIR_PRESENT" if persistent_journal
+               else "VOLATILE_DIR_ONLY" if volatile_journal
+               else "JOURNAL_DIRECTORY_UNKNOWN")
+    return {
+        "environment": ("WSL2_UBUNTU2404" if "microsoft" in kernel_release.lower()
+                        or "wsl" in kernel_release.lower()
+                        else "WSL2_NOT_VERIFIED"),
+        "kernel_release": kernel_release[:120],
+        "pid1_systemd": pid1.strip() == "systemd",
+        "dxg_present": bool(dxg_present),
+        "wslg_visible": bool(wslg_visible),
+        "renderer_class": renderer,
+        "journal_storage_class": storage,
+        "core_capture_proven": False,
+        "gazebo_exit0_proven": False,
+    }
 
 
 def subprocess_text(argv, timeout=12):
@@ -57,6 +96,11 @@ def classify(snapshot):
         return "D06_C23_INFO_PRESENT_C22_MATCHER_OR_TIMING_CANDIDATE_HOLD"
     if matching_rows(snapshot):
         return "D06_C23_JOURNAL_RECORD_PRESENT_INFO_MISSING_HOLD"
+    # The C22 source did not record boot_id. On WSL2 a VM termination or
+    # distro restart can invalidate current --boot/PID evidence. A missing
+    # current-boot row cannot be promoted to a backend storage failure.
+    if snapshot.get("event_boot_known") is False:
+        return "D06_C24_WSL2_PREVIOUS_EVENT_BOOT_UNVERIFIED_HOLD"
     if snapshot.get("socket_active") is False:
         return "D06_C23_SOCKET_NOT_LISTENING_HOLD"
     return "D06_C23_NO_PID_RECORD_CURRENT_BOOT_HOLD_ROOT_CAUSE_UNKNOWN"
@@ -79,6 +123,8 @@ def write_forensic(snapshot, verdict):
         "journal_exact_segv_bash_rows": len(matching_rows(snapshot)),
         "coredumpctl_exact_info": has_exact_info(snapshot.get("info_text", "")),
         "verdict": verdict,
+        "wsl2_layers": snapshot.get("wsl2_layers", {}),
+        "event_boot_known": snapshot.get("event_boot_known"),
         "core_not_archived": True,
         "gazebo_not_run": True,
         "root_cause": "UNCONFIRMED",
@@ -91,6 +137,7 @@ def write_forensic(snapshot, verdict):
         + "systemd_socket_active=" + str(snapshot.get("socket_active")) + "\n"
         + "storage_config=" + snapshot.get("storage_config", "UNVERIFIED") + "\n"
         + "PID=1424 current boot query only; no evidence this is the same crash event\n"
+        + "wsl2_ubuntu_user_distro_not_equal_wslg_system_distro=true\n"
     )
     (run / "summary.txt").write_text(
         verdict + "\nD06_C23_NO_NEW_SIGSEGV_NO_GAZEBO\n"
@@ -166,8 +213,27 @@ def doctor():
         for line in config_raw.splitlines():
             if re.match(r"^\s*(Storage|ProcessSizeMax|ExternalSizeMax)=", line):
                 config_terms.append(line.strip()[:100])
+    # WSL2 user distro's Linux core handler is separate from the WSLg
+    # system distro's Wayland/X11 backend and Windows host GPU driver.
+    # This display check is optional and is not a prerequisite for a
+    # read-only coredump index investigation.
+    glx_text = ""
+    if os.environ.get("DISPLAY") and shutil.which("glxinfo"):
+        _, glx_text, _ = subprocess_text(["glxinfo", "-B"], timeout=8)
+    try:
+        pid1_name = Path("/proc/1/comm").read_text().strip()
+    except OSError:
+        pid1_name = "UNAVAILABLE"
+    layers = summarize_wsl2_layers(
+        osrelease, pid1_name, Path("/dev/dxg").exists(),
+        Path("/mnt/wslg").exists(), glx_text,
+        Path("/var/log/journal").is_dir(),
+        Path("/run/log/journal").is_dir())
     snapshot = {
         "pid": PID,
+        "event_boot_known": False,  # C22 did not record a boot UUID.
+        "wsl2_kernel": layers["environment"] == "WSL2_UBUNTU2404",
+        "wsl2_layers": layers,
         "socket_active": socket_active,
         "socket_load": props.get("LoadState", "UNKNOWN"),
         "journal_access": journal_access,
@@ -179,6 +245,11 @@ def doctor():
     }
     verdict = classify(snapshot)
     print("D06_C23_QUERY_SCOPE=CURRENT_BOOT_ONLY_PID_1424")
+    print("D06_C24_WSL2_KERNEL=" + str(layers["environment"]))
+    print("D06_C24_WSL2_PID1_SYSTEMD=" + str(layers["pid1_systemd"]).lower())
+    print("D06_C24_WSLG_RENDERER_CLASS=" + layers["renderer_class"])
+    print("D06_C24_WSL2_JOURNAL_STORAGE_DIR=" + layers["journal_storage_class"])
+    print("D06_C24_WSL2_LAYER_DIAGNOSTIC_ONLY_NOT_GAZEBO_ACCEPTANCE")
     print("D06_C23_SYSTEMD_SOCKET_ACTIVE=" + str(socket_active).lower())
     print("D06_C23_CURRENT_BOOT_JOURNAL_RECORDS=" + str(len(journal_rows)))
     print("D06_C23_EXACT_SIGSEGV_BASH_JOURNAL_RECORDS=" + str(len(matching_rows(snapshot))))
