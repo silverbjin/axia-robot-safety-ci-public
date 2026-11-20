@@ -83,6 +83,75 @@ def classify(events, *, start, end):
                  guard_internal_first_latch_cause_proven=False)
 
 
+
+def classify_rmw_first_pair(events, first_pair):
+    """Join first *exact* CM Observer callback pair to same-session RMW info.
+
+    Publication/received nanoseconds come from the Jazzy rclpy MessageInfo
+    system-clock domain; callback times use Linux host monotonic. Only compare
+    intervals *within* one domain. Missing/dropped publication sequences or
+    unmatched callback rows cannot prove the first origin.
+    """
+    out=_hold("RMW_FIRST_PAIR_UNVERIFIED",
+              callback_gap_ms=None,
+              rmw_source_gap_ms=None, rmw_received_gap_ms=None,
+              rmw_publication_seq_gap=None, publisher_stall_proven=False,
+              rmw_transport_root_proven=False,
+              first_guard_latch_cause_proven=False)
+    if (not isinstance(events,list) or not isinstance(first_pair,dict)
+            or first_pair.get("channel")!="pre_guard"):
+        return out
+    start,end=(first_pair.get("previous_rx_monotonic"),
+               first_pair.get("current_rx_monotonic"))
+    if (not _finite(start) or not _finite(end) or start<0 or end<=start):
+        return out
+    found=[]
+    for t in (start,end):
+        matches=[x for x in events if isinstance(x,dict)
+                 and x.get("kind")=="pre_guard"
+                 and _finite(x.get("t"))
+                 and abs(x["t"]-t)<0.0000005]
+        if len(matches)!=1:
+            return out
+        found.append(matches[0])
+    a,b=found
+    def value(row,name):
+        v=row.get(name)
+        return v if type(v) is int and v>=0 else None
+    src=[value(x,"rmw_source_ns") for x in found]
+    rx=[value(x,"rmw_received_ns") for x in found]
+    seq=[value(x,"rmw_publication_seq") for x in found]
+    if (any(x is None for x in src+rx+seq)
+            or min(src)<=0 or any(t<source for t,source in zip(rx,src))):
+        return out
+    sg=seq[1]-seq[0]
+    source_ns=src[1]-src[0]
+    received_ns=rx[1]-rx[0]
+    if source_ns<=0 or received_ns<=0 or sg<=0:
+        return {**out,"status":"RMW_TIMEBASE_REGRESSION_HOLD"}
+    if sg!=1:
+        return {**out,"status":"RMW_SEQUENCE_DISCONTINUITY_HOLD",
+                "rmw_publication_seq_gap":sg}
+    cb_gap_ms=round((end-start)*1000,6)
+    source_ms=round(source_ns/1e6,6)
+    receive_ms=round(received_ns/1e6,6)
+    out.update(callback_gap_ms=cb_gap_ms,
+               rmw_source_gap_ms=source_ms,
+               rmw_received_gap_ms=receive_ms,
+               rmw_publication_seq_gap=sg,
+               same_publisher_consecutive_seq=True)
+    limit_ms=120.
+    if source_ms>=limit_ms:
+        out["status"]="RMW_SOURCE_PERIOD_GAP_CANDIDATE"
+    elif receive_ms>=limit_ms:
+        out["status"]="RMW_RECEIPT_GAP_CANDIDATE"
+    elif cb_gap_ms>=limit_ms:
+        out["status"]="OBSERVER_CALLBACK_GAP_CANDIDATE"
+    else:
+        out["status"]="RMW_OBSERVED_PAIR_WITHIN_BOUND_UNPROVEN"
+    return out
+
+
 def main(argv=None):
     p=argparse.ArgumentParser()
     p.add_argument("--events",type=Path,required=True)
@@ -107,6 +176,9 @@ def main(argv=None):
                            if _finite(x.get("t")) and x["t"]>goals[0]),
                           default=None))
             v=classify(events,start=goals[0],end=end)
+            cm_pair=v.get("first_pairs",{}).get("pre_guard")
+            v["cm_rmw_first_pair"]=classify_rmw_first_pair(events,cm_pair)
+
         v["actual_same_session_event_pairs_read"]=True
     except (OSError,ValueError,TypeError,KeyError):
         v=_hold("FIRST_DELIVERY_BOUNDARY_NOT_VERIFIED_HOLD",
