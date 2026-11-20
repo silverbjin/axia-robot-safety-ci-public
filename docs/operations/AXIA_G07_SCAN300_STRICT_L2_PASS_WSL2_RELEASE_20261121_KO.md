@@ -14,7 +14,8 @@
 - 12초 Goal 전 읽기 전용 Scan/Clock/Odom 안전 사전검사: [GREEN #44772151429](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44772151429); 전역 최초 Clock/Odom/Scan 헤더 쌍 보존 RED [#44774575734](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44774575734) → GREEN [#44774786552](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44774786552).
 - 독립 rosbag 최초 Scan 쌍 분석기 및 Clock/Odom 수신간격 fallback: RED [#44831132404](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44831132404) → GREEN [#44831224337](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44831224337), read-only L0. **해당 추가 진단기는 아래 실 Gazebo L2가 사용한 커밋 이후에 추가되었으므로** 그 실 Gazebo 실행 범위로 소급하지 않습니다.
 - 첫 위반 numeric evidence 누락: RED [#44830833291](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44830833291) → 실 L2 동일 candidate에서 GREEN [#44830955961](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44830955961).
-- Owner 원샷 진단 실행의 **이중 역슬래시로 인한 쉘 줄 연결 오류**: RED [#44831590025](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44831590025). 다음 GREEN은 출고 브랜치 HEAD의 공개 Owner L0 결과로 확인해야 합니다.
+- Owner 원샷 진단 실행의 **이중 역슬래시로 인한 쉘 줄 연결 오류**: RED [#44831590025](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44831590025) → GREEN [#44831779986](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44831779986), Owner 후보 L0 신규 4/4 + 기존 9/9 PASS. 정적 셸 문법, 3곳 연속행 수정, SHA/실패 차단 확인. 
+- 같은 출고 커밋 공개 전체 Python 계약 [#44831791874](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44831791874): **289 passed, 3 skipped**. GitHub 원격 실제 L2의 Run/job 상태도 별도 조회하여 success 2/2 확인.
 
 ## 공식 실물 Gazebo L2: [Run #44830956042](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44830956042)
 - 공개 Workflow SHA `a54c40c630b14bc2b71449f3030c5c194a5f8408`.
@@ -28,6 +29,7 @@
 ## 코드 및 권한
 - 공개 개발 브랜치 `fix/g07-wsl2-first-scan300-20261121`, Draft PR [#207](https://github.com/silverbjin/axia-robot-safety-ci-public/pull/207).
 - 학생 개발 브랜치 `fix/g07-scan300-owner-pregoal-20261121`, Draft PR [#75](https://github.com/silverbjin/axia-robot-safety-student/pull/75).
+- 검증된 강사 WSL2 원샷 파일 불변 공개 커밋: `06dfd65a0064e87e0ddee07bfc03b7b148f1b198` (`main` 미병합). 해당 커밋에는 정확한 Run `44830956042`, L2 HEAD `a54c40c630b14bc2b71449f3030c5c194a5f8408`, Student SHA `891bf65349cf8dfb203bb8b97ffe0346b3fb8b3f`가 고정되어 있습니다. 이후 문서-only 커밋이 있더라도 이 출고 파일 SHA를 변경하지 않습니다.
 - Owner WSL2 실행기 `scripts/axia_g07_stabilization_wsl2_final_once.sh`는 최초 GitHub API로 위 Run의 `id/head_sha/name/status/conclusion` 및 정확히 2개 matrix job 모두 success를 확인해야만 시뮬레이션 진입을 허용합니다. Rate-limit/403 포함 API 장애는 fail-closed, Goal 금지.
 - 12초 같은 세션 NO_GOAL 검사에서 Scan300, Clock300, Odom300의 실제 수신 간격 위반이 발생하면 **TTY 승인·Goal 전에 HOLD**. 시연 중 Guard150/CM120, Scan300/Clock300/Odom300 및 원래 Stop/Cancel 계약 유지, 완화 없음.
 - 원본 WSL2 tar/rosbag은 로컬 보존, 소형 6파일 JSON ZIP은 8MiB 상한 및 SHA256 기록. 강사 인증 L3 결과가 나오기 전에는 공식 인수 PASS를 발행하지 않습니다.
