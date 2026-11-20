@@ -6,10 +6,10 @@
 set -Eeuo pipefail
 umask 077
 readonly STUDENT_REPO='silverbjin/axia-robot-safety-student'
-readonly STUDENT_SHA='148635b40c69a40feb8174306cacba6755c88c92'
+readonly STUDENT_SHA='4f4d07f6daf878dd8076f89669698f61f52a802b'
 readonly REVIEW_REPO='silverbjin/axia-robot-safety-ci-public'
 readonly REVIEW_SHA='362da68e31dd163a8d321601e191069c0d0a438b'
-readonly CI_L2_RUN=44683741133
+readonly CI_L2_RUN=44706879509
 MODE="${1:---run}"
 if [[ $# -gt 1 ]];then echo 'AXIA_G07_TASK04_FIRST_FAILURE=BAD_ARGUMENTS' >&2;exit 3;fi
 case "$MODE" in
@@ -19,7 +19,7 @@ esac
 # RELEASE ADMISSION: an educational visual HOLD cannot authorize a new
 # field run. Public CI must have both actual Gazebo Moving Goal matrix jobs
 # SUCCESS on the exact candidate Student source, with formal fallback exiting 3.
-readonly CI_L2_HEAD='310c8932bde167a1a63ad6305a72057d070d4fb1'
+readonly CI_L2_HEAD='fe2e4b2599c2fe3e136ffbd06899733a5ba17906'
 ci_l2_release_gate() {
   local run_json jobs_json rc=0
   run_json="$(mktemp)" || return 3
@@ -201,6 +201,11 @@ export AXIA_G07_CI_SIM_GOAL_ALLOWED=0
 export AXIA_P0_SIM_ONLY=1
 export AXIA_P2_G07_PHYSICAL_PREFLIGHT=1
 export AXIA_G07_OWNER_STARTUP_PARITY=1
+# Exact Student 4f4d07f6... uses a CI/Owner-separated single-request
+# navigation Lifecycle SHUTDOWN on the DDS participant already proven by
+# read-only /get_parameters. Owner never spoofs GITHUB_ACTIONS or CI Goal.
+unset AXIA_G07_NAV_WARM_PARTICIPANT_CI_AB
+export AXIA_G07_NAV_WARM_PARTICIPANT_OWNER=1
 export AXIA_G07_CI_OWNER_BAG_PARITY=1
 export AXIA_P2_G07_RELOCATED_OBSTACLE=1
 export AXIA_G07_TASK02_SIMPLE_TF_CANDIDATE=1
