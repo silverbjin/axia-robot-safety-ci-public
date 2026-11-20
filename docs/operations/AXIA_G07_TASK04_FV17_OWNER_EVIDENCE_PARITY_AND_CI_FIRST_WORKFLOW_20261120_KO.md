@@ -89,3 +89,19 @@ User WSL2 최초 `FV17z53O`와 별개의 **실제 공개 CI** [#44652034063](htt
 이는 MVP 검증을 과도하게 늘리는 것이 아니라, 실제로 관측된 간헐 Guard 188.578ms 안전 경계 한 가지를 **강사 WSL2 대신 공개 CI에서 차단하기 위한 최소 2회 독립 게이트**다. 공식 CM/Guard TTL과 기존 물리 시연 경로는 불변이다.
 
 **최종 독립 2-cycle 실증:** [Run #44653465671](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44653465671) `SUCCESS` (동일 Student `5c7983598fa3bcd7148433a06f37a4e78b091273`, 공개 workflow SHA `85a530babfdd55e0b0afb7b4aae8273aa1e0fae5`). Cycle 1: 실제 native runner RC0, Gazebo/RViz 1+1, Guard/Supervisor exit0, Guard 내부 age **164 samples / max53.664037ms**. Cycle 2: 동일 RC0·GUI·exit0, Guard 내부 age **126 samples / max52.396081ms**. 두 사이클 모두 **동일 Goal 실증·CM source/Observer strict120ms·Guard150ms·Owner/CI 오프라인 검증 계약**을 통과했다. 기존 [#44652034063](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44652034063)의 첫 188.578ms Guard latch는 원인 미확정으로 Issue #157에 남긴다. 이 결과는 WSLg/WSL2 실제 L3 검증이나 보편적 신뢰성 보증이 아니다.
+
+
+## 9. 독립 2회 실제 Gazebo CI 결과 — 교육용 출고 준비
+
+[실제 Gazebo Harmonic/Nav2/RViz2 2-cycle Run #44653465671](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44653465671)은 matrix 1·2 **모두 SUCCESS**.
+
+| 독립 물리 시뮬레이션 | 원본 실행기 | Guard 내부 150ms 근거 | CM source/Observer 120ms | 양 창 | 안전 노드 종료 |
+|---|---|---|---|---|---|
+| cycle 1 | RC 0 | 164개 실측, max **53.664037ms** | STRICT PASS, Owner/CI 오프라인 검증 결과 동일 | 2/2 | Guard·Supervisor exit0 |
+| cycle 2 | RC 0 | 126개 실측, max **52.396081ms** | STRICT PASS, Owner/CI 오프라인 검증 결과 동일 | 2/2 | Guard·Supervisor exit0 |
+
+두 실행에서 실제 Moving Goal CLEAR/SLOW/STOP, 정확한 Goal UUID 취소, Nav2 lifecycle/CM 종료 등 **시연 범위**를 검증했다. 두 번의 PASS로 확률적 장기 무결성이나 WSL2 호스트의 원인 미확정 RMW 시계 역행까지 인증한 것은 아니다. [#44652034063](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44652034063)의 첫 Guard latch 188.578ms는 Open Issue #157에 유지하며 후속 고도화의 안전 감시 실례로 활용한다.
+
+별도 CI artifact 경로는 matrix 간 충돌을 막기 위해 `...-cycle-1`, `...-cycle-2`로 고유화했다. **로봇 소스·안전 TTL·원본 Goal 정책은 변경하지 않았다.** 출고 코드는 Student `5c7983598fa3bcd7148433a06f37a4e78b091273`, Public strict Reviewer `362da68e31dd163a8d321601e191069c0d0a438b`, 기본 Owner 공용 소스 기준 Public L2 `44652361407`로 고정한다. 후속 CI 추가 결과는 동일 입력 소스를 검증하는 독립 재현 증거다.
+
+**검증 상태 구분:** `PUBLIC_CI_DEMO_L2=PASS_2_CYCLES`; `OWNER_WSL2_FINAL_L3=NOT_RUN`; `FORMAL_RMW_TIMEBASE_ACCEPTANCE=NOT_CLAIMED`; `CERTIFIED_ESTOP=false`. 사용자 WSL2는 원샷을 **최종 확인 목적으로 한 번만** 실행한다. 향후 현장 새 오류는 먼저 공개 CI로 재현 가능한 부분을 편입하여 RED→GREEN 후 재출고하며 동일 현장 재시도만 반복하지 않는다.
