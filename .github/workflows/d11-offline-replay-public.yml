@@ -1,0 +1,63 @@
+name: AXIA D11 offline dual-model replay public CI L0+UI
+on:
+  push:
+    branches: ['feat/d11-live-replay-*']
+    paths: ['d11/replay/**', '.github/workflows/d11-offline-replay-public.yml']
+  pull_request:
+    paths: ['d11/replay/**', '.github/workflows/d11-offline-replay-public.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  replay-d11-public-l0-ui:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          path: public
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: b7e8da0e19c32ef8d02d231c809edbdf4291dbf9
+          path: student
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - name: Synthetic student C01 integrity
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p evidence
+          test "$(git -C student rev-parse HEAD)" = b7e8da0e19c32ef8d02d231c809edbdf4291dbf9
+          python3 student/block_C/fixtures/generator.py --check \
+            --fixture-dir student/block_C/fixtures | tee evidence/fixture.log
+      - name: D11 recorded IF/AE join, fail closed, offline JS L0
+        shell: bash
+        env:
+          AXIA_D11_PUBLIC_FIXTURE_DIR: student/block_C/fixtures
+        run: |
+          set -Eeuo pipefail
+          PYTHONPATH=public/d11/replay python3 -m unittest discover \
+            -s public/d11/replay -p test_replay.py -v 2>&1 | tee evidence/tests.log
+          python3 -m py_compile public/d11/replay/build_replay.py public/d11/replay/test_replay.py
+          bash -n public/d11/replay/owner_one_shot.sh
+          echo D11_REPLAY_PUBLIC_L0_PASS_NO_PRIVATE_CHECKOUT_ROS_GAZEBO_NOT_RUN | tee evidence/l0_verdict.log
+      - name: Browser GUI interactions 1920x1080 (public fake scores)
+        shell: bash
+        env:
+          AXIA_D11_PUBLIC_FIXTURE_DIR: student/block_C/fixtures
+        run: |
+          set -Eeuo pipefail
+          python3 -m pip install --disable-pip-version-check "playwright==1.58.0"
+          python3 public/d11/replay/test_browser.py --output evidence
+          echo D11_REPLAY_PUBLIC_BROWSER_L1_PASS_1920x1080_FAKE_SCORES | tee evidence/ui_verdict.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: axia-d11-public-replay-evidence
+          path: evidence/
+          retention-days: 7
+          if-no-files-found: warn
