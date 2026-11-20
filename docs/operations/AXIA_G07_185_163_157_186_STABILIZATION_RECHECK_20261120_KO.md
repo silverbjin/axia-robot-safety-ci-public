@@ -308,3 +308,14 @@
 
 - #185/#163 Nav2 첫 callback 서비스 실패는 독립 원인 미확정, #186 GPU NVIDIA WSLg native SIGABRT/SIGSEGV 원본 스택 없음; 별도 C11-C17 수집기는 기존 성공 보존. D07 Context 제한된 WaitSet 경계 L0 PASS, 다른 Destroyable 경고 스택 동일성 미확정.
 - SW Stop ≠ 인증된 E-Stop. Guard150/CM120/Scan300/Odom300/Clock300 엄격 기준 유지. 공개·학생 main 미병합.
+
+## 13. Fast DDS 333ms RMW + Navigation no-ACK 재개 인수상태 (2026-11-20)
+
+**별도 근거 보고서**: [AXIA G07 FastDDS SHM333ms 원인 가설·정확한 TDD 및 WSL2 인수 가이드](AXIA_G07_FASTDDS_SHM_333MS_RMW_FIRST_RECEIPT_RCA_20261120_KO.md).
+
+- 초기 실제 #44683741133 `source 48.499371ms / FastDDS receive 356.887562ms / Observer 362.069145ms` 최초 CM 메시지 쌍. 공식 [Fast DDS #6535](https://github.com/eProsima/Fast-DDS/issues/6535) SHM 333ms 건강 포트 지연 / [#6559](https://github.com/eProsima/Fast-DDS/pull/6559) master 수정 참조. **이 원본 사건의 native SHM stack은 아직 없으므로 causal root stack 미확정**.
+- 전체 실 Gazebo graph에만 `FASTDDS_BUILTIN_TRANSPORTS=UDPv4` 적용한 실제 [#44697383450](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44697383450) **2/2 full L2 PASS**. 분리 독립 재검 [#44698698767](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44698698767) Cycle1 Navigation service 40s no-ACK, Cycle2 PASS; 센서/CM/Guard 최초 수신 TTL 위반 없음.
+- 신규 [Fast DDS #6630](https://github.com/eProsima/Fast-DDS/issues/6630) 늦게 새로 참여한 DDS discovery 경계 가설에 따라 Navigation 한 번의 종료 요청만 **이미 read-only parameter ACK를 받은 동일 ROS participant**에서 전송하도록 CI 한정 A/B. 실제 [#44705873381](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44705873381) **2/2 strict Moving Goal L2 PASS**.
+- CI와 Owner 별도 authority test RED #44706515418 → GREEN #44706713615. 최종 Student 정확 SHA `4f4d07f6daf878dd8076f89669698f61f52a802b`에 대해 실제 [#44706879509](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44706879509), workflow SHA `fe2e4b2599c2fe3e136ffbd06899733a5ba17906`, **2/2 strict L2 PASS**: real Goal/Cancel/ZERO/Nav+Loc ACK/CM clean/GUI/Guard internal age; 안전 TTL 무변경.
+- 공개 WSL2 최종 원샷 `scripts/axia_g07_stabilization_wsl2_final_once.sh` (GitHub pinned file SHA `29fb906d294aa6bcb13490a108dacd5596dd5779`)는 Student/CI SHA 정확 고정, 실제 Owner `AXIA_G07_NAV_WARM_PARTICIPANT_OWNER=1`, Fast DDS UDPv4. 부트스트랩 및 GitHub 실시간 strict 2/2 판정 공개 [#44707589554](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44707589554) **8/8 PASS, 실제 GitHub API 확인**, ROS/Gazebo 미실행.
+- **PUBLIC_GAZEBO_STRICT_L2=PASS_SCOPED; OWNER_WSL2_L3=NOT_RUN; FASTDDS_NATIVE_SHM_ROOT_PROVEN=false; NVIDIA_WSLG_G3=#186_HOLD; CERTIFIED_ESTOP=false; MAIN_MERGED=false.** 이 두 개의 누적 성공을 현장 NVIDIA 최종 인수 PASS로 승격하지 않음. Owner에서 새로운 첫 실패 발생 시, 재실행보다 public CI RED 회귀 편입 먼저.
