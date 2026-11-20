@@ -111,6 +111,44 @@ class CMServiceABTest(unittest.TestCase):
         self.assertIn("if v>.5",source)
         self.assertNotIn("AXIA_D08_DISABLE_SCAN_GAP",source)
 
+    def test_real_nav2_cm_lifecycle_first_transition_is_not_planner_failure(self):
+        # Sanitized first-failure log from real CI #44766088696.
+        # Nav manager initiated CM configuration, but neither CM on_configure
+        # callback entry nor manager activation was witnessed.
+        from d08_cm_native_probe_isolated import (
+            classify_nav2_lifecycle_first_boundary)
+        log=(
+            "[planner_server]: Configuring\n"
+            "[planner_server]: Planner Server has GridBased planners available.\n"
+            "[lifecycle_manager_navigation]: Configuring collision_monitor\n"
+            "[amcl]: initialPoseReceived\n"
+        )
+        v=classify_nav2_lifecycle_first_boundary(log)
+        self.assertEqual(v["status"],
+            "D08_NAV2_CM_CONFIGURE_REQUEST_NO_CALLBACK_ENTRY_OBSERVED_HOLD")
+        self.assertTrue(v["navigation_manager_requested_cm_configure"])
+        self.assertFalse(v["cm_configure_callback_entry_observed"])
+        self.assertFalse(v["cm_navigation_activation_proven"])
+        self.assertEqual(v["root_cause"],"UNDETERMINED")
+        self.assertFalse(v["owner_wsl2_accepted"])
+        self.assertIn("collision_monitor",v["first_lifecycle_boundary"])
+        missing=classify_nav2_lifecycle_first_boundary("")
+        self.assertEqual(missing["status"],"D08_NAV2_CM_STARTUP_EVIDENCE_INCOMPLETE")
+        param=classify_nav2_lifecycle_first_boundary(
+            "[lifecycle_manager_navigation]: Configuring collision_monitor\n"
+            "[collision_monitor]: Configuring\n"
+            "[collision_monitor]: Error while getting parameters: "
+            "parameter 'observation_sources' is not initialized")
+        self.assertEqual(param["status"],
+                         "D08_NAV2_CM_CONFIGURATION_PARAMETER_ERROR_HOLD")
+
+    def test_startup_first_transition_saved_before_runtime_raises(self):
+        src=(ROOT/"d08/scripts/d08_public_gazebo_l2.py").read_text()
+        self.assertIn("nav2_cm_startup_boundary.json",src)
+        self.assertIn("D08_NAV2_CM_FIRST_LIFECYCLE_HANDOFF",src)
+        self.assertIn("D08_OFFICIAL_NAV2_BEFORE_PATH_FIRST_BOUNDARY",src)
+        self.assertNotIn("AXIA_D08_IGNORE_PLANNER_INACTIVE",src)
+
     def test_actual_gazebo_eight_cycle_job_is_armed_for_ab_branch(self):
         w=(ROOT/".github/workflows/d08-main-no-goal-real-gazebo-l2.yml").read_text()
         self.assertIn("feat/d08-cm-service-ab-isolation-20261121",w)
