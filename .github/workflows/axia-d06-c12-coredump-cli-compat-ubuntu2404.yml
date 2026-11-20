@@ -6,11 +6,13 @@ on:
       - '.github/workflows/axia-d06-c12-coredump-cli-compat-ubuntu2404.yml'
       - 'd06/scripts/axia_d06_g07_wslg_sigsegv_capture_once.sh'
       - 'd06/tests/test_d06_c12_field_missing_coredumpctl.py'
+      - 'd06/tests/test_d06_c13_full_cli_noble_smoke.py'
   pull_request:
     paths:
       - '.github/workflows/axia-d06-c12-coredump-cli-compat-ubuntu2404.yml'
       - 'd06/scripts/axia_d06_g07_wslg_sigsegv_capture_once.sh'
       - 'd06/tests/test_d06_c12_field_missing_coredumpctl.py'
+      - 'd06/tests/test_d06_c13_full_cli_noble_smoke.py'
   workflow_dispatch:
 permissions:
   contents: read
