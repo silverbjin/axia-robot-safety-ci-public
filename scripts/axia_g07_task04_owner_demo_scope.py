@@ -8,6 +8,7 @@ Guard internal CM age <=150ms. NEVER returns Owner L3 acceptance.
 """
 import argparse
 import json
+import math
 import re
 from pathlib import Path
 
@@ -51,8 +52,10 @@ def assess_owner_demo_scope(record):
             or not isinstance(record.get("source_sha"),str)
             or not re.fullmatch(r"[0-9a-f]{40}",record["source_sha"])
             or type(record.get("odom_moved_m")) not in (int,float)
+            or not math.isfinite(record["odom_moved_m"])
             or record["odom_moved_m"]<.05
             or type(record.get("stopped_dwell_sec")) not in (int,float)
+            or not math.isfinite(record["stopped_dwell_sec"])
             or record["stopped_dwell_sec"]<1.0):
         return hold
     return {**hold,
