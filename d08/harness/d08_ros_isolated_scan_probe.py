@@ -14,6 +14,31 @@ import threading
 import time
 
 
+class IsolatedScanEvidence:
+    """Bounded source-stamped samples; callback writes only first readiness row."""
+    def __init__(self, max_samples):
+        self.max_samples=max_samples
+        self.rows=[]
+        self.dropped=0
+
+    def add(self, host_at, source_stamp_ns):
+        if source_stamp_ns<=0:
+            return False
+        if len(self.rows)>=self.max_samples:
+            self.dropped+=1
+            return False
+        self.rows.append({
+            "topic":"scan",
+            "host_monotonic_sec":round(host_at,6),
+            "source_stamp_ns":int(source_stamp_ns),
+        })
+        return len(self.rows)==1
+
+    def write_remaining(self, dst, start=0, stop=None):
+        for row in self.rows[start:stop]:
+            dst.write(json.dumps(row,separators=(",",":"))+"\n")
+
+
 def run(out:Path,max_samples:int=1024)->int:
     import rclpy
     from rclpy.qos import qos_profile_sensor_data
@@ -26,7 +51,7 @@ def run(out:Path,max_samples:int=1024)->int:
         raise ValueError("D08_ISOLATED_ROS_TRACE_OUTPUT_EXISTS")
     out.parent.mkdir(parents=True,exist_ok=True)
     stop=threading.Event()
-    counter={"accepted":0,"dropped":0}
+    evidence=IsolatedScanEvidence(max_samples)
     def terminate(_sig,_frame):
         stop.set()
     signal.signal(signal.SIGINT,terminate)
@@ -39,22 +64,18 @@ def run(out:Path,max_samples:int=1024)->int:
                 at=time.monotonic()
                 stamp=msg.header.stamp
                 ns=int(stamp.sec)*1_000_000_000+int(stamp.nanosec)
-                if ns<=0:
-                    return
-                if counter["accepted"]>=max_samples:
-                    counter["dropped"]+=1
-                    return
-                dst.write(json.dumps({
-                    "topic":"scan",
-                    "host_monotonic_sec":round(at,6),
-                    "source_stamp_ns":ns,
-                },separators=(",",":"))+"\n")
-                counter["accepted"]+=1
+                # Callback must never perform per-frame JSON/disk I/O.
+                # One actual first sample is flushed for the existing startup
+                # readiness probe; remaining exact timestamps stay in memory.
+                if evidence.add(at,ns):
+                    evidence.write_remaining(dst,start=0,stop=1)
             sub=node.create_subscription(
                 LaserScan,"/scan",on_scan,qos_profile_sensor_data)
             print("D08_ISOLATED_ROS_SCAN_PROCESS_READY",flush=True)
             while not stop.is_set():
                 rclpy.spin_once(node,timeout_sec=.05)
+            evidence.write_remaining(dst,start=1)
+            counter={"accepted":len(evidence.rows),"dropped":evidence.dropped}
             print("D08_ISOLATED_ROS_SCAN_PROCESS_STOP "
                   +json.dumps(counter,sort_keys=True),flush=True)
             return 0
