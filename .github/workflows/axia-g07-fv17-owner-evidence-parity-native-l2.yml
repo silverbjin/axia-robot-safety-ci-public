@@ -1,4 +1,4 @@
-# Task04 one REAL moving Goal + two actual Xvfb windows, public CI only.
+# Task04 two independent real Moving Goals, each with 2 actual Xvfb windows.
 # Baseline Task03 positive Contact calibration is frozen, not repeated.
 name: AXIA G07 FV17 Independent 2-cycle Real Moving Goal Guard TTL L2
 on:
@@ -274,7 +274,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: axia-task04-moving-native-numeric-${{ github.run_id }}-cycle-${{ matrix.cycle }}
+          name: axia-task04-moving-native-numeric-${{ github.run_id }}-cycle-${{ matrix.cycle }}-cycle-${{ matrix.cycle }}
           path: |
             public_evidence/task04_mvp_visual_l2_verdict.json
             public_evidence/task04_mvp_visual_l2_verdict.sha256
