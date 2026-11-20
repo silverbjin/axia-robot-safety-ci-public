@@ -232,3 +232,27 @@
 `G07_NVIDIA_WSLG_CRASH=HOLD`  
 `MAIN_MERGED=false`  
 `CERTIFIED_ESTOP=false`
+
+
+## 10. Moving Goal 종료 진단의 검증된 D06 구현 재사용 (브랜치 전용)
+
+### 최초 원인과 코드 차이
+
+- 현재 Student `main` `p2_g07_ordered_shutdown.py` SHA `181c31b20b9745ba69935c197aef503c7678c516`는 Nav/Loc를 동일 임시 ROS 노드에서 한 번씩 `call_native_manage`로 요청하며, SERVICE_TIMEOUT 뒤 서버 callback group probe가 없다. 2026-11-20 최신 Moving L2 [#44675580481](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44675580481)의 2개 실제 Gazebo/Goal 시연 모두 교육용 CLEAR/SLOW/STOP과 엄격 Guard 내부 TTL 정상(각각 **21.106801ms / 30.872261ms**), 실제 CM/Guard 종료 정상인 반면 원샷 결과 `runner_rc=3`, `MVP_VISUAL_L2_PASS_FORMAL_LOCALIZATION_SHUTDOWN_HOLD`를 기록. **이 workflow의 job SUCCESS는 정식 Nav/Loc ACK 전체 검증 PASS가 아니며, Formal L2는 HOLD**.
+- 다른 Student Draft [PR #62](https://github.com/silverbjin/axia-robot-safety-student/pull/62)의 소스 SHA `0565e580f5b7c80d719960a6046de3e45c8ea477`에는 이미 정확히 같은 오류를 대상으로 독립 서비스 클라이언트와 `/get_parameters` 및 `/is_active` read-only probe가 존재했고, 공개 D06 Draft [PR #177](https://github.com/silverbjin/axia-robot-safety-ci-public/pull/177)에서 기존 NO_GOAL 실제 Gazebo 정상 ACK와 첫 무응답 회귀를 검증했음.
+- 그러나 PR #62 전체 파일을 새 Moving 환경에 그대로 교체하면 새로 검증된 `parameter_discovery_budget()` (8초 Navigation read-only 탐색) 등이 구버전으로 되돌아갈 위험이 있음. 따라서 **필요한 함수만 부분 이식**, Moving Goal 원본과 교육용 Accepted Baseline SHA는 보존.
+
+### RED → GREEN → REVIEW → COMMIT
+
+- Student 새 개발 브랜치 `diag/g07-moving-shutdown-server-first-20261120`는 Student main SHA `be92d8bf13a2b547cac49cbe4696a71264dae57f`에서 파생. **Student Draft PR #71**, 신규 파일·로봇 기능 추가 없이 `block_B/day07/h01_runtime/tools/p2_g07_ordered_shutdown.py` 하나 변경.
+- **RED public CI #44676576718**, public workflow `.github/workflows/axia-g07-moving-shutdown-reuse-l0.yml`의 정확한 기존 D06 `test_d06_localization_manager_callback_probe.py` (3개)와 `test_d06_c07_navigation_manager_service_liveness.py` (3개)를 현재 Moving source에 실행: 초기 시험에서 신규 `probe_localization_manage_callback_group` 미구현으로 **1 FAIL/2 ERROR** (예상).
+- **GREEN Student commit `0f6e6bd47e03f01cb55e43e19a20ea31f65feb99`**, 기존 D06의 `_call_isolated_stage()`, Localization `get_parameters` read-only probe, Nav/Loc `is_active` 같은 Callback Group probe, RMW identifier 기록을 Moving 종료 파일에 필요한 범위만 이식. `parameter_discovery_budget()`과 `shutdown_stage_budget()` 및 60s global deadline, Nav→Loc 순서, 단일 SHUTDOWN 요청, `ACK` 없으면 HOLD, CM 관리 확인을 그대로 유지. sensor/CM/Guard TTL, Nav2/Collision Monitor, Goal/속도 로직 변화 없음.
+- **GREEN public CI #44676701168**: 같은 D06 기존 테스트 **3/3 + 3/3 PASS**; source pin exact Student `0f6e6bd...`. 수동 승인·Goal 테스트 없는 L0 계약이므로 실제 Gazebo ACK를 주장할 수 없음.
+- [학생 PR #71](https://github.com/silverbjin/axia-robot-safety-student/pull/71)은 **Draft**, Student main 미병합. 최초 서버 Callback 진입 여부를 증명할 코어·RCL/RMW 송수신 trace는 여전히 없으며, `is_active` 응답/무응답이 SHUTDOWN ACK를 증명하지 않음.
+- 공개 Moving L2 workflow는 최종 교육용 Student SHA를 변경하지 않고 PR #199 **개발 브랜치에서만** exact candidate `0f6e6bd...`로 검증. 후속 실증 실패 시 최초 단계 원본 보존, L2 결과를 따로 기록할 것.
+
+`P1_SHUTDOWN_REUSE_DEVELOPMENT_BRANCHED=true`  
+`P1_SHUTDOWN_EXISTING_REGRESSION_L0=PASS_6_OF_6`  
+`P1_REAL_MOVING_GAZEBO_L2=NOT_YET_VERIFIED`  
+`P1_SERVER_CALLBACK_ROOT_CAUSE=UNDETERMINED`  
+`STUDENT_MAIN_MERGED=false`
