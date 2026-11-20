@@ -1,0 +1,23 @@
+name: AXIA G07 Scan first compact evidence L0
+on:
+  push:
+    branches: ['fix/g07-wsl2-first-scan300-20261121']
+    paths:
+      - '.github/workflows/axia-g07-scan-compact-evidence-l0.yml'
+      - 'tests/test_g07_scan_compact_bundle.py'
+      - 'd06/diagnostic/g07_scan_compact_bundle.py'
+permissions:
+  contents: read
+jobs:
+  compact-six-first-failure:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Six tiny numeric JSON records, no ROS no raw bags no acceptance
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest discover -s tests -p 'test_g07_scan_compact_bundle.py' -v
+          echo 'AXIA_G07_FIRST_SCAN_COMPACT_SIX_L0_PASS_L3_NOT_RUN'
