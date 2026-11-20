@@ -63,7 +63,7 @@ class ReplayD11Test(unittest.TestCase):
         self.assertEqual(sum(len(t["windows"]) for t in p["traces"]),104)
         self.assertEqual(p["models"]["IF"]["threshold"],0.1)
         self.assertEqual(p["models"]["AE"]["threshold"],0.5)
-        self.assertNotEqual(p["models"]["IF"]["confusion"],p["models"]["AE"]["confusion"])
+        self.assertNotEqual(p["models"]["IF"]["score_sha256"],p["models"]["AE"]["score_sha256"])
         t=next(x for x in p["traces"] if x["id"]=="TST_A_00")
         self.assertEqual(t["windows"][4]["if"]["prediction"],"NORMAL")
         self.assertEqual(t["windows"][4]["ae"]["prediction"],"WARNING")
