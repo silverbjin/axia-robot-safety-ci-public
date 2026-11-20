@@ -20,4 +20,15 @@ jobs:
         run: |
           set -Eeuo pipefail
           python3 -m unittest discover -s tests -p 'test_g07_scan300_owner_wrapper.py' -v
+          python3 -m unittest discover -s tests -p 'test_g07_stabilization_wsl2_release.py' -v
+          # The actual new strict L2 run was 1/2 FAIL. This candidate must
+          # reject it BEFORE any ROS/Gazebo/Goal; never claim field release.
+          set +e
+          output="$(bash scripts/axia_g07_stabilization_wsl2_final_once.sh --ci-check 2>&1)"
+          rc=$?
+          set -e
+          printf '%s\\n' "$output"
+          test "$rc" -eq 3
+          grep -Fq 'AXIA_G07_STABILIZATION_CI_L2=HOLD_NO_NEW_WSL2_MOVING_RELEASE' <<< "$output"
+          echo 'AXIA_G07_SCAN300_OWNER_PREGOAL_RELEASE_ADMISSION_HOLD_INTENTIONAL'
           echo 'G07_SCAN300_WSL2_CANDIDATE_L0_PASS_FIELD_L3_HOLD'
