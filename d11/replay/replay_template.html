@@ -133,7 +133,7 @@ function truthView(){
  const guess=$("guessSelect").value;
  if(guess)txt+=" 학생 예측 "+guess+" → "+((truth===-1?"INSUFFICIENT_DATA":truth===1?"WARNING":"NORMAL")===guess?"정답 일치":"정답과 다름")+" (합성 라벨 기준).";
  box.textContent=txt;
- for(const model of ("IF","AE")){
+ for(const model of ["IF","AE"]){
  const c=DATA.models[model].confusion;$(model.toLowerCase()+"Confusion").textContent="TP "+c.TP+" / FP "+c.FP+" / FN "+c.FN+" / TN "+c.TN}
 }
 function render(){
