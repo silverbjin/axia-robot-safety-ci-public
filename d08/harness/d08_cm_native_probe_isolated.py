@@ -96,6 +96,48 @@ def summarize_cm_ab(cycles:list[dict])->dict:
 
 
 
+
+def summarize_cm_ab_first_gap_hold(cycles:list[dict])->dict:
+    """Preserve first *actual* >500ms A/B failure without losing B evidence.
+
+    A Scan timing failure is NOT promoted to pass; the comparison is
+    diagnostic only, and all safety/Owner acceptance gates remain HOLD.
+    """
+    if len(cycles)!=8:
+        raise ValueError("D08_CM_AB_EIGHT_REAL_ATTEMPTS_REQUIRED")
+    failures=[]
+    modes={key:0 for key in MODES}
+    for index,cycle in enumerate(cycles):
+        expected=mode_for_cycle(index,enabled=True)
+        if cycle.get("cm_service_probe_mode")!=expected:
+            raise ValueError("D08_CM_AB_MODE_ORDER_INCOMPLETE")
+        modes[expected]+=1
+        if cycle.get("status")!=PASS:
+            boundary=cycle.get("first_scan_timing_boundary")
+            if not isinstance(boundary,dict) or float(
+                    boundary.get("receive_gap_sec",0))<=.5:
+                raise ValueError("D08_CM_AB_NON_SCAN_FAILURE_CANNOT_CONTINUE")
+            failures.append((index,boundary,expected))
+    if not failures:
+        raise ValueError("D08_CM_AB_NO_FIRST_SCAN_FAILURE_TO_SUMMARIZE")
+    i,first,mode=failures[0]
+    return {
+        "status":"D08_CM_AB_FIRST_REAL_SCAN_GAP_L2_HOLD_NOT_ROOT_CAUSE",
+        "attempted_cycles":len(cycles),
+        "mode_counts":modes,
+        "first_failed_cycle":i,
+        "first_failed_mode":mode,
+        "first_scan_receive_gap_sec":float(first["receive_gap_sec"]),
+        "first_scan_source_pair":first,
+        "all_first_gap_events":[{"cycle":j,"mode":m,"first":b}
+                                for j,b,m in failures],
+        "root_cause":"UNDETERMINED",
+        "owner_wsl2_accepted":False,
+        "cm_internal_120ms_verified":False,
+        "guard_150ms_verified":False,
+        "certified_estop":False,
+    }
+
 def classify_nav2_lifecycle_first_boundary(nav2_log:str)->dict:
     """First OBSERVED Nav2 manager→CM configure handoff, not fault attribution.
 
