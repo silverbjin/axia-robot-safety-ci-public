@@ -2,11 +2,9 @@
 import csv, json, shutil, subprocess, tempfile, unittest
 from pathlib import Path
 from os import environ
-from sys import path as syspath
 
 HERE = Path(__file__).resolve().parent
 PUBLIC_ROOT = HERE.parents[1]
-syspath.insert(0, str(PUBLIC_ROOT / "d10/replay"))
 import importlib.util
 d10_test_path=PUBLIC_ROOT/"d10/replay/test_replay.py"
 d10_spec=importlib.util.spec_from_file_location("axia_d10_replay_smoke_fixture",d10_test_path)
