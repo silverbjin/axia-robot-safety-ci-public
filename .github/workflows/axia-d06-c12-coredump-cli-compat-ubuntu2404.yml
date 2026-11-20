@@ -21,6 +21,16 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 8
     steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Verify checkout SHA and pinned C13 launcher path
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -r "$GITHUB_WORKSPACE/d06/scripts/axia_d06_g07_wslg_sigsegv_capture_once.sh"
+          echo "D06_C13_GITHUB_SOURCE_CHECKOUT_VERIFIED=$GITHUB_SHA"
       - name: Verify actual Noble package provides usable coredumpctl JSON CLI
         shell: bash
         run: |
