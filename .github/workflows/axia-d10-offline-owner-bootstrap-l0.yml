@@ -1,0 +1,66 @@
+name: AXIA D10 home-cwd offline owner bootstrap L0
+on:
+  push:
+    branches: ['fix/d10-offline-*']
+    paths: ['d10/offline/**', '.github/workflows/axia-d10-offline-owner-bootstrap-l0.yml']
+  pull_request:
+    paths: ['d10/offline/**', '.github/workflows/axia-d10-offline-owner-bootstrap-l0.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  cwd-owner-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          path: public
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: 6980f7665e1e6b418df621fac9623e6f54f92fbd
+          path: student
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - name: Install D10-only model import dependencies for shell gate
+        run: python -m pip install --disable-pip-version-check 'scikit-learn==1.8.0'
+      - name: C01 real public fixture, student doctor and intentional mismatch diagnostic
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p evidence
+          test "$(git -C student rev-parse HEAD)" = 6980f7665e1e6b418df621fac9623e6f54f92fbd
+          bash -n student/block_C/scripts/block_c_once.sh
+          python3 student/block_C/fixtures/generator.py --check --fixture-dir student/block_C/fixtures | tee evidence/fixture.log
+          (cd /tmp && bash "$GITHUB_WORKSPACE/student/block_C/scripts/block_c_once.sh" --doctor) | tee evidence/student_doctor.log
+          temp_bin="$(mktemp -d)"
+          trap 'rm -rf "$temp_bin"' EXIT
+          printf '#!/bin/sh\nprintf "3.13.5\\n"\n' > "$temp_bin/python3"
+          chmod +x "$temp_bin/python3"
+          set +e
+          PATH="$temp_bin:$PATH" bash student/block_C/scripts/block_c_once.sh --doctor >evidence/student_version_hold.log 2>&1
+          rc=$?
+          set -e
+          test "$rc" -eq 2
+          grep -q 'BLOCK_C_ENV_DIFF_BLOCKED expected=3.12 actual=3.13.5' evidence/student_version_hold.log
+          echo D10_STUDENT_DOCTOR_MISMATCH_DIAGNOSTIC_PASS | tee evidence/student_verdict.log
+      - name: RED home-cwd reproduction and GREEN bootstrap + first failure stop
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          bash -n public/d10/offline/d10_instructor_offline_once.sh
+          AXIA_D10_TEST_AUTO_BOOTSTRAP=1 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s public/d10/offline \
+            -p test_d10_owner_entrypoint.py -v 2>&1 | tee evidence/owner_l0.log
+          echo D10_OWNER_CWD_LOG_FIRST_FAILURE_PUBLIC_FAKE_CONTRACT_PASS | tee evidence/owner_verdict.log
+          echo D10_L0_SCOPE_PRIVATE_MODEL_NOT_RUN_ROS_NOT_RUN_GAZEBO_NOT_RUN | tee -a evidence/owner_verdict.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d10-cwd-owner-failure-regression-evidence
+          path: evidence/
+          retention-days: 7
+          if-no-files-found: warn
