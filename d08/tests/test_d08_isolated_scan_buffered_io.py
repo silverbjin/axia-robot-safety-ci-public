@@ -53,5 +53,25 @@ class BufferedIndependentScanTests(unittest.TestCase):
         self.assertNotIn("LIBGL_ALWAYS_SOFTWARE",source)
         self.assertIn("IsolatedScanEvidence",source)
 
+    def test_ros_shutdown_exception_flushes_buffer_before_teardown(self):
+        # Real CI #44670938997 original isolated log: ExternalShutdownException
+        # in rclpy.spin_once on SIGTERM bypassed normal post-loop flush.
+        source=(ROOT/"d08/harness/d08_ros_isolated_scan_probe.py").read_text()
+        self.assertIn("ExternalShutdownException",source)
+        parsed=ast.parse(source)
+        run=next(x for x in parsed.body if isinstance(x,ast.FunctionDef)
+                 and x.name=="run")
+        finally_flush=False
+        for node in ast.walk(run):
+            if isinstance(node,ast.Try):
+                for item in node.finalbody:
+                    if isinstance(item,ast.Expr) and isinstance(item.value,ast.Call):
+                        call=item.value
+                        if isinstance(call.func,ast.Attribute) and call.func.attr=="write_remaining":
+                            finally_flush=True
+        self.assertTrue(finally_flush,
+           "SIGTERM can raise ExternalShutdownException before normal flush; "
+           "write_remaining MUST execute in finally while output file is open")
+
 if __name__=="__main__":
     unittest.main()
