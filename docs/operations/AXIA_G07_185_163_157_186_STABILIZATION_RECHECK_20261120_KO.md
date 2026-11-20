@@ -79,3 +79,40 @@
 `D06_GAZEBO_LIVE_RELEASE=HOLD`
 `WSLG_NVIDIA_CRASH_CAUSE=UNDETERMINED`
 `CERTIFIED_ESTOP=false`
+
+
+## 6. 2026-11-20 후속 구현: #157 실제 첫 Guard Latch를 공개 CI L0 회귀로 고정
+
+**범위:** 공개 파생 fixture 1개 + 기존 Baseline Python 테스트에 검사 1개만 추가. **Safety Supervisor / Collision Monitor / Guard / DDS / LiDAR Hz / ROS 실행기 / CI workflow 변경 없음**. 원본 2026-11-20 교육용 `jrCIgoGl` Baseline ACCEPTED 유지. 원본 rosbag/전체 사용자 로그 공개 업로드 없음.
+
+**실제 최초 실패 출처:** [Moving Goal #44652034063](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44652034063), job `136009021796`. 최초 Guard 내부 `UPSTREAM_STALE_AFTER_MOTION`은 150ms TTL 대비 188.577986ms, 독립 Observer 수신 age 173.465091ms, 최근 Observer CM 수신은 Guard보다 15.112895ms 이후. Observer 수신 시각 `255.191618005`는 로그의 Guard tick `255.365083096`에서 관측된 age `0.173465091s`를 **역산한 비교용 값**이며 원본 publish 시각으로 간주하지 않는다. 원본 정확한 CM publisher source pair는 **NOT_PROVEN**. Guard ZERO 출력; Goal 취소 완료 false; 근본 원인 UNDETERMINED. 이전 성공한 #44653465671 2-cycle과 `jrCIgoGl` 21/21 결과를 소급 수정하지 않음.
+
+### RED → GREEN
+
+- **RED 커밋:** `5c43ee96b33bf4a066b5b7c61ebcf4619987d1a3`; `tests/test_g07_task04_jrcigogl_baseline_contract.py::FirstGuardLatchFailClosedRegression::test_actual_first_guard_latch_and_unproven_source_cause`.
+  - [공개 Python 계약 #44663606595](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44663606595): `1 failed, 220 passed, 3 skipped`; 실패는 의도한 `FileNotFoundError: tests/fixtures/g07_c32_first_guard_latch_44652034063.json`.
+  - [기존 Baseline CI RED #44663606699](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44663606699): 신규 테스트 1개가 동일 fixture 누락으로 ERROR; 다른 기존 Baseline 계약은 PASS.
+- **GREEN 커밋:** `9815de8dbb5f7f33fa65f278aa22314a4c58fdf6`; 실제 CI 첫 래치의 공개 가능한 timestamp·TTL·증거 부족 범위를 `tests/fixtures/g07_c32_first_guard_latch_44652034063.json`에 보존.
+  - [공개 Python 계약 #44663711469](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44663711469): **221 passed, 3 skipped**, 4.92초, 성공.
+  - [기존 Baseline 계약 #44663711455](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44663711455): 9 기존 테스트 + 5 Baseline 테스트 모두 OK, 새로운 Guard 첫 래치 회귀 1개 포함. `AXIA_G07_TASK04_DEMO_BASELINE_L0_PASS=OWNER_PIN_9_CONTRACTS`.
+  - Runner Canary [#44663711418](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44663711418): SUCCESS. 본 회귀 추가 이후 **새 Gazebo/WSLg 실행은 하지 않았음**.
+
+### REVIEW / 허용 결론
+
+- 정확한 두 수신 경계가 모두 늦었으며 `Observer newer sample count=1`이므로 'Guard만 늦었다' 또는 'CM 발행 중단 확정'은 모두 **증거 부족**. 실제 `cm_publisher_stopped_proven=false`와 `cm_source_publication_pair_proven=false`를 fixture에 명시.
+- 숫자 회귀는 과거 한 실패의 불변 계약이며, **intermittent 스케줄러 오류를 수정하거나 근본 원인을 재현하는 테스트가 아님**.
+- 코드 검증 명령: `python3 -m unittest discover -s tests -p 'test_g07_task04_jrcigogl_baseline_contract.py' -v`; CI에서는 이 명령과 전체 `pytest`를 수행.
+- Task 01: #185/#163의 기존 RED/GREEN과 실제 Gazebo L2 성공 재사용, 서버 callback 최초 원인 미증명 → **추가 추정 코드 변경 없음**.
+- Task 02: 기존 `p2_shutdown_context.py`는 정확한 RCLError WaitSet invalid-context만 보호; 실제 `Destroyable` 경고는 예외 타입/스택 일치 미증명 → **NO_CHANGE**. 관련 선례 [rclpy #1385](https://github.com/ros2/rclpy/issues/1385), [#1206](https://github.com/ros2/rclpy/issues/1206)는 AXIA에 대한 인과 확증 아님.
+- Task 04: #186의 실제 NVIDIA WSLg server SIGSEGV 및 native receiver SIGABRT 최초 GDB stack 미확보; PR #177 C11/C16의 기존 코어·독립 호스트 진단만 재사용 → **독립 HOLD**.
+- 공식 Nav2 `LifecycleManager`의 SHUTDOWN 서비스는 공식 [Jazzy 소스](https://api.nav2.org/nav2-jazzy/html/lifecycle__manager_8cpp_source.html)처럼 callback 경계를 갖지만, 서비스 광고·read-only `is_active` 응답은 해당 `manage_nodes` callback의 첫 진입 증거가 아니다.
+
+**이번 후속 개발 검증 수준:** `L0=PASS`; `L1=NOT_RUN`; `L2_NEW=NOT_RUN`; `WSLG_G3=NOT_RUN`; `OWNER_L3_NEW=NOT_RUN`. 이미 성공한 실제 L2/WSL2 Baseline은 보존하지만 새 회귀로 전 계층 안정성을 PASS라 주장하지 않음.
+
+`G07_SHUTDOWN_STABILIZATION=HOLD_ROOT_CAUSE_UNPROVEN`  
+`G07_CONTEXT_EXCEPTION=NOT_APPLICABLE_UNTIL_SAME_STACK_PROVEN`  
+`G07_CM_GUARD_TIMING=HOLD_FIRST_LATCH_L0_LOCKED`  
+`G07_NVIDIA_WSLG_CRASH=HOLD_FIRST_STACK_NOT_CAPTURED`  
+`G07_EDUCATIONAL_MVP_BASELINE=ACCEPTED`  
+`MAIN_MERGED=false`  
+`CERTIFIED_ESTOP=false`
