@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: c95d4473ffae713d98aca685e4cd677dbfb0209f
+          ref: c4fb9c5fdfcf6f46bd19da2b774c6c8344416116
           path: student
           persist-credentials: false
       - name: Existing Navigation ACK regression and fresh client endpoint behavior
