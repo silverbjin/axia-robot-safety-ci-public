@@ -1,0 +1,47 @@
+{
+  "schema": "axia.g07.actual_moving_rmw_first_pair_derived_v1",
+  "run_id": 44683741133,
+  "job_id": 136113019310,
+  "source_url": "https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44683741133",
+  "student_sha": "148635b40c69a40feb8174306cacba6755c88c92",
+  "status": "HOLD_FIRST_ACTUAL_RMW_RECEIPT_GAP",
+  "first_violation": {
+    "channel": "odom",
+    "previous_rx_monotonic": 205.411456472,
+    "current_rx_monotonic": 205.772940727,
+    "gap_ms": 361.484255,
+    "limit_ms": 300
+  },
+  "cm_observer_pair": {
+    "channel": "pre_guard",
+    "previous_rx_monotonic": 205.413132601,
+    "current_rx_monotonic": 205.775201746,
+    "gap_ms": 362.069145
+  },
+  "rmw": {
+    "status": "RMW_RECEIPT_GAP_CANDIDATE",
+    "source_gap_ms": 48.499371,
+    "received_gap_ms": 356.887562,
+    "callback_gap_ms": 362.069145,
+    "publication_seq_gap": 1,
+    "publisher_stall_proven": false,
+    "rmw_transport_root_proven": false,
+    "observer_scheduling_root_proven": false
+  },
+  "other_synchronized_breaches": [
+    "clock",
+    "guard",
+    "scan",
+    "supervised",
+    "supervisor"
+  ],
+  "first_guard_latch_proven": false,
+  "rmw_metadata_ready": true,
+  "same_source_timestamp_domain": true,
+  "monotonic_and_rmw_epoch_directly_compared": false,
+  "exact_absolute_rmw_timestamps_available_in_public_artifact": false,
+  "root_cause": "UNDETERMINED",
+  "formal_safety_timing_accepted": false,
+  "release": "HOLD",
+  "certified_estop": false
+}
