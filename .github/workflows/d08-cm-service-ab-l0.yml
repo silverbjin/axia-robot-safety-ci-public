@@ -1,0 +1,34 @@
+name: D08 CM Lifecycle service A/B isolated-process L0
+on:
+  push:
+    branches: [feat/d08-cm-service-ab-isolation-20261121]
+    paths:
+      - d08/harness/d08_cm_native_probe_isolated.py
+      - d08/harness/d08_same_world_replan.py
+      - d08/scripts/d08_public_gazebo_l2.py
+      - d08/tests/test_d08_cm_service_process_ab.py
+      - .github/workflows/d08-cm-service-ab-l0.yml
+  pull_request:
+    paths:
+      - d08/harness/d08_cm_native_probe_isolated.py
+      - d08/harness/d08_same_world_replan.py
+      - d08/scripts/d08_public_gazebo_l2.py
+      - d08/tests/test_d08_cm_service_process_ab.py
+      - .github/workflows/d08-cm-service-ab-l0.yml
+permissions:
+  contents: read
+jobs:
+  scoped-ab-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Native CM service query A/B isolated process contract
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest discover -s d08/tests -p test_d08_cm_service_process_ab.py -v
+          python3 -m py_compile d08/harness/d08_same_world_replan.py \
+            d08/scripts/d08_public_gazebo_l2.py
+          echo D08_CM_PROCESS_AB_L0_PASS_NOT_GAZEBO_NOT_WSL2
