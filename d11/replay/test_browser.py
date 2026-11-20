@@ -47,7 +47,8 @@ def main()->int:
             assert page.locator("#aeResult").inner_text()=="WARNING"
             page.click("#showTruth")
             assert "합성 이상" in page.locator("#truthArea").inner_text()
-            assert "FP" in page.locator("#ifConfusion").inner_text()
+            conf=page.locator("#ifConfusion").text_content() or ""
+            assert "FP" in conf, ("D11_IF_CONFUSION_VISIBILITY",repr(conf),page.locator("#metricsArea").get_attribute("hidden"))
             page.screenshot(path=str(opt.output/"d11_desktop_1920x1080.png"))
             dims=page.evaluate("({vw:innerWidth,sw:document.documentElement.scrollWidth,charts:[...document.querySelectorAll('canvas')].map(x=>[x.width,x.height])})")
             assert dims["vw"]==1920 and dims["sw"]<=1921,dims
