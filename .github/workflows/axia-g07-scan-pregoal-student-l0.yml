@@ -4,6 +4,8 @@ on:
     branches: ['fix/g07-wsl2-first-scan300-20261121']
     paths:
       - '.github/workflows/axia-g07-scan-pregoal-student-l0.yml'
+      - '.github/workflows/axia-g07-fv17-owner-evidence-parity-native-l2.yml'
+      - 'tests/test_g07_scan_pregoal_artifact_contract.py'
 permissions:
   contents: read
 jobs:
