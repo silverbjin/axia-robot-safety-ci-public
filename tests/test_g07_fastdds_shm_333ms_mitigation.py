@@ -30,7 +30,7 @@ class OfficialFastDDSShmMitigation(unittest.TestCase):
         self.assertIn("AXIA_G07_FASTDDS_BUILTIN_TRANSPORTS=UDPv4",s)
         # Do NOT enable on global Student/default WSL2 source or unrelated CI.
         self.assertIn("cycle: [1, 2]",s)
-        self.assertIn("4f4d07f6daf878dd8076f89669698f61f52a802b",s)
+        self.assertIn("ref: 59f8ab6acb5107dcdcfd2bf37b7c16b881b7130c",s)
         self.assertNotIn("AXIA_G07_OBSERVER_EXECUTOR_AB: 'single'",s)
         self.assertIn("AXIA_G07_INDEPENDENT_CM_RMW_PAIR",s)
 
