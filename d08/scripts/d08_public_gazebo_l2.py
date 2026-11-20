@@ -573,8 +573,17 @@ def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=Fals
             if owner_gui:
                 # use_simulator=False suppresses official Gazebo GUI too.
                 # One GUI-only client connects to the already-ready server.
+                # WSLg Owner field: Qt GLX -> Mesa Gallium -> WSL D3D12/
+                # NVIDIA native SIGSEGV. Scope software GL to GUI CHILD ONLY.
+                # The Gazebo server keeps its GPU LiDAR/RGBD renderer,
+                # and original Nav2/RViz and all safety TTLs remain unchanged.
+                owner_gui_env=dict(env)
+                owner_gui_env['LIBGL_ALWAYS_SOFTWARE']='1'
+                owner_gui_env.pop('GALLIUM_DRIVER',None)
+                owner_gui_env.pop('MESA_D3D12_DEFAULT_ADAPTER_NAME',None)
+                print('D08_OWNER_GZ_GUI_SOFTWARE_ONLY_SERVER_NAV2_UNCHANGED',flush=True)
                 owner_gz_gui=_start('d08_owner_gazebo_gui',
-                    ['gz','sim','-g','-v4'],env,out,processes)
+                    ['gz','sim','-g','-v4'],owner_gui_env,out,processes)
                 result['owner_gazebo_gui_requested']=True
             result['official_nav2_same_world_requested']=True
             (out/'native_create_ack.txt').write_text(
