@@ -45,5 +45,33 @@ class OwnerWslgRendererIsolation(unittest.TestCase):
         self.assertIn("result['status']='BLOCKED'", src)
         self.assertNotIn("env['LIBGL_ALWAYS_SOFTWARE']='1'\n            owner_gz_gui", src)
 
+    def test_ci_new_gui_branch_arms_all_first_scan_boundary_layers(self):
+        # Actual CI first active Scan >500ms: 0.506651 at cycle_0008.
+        # The branch must not silently disable the PR #188 native/RMW proofs.
+        workflow=(ROOT / ".github/workflows/d08-main-no-goal-real-gazebo-l2.yml").read_text()
+        lines=workflow.splitlines()
+        target="fix/d08-owner-gui-renderer-isolation-20261120"
+        for key in ("AXIA_D08_NATIVE_RX_PROBE:", "AXIA_D08_ROS_ISOLATED_RX_PROBE:",
+                    "AXIA_D08_ROS_TRACE_PREFLIGHT:"):
+            with self.subTest(key=key):
+                row=next(s for s in lines if key in s)
+                self.assertIn(target,row,"missing read-only boundary probe in target branch")
+
+    def test_ci_rmw_trace_start_stop_and_failure_artifact_not_skipped(self):
+        workflow=(ROOT / ".github/workflows/d08-main-no-goal-real-gazebo-l2.yml").read_text()
+        lines=workflow.splitlines()
+        target="fix/d08-owner-gui-renderer-isolation-20261120"
+        stages=(
+            "name: CI-only official Jazzy ROS userspace tracing preflight",
+            "name: Start REAL L2 rcl publish/take trace before Gazebo/ROS bridge",
+            "name: Stop REAL L2 rcl trace even when first Scan gap blocked",
+            "name: Contract check Owner first-gap classifier using same-run real Gazebo RMW evidence",
+        )
+        for stage in stages:
+            with self.subTest(stage=stage):
+                idx=next(i for i,row in enumerate(lines) if stage in row)
+                self.assertIn(target, lines[idx+1],
+                    "new GUI branch must keep original first-gap tracer on failure")
+
 if __name__ == "__main__":
     unittest.main()
