@@ -10,6 +10,7 @@ on:
       - '.github/workflows/axia-g07-fv17-owner-evidence-parity-native-l2.yml'
       - 'd06/diagnostic/g07_cm_stop_pub_boundary.py'
       - 'tests/test_g07_cm_stop_pub_boundary.py'
+      - 'd06/tests/test_d06_g07_cm_stop_pub_guard_real_policy.py'
 permissions:
   contents: read
 concurrency:
@@ -95,6 +96,7 @@ jobs:
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_owner_gui_d3d12_isolation.py' -v
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_owner_sensor_renderer_parity.py' -v
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/tests" -p 'test_g07_cm_stop_pub_boundary.py' -v
+          python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/d06/tests" -p 'test_d06_g07_cm_stop_pub_guard_real_policy.py' -v
           echo 'AXIA_G07_TASK04_PUBLIC_NATIVE_MOVING_L0_PASS=29_PLUS_MVP_STAGE'
       # Check the pinned CI image before installing build-only Gazebo dev packages.
       # OSRF apt currently upgrades libgz-transport13 13.6 -> 13.7 for headers.
