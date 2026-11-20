@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# AXIA G07 Task04 — CI-BLOCKED diagnostic candidate, NOT released for Owner L3.
-# Strict Gazebo 2-cycle #44770998324 requires exact 2/2 admission; NO RELEASE until verified.
-# --ci-check/--run MUST hold until a DIFFERENT exact successful CI L2 SHA.
+# AXIA G07 Task04 — exact-public-L2-verified ONE Owner WSL2 L3 acceptance candidate.
+# Strict Gazebo Moving 2/2 PASS: #44830956042, exact public HEAD a54c40c6...
+# --run RECHECKS run+2 matrix jobs against GitHub API; 403/failed job -> NO GOAL.
 # Simulation-only. Manual controlling TTY consent is performed by the
 # identical Student scenario runner AFTER real Nav2 and safety node readiness.
 # No CI credentials, no second Gazebo server, no global process kill.
@@ -11,7 +11,7 @@ readonly STUDENT_REPO='silverbjin/axia-robot-safety-student'
 readonly STUDENT_SHA='891bf65349cf8dfb203bb8b97ffe0346b3fb8b3f'
 readonly REVIEW_REPO='silverbjin/axia-robot-safety-ci-public'
 readonly REVIEW_SHA='90e809e858e04adee3c72cee36c5dc7dd9f3d632'
-readonly CI_L2_RUN=44770998324
+readonly CI_L2_RUN=44830956042
 MODE="${1:---run}"
 if [[ $# -gt 1 ]];then echo 'AXIA_G07_TASK04_FIRST_FAILURE=BAD_ARGUMENTS' >&2;exit 3;fi
 case "$MODE" in
@@ -21,7 +21,7 @@ esac
 # RELEASE ADMISSION: an educational visual HOLD cannot authorize a new
 # field run. Public CI must have both actual Gazebo Moving Goal matrix jobs
 # SUCCESS on the exact candidate Student source, with formal fallback exiting 3.
-readonly CI_L2_HEAD='44b5b704be2722f54beec9b7436ab8e705ceec3d'
+readonly CI_L2_HEAD='a54c40c630b14bc2b71449f3030c5c194a5f8408'
 ci_l2_release_gate() {
   local run_json jobs_json rc=0
   run_json="$(mktemp)" || return 3
@@ -107,9 +107,9 @@ PY
     # This is never a safety/Goal acceptance check and must never replace
     # native original evidence. At any pre-Goal failure, retain HOLD records.
     if [[ -n "${REVIEW_CACHE:-}" && -r "$REVIEW_CACHE/d06/diagnostic/g07_scan_compact_bundle.py" ]];then
-      python3 "$REVIEW_CACHE/d06/diagnostic/g07_scan_compact_bundle.py" \\
-        --root "$OUT" --student-sha "$STUDENT_SHA" --l2-run "$CI_L2_RUN" \\
-        > "$OUT/scan_compact_diagnostic.log" 2>&1 || \\
+      python3 "$REVIEW_CACHE/d06/diagnostic/g07_scan_compact_bundle.py" \
+        --root "$OUT" --student-sha "$STUDENT_SHA" --l2-run "$CI_L2_RUN" \
+        > "$OUT/scan_compact_diagnostic.log" 2>&1 || \
         echo 'AXIA_G07_SCAN300_COMPACT_RECORDS_HOLD' >&2
     fi
     (
@@ -221,7 +221,7 @@ export AXIA_G07_CI_SIM_GOAL_ALLOWED=0
 export AXIA_P0_SIM_ONLY=1
 export AXIA_P2_G07_PHYSICAL_PREFLIGHT=1
 export AXIA_G07_OWNER_STARTUP_PARITY=1
-# Exact Student 4f4d07f6... uses a CI/Owner-separated single-request
+# Exact Student 891bf653... uses a CI/Owner-separated single-request
 # navigation Lifecycle SHUTDOWN on the DDS participant already proven by
 # read-only /get_parameters. Owner never spoofs GITHUB_ACTIONS or CI Goal.
 unset AXIA_G07_NAV_WARM_PARTICIPANT_CI_AB

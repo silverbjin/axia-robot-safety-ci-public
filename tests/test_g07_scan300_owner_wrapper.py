@@ -7,11 +7,11 @@ ROOT=Path(__file__).resolve().parents[1]
 WRAPPER=ROOT/'scripts/axia_g07_stabilization_wsl2_final_once.sh'
 
 class StrictOwnerScanWrapper(unittest.TestCase):
-    def test_candidate_pin_matches_failed_new_source_and_strict_l2(self):
+    def test_release_ready_pin_matches_two_successful_strict_l2(self):
         s=WRAPPER.read_text()
         self.assertIn("readonly STUDENT_SHA='891bf65349cf8dfb203bb8b97ffe0346b3fb8b3f'",s)
-        self.assertIn('readonly CI_L2_RUN=44770998324',s)
-        self.assertIn("readonly CI_L2_HEAD='44b5b704be2722f54beec9b7436ab8e705ceec3d'",s)
+        self.assertIn('readonly CI_L2_RUN=44830956042',s)
+        self.assertIn("readonly CI_L2_HEAD='a54c40c630b14bc2b71449f3030c5c194a5f8408'",s)
         self.assertIn('export AXIA_G07_SCAN_PREFLIGHT_STRICT=1',s)
         self.assertIn('AXIA_G07_CI_SIM_GOAL_ALLOWED=0',s)
         self.assertIn('OWNER_CONTROLLING_TTY_REQUIRED',s)

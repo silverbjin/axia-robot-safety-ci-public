@@ -9,8 +9,8 @@ import unittest
 ROOT=Path(__file__).resolve().parents[1]
 SCRIPT=ROOT/"scripts/axia_g07_stabilization_wsl2_final_once.sh"
 STUDENT="891bf65349cf8dfb203bb8b97ffe0346b3fb8b3f"
-HEAD="44b5b704be2722f54beec9b7436ab8e705ceec3d"
-RUN=44770998324
+HEAD="a54c40c630b14bc2b71449f3030c5c194a5f8408"
+RUN=44830956042
 NAME="AXIA G07 FV17 Independent 2-cycle Real Moving Goal Guard TTL L2"
 
 
@@ -118,8 +118,8 @@ fi
         self.assertIn("AXIA_G07_NAV_WARM_PARTICIPANT_CI_AB: '1'",flow)
 
     def test_actual_two_cycle_one_failed_response_is_denied_offline(self):
-        # Public native L2 #44770998324: cycle1 Navigation ACK timeout,
-        # cycle2 success. Reproduce *that* API payload without unreliable
+        # Synthetic regression for historic missing Navigation ACK boundary;
+        # reject one failed job despite the pinned real run being 2/2 PASS.
         # unauthenticated GitHub API network access in the CI runner.
         run,jobs=inputs(conclusion="failure",second="success")
         jobs["jobs"][0]["conclusion"]="failure"
