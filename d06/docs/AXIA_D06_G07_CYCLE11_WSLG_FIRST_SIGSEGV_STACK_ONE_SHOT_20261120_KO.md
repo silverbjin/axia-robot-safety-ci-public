@@ -45,3 +45,20 @@ D06_GAZEBO_LIVE_RELEASE=HOLD
 AXIA_MVP_DEMO_ACCEPTED=HOLD
 CERTIFIED_ESTOP=false
 MAIN_MERGED=false
+
+## 5. 최종 사전 검수: GUI 충돌 오인 방지 + 스택 증거 원샷 통합
+
+- Gazebo 공식 headless server 명령은 `gz sim -s`입니다(https://gazebosim.org/docs/harmonic/getstarted/). 기존 최초 크래시가 server -11이므로, `gz` CLI의 SIGSEGV만으로 이를 server core로 승격하는 것은 부정확합니다.
+- **수정 1, 서버 전용 원본 식별**: `d06/tools/d06_wslg_latest_gz_sigsegv_core.py`의 `server_only=True`는 실제 `gz-sim-server` executable 또는 `gz` 실행의 `-s`/server-only 명령행을 요구합니다. `gz sim -g` GUI와 불명확한 `gz` wrapper 코어는 제외합니다. C11 스크립트는 오직 `--server-only` 결과만 재사용/추가 수집합니다.
+- **RED1** [Run #44645300077](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44645300077): `TypeError: latest_gazebo_sigsegv_pid() got an unexpected keyword argument 'server_only'` 및 WSLg 단일 스크립트의 `--server-only` 부재. **GREEN1** [Run #44645457786](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44645457786) 142/142 L0 PASS, SHA `0846c939336eb812345f7d1018ddc91add17139d`.
+- **수정 2, 하나의 TAR로 최초 스택 회수**: 원래 existing-core triage는 사용자의 `~/axia_d06_g07_core_triage/`에 별도 GDB 텍스트 TAR를 만들고, parent one-shot은 그 경로만 기록했습니다. 이는 상위 파일 하나를 전달하면 실제 첫 스택이 빠지는 증거 유실 위험입니다. 검증된 별도 triage TAR의 **SHA256을 확인한 후** `gdb_backtrace.log` 텍스트 최대 160KiB만 추출해 상위 `trace-*.tar.gz`에 함께 보존합니다. 전체 메모리 코어, `before_cores.json`, `after_cores.json`은 포함하지 않습니다.
+- **RED2** [Run #44645630350](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44645630350): 단일 아카이브의 `gdb_backtrace.log` 및 nested SHA 검증 경로 부재. **GREEN2** [Run #44645744583](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44645744583) **143/143 L0 PASS**, Runner Canary [#44645744464](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44645744464) SUCCESS. tested code SHA `d603a8520906d2b52f3bfaf0d131e2fd0d312157`.
+- 검토 파일 3개: `d06/tests/test_d06_c11_wslg_core_once.py`, `d06/tools/d06_wslg_latest_gz_sigsegv_core.py`, `d06/scripts/axia_d06_g07_wslg_sigsegv_capture_once.sh`. 테스트의 합격 범위는 fixture·구문·자체검사 **L0만**입니다.
+- Ubuntu Noble `coredumpctl`은 `--json=short` 조회 및 코어 `dump`를 지원합니다(https://manpages.ubuntu.com/manpages/noble/man1/coredumpctl.1.html). 다만 대상 WSL2가 실제 `systemd-coredump`로 코어를 남기는지, 특정 서버 -11 첫 프레임을 수집할 수 있는지는 **아직 대상 환경에서 측정하지 않았습니다**.
+- 공개 CI 실제 L2 기준선은 다른 코드 SHA `26a3a1b299e404d6e0fe9e69312578db356081ab`, Linux Xvfb/CycloneDDS [#44568745545](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44568745545) PASS 그대로 보존. 이번 C11 검수로 Gazebo live L2를 다시 실행했다고 주장하지 않습니다.
+
+### 현장 코어 진단 Gate
+
+코어가 이미 있으면 GDB만 실행하고 Gazebo는 **재실행하지 않습니다**. 코어가 없고 WSLg·GDB·coredumpctl·systemd handler 조건이 충족될 때만 NVIDIA NO_GOAL 정확히 1회 진단합니다. 진행 결과는 하나의 작은 TAR + SHA256로 전달하며, `D06_WSLG_CORE_STACK_CAPTURED_NOT_RESOLVED`는 Stack 확보이지 문제 해결이 아닙니다. 코어/스택 비포착 시 `HOLD`, 동일 오류 현장 재시도 금지.
+
+`D06_GAZEBO_LIVE_RELEASE=HOLD`, `AXIA_MVP_DEMO_ACCEPTED=HOLD`, `CERTIFIED_ESTOP=false`, `WSLG_CORE_STACK=NOT_CAPTURED`, `OWNER_L3=NOT_RUN`.
