@@ -23,6 +23,34 @@ class C11CoreOnce(unittest.TestCase):
         self.assertEqual(f.latest_gazebo_sigsegv_pid("\n".join(map(json.dumps,entries))),400)
         self.assertIsNone(f.latest_gazebo_sigsegv_pid("corrupted"))
         self.assertIsNone(f.latest_gazebo_sigsegv_pid(json.dumps([entries[1],entries[2]])))
+    def test_server_only_never_selects_gui_or_ambiguous_gz_wrapper(self):
+        f=load()
+        entries=[
+          {"COREDUMP_PID":"100","COREDUMP_EXE":"/usr/libexec/gz-sim-server",
+           "COREDUMP_SIGNAL":"11","COREDUMP_TIMESTAMP":"1100"},
+          {"COREDUMP_PID":"200","COREDUMP_EXE":"/usr/bin/gz",
+           "COREDUMP_CMDLINE":"gz sim -g","COREDUMP_SIGNAL":"11",
+           "COREDUMP_TIMESTAMP":"1300"},
+          {"COREDUMP_PID":"300","COREDUMP_EXE":"/usr/bin/gz",
+           "COREDUMP_SIGNAL":"11","COREDUMP_TIMESTAMP":"1400"},
+          {"COREDUMP_PID":"400","COREDUMP_EXE":"/usr/bin/gz-sim-gui-client",
+           "COREDUMP_SIGNAL":"11","COREDUMP_TIMESTAMP":"1450"},
+        ]
+        self.assertEqual(f.latest_gazebo_sigsegv_pid(
+            json.dumps(entries),server_only=True),100)
+        entries.append({"COREDUMP_PID":"500","COREDUMP_EXE":"/usr/bin/gz",
+          "COREDUMP_CMDLINE":"gz sim -r -s /tmp/nav2.sdf",
+          "COREDUMP_SIGNAL":"11","COREDUMP_TIMESTAMP":"1600"})
+        self.assertEqual(f.latest_gazebo_sigsegv_pid(
+            json.dumps(entries),server_only=True),500)
+        self.assertIsNone(f.latest_gazebo_sigsegv_pid(
+            json.dumps(entries[1:4]),server_only=True))
+
+    def test_one_shot_requests_only_server_core(self):
+        src=SCRIPT.read_text()
+        self.assertIn('python3 "$TMP/finder" --server-only --json-file "$file"',src)
+        self.assertIn("D06_WSLG_CORE_ONCE_SERVER_CORE_ONLY",src)
+
     def test_wslg_preflight_one_nvidia_no_goal_only_and_core_private(self):
         src=SCRIPT.read_text()
         self.assertIn("D06_WSLG_CORE_ONCE_L0_PASS_NO_ROS_NO_GAZEBO",src)
