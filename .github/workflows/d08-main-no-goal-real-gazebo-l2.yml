@@ -881,6 +881,21 @@ jobs:
             ros-jazzy-xacro ros-jazzy-nav2-bringup ros-jazzy-navigation2 \
             ros-jazzy-nav2-collision-monitor \
             libgl1-mesa-dri libglx-mesa0 xvfb xauth
+          # Field #44831417211: first failure was a map_server
+          # change_state RESPONSE TIMEOUT while /scan/odom/clock were healthy.
+          # FastDDS discovery reply race is reported upstream (#842).
+          # Controlled scope: only this live NO_GOAL comparison runs Cyclone;
+          # retain original FastDDS proof and A/B baseline unchanged.
+          if [[ "${GITHUB_HEAD_REF:-}" == "fix/d08-owner-full-parity-b-wsl2-once-20261121" ]]; then
+            apt-get install -y -qq --no-install-recommends \
+              ros-jazzy-rmw-cyclonedds-cpp
+            export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+            /usr/bin/python3 - <<'PY'
+import rclpy
+assert rclpy.get_rmw_implementation_identifier()=='rmw_cyclonedds_cpp'
+print('D08_CYCLONE_RMW_OWNER_ISOLATED_COMPARISON_L2_CANDIDATE')
+PY
+          fi
           mkdir -p /tmp/axia-d08-live-assets
           curl --fail --location --retry 3 --connect-timeout 15 --max-time 100 \
             'https://fuel.gazebosim.org/1.0/Mingfei/models/actor/tip/files/meshes/walk.dae' \
