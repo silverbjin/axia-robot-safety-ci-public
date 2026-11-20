@@ -13,6 +13,10 @@ SRC=ROOT/"d06/scripts/axia_d06_g07_wslg_sigsegv_capture_once.sh"
 class C13PackagedCliReadiness(unittest.TestCase):
     def test_real_container_invokes_exact_shipped_owner_script(self):
         s=WF.read_text()
+        self.assertIn('actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683',s)
+        self.assertIn('test "$(git rev-parse HEAD)" = "$GITHUB_SHA"',s)
+        self.assertIn('test -r "$GITHUB_WORKSPACE/d06/scripts/axia_d06_g07_wslg_sigsegv_capture_once.sh"',s)
+        self.assertLess(s.index('actions/checkout@'),s.index('docker run --rm'))
         self.assertIn('type=bind,source=$GITHUB_WORKSPACE,target=/workspace,readonly',s)
         self.assertIn('bash -n /workspace/d06/scripts/axia_d06_g07_wslg_sigsegv_capture_once.sh',s)
         self.assertIn('bash /workspace/d06/scripts/axia_d06_g07_wslg_sigsegv_capture_once.sh --check-tools',s)
