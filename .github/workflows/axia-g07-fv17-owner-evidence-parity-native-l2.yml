@@ -90,7 +90,7 @@ jobs:
             echo 'G07_FASTDDS_UDP_ONLY_XML_OVERRIDE_UNVERIFIED_HOLD' >&2; exit 3;
           }
           echo 'AXIA_G07_FASTDDS_BUILTIN_TRANSPORTS=UDPv4 SHM_UNSELECTED_CI_AB_NO_ROOT_PROOF'
-          dpkg-query -W -f='\${Package}=\${Version}\n' 'libfastrtps*' 2>/dev/null || true
+          dpkg-query -W -f='${Package}=${Version}\n' 'libfastrtps*' 2>/dev/null || true
 
           cd student/block_B/day07/h01_runtime
           test "$(git -C "$GITHUB_WORKSPACE/review" rev-parse HEAD)" = 'd60beed5e18d8104b254f17476d47f1d1917a7eb'
