@@ -8,7 +8,7 @@
 set -Eeuo pipefail
 umask 077
 readonly STUDENT_REPO='silverbjin/axia-robot-safety-student'
-readonly STUDENT_SHA='589ebaea166130c1fba233c8f3af02352fa0211c'
+readonly STUDENT_SHA='891bf65349cf8dfb203bb8b97ffe0346b3fb8b3f'
 readonly REVIEW_REPO='silverbjin/axia-robot-safety-ci-public'
 readonly REVIEW_SHA='90e809e858e04adee3c72cee36c5dc7dd9f3d632'
 readonly CI_L2_RUN=44770998324

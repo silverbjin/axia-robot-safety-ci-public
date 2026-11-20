@@ -8,7 +8,7 @@ import unittest
 
 ROOT=Path(__file__).resolve().parents[1]
 SCRIPT=ROOT/"scripts/axia_g07_stabilization_wsl2_final_once.sh"
-STUDENT="589ebaea166130c1fba233c8f3af02352fa0211c"
+STUDENT="891bf65349cf8dfb203bb8b97ffe0346b3fb8b3f"
 HEAD="44b5b704be2722f54beec9b7436ab8e705ceec3d"
 RUN=44770998324
 NAME="AXIA G07 FV17 Independent 2-cycle Real Moving Goal Guard TTL L2"

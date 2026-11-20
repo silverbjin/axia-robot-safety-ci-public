@@ -74,7 +74,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 3cc4b8e4da5c7ca40d87cd70380306338805972d
+          ref: 891bf65349cf8dfb203bb8b97ffe0346b3fb8b3f
           path: student
           persist-credentials: false
       # Keep the historic reviewer for older unrelated imports; the current
@@ -89,7 +89,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C student rev-parse HEAD)" = '3cc4b8e4da5c7ca40d87cd70380306338805972d'
+          test "$(git -C student rev-parse HEAD)" = '891bf65349cf8dfb203bb8b97ffe0346b3fb8b3f'
           test "$(git -C ci rev-parse HEAD)" = "$GITHUB_SHA"
           test "$FASTDDS_BUILTIN_TRANSPORTS" = UDPv4
           [[ -z "${FASTRTPS_DEFAULT_PROFILES_FILE:-}" && -z "${FASTDDS_DEFAULT_PROFILES_FILE:-}" ]] || {
@@ -283,7 +283,7 @@ jobs:
           import json,sys
           result=json.load(open(sys.argv[1]))
           assert result.get("goal_sent") is True,result
-          assert result.get("source_sha")=="3cc4b8e4da5c7ca40d87cd70380306338805972d",result
+          assert result.get("source_sha")=="891bf65349cf8dfb203bb8b97ffe0346b3fb8b3f",result
           print('AXIA_G07_REAL_OWNER_AMCL_PRIMARY_PATH_PASS actual_goal_sent=true')
           PY_REAL_TF
           # Real Guard 20Hz timing facts must be present in the actual
@@ -335,7 +335,7 @@ jobs:
                   --motion "$GITHUB_WORKSPACE/native/g07_ci_moving/ci_moving_goal_result.json" \
                   --shutdown "$GITHUB_WORKSPACE/native/g07_ordered_shutdown.json" \
                   --gui-windows 2 \
-                  --source-sha '3cc4b8e4da5c7ca40d87cd70380306338805972d' \
+                  --source-sha '891bf65349cf8dfb203bb8b97ffe0346b3fb8b3f' \
                   --output "$GITHUB_WORKSPACE/public_evidence/task04_mvp_visual_l2_verdict.json"; then
               sha256sum "$GITHUB_WORKSPACE/public_evidence/task04_mvp_visual_l2_verdict.json" \
                 > "$GITHUB_WORKSPACE/public_evidence/task04_mvp_visual_l2_verdict.sha256"
@@ -357,7 +357,7 @@ jobs:
           fi
           verify_real_goal_and_guard_evidence || exit 3
           windows_count=$((rviz_seen+gazebo_seen))
-          python3 tools/p2_g07_task04_moving_review.py             --motion-root "$GITHUB_WORKSPACE/native"             --witness "$GITHUB_WORKSPACE/native/s02_ecm_witness.json"             --source-sha '3cc4b8e4da5c7ca40d87cd70380306338805972d'             --gui-windows "$windows_count"             --output "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"
+          python3 tools/p2_g07_task04_moving_review.py             --motion-root "$GITHUB_WORKSPACE/native"             --witness "$GITHUB_WORKSPACE/native/s02_ecm_witness.json"             --source-sha '891bf65349cf8dfb203bb8b97ffe0346b3fb8b3f'             --gui-windows "$windows_count"             --output "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"
           sha256sum "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"             > "$GITHUB_WORKSPACE/public_evidence/task04_moving_verdict.sha256"
           echo 'AXIA_G07_TASK04_NATIVE_MOVING_GUI_XVFB_L2_PASS_OWNER_WSL2_NOT_RUN'
           echo 'AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false'
@@ -429,7 +429,7 @@ jobs:
           except (OSError,ValueError):
               pass
           if not isinstance(raw,dict):raw={}
-          allowed=("first_failure","first_scan_timing_boundary","topic_results",
+          allowed=("first_failure","first_scan_timing_boundary","first_delivery_violation","topic_results",
                    "local_window_rtf_estimate","clock_max_wall_gap_ms",
                    "odom_max_wall_gap_ms","scan_generation_vs_bridge_root_cause",
                    "goal_sent","certified_estop")
@@ -444,7 +444,7 @@ jobs:
           dest.write_text(serialized)
           print("AXIA_G07_SCAN_PREFLIGHT_FIRST_BOUNDARY_RECORDED "+
                 json.dumps({k:d.get(k) for k in ("status","first_failure",
-                "first_scan_timing_boundary","local_window_rtf_estimate")},
+                "first_scan_timing_boundary","first_delivery_violation","local_window_rtf_estimate")},
                 sort_keys=True))
           PY_FIRST_SCAN
           sha256sum "$GITHUB_WORKSPACE/public_evidence/first_scan_pregoal_boundary.json" > "$GITHUB_WORKSPACE/public_evidence/first_scan_pregoal_boundary.sha256"

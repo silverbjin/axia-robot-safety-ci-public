@@ -9,7 +9,7 @@ WRAPPER=ROOT/'scripts/axia_g07_stabilization_wsl2_final_once.sh'
 class StrictOwnerScanWrapper(unittest.TestCase):
     def test_candidate_pin_matches_failed_new_source_and_strict_l2(self):
         s=WRAPPER.read_text()
-        self.assertIn("readonly STUDENT_SHA='589ebaea166130c1fba233c8f3af02352fa0211c'",s)
+        self.assertIn("readonly STUDENT_SHA='891bf65349cf8dfb203bb8b97ffe0346b3fb8b3f'",s)
         self.assertIn('readonly CI_L2_RUN=44770998324',s)
         self.assertIn("readonly CI_L2_HEAD='44b5b704be2722f54beec9b7436ab8e705ceec3d'",s)
         self.assertIn('export AXIA_G07_SCAN_PREFLIGHT_STRICT=1',s)
