@@ -59,6 +59,15 @@ class C12FieldDependencyRegression(unittest.TestCase):
         self.assertEqual(r.returncode,3)
         self.assertIn("D06_WSLG_CORE_ONCE_HOLD_MISSING_TOOL=gdb",r.stdout+r.stderr)
 
+    def test_real_noble_package_manifest_must_not_be_empty(self):
+        workflow=(ROOT/".github/workflows/axia-d06-c12-coredump-cli-compat-ubuntu2404.yml").read_text()
+        self.assertIn('docker run --rm ubuntu:24.04',workflow)
+        self.assertIn('apt-get install -y -qq --no-install-recommends systemd-coredump',workflow)
+        self.assertIn('dpkg-query -W systemd-coredump',workflow)
+        self.assertIn('grep -Eq "^systemd-coredump[[:space:]]+[^[:space:]]+"',workflow)
+        self.assertIn('dpkg -s systemd-coredump | grep -Fx "Status: install ok installed"',workflow)
+        self.assertNotIn('PACKAGE_VERSION=${Version}',workflow)
+
     def test_static_selfcheck_does_not_claim_runtime_dependency_pass(self):
         r=subprocess.run(["/bin/bash",str(SCRIPT),"--self-check"],
                          capture_output=True,text=True,timeout=6)
