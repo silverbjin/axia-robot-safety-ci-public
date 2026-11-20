@@ -11,6 +11,7 @@ TRIAGE=ROOT/"d06/scripts/axia_d06_g07_wslg_existing_core_once.sh"
 class C14CoreToEvidence(unittest.TestCase):
     def test_ci_generates_real_crash_core_and_runs_actual_triage(self):
         s=WF.read_text()
+        self.assertIn('gcc libc6-dev',s)
         self.assertIn('gcc -g -O0 -o /tmp/axia-c14-synthetic-sigsegv',s)
         self.assertIn('raise(SIGSEGV)',s)
         self.assertIn('generate-core-file /tmp/axia-c14-synthetic.core',s)
