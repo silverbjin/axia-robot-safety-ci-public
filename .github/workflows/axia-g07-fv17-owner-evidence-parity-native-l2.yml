@@ -182,8 +182,8 @@ jobs:
           echo 'AXIA_G07_NATIVE_L2_GUARD_SUPERVISOR_ACTUAL_CHILD_EXIT0_PASS'
           # This is a REAL-GAZEBO /tf fallback regression, not merely a
           # successful run which happened to receive a late /amcl_pose.
-          grep -Fq 'G07_AMCL_ACTUAL_MAP_POSE_TRANSIENT_LOCAL_VERIFIED_BEFORE_GOAL' "$GITHUB_WORKSPACE/native/g07_ci_moving.log"
-          python3 - "$GITHUB_WORKSPACE/native/g07_ci_moving/ci_moving_goal_result.json" <<'PY_REAL_TF'
+          grep -Fq 'G07_AMCL_ACTUAL_MAP_POSE_TRANSIENT_LOCAL_VERIFIED_BEFORE_GOAL' "$GITHUB_WORKSPACE/native/g07_ci_moving.log" || return 3
+          python3 - "$GITHUB_WORKSPACE/native/g07_ci_moving/ci_moving_goal_result.json" <<'PY_REAL_TF' || return 3
           import json,sys
           result=json.load(open(sys.argv[1]))
           assert result.get("goal_sent") is True,result
@@ -193,7 +193,7 @@ jobs:
           # Real Guard 20Hz timing facts must be present in the actual
           # native L2 evidence; an unrelated CI-only stub cannot supply them.
           export PYTHONPATH="$GITHUB_WORKSPACE/student/block_B/day07/h01_runtime/tools:$GITHUB_WORKSPACE/ci:$GITHUB_WORKSPACE/review${PYTHONPATH:+:$PYTHONPATH}"
-          python3 - "$GITHUB_WORKSPACE/native" <<'PY_GUARD_OWNER_CONTRACT'
+          python3 - "$GITHUB_WORKSPACE/native" <<'PY_GUARD_OWNER_CONTRACT' || return 3
           import json,sys
           from pathlib import Path
           from d06.diagnostic.g07_task02_strict_gate import assess
