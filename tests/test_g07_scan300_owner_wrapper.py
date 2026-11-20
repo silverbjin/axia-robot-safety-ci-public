@@ -31,6 +31,18 @@ class StrictOwnerScanWrapper(unittest.TestCase):
         self.assertIn('SHA256SUMS',s)
         self.assertNotIn('pkill -f',s)
 
+    def test_strict_two_cycle_success_pin_and_single_shell_line_continuations(self):
+        s=WRAPPER.read_text()
+        self.assertIn('readonly CI_L2_RUN=44830956042',s)
+        self.assertIn("readonly CI_L2_HEAD='a54c40c630b14bc2b71449f3030c5c194a5f8408'",s)
+        self.assertIn("readonly STUDENT_SHA='891bf65349cf8dfb203bb8b97ffe0346b3fb8b3f'",s)
+        self.assertNotIn('CI-BLOCKED diagnostic candidate',s)
+        for no,line in enumerate(s.splitlines(),1):
+            self.assertFalse(line.endswith(chr(92)*2),
+                             'two literal trailing backslashes break command at line '+str(no))
+        self.assertIn('AXIA_G07_TASK04_DIAGNOSTIC_BUNDLE_WRITTEN',s)
+        self.assertIn('PASS_TWO_STRICT_REAL_GAZEBO_GOALS_OWNER_WSL2_NOT_RUN',s)
+
     def test_bootstrap_no_ros_no_goal(self):
         subprocess.run(['bash','-n',str(WRAPPER)],check=True)
         p=subprocess.run(['bash',str(WRAPPER),'--self-check'],
