@@ -256,3 +256,28 @@
 `P1_REAL_MOVING_GAZEBO_L2=NOT_YET_VERIFIED`  
 `P1_SERVER_CALLBACK_ROOT_CAUSE=UNDETERMINED`  
 `STUDENT_MAIN_MERGED=false`
+
+
+## 11. RMW 최초 source→receive→callback 진단 재개 (2026-11-20, CI-first)
+
+### 재개 직전의 실제 최초 실패
+
+- Student Draft PR #71의 종료 후보 SHA `0f6e6bd47e03f01cb55e43e19a20ea31f65feb99`로 실제 Moving Goal [공개 L2 #44676844639](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44676844639)를 수행. Cycle 1 전체 native Moving GUI PASS, Cycle 2는 **최초 `/odom` callback gap 342.757876ms > 300ms**로 L2 FAIL. 같은 실제 Observer 프로세스의 7개 스트림 마지막 callback 재개 시각은 `211.315680928–211.317267471` (폭 **1.586543ms**)로 집중됨. 한 관측자의 광범위한 callback 처리 지연 후보이지 CM 퍼블리셔·DDS·Gazebo host 지연 중 어느 쪽도 **입증하지 못함**.
+- 실패 원본의 정확한 7개 첫 수신 쌍을 공개 허용 numeric fixture `tests/fixtures/g07_44676844639_cycle2_first_7_stream_pairs.json`에 고정. RED [#44677423036](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44677423036), GREEN [#44677529230](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44677529230), **230 PASS / 3 SKIP**. Guard의 실제 최초 `latched`를 이 원본에서 직접 발견한 것은 아님.
+
+### RMW MessageInfo source, receipt, Observer callback 원인 분리
+
+- 기존 Student `p2_l3_live_session.py::Observer`가 실제 두 토픽 `/cmd_vel_pre_guard`, `/cmd_vel_supervised`에 Jazzy rclpy `MessageInfo`를 이미 요청하고, `p2_g07_ci_moving_goal_oracle.py::normalize_cm_rmw_info`에서 발행시각·수신시각·publication seq를 저장하는 것을 확인. 새 ROS 노드·구독·QoS 변경 없이 **기존 경로 재사용**.
+- RED commit `8255f6bd26cb9a97afc93da522844fc91345ef29`, [공개 L0 #44677723671](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44677723671): 테스트 `tests/test_g07_rmw_first_gap_pair.py`의 신규 함수 부재. GREEN commit `1c30d09d183ef1ea6167ad335eba83589b8bceb9`, [공개 #44679712191](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44679712191): **236 PASS/3 SKIP**.
+- `d06/diagnostic/g07_first_actual_delivery_gap.py::classify_rmw_first_pair`는 **정확한 최초 Observer callback 쌍**의 동일 CM 메시지 `rmw_source_ns`, `rmw_received_ns`와 `publication_sequence_number`가 둘 다 있고 sequence가 **연속 1 증가**할 때만 source/received/callback interval을 비교. ROS/system nano timestamps의 절대값과 host-monotonic 초의 절대값을 서로 뺄 수 없으므로 각각 내부 간격만 비교.
+- status `RMW_SOURCE_PERIOD_GAP_CANDIDATE`, `RMW_RECEIPT_GAP_CANDIDATE`, `OBSERVER_CALLBACK_GAP_CANDIDATE`, `RMW_SEQUENCE_DISCONTINUITY_HOLD`, `RMW_TIMEBASE_REGRESSION_HOLD`, `RMW_FIRST_PAIR_UNVERIFIED`이며 **모두 root_cause_proven=false, release=HOLD, TTL 변경 없음**. sequence가 점프하면 메시지 유실·선별 수신을 구분하지 못하므로 원인을 강제 판정하지 않음.
+- 준비 조건 자체의 확인도 필요하므로 `tests/test_g07_rmw_readiness.py` 신규 RED [#44680248970](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44680248970), `summarize_rmw_readiness` GREEN commit `94c9a611fb3ffe45a9a230e699b201ddfa2df7bd` [#44680354689](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44680354689) **240 PASS, 3 SKIP**. 계측은 두 기존 토픽에서 MessageInfo count·valid 연속 seq pair count·누락 카운트만 공개, 원본 메시지·GID는 공개하지 않음. Metadata READY 판정도 안전 PASS 아님.
+- [실제 Moving L2 #44679704946](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44679704946)의 **cycle2**는 native Goal·GUI·엄격 TTL PASS, Guard 내부 CM age 최대 **18.209976ms**, 첫 Guard latch 및 공통 수신 breach **재현되지 않음**. 이때 `cm_rmw_first_pair=RMW_FIRST_PAIR_UNVERIFIED`는 **이번 세션에서 결함 발생 안 함**을 뜻하고 영구 해결이나 메타데이터 결함을 증명하지 않음. Cycle1은 작업 중 점검 시 **아직 진행 중**이므로 run 전체 PASS로 표기 금지.
+- 준비 상태 보고기 추가 버전 [실제 L2 #44680346981](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44680346981)은 문서 작성 시 **pending**; 실제 CI 결과 확인 전 `L2=NOT_VERIFIED`.
+- 현재 첫 안전/센서 수신 위반은 실증되었지만 **CM 원본 source timestamp와 Observer callback 지연이 하나의 실패 세션에서 함께 분류된 증거가 없어 근본 원인 미확정**. 퍼블리셔 재설계, Guard 래치 완화, Scan300/CM120/Guard150/Clock300/Odom300 변경, 임의 멀티스레드 Executor 교체 금지.
+
+### 현재 작업 기준 및 출고 범위
+
+- Public Branch `docs/g07-185-163-157-186-stabilization-recheck-20261120` / Draft PR #199, Student Draft PR #71 SHA `0f6e6bd...`. 공개 `main` 및 학생용 `main` 병합 **없음**.
+- 유효 범위는 신규 L0 진단 함수 및 **이미 성공이 확인된** 별도 실제 L2 cycle의 해당 성공 조건뿐. 동일 원본에서 재발했을 때만 첫 RMW pair의 분류를 증거로 사용. 실제 GPU WSLg #186, Nav/Loc 서버 최초 Callback #185/#163은 독립 HOLD 유지.
+- `AXIA_G07_EDUCATIONAL_BASELINE=ACCEPTED`; `G07_RMW_FIRST_GAP_DIAGNOSTIC_L0=PASS`; `G07_RMW_ROOT_CAUSE=UNDETERMINED`; `G07_NEW_OWNER_WSL2=NOT_RUN`; `CERTIFIED_ESTOP=false`; `MAIN_MERGED=false`.
