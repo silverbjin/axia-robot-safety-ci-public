@@ -91,6 +91,16 @@ class D05OwnerParity(unittest.TestCase):
         self.assertEqual(pass_result["status"],"D08_PUBLIC_OWNER_PARITY_COVERAGE_L2_PASS_NOT_WSL2")
         self.assertFalse(pass_result["l3_tested"])
 
+    def test_owner_wsl2_pins_real_d05_l2_and_prefers_complete_original_zip(self):
+        wrapper=(ROOT/"d08/scripts/d08_owner_take_dispatch_wsl2_one_shot.sh").read_text()
+        self.assertIn("c3373bbd66c67cc5d59e99a18127ddc6c58a0d3f",wrapper)
+        self.assertNotIn('RUNTIME_SHA="d6a9c490ffb1430cd49443a2648577459fa667bf"',wrapper)
+        self.assertIn("D08_OWNER_COMPACT_EVIDENCE_PRIMARY",wrapper)
+        self.assertIn("D08_OWNER_UPLOAD_ONLY_THIS_ZIP=",wrapper)
+        self.assertIn("D08_LATEST_FIRST_BOUNDARY.zip",wrapper)
+        self.assertIn("sha256sum -c",wrapper)
+        self.assertIn("8388608",wrapper)
+
     def test_yolo_d05_real_job_is_required_on_this_branch(self):
         workflow=(ROOT/".github/workflows/d08-main-no-goal-real-gazebo-l2.yml").read_text()
         target="fix/d08-owner-d05-ci-wsl2-parity-20261120"
