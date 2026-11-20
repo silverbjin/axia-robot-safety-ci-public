@@ -1,0 +1,31 @@
+name: D08 Latest Owner Compact Evidence L0
+on:
+  push:
+    branches:
+      - fix/d08-latest-owner-diagnostics-only-20261120
+    paths:
+      - d08/scripts/d08_latest_owner_evidence_once.py
+      - d08/tests/test_d08_latest_owner_evidence_once.py
+      - .github/workflows/d08-latest-owner-compact-l0.yml
+  pull_request:
+    paths:
+      - d08/scripts/d08_latest_owner_evidence_once.py
+      - d08/tests/test_d08_latest_owner_evidence_once.py
+      - .github/workflows/d08-latest-owner-compact-l0.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  latest-owner-log-extraction-l0:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify extractor syntax and synthetic newest-run evidence contracts
+        run: |
+          set -Eeuo pipefail
+          python3 -m py_compile d08/scripts/d08_latest_owner_evidence_once.py
+          python3 -m unittest discover -v -s d08/tests -p 'test_d08_latest_owner_evidence_once.py'
+          echo D08_LATEST_OWNER_COMPACT_PUBLIC_CI_L0_PASS_NO_ROS_GAZEBO_OR_WSL2
