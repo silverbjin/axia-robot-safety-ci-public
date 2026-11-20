@@ -90,5 +90,19 @@ class TakeDispatchRegression(unittest.TestCase):
         self.assertIn("first_scan_timing_boundary",src)
         self.assertNotIn("500ms limit disabled",src)
 
+    def test_single_wsl2_handover_pins_l2_and_compacts_latest_failure(self):
+        wrapper=(ROOT/"d08/scripts/d08_owner_take_dispatch_wsl2_one_shot.sh")
+        self.assertTrue(wrapper.exists(),"WSL2 GitHub one-shot missing")
+        src=wrapper.read_text()
+        self.assertIn("0998978174f9b40ad83bc2fe7907d5dab62115bc",src)
+        self.assertIn("1a17ddaab0eac123188e29cf031c819187c4f82d",src)
+        self.assertIn("142c4dcc820a04accdf869b4cc903f62c7977b2c",src)
+        self.assertIn("export AXIA_D08_TAKE_DISPATCH_PROBE=1",src)
+        self.assertIn('D08_OWNER_UPLOAD_ONLY_THIS_ZIP=',src)
+        self.assertIn('--max-mib 8',src)
+        self.assertIn('bash "$BASH_SRC" --doctor',src)
+        self.assertIn('bash "$BASH_SRC" --run',src)
+        self.assertNotIn("AXIA_MVP_DEMO_ACCEPTED=PASS",src)
+
 if __name__=="__main__":
     unittest.main()
