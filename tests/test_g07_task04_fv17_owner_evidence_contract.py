@@ -140,4 +140,17 @@ class OwnerScopedDemoWhenFormalTimebaseUnreliable(unittest.TestCase):
         x=self.candidate();x["scenario_scope"]="ci"
         self.assertEqual(assess_owner_demo_scope(x)["status"],"HOLD")
 
+
+class OwnerPinnedReleaseContract(unittest.TestCase):
+    def test_exact_student_and_new_review_schema_are_pinned(self):
+        src=(Path(__file__).resolve().parents[1]/
+             "scripts/axia_g07_task04_owner_moving_l3_once.sh").read_text()
+        self.assertIn("readonly STUDENT_SHA='5c7983598fa3bcd7148433a06f37a4e78b091273'",src)
+        self.assertIn("readonly REVIEW_SHA='362da68e31dd163a8d321601e191069c0d0a438b'",src)
+        self.assertIn('AXIA_G07_TASK04_OWNER_FORMAL_RMW_TIMEBASE_HOLD',src)
+        self.assertIn("scripts/axia_g07_task04_owner_demo_scope.py",src)
+        self.assertIn('"formal_safety_timing_accepted":False',src)
+        self.assertNotIn('export GITHUB_ACTIONS=true',src)
+        self.assertIn("AXIA_G07_CI_SIM_GOAL_ALLOWED=0",src)
+
 if __name__=="__main__":unittest.main()
