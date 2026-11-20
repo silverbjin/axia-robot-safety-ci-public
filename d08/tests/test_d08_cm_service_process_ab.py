@@ -111,6 +111,44 @@ class CMServiceABTest(unittest.TestCase):
         self.assertIn("if v>.5",source)
         self.assertNotIn("AXIA_D08_DISABLE_SCAN_GAP",source)
 
+    def test_first_a_scan_gap_is_preserved_while_b_still_runs(self):
+        from d08_cm_native_probe_isolated import summarize_cm_ab_first_gap_hold
+        cases=[]
+        for i in range(8):
+            failed=i==0
+            cases.append({
+                "cm_service_probe_mode":"in_process" if i%2==0 else "isolated_process",
+                "status":("HOLD" if failed else
+                          "D08_REAL_THREE_OFFICIAL_NAV2_PATH_PHASES_L2_PASS_NO_GOAL"),
+                "first_boundary":"D08_FIRST_REAL_SCAN_RECEIVE_GAP_OVER_500MS"
+                    if failed else None,
+                "first_scan_timing_boundary":{
+                    "kind":"ROS_LASERSCAN_FIRST_RECEIVE_GAP",
+                    "receive_gap_sec":.500535,
+                    "previous_ros_stamp_ns":39102000000,
+                    "current_ros_stamp_ns":39201000000}
+                    if failed else None,
+                "worst_scan_pair_source_stamps":{"receive_gap_sec":.500535
+                    if failed else .18}
+            })
+        v=summarize_cm_ab_first_gap_hold(cases)
+        self.assertEqual(v["status"],
+            "D08_CM_AB_FIRST_REAL_SCAN_GAP_L2_HOLD_NOT_ROOT_CAUSE")
+        self.assertEqual(v["attempted_cycles"],8)
+        self.assertEqual(v["first_failed_cycle"],0)
+        self.assertEqual(v["first_failed_mode"],"in_process")
+        self.assertEqual(v["first_scan_receive_gap_sec"],.500535)
+        self.assertEqual(v["mode_counts"],{"in_process":4,"isolated_process":4})
+        self.assertFalse(v["owner_wsl2_accepted"])
+        self.assertFalse(v["cm_internal_120ms_verified"])
+
+    def test_ci_keeps_b_comparison_after_a_scan_timing_failure_only(self):
+        src=(ROOT/"d08/scripts/d08_public_gazebo_l2.py").read_text()
+        self.assertIn("summarize_cm_ab_first_gap_hold",src)
+        self.assertIn("D08_CM_AB_SCAN_FIRST_FAIL_RETAINED",src)
+        self.assertIn("D08_CM_AB_FIRST_BOUNDARY_HOLD",src)
+        self.assertIn("cycle.get('first_scan_timing_boundary')",src)
+
     def test_real_nav2_cm_lifecycle_first_transition_is_not_planner_failure(self):
         # Sanitized first-failure log from real CI #44766088696.
         # Nav manager initiated CM configuration, but neither CM on_configure
