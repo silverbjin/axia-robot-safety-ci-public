@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 5c7983598fa3bcd7148433a06f37a4e78b091273
+          ref: 0f6e6bd47e03f01cb55e43e19a20ea31f65feb99
           path: student
           persist-credentials: false
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -30,7 +30,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C student rev-parse HEAD)" = '5c7983598fa3bcd7148433a06f37a4e78b091273'
+          test "$(git -C student rev-parse HEAD)" = '0f6e6bd47e03f01cb55e43e19a20ea31f65feb99'
           test "$(git -C review rev-parse HEAD)" = '86c68a121bedffbf1d2bb91e1efac6a40b88c798'
           python3 -m unittest discover -s review/d06/tests -p 'test_d06_localization_manager_callback_probe.py' -v
           python3 -m unittest discover -s review/d06/tests -p 'test_d06_c07_navigation_manager_service_liveness.py' -v
