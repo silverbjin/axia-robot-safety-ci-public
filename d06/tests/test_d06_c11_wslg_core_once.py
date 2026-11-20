@@ -72,6 +72,16 @@ class C11CoreOnce(unittest.TestCase):
         self.assertNotIn("set_pose",src)
         self.assertNotIn("send_goal",src)
         self.assertEqual(subprocess.run(["bash","-n",str(SCRIPT)],capture_output=True).returncode,0)
+    def test_single_upload_contains_sha_verified_bounded_stack_not_core(self):
+        s=SCRIPT.read_text()
+        self.assertIn('sha256sum -c --status "$triage_archive.sha256"',s)
+        self.assertIn('tar -xOzf "$triage_archive" gdb_backtrace.log',s)
+        self.assertIn('head -c 163840',s)
+        self.assertIn('"$RUN/gdb_backtrace.log"',s)
+        self.assertIn('tar -czf "$archive" summary.txt preflight.txt triage.log owner_tail.log gdb_backtrace.log',s)
+        self.assertNotIn('tar -czf "$archive" private.core',s)
+        self.assertIn("D06_WSLG_CORE_ONCE_STACK_BUNDLED",s)
+
     def test_selfcheck_has_no_side_effects(self):
         env=os.environ.copy()
         with tempfile.TemporaryDirectory() as td:
