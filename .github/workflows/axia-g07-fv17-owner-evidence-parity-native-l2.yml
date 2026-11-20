@@ -8,6 +8,7 @@ on:
     branches:
       - 'fix/g07-task04-fv17-evidence-contract-20261120'
       - 'docs/g07-185-163-157-186-stabilization-recheck-20261120'
+      - 'fix/g07-wsl2-first-scan300-20261121'
     paths:
       - '.github/workflows/axia-g07-fv17-owner-evidence-parity-native-l2.yml'
       - 'd06/diagnostic/g07_cm_stop_pub_boundary.py'
@@ -42,6 +43,8 @@ jobs:
       # G07 #163 first lost SHUTDOWN request A/B: same already proven
       # get_parameters ROS node, NO resend and no change to Nav2/CM/Guard.
       AXIA_G07_NAV_WARM_PARTICIPANT_CI_AB: '1'
+      # Before any CI Goal, reuse the same runtime's 12s real Scan receipt gate.
+      AXIA_G07_SCAN_PREFLIGHT_STRICT: '1'
       ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
       GZ_PARTITION: axia_p2_task04_moving
       AXIA_P0_SIM_ONLY: '1'
@@ -71,7 +74,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 4f4d07f6daf878dd8076f89669698f61f52a802b
+          ref: 803cdd99fa0f781998442fbc37be9f59fde82364
           path: student
           persist-credentials: false
       # Keep the historic reviewer for older unrelated imports; the current
@@ -86,7 +89,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C student rev-parse HEAD)" = '4f4d07f6daf878dd8076f89669698f61f52a802b'
+          test "$(git -C student rev-parse HEAD)" = '803cdd99fa0f781998442fbc37be9f59fde82364'
           test "$(git -C ci rev-parse HEAD)" = "$GITHUB_SHA"
           test "$FASTDDS_BUILTIN_TRANSPORTS" = UDPv4
           [[ -z "${FASTRTPS_DEFAULT_PROFILES_FILE:-}" && -z "${FASTDDS_DEFAULT_PROFILES_FILE:-}" ]] || {
@@ -99,6 +102,7 @@ jobs:
           test "$(git -C "$GITHUB_WORKSPACE/review" rev-parse HEAD)" = 'd60beed5e18d8104b254f17476d47f1d1917a7eb'
           export PYTHONPATH="$GITHUB_WORKSPACE/ci:$GITHUB_WORKSPACE/review${PYTHONPATH:+:$PYTHONPATH}"
           bash -n scripts/p2_no_goal_smoke_ci.sh
+          python3 -m unittest discover -s tools -p 'test_g07_scan_wall_pregoal.py' -v
           python3 -m py_compile tools/p2_g07_task04_moving_review.py tools/p2_g07_ci_moving_goal.py
           python3 -m py_compile "$GITHUB_WORKSPACE/ci/scripts/axia_g07_mvp_visual_verdict.py"
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_owner_shell_contract.py' -v
@@ -239,6 +243,21 @@ jobs:
             || echo 'G07_INDEPENDENT_CM_RMW_NO_EXACT_PAIR_HOLD'
           echo "AXIA_G07_TASK04_NATIVE_ONE_MOVING_RUNNER_RC=$runner_rc RVIZ_X11=$rviz_seen GAZEBO_X11=$gazebo_seen"
           verify_real_goal_and_guard_evidence() {
+          # This pre-Goal check ran INSIDE this same Gazebo/Nav2 graph. Do
+          # not treat ROS/Gazebo startup or a two-window visual as sufficient.
+          python3 - "$GITHUB_WORKSPACE/native/g07_ci_scan_pregoal.json" <<'PY_SCAN_PREFLIGHT' || return 3
+          import json,sys
+          from pathlib import Path
+          p=Path(sys.argv[1])
+          assert p.is_file(),"missing in-session pregoal report"
+          d=json.loads(p.read_text())
+          assert d.get("status")=="PASS_SCOPED_RECEIVED_SCAN_ONLY",d
+          assert d.get("goal_sent") is False,d
+          for name in ("scan","safety_scan"):
+              row=d["topic_results"][name]
+              assert row["max_wall_gap_ms"]<=300 and row["max_header_sim_gap_ms"]<=150,row
+          print("AXIA_G07_NATIVE_STRICT_PREG0AL_12SEC_SCAN_WALL_PASS")
+          PY_SCAN_PREFLIGHT
           # Field teardown vJpsc6Wy: the parent "GRACEFUL" marker coexisted
           # with BOTH Guard and Supervisor child exit1 after rclpy SIGINT.
           # Require genuine clean exit0 of both nodes in this same session.
@@ -262,7 +281,7 @@ jobs:
           import json,sys
           result=json.load(open(sys.argv[1]))
           assert result.get("goal_sent") is True,result
-          assert result.get("source_sha")=="4f4d07f6daf878dd8076f89669698f61f52a802b",result
+          assert result.get("source_sha")=="803cdd99fa0f781998442fbc37be9f59fde82364",result
           print('AXIA_G07_REAL_OWNER_AMCL_PRIMARY_PATH_PASS actual_goal_sent=true')
           PY_REAL_TF
           # Real Guard 20Hz timing facts must be present in the actual
@@ -314,7 +333,7 @@ jobs:
                   --motion "$GITHUB_WORKSPACE/native/g07_ci_moving/ci_moving_goal_result.json" \
                   --shutdown "$GITHUB_WORKSPACE/native/g07_ordered_shutdown.json" \
                   --gui-windows 2 \
-                  --source-sha '4f4d07f6daf878dd8076f89669698f61f52a802b' \
+                  --source-sha '803cdd99fa0f781998442fbc37be9f59fde82364' \
                   --output "$GITHUB_WORKSPACE/public_evidence/task04_mvp_visual_l2_verdict.json"; then
               sha256sum "$GITHUB_WORKSPACE/public_evidence/task04_mvp_visual_l2_verdict.json" \
                 > "$GITHUB_WORKSPACE/public_evidence/task04_mvp_visual_l2_verdict.sha256"
@@ -336,7 +355,7 @@ jobs:
           fi
           verify_real_goal_and_guard_evidence || exit 3
           windows_count=$((rviz_seen+gazebo_seen))
-          python3 tools/p2_g07_task04_moving_review.py             --motion-root "$GITHUB_WORKSPACE/native"             --witness "$GITHUB_WORKSPACE/native/s02_ecm_witness.json"             --source-sha '4f4d07f6daf878dd8076f89669698f61f52a802b'             --gui-windows "$windows_count"             --output "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"
+          python3 tools/p2_g07_task04_moving_review.py             --motion-root "$GITHUB_WORKSPACE/native"             --witness "$GITHUB_WORKSPACE/native/s02_ecm_witness.json"             --source-sha '803cdd99fa0f781998442fbc37be9f59fde82364'             --gui-windows "$windows_count"             --output "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"
           sha256sum "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"             > "$GITHUB_WORKSPACE/public_evidence/task04_moving_verdict.sha256"
           echo 'AXIA_G07_TASK04_NATIVE_MOVING_GUI_XVFB_L2_PASS_OWNER_WSL2_NOT_RUN'
           echo 'AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false'
