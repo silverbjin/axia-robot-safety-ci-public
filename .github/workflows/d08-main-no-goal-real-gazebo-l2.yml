@@ -95,7 +95,8 @@ jobs:
             d08/tests/test_d08_collocated_human_proxy.py \
             d08/tests/test_d08_g07_lidar_visible_proxy.py \
             d08/tests/test_d08_rgbd_alignment_evidence.py \
-            d08/tests/test_d08_live_public_harness.py
+            d08/tests/test_d08_live_public_harness.py \
+            d08/tests/test_d08_owner_d05_field_parity.py
           python -m compileall -q d08/harness/d08_live_world.py \
             d08/harness/d08_amcl_initial_pose.py \
             d08/harness/d08_same_world_replan.py \
@@ -933,3 +934,39 @@ jobs:
             /tmp/ui9_yolo_runtime.log
           retention-days: 7
           if-no-files-found: warn
+
+  # A green Nav2-only 8-cycle is NOT WSL2 Owner handover when YOLO/D05 skipped.
+  d08-owner-parity-release-gate:
+    if: ${{ always() && github.event_name == 'pull_request' && github.head_ref == 'fix/d08-owner-d05-ci-wsl2-parity-20261120' }}
+    needs:
+      - l0-human-proxy-red-green
+      - gazebo-contact-positive-once
+      - real-gazebo-rgb-pinned-upstream-yolo-ros
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      L0_RESULT: ${{ needs['l0-human-proxy-red-green'].result }}
+      LIVE_RESULT: ${{ needs['real-gazebo-rgb-pinned-upstream-yolo-ros'].result }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Reject skipped or failed real same-world YOLO RGBD D05 Nav2 coverage
+        run: |
+          set -Eeuo pipefail
+          python3 d08/scripts/d08_owner_parity_coverage_gate.py \
+            --l0 "$L0_RESULT" --live-yolo-d05 "$LIVE_RESULT" \
+            --out results/d08-owner-parity/coverage_verdict.json || {
+              echo RELEASE_HOLD_COVERAGE_INCOMPLETE
+              exit 2
+            }
+          echo D08_OWNER_PUBLIC_L2_COVERAGE_COMPLETE_WSL2_NOT_RUN
+      - name: Upload evidence of mandatory jobs even when skipped
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d08-owner-parity-mandatory-coverage-verdict
+          path: results/d08-owner-parity/coverage_verdict.json
+          retention-days: 7
+          if-no-files-found: error

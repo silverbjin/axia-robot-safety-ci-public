@@ -17,7 +17,11 @@ LIVE_FILES=[
  'actual_world.sdf','actual_waffle.sdf','gazebo_topics.txt',
  'scene_info_verdict.json','scene_info_response.txt','native_create_ack.txt',
  'official_path_phases/verdict.json','official_path_phases/path_phases.jsonl',
- 'live_person_range/verdict.json']
+ 'live_person_range/verdict.json',
+ 'live_person_range/farther_scan.json',
+ 'live_person_range/stop_scan.json',
+ 'live_person_range/farther_native_ack.txt',
+ 'live_person_range/stop_native_ack.txt']
 ERROR_PATTERN=re.compile(
  r'(ERROR|FATAL|Exception|Traceback|BLOCKED|TIMEOUT|GAP|first_boundary|process has died|not found|Unable to find or download file|SceneBroadcaster)',re.I)
 

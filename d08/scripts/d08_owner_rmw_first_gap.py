@@ -28,9 +28,17 @@ def collect_first_scan_boundary(run_dir):
     root=Path(run_dir)/"live_evidence"
     candidates=[]
     checked=[]
-    paths=[root/"official_path_phases"/"verdict.json"]
-    paths.extend(sorted((root/"owner_replan_cycles").glob("cycle_[0-9][0-9][0-9][0-9]/verdict.json")))
-    for path in paths:
+    paths=[(root/"official_path_phases"/"verdict.json",
+            "first_scan_timing_boundary")]
+    paths.extend((p,"first_scan_timing_boundary") for p in
+        sorted((root/"owner_replan_cycles").glob(
+            "cycle_[0-9][0-9][0-9][0-9]/verdict.json")))
+    # Field 2026-11-20: the FIRST active failure was a NEW D05 /scan
+    # subscriber AFTER official path phases passed. Excluding it fabricated
+    # NO_FIRST_GAP_IN_AVAILABLE_VERDICTS despite a true >500ms D05 gap.
+    paths.extend((root/"live_person_range"/(stage+"_scan.json"),
+                  "first_rx_gap_over_500ms") for stage in ("farther","stop"))
+    for path,gap_key in paths:
         if not path.is_file():
             continue
         try:
@@ -38,7 +46,7 @@ def collect_first_scan_boundary(run_dir):
         except (OSError,ValueError):
             continue
         checked.append(str(path.relative_to(root)))
-        w=data.get("first_scan_timing_boundary")
+        w=data.get(gap_key)
         if not isinstance(w,dict):
             continue
         try:
@@ -53,7 +61,9 @@ def collect_first_scan_boundary(run_dir):
             continue
         candidates.append({
             "kind":"ROS_LASERSCAN_FIRST_RECEIVE_GAP",
-            "scope":str(path.parent.relative_to(root)),
+            "scope":("live_person_range/"+path.stem.removesuffix("_scan")
+                     if gap_key=="first_rx_gap_over_500ms"
+                     else str(path.parent.relative_to(root))),
             "host_start_sec":round(start,6),
             "host_end_sec":round(end,6),
             "gap_sec":round(gap,6),

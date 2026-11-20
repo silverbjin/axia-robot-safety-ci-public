@@ -11,7 +11,9 @@ OWNER=ROOT/"d08/scripts/d08_owner_no_goal_bootstrap.sh"
 def test_same_exact_source_sha_in_public_pr_ci_and_owner_checkout():
     workflow=W.read_text()
     exact="${{ github.event.pull_request.head.sha || github.sha }}"
-    assert workflow.count("ref: "+exact)==4
+    # The fifth checkout belongs to the mandatory live YOLO/D05 coverage gate.
+    # Every job must still checkout the SAME exact source commit.
+    assert workflow.count("ref: "+exact)==5
     assert "AXIA_D08_EXACT_SOURCE_SHA: "+exact in workflow
     runner=RUNNER.read_text()
     assert "env.get('AXIA_D08_EXACT_SOURCE_SHA')" in runner
