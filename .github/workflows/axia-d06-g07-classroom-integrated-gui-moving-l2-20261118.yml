@@ -1,0 +1,254 @@
+# Task03: one REAL public Gazebo S02 native ECM + ROS14 + UUID + Guard age.
+# RED #44210394942 -> GREEN #44211063396; no private repositories.
+name: D06 G07 real Gazebo and RViz same-session moving Goal L2
+on:
+  push:
+    branches: ['feat/d06-g07-classroom-reuse-20261118']
+    paths:
+      - '.github/workflows/axia-d06-g07-classroom-integrated-gui-moving-l2-20261118.yml'
+permissions:
+  contents: read
+concurrency:
+  group: axia-d06-g07-ci-native-gui-moving-l2
+  cancel-in-progress: false
+jobs:
+  task03-public-one-formal-l2:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+    env:
+      ROS_DOMAIN_ID: '85'
+      ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+      GZ_PARTITION: axia_p2_t03_initial_${{ github.run_id }}
+      AXIA_P0_SIM_ONLY: '1'
+      AXIA_P2_G07_PHYSICAL_PREFLIGHT: '1'
+      AXIA_G07_CI_SIM_GOAL_ALLOWED: '1'
+      AXIA_G07_OWNER_STARTUP_PARITY: '1'
+      AXIA_G07_CI_OWNER_OBSERVER_PARITY: '1'
+      AXIA_G07_CI_OWNER_BAG_PARITY: '1'
+      AXIA_P2_G07_OWNER_PARITY_CHECK: '1'
+      AXIA_G07_TASK02_SIMPLE_TF_CANDIDATE: '1'
+      AXIA_G07_TASK03_FORMAL_CI: '1'
+      AXIA_G07_TASK03_ECM_WITNESS: '1'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          path: ci
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: 8d1fb87df3eb9f0661700b8e1f03fc57bcce7454
+          path: student
+          persist-credentials: false
+      - name: NO GOAL Task03 6 + cleanup 7 + post-STOP lifecycle 3 + Simple TF 5 + CM120 5 + numeric artifacts 3 L0 contracts
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C ci rev-parse HEAD)" = "${{ github.sha }}"
+          test "$(git -C student rev-parse HEAD)" = '8d1fb87df3eb9f0661700b8e1f03fc57bcce7454'
+          export PYTHONPATH="$GITHUB_WORKSPACE/ci${PYTHONPATH:+:$PYTHONPATH}"
+          cd student/block_B/day07/h01_runtime
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task03_formal_evidence.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task03_calibration_cleanup.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task03_localization_shutdown_budget.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task02_simple_tf.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/d06/tests" -p 'test_g07_task02_public_strict_gate.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/d06/tests" -p 'test_g07_task03_numeric_artifact_contract.py' -v
+          bash -n scripts/p2_no_goal_smoke_ci.sh
+          python3 -m unittest discover -s tools -p 'test_d06_g07_ci_moving_gui.py' -v
+          python3 -m py_compile tools/p2_g07_task03_review.py tools/p2_g07_task03_ecm_positive.py tools/p2_g07_ci_moving_goal.py tools/p2_l3_world_overlay.py ros2_ws/src/axia_safety_supervisor/axia_safety_supervisor/p2_base_guard_node.py
+          test -f /opt/ros/jazzy/setup.bash
+          set +u; source /opt/ros/jazzy/setup.bash; set -u
+          for command in ros2 gz colcon; do command -v "$command"; done
+          python3 tools/p2_g07_owner_env_parity.py --mode ci --output "$GITHUB_WORKSPACE/task03_runtime_parity.json"
+          python3 - <<'PY'
+          import json,os
+          v=json.load(open(os.environ["GITHUB_WORKSPACE"]+"/task03_runtime_parity.json"))
+          assert v["status"]=="CORE_PARITY_PASS"
+          assert v["checked_packages"]==25 and v["checked_official_files"]==5
+          print("AXIA_G07_TASK03_OFFICIAL_JAZZY_HARMONIC_PARITY_25_5_PASS_NO_GOAL")
+          PY
+      - name: Build public same-binary GZ Sim8 ECM contact witness before any Goal
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          if ! command -v c++ >/dev/null || ! test -f /usr/include/gz/sim8/gz/sim/System.hh; then
+            apt-get update -qq
+            DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends cmake g++ libgz-sim8-dev
+          fi
+          cmake -S student/block_B/day07/h01_runtime/tools/native_s02_public -B "$GITHUB_WORKSPACE/task03-native-build" -DCMAKE_BUILD_TYPE=Release
+          cmake --build "$GITHUB_WORKSPACE/task03-native-build" --parallel 2
+          test -s "$GITHUB_WORKSPACE/task03-native-build/libaxia_g07_s02_ecm_witness.so"
+          sha256sum "$GITHUB_WORKSPACE/task03-native-build/libaxia_g07_s02_ecm_witness.so" > "$GITHUB_WORKSPACE/task03_witness_SHA256SUMS.txt"
+          echo AXIA_G07_TASK03_NATIVE_GZ8_S02_READONLY_PLUGIN_BUILT_NO_GOAL
+      - name: Real disposable NO GOAL positive ECM, independently classify cleanup first boundary
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          set +u; source /opt/ros/jazzy/setup.bash; set -u
+          export GZ_SIM_SYSTEM_PLUGIN_PATH="$GITHUB_WORKSPACE/task03-native-build${GZ_SIM_SYSTEM_PLUGIN_PATH:+:$GZ_SIM_SYSTEM_PLUGIN_PATH}"
+          export AXIA_G07_TASK03_WITNESS_SHA256="$(sha256sum "$GITHUB_WORKSPACE/task03-native-build/libaxia_g07_s02_ecm_witness.so" | cut -d' ' -f1)"
+          export AXIA_P2_SMOKE_RESULTS="$GITHUB_WORKSPACE/student/block_B/day07/h01_runtime/results/task03-native-positive"
+          export AXIA_G07_TASK03_WITNESS_REPORT="$AXIA_P2_SMOKE_RESULTS/s02_ecm_witness.json"
+          export AXIA_G07_TASK03_POSITIVE_ONLY=1
+          export GZ_PARTITION="axia_p2_t03_positive_${{ github.run_id }}"
+          cd student/block_B/day07/h01_runtime
+          set +e
+          timeout --signal=TERM --kill-after=10s 900s bash scripts/p2_no_goal_smoke_ci.sh
+          POS_RC=$?
+          set -e
+          python3 - "$POS_RC" <<'PY'
+          import json,os,sys
+          from pathlib import Path
+          sys.path.insert(0,str(Path("tools").resolve()))
+          from p2_g07_task03_calibration_cleanup import (
+              assess_calibration_teardown,actual_calibration_process_leaks)
+          root=Path(os.environ["AXIA_P2_SMOKE_RESULTS"])
+          witness=root/"s02_ecm_witness.json"
+          if not witness.is_file():
+              marker=witness.with_name(witness.name+".status")
+              detail=marker.read_text().strip() if marker.is_file() else "PLUGIN_NOT_CONSTRUCTED"
+              print("AXIA_G07_TASK03_FIRST_CONTACT_PROVENANCE_FAILURE "+detail,flush=True)
+              sys.exit(3)
+          w=json.loads(witness.read_text())
+          if w.get("source_sha")!=os.environ["AXIA_G07_TASK03_WITNESS_SHA256"]:
+              print("AXIA_G07_TASK03_BINARY_SHA_MISMATCH_NO_GOAL",flush=True)
+              sys.exit(3)
+          startup=json.loads((root/"startup_verdict.json").read_text())
+          shutdown=json.loads((root/"g07_ordered_shutdown.json").read_text())
+          teardown=(root/"teardown.txt").read_text()
+          leaks=actual_calibration_process_leaks(os.environ["GZ_PARTITION"])
+          result=assess_calibration_teardown(
+              w,startup,shutdown,teardown,int(sys.argv[1]),leaks)
+          print("AXIA_G07_TASK03_NO_GOAL_POSITIVE_CLEANUP_BOUNDARY "+json.dumps({
+              "status":result["status"],"cleanup_stage":result.get("cleanup_stage"),
+              "positive_contacts":w["positive_contacts"],
+              "native_frames":w["observed_iterations"],
+              "leaked_processes_count":len(leaks),
+              "native_nav2_l2_pass":result["native_nav2_l2_pass"]},sort_keys=True),
+              flush=True)
+          path=Path(os.environ["GITHUB_WORKSPACE"])/"public_evidence"
+          path.mkdir(exist_ok=True)
+          (path/"task03_positive_calibration.json").write_text(json.dumps({
+              "status":result["status"],"calibration_runner_rc":int(sys.argv[1]),
+              "cleanup_stage":result.get("cleanup_stage"),
+              "native_positive_contacts":w["positive_contacts"],
+              "native_observed_iterations":w["observed_iterations"],
+              "native_missing_iterations":w["missing_iterations"],
+              "sensor_found":w["sensor_found"],
+              "binary_sha256":w["source_sha"],
+              "leaked_processes_count":len(leaks),
+              "native_nav2_l2_pass":False,
+              "motion_goal_sent":False,"certified_estop":False},sort_keys=True,indent=2)+"\n")
+          if result["status"]!="CONTACT_CALIBRATION_PROVEN_DISPOSABLE_ONLY":
+              sys.exit(3)
+          print("AXIA_G07_TASK03_CONTACT_POSITIVE_ONLY_PROVEN_NEW_GAZEBO_PARTITION_REQUIRED",flush=True)
+          PY
+      - name: Xvfb and official read-only RViz dependencies (NO GOAL, no ROS version upgrade)
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+            --no-upgrade xvfb xauth x11-utils ros-jazzy-rviz2 libgl1-mesa-dri
+          # rviz2 belongs to /opt/ros/jazzy/bin: the prior CI shell had
+          # not sourced ROS before command -v and failed despite apt success.
+          set +u; source /opt/ros/jazzy/setup.bash; set -u
+          for x in Xvfb xwininfo xdpyinfo rviz2;do command -v "$x";done
+          test -s "$GITHUB_WORKSPACE/student/block_B/day07/h01_runtime/training/block_B/instructor/rviz/d07_h01_physical_replan.rviz"
+          echo D06_G07_CI_GUI_DEPENDENCIES_READY_NO_GOAL
+      - name: Real official Gazebo GUI and RViz2 simultaneous with ONE native Task03 Goal
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          set +u; source /opt/ros/jazzy/setup.bash; set -u
+          export GZ_SIM_SYSTEM_PLUGIN_PATH="$GITHUB_WORKSPACE/task03-native-build${GZ_SIM_SYSTEM_PLUGIN_PATH:+:$GZ_SIM_SYSTEM_PLUGIN_PATH}"
+          export AXIA_G07_TASK03_WITNESS_SHA256="$(sha256sum "$GITHUB_WORKSPACE/task03-native-build/libaxia_g07_s02_ecm_witness.so" | cut -d' ' -f1)"
+          export AXIA_P2_SMOKE_RESULTS="$GITHUB_WORKSPACE/student/block_B/day07/h01_runtime/results/task03-real-moving"
+          export AXIA_G07_TASK03_WITNESS_REPORT="$AXIA_P2_SMOKE_RESULTS/s02_ecm_witness.json"
+          unset AXIA_G07_TASK03_POSITIVE_ONLY || true
+          export ROS_DOMAIN_ID='86'
+          export GZ_PARTITION="axia_p2_d06_moving_${{ github.run_id }}"
+          export AXIA_D06_G07_CI_MOVING_GUI=1
+          export DISPLAY=:93 QT_QPA_PLATFORM=xcb LIBGL_ALWAYS_SOFTWARE=1
+          mkdir -p "$GITHUB_WORKSPACE/d06_visual"
+          Xvfb :93 -screen 0 1920x1080x24 -nolisten tcp -ac > "$GITHUB_WORKSPACE/d06_visual/xvfb.log" 2>&1 &
+          xvfb_pid=$!
+          rviz_pid=''
+          runner_pid=''
+          cleanup_display() {
+            local rc=$?
+            trap - EXIT
+            set +e
+            [[ -z "$runner_pid" ]] || kill -TERM "$runner_pid" 2>/dev/null || true
+            [[ -z "$rviz_pid" ]] || kill -TERM "$rviz_pid" 2>/dev/null || true
+            kill -TERM "$xvfb_pid" 2>/dev/null || true
+            [[ -z "$rviz_pid" ]] || wait "$rviz_pid" 2>/dev/null || true
+            wait "$xvfb_pid" 2>/dev/null || true
+            exit "$rc"
+          }
+          trap cleanup_display EXIT
+          for i in {1..30};do
+            xdpyinfo -display :93 >/dev/null 2>&1 && break
+            sleep .3
+          done
+          xdpyinfo -display :93 >/dev/null 2>&1 || { echo 'D06_XVFB_NOT_READY_NO_GOAL';exit 3; }
+          cfg="$GITHUB_WORKSPACE/student/block_B/day07/h01_runtime/training/block_B/instructor/rviz/d07_h01_physical_replan.rviz"
+          nice -n 19 rviz2 -d "$cfg" --ros-args -p use_sim_time:=true \
+            > "$GITHUB_WORKSPACE/d06_visual/rviz.log" 2>&1 &
+          rviz_pid=$!
+          cd student/block_B/day07/h01_runtime
+          echo D06_G07_REAL_SAME_SESSION_BEGIN STUDENT_SHA=8d1fb87df3eb9f0661700b8e1f03fc57bcce7454
+          env -u LD_PRELOAD -u AXIA_G07_TASK01_TF_AVAIL_PROBE timeout --signal=TERM --kill-after=10s 900s \
+            bash scripts/p2_no_goal_smoke_ci.sh > "$GITHUB_WORKSPACE/d06_visual/moving_and_gui.log" 2>&1 &
+          runner_pid=$!
+          goal_visible=0
+          for ((i=0;i<450;i++));do
+            if [[ -f "$AXIA_P2_SMOKE_RESULTS/g07_ci_moving/ci_moving_goal_result.json" ]] &&
+               grep -Fq '"goal_sent": true' "$AXIA_P2_SMOKE_RESULTS/g07_ci_moving/ci_moving_goal_result.json" &&
+               timeout 4s xwininfo -root -tree > "$GITHUB_WORKSPACE/d06_visual/x11_goal_active_tree.txt" 2>&1 &&
+               grep -Eiq Gazebo "$GITHUB_WORKSPACE/d06_visual/x11_goal_active_tree.txt" &&
+               grep -Eiq RViz "$GITHUB_WORKSPACE/d06_visual/x11_goal_active_tree.txt";then
+              goal_visible=1
+              echo D06_G07_REAL_GAZEBO_AND_RVIZ_WINDOWS_VISIBLE_DURING_ACTUAL_GOAL
+              break
+            fi
+            kill -0 "$runner_pid" 2>/dev/null || break
+            sleep 2
+          done
+          set +e
+          wait "$runner_pid"
+          runner_rc=$?
+          set -e
+          runner_pid=''
+          tail -n 140 "$GITHUB_WORKSPACE/d06_visual/moving_and_gui.log"
+          [[ "$runner_rc" == 0 ]] || { echo "D06_G07_REAL_GOAL_RUNNER_FAILED_RC=$runner_rc";exit 3; }
+          [[ "$goal_visible" == 1 ]] || { echo 'D06_G07_REAL_TWO_GUI_WINDOWS_DURING_GOAL_UNVERIFIED';exit 3; }
+          echo D06_G07_CI_NATIVE_GUI_AND_ONE_MOVING_GOAL_SAME_SESSION_PASS_CANDIDATE
+      - name: Formal original S02 ECM, sqlite14, exact UUID terminal, Guard150 and CM120 post-Goal review
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          export PYTHONPATH="$GITHUB_WORKSPACE/ci${PYTHONPATH:+:$PYTHONPATH}"
+          root="$GITHUB_WORKSPACE/student/block_B/day07/h01_runtime/results"
+          mkdir -p "$GITHUB_WORKSPACE/public_evidence"
+          python3 student/block_B/day07/h01_runtime/tools/p2_g07_task03_review.py \
+            --positive-root "$root/task03-native-positive" \
+            --motion-root "$root/task03-real-moving" \
+            --positive-witness "$root/task03-native-positive/s02_ecm_witness.json" \
+            --motion-witness "$root/task03-real-moving/s02_ecm_witness.json" \
+            --output "$GITHUB_WORKSPACE/public_evidence/task03_formal_verdict.json"
+      - name: Upload ONLY allowlisted numeric SHA / counts, no raw bags or private data
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: d06-g07-integrated-candidate-${{ github.run_id }}
+          path: |
+            public_evidence/task03_formal_verdict.json
+            public_evidence/task03_positive_calibration.json
+            task03_runtime_parity.json
+            task03_witness_SHA256SUMS.txt
+          retention-days: 30
+          if-no-files-found: warn
