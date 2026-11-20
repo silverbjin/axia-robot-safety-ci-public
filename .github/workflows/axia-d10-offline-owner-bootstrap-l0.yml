@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: b9235e008d434185531985e1d4225ca139e9e2d2
+          ref: 72d5807386c0c204dd6a6c4f8fa2d600bd979b89
           path: student
           persist-credentials: false
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
@@ -33,7 +33,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           mkdir -p evidence
-          test "$(git -C student rev-parse HEAD)" = b9235e008d434185531985e1d4225ca139e9e2d2
+          test "$(git -C student rev-parse HEAD)" = 72d5807386c0c204dd6a6c4f8fa2d600bd979b89
           bash -n student/block_C/scripts/block_c_once.sh
           python3 student/block_C/fixtures/generator.py --check --fixture-dir student/block_C/fixtures | tee evidence/fixture.log
           (cd /tmp && bash "$GITHUB_WORKSPACE/student/block_C/scripts/block_c_once.sh" --doctor) | tee evidence/student_doctor.log
