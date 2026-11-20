@@ -73,5 +73,19 @@ class OwnerWslgRendererIsolation(unittest.TestCase):
                 self.assertIn(target, lines[idx+1],
                     "new GUI branch must keep original first-gap tracer on failure")
 
+    def test_ci_gui_only_pr_skips_unrelated_contact_threshold_trial(self):
+        # Existing PR #188 did not rerun the unrelated Contact-positive job.
+        # New public L2 #44664968850 validated the 8-cycle Nav2 path,
+        # but unrelated Contact trial read 0.370528m > strict 0.370000m.
+        # Keep failure as a separate HOLD, not as proof of GUI code defect.
+        workflow=(ROOT / ".github/workflows/d08-main-no-goal-real-gazebo-l2.yml").read_text()
+        lines=workflow.splitlines()
+        idx=next(i for i,row in enumerate(lines)
+                 if row.strip()=="gazebo-contact-positive-once:")
+        cond=next(s for s in lines[idx+1:idx+8] if s.strip().startswith("if:"))
+        self.assertIn(
+            "github.head_ref != 'fix/d08-owner-gui-renderer-isolation-20261120'",
+            cond, "GUI-only regression must not rerun unrelated Contact threshold trial")
+
 if __name__ == "__main__":
     unittest.main()
