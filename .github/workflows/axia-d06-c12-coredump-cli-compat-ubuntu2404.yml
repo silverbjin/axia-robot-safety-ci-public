@@ -1,0 +1,41 @@
+name: AXIA D06 C12 Ubuntu 24.04 core CLI package compatibility
+on:
+  push:
+    branches: ['fix/d06-wslg-lidar-vs-rtf-ci-20261118']
+    paths:
+      - '.github/workflows/axia-d06-c12-coredump-cli-compat-ubuntu2404.yml'
+      - 'd06/scripts/axia_d06_g07_wslg_sigsegv_capture_once.sh'
+      - 'd06/tests/test_d06_c12_field_missing_coredumpctl.py'
+  pull_request:
+    paths:
+      - '.github/workflows/axia-d06-c12-coredump-cli-compat-ubuntu2404.yml'
+      - 'd06/scripts/axia_d06_g07_wslg_sigsegv_capture_once.sh'
+      - 'd06/tests/test_d06_c12_field_missing_coredumpctl.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  package-cli-ubuntu24:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Verify actual Noble package provides usable coredumpctl JSON CLI
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          # Keep package installation and systemd changes OUT of the runner
+          # and OUT of the instructor WSL2; only this disposable container.
+          docker run --rm ubuntu:24.04 /bin/bash -ec '
+            export DEBIAN_FRONTEND=noninteractive
+            apt-get update -qq -o Acquire::Retries=2 -o Acquire::http::Timeout=20
+            apt-get install -y -qq --no-install-recommends systemd-coredump
+            command -v coredumpctl
+            dpkg-query -W -f="PACKAGE_NAME=${binary:Package}\nPACKAGE_VERSION=${Version}\n" systemd-coredump
+            coredumpctl --help | grep -F -- "--json"
+            echo "D06_C12_UBUNTU2404_COREDUMPCTL_CLI_PACKAGE_PASS_BACKEND_NOT_VERIFIED"
+          '
+      - name: Scope disclaimer
+        run: |
+          echo 'D06_C12_NOT_WSLG_GPU_NOT_REAL_CORE_NOT_GAZEBO'
+          echo 'D06_GAZEBO_LIVE_RELEASE=HOLD'
+          echo 'AXIA_MVP_DEMO_ACCEPTED=HOLD'
