@@ -4,8 +4,8 @@ import subprocess
 import unittest
 
 SCRIPT=Path(__file__).resolve().parents[1]/"scripts/axia_g07_task04_owner_moving_l3_once.sh"
-SHA="954fc2f054c50df783bc81c4d0835a6ee6f8645d"
-RUN=44478344652
+SHA="43a26a2f870c0fd99d66d06887cdf4e706b637b7"
+RUN=44557868822
 REVIEW_SHA='d60beed5e18d8104b254f17476d47f1d1917a7eb'
 
 class OwnerMovingBootstrap(unittest.TestCase):
