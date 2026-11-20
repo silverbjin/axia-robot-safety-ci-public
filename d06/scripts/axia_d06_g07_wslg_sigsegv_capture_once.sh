@@ -45,7 +45,7 @@ finish() {
   fi
   # Never archive raw process memory, coredump index or local auth tokens.
   local archive="$ROOT/$(basename "$RUN").tar.gz"
-  (cd "$RUN" && tar -czf "$archive" summary.txt preflight.txt triage.log owner_tail.log)
+  (cd "$RUN" && tar -czf "$archive" summary.txt preflight.txt triage.log owner_tail.log gdb_backtrace.log)
   sha256sum "$archive" > "$archive.sha256"
   [[ -z "$TMP" ]] || rm -rf -- "$TMP"
   echo "D06_WSLG_CORE_ONCE_FORENSIC_ARCHIVE=$archive"
@@ -57,6 +57,7 @@ finish() {
 : > "$RUN/preflight.txt"
 : > "$RUN/triage.log"
 : > "$RUN/owner_tail.log"
+: > "$RUN/gdb_backtrace.log"
 trap finish EXIT
 PATTERN="$(cat /proc/sys/kernel/core_pattern 2>/dev/null || true)"
 printf 'kernel_core_pattern=%s\ncurrent_core_soft_limit=%s\n' "$PATTERN" "$(ulimit -c)" > "$RUN/preflight.txt"
@@ -161,7 +162,25 @@ STAGE=GDB_EXISTING_CORE
 echo "D06_WSLG_CORE_ONCE_CANDIDATE_PID=$after" >> "$RUN/summary.txt"
 if bash "$TMP/triage" --pid "$after" > "$RUN/triage.log" 2>&1 &&
    grep -Fq 'D06_WSLG_CORE_TRIAGE_STACK=CAPTURED' "$RUN/triage.log";then
-  echo 'D06_WSLG_CORE_STACK_CAPTURED_NOT_RESOLVED' | tee -a "$RUN/summary.txt"
+  # The nested triage bundle holds ONLY text, not raw process memory.
+  # Verify its checksum before moving a bounded first stack into the
+  # ONE archive the owner will upload. No external paths are executed.
+  triage_archive="$(sed -n 's/^D06_WSLG_CORE_TRIAGE_ARCHIVE=//p' "$RUN/triage.log" | tail -1)"
+  if [[ "$triage_archive" == "$HOME/axia_d06_g07_core_triage/"*.tar.gz
+        && -s "$triage_archive" && -s "$triage_archive.sha256" ]] &&
+     sha256sum -c --status "$triage_archive.sha256" &&
+     tar -xOzf "$triage_archive" gdb_backtrace.log | head -c 163840 > "$RUN/gdb_backtrace.log";then
+    if [[ -s "$RUN/gdb_backtrace.log" ]] &&
+       grep -Eq 'SIGSEGV|Segmentation fault' "$RUN/gdb_backtrace.log" &&
+       grep -Eq '#0[[:space:]]' "$RUN/gdb_backtrace.log";then
+      echo 'D06_WSLG_CORE_ONCE_STACK_BUNDLED SHA256_VERIFIED NO_RAW_CORE' | tee -a "$RUN/summary.txt"
+      echo 'D06_WSLG_CORE_STACK_CAPTURED_NOT_RESOLVED' | tee -a "$RUN/summary.txt"
+    else
+      echo 'D06_WSLG_CORE_ONCE_HOLD_STACK_FIRST_FRAME_ABSENT' | tee -a "$RUN/summary.txt"
+    fi
+  else
+    echo 'D06_WSLG_CORE_ONCE_HOLD_TRIAGE_ARCHIVE_HASH_OR_TEXT_MISSING' | tee -a "$RUN/summary.txt"
+  fi
 else
   echo 'D06_WSLG_CORE_ONCE_HOLD_FIRST_STACK_NOT_RECOVERABLE' | tee -a "$RUN/summary.txt"
 fi
