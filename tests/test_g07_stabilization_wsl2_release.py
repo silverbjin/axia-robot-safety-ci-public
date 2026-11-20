@@ -8,9 +8,9 @@ import unittest
 
 ROOT=Path(__file__).resolve().parents[1]
 SCRIPT=ROOT/"scripts/axia_g07_stabilization_wsl2_final_once.sh"
-STUDENT="803cdd99fa0f781998442fbc37be9f59fde82364"
-HEAD="57b70acbc1e6a549d64cf5508b199634ac2cd4cd"
-RUN=44764186378
+STUDENT="589ebaea166130c1fba233c8f3af02352fa0211c"
+HEAD="44b5b704be2722f54beec9b7436ab8e705ceec3d"
+RUN=44770998324
 NAME="AXIA G07 FV17 Independent 2-cycle Real Moving Goal Guard TTL L2"
 
 
@@ -118,7 +118,7 @@ fi
         self.assertIn("AXIA_G07_NAV_WARM_PARTICIPANT_CI_AB: '1'",flow)
 
     def test_actual_two_cycle_one_failed_response_is_denied_offline(self):
-        # Public native L2 #44764186378: cycle1 Navigation ACK timeout,
+        # Public native L2 #44770998324: cycle1 Navigation ACK timeout,
         # cycle2 success. Reproduce *that* API payload without unreliable
         # unauthenticated GitHub API network access in the CI runner.
         run,jobs=inputs(conclusion="failure",second="success")
