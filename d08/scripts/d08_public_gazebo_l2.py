@@ -438,6 +438,15 @@ def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=Fals
     if owner_gui and not (official_nav2 and official_path_phases
                           and live_person_range):
         raise ValueError('D08_OWNER_GUI_REQUIRES_EXACT_SAME_WORLD_LIVE_E2E')
+    # The real WSL2 failure happened in Owner cycle_0000 *after* D05 PASS.
+    # Bounded one-cycle mode is opt-in only; normal historical 8-cycle
+    # public A/B and the instructor's ordinary live loop remain unchanged.
+    owner_first_only=os.environ.get("AXIA_D08_OWNER_FIRST_CYCLE_ONLY")=="1"
+    if owner_first_only and not owner_gui:
+        raise ValueError("D08_OWNER_FIRST_CYCLE_MODE_REQUIRES_REAL_GUI")
+    if owner_first_only and os.environ.get(
+            "AXIA_D08_CM_SERVICE_PROBE_MODE")!="isolated_process":
+        raise ValueError("D08_OWNER_ONE_CYCLE_REQUIRES_ISOLATED_CM_SERVICE_PROBE")
     # Public Actions-only Owner-equivalent path-replanning stress:
     # eight same-world cycles with one actual Gazebo GUI client.
     if ci_owner_repro and (owner_gui or not official_nav2 or
@@ -740,16 +749,33 @@ def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=Fals
             result['d05_executed']=True
             print('D08_LIVE_SAME_WORLD_RGBD_YOLO_D05_ACCEPTED_CANDIDATE',
                   flush=True)
+        if live_person_range and ci_owner_repro:
+            # Same process, same actual Gazebo world/robot/CM/YOLO instance.
+            # This must run only after the actual D05 three stages succeeded.
+            if result['d05_executed'] is not True:
+                raise RuntimeError("D08_OWNER_CI_LIVE_D05_MISSING_HOLD")
+            print("D08_CI_OWNER_FIRST_AFTER_D05_REAL_SCAN_L2_READY",flush=True)
         if ci_owner_repro:
             from d08_same_world_replan import run as repeat_path
+            ci_owner_count_raw=env.get("AXIA_D08_CI_OWNER_CYCLES","8")
+            if ci_owner_count_raw not in ("1","8"):
+                raise RuntimeError("D08_CI_OWNER_CYCLE_COUNT_1_OR_8_REQUIRED")
+            ci_owner_count=int(ci_owner_count_raw)
+            if ci_owner_count==1 and not live_person_range:
+                raise RuntimeError("D08_CI_ONE_CYCLE_REQUIRES_LIVE_D05")
+            if ci_owner_count==1 and env.get(
+                    "AXIA_D08_CM_SERVICE_PROBE_MODE")!="isolated_process":
+                raise RuntimeError("D08_CI_ONE_CYCLE_REQUIRES_ISOLATED_CM_PROBE")
             cm_ab=env.get("AXIA_D08_CM_AB_MODE")=="1"
+            if ci_owner_count==1 and cm_ab:
+                raise RuntimeError("D08_CM_AB_8_CYCLE_AND_OWNER_ONE_CYCLE_MUTUALLY_EXCLUSIVE")
             cm_ab_rows=[]
             if cm_ab:
                 from d08_cm_native_probe_isolated import (
                     mode_for_cycle,summarize_cm_ab,
                     summarize_cm_ab_first_gap_hold)
                 result["cm_service_ab_diagnostic_only"]=True
-            for i in range(8):
+            for i in range(ci_owner_count):
                 if ci_gui.poll() is not None:
                     raise RuntimeError('D08_CI_GAZEBO_GUI_CLIENT_EXITED_DURING_REPLAN')
                 d=out/'ci_owner_replan_cycles'/('cycle_%04d'%i)
@@ -768,6 +794,10 @@ def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=Fals
                     result.setdefault('ci_owner_replan_failure_cycle',i)
                     result.setdefault('ci_owner_replan_first_boundary',
                                       cycle.get('first_boundary'))
+                    if ci_owner_count==1 and cycle.get('first_scan_timing_boundary'):
+                        print("D08_CI_OWNER_FIRST_AFTER_D05_SCAN_OVER_500MS_HOLD "+
+                              json.dumps(cycle['first_scan_timing_boundary'],
+                                         sort_keys=True),flush=True)
                     # Preserve the *first* 500ms fail-closed, but keep the
                     # paired B measurement so A/B remains diagnosable.
                     # Any OTHER failure (CM service, Nav2, TF, GUI) is fatal
@@ -807,7 +837,13 @@ def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=Fals
                                        str(summary["first_scan_receive_gap_sec"]))
                 print("D08_CM_AB_EIGHT_CYCLES_L2_PASS_NOT_ROOT_CAUSE "
                       +json.dumps(summary["modes"],sort_keys=True),flush=True)
-            print('D08_CI_REAL_GUI_EIGHT_REPEAT_PATHS_L2_PASS',flush=True)
+            if ci_owner_count==1:
+                if result.get('ci_owner_replan_cycles')!=1 or not result.get(
+                        'd05_executed'):
+                    raise RuntimeError("D08_CI_OWNER_FIRST_AFTER_D05_INCOMPLETE_HOLD")
+                print("D08_CI_OWNER_FIRST_AFTER_D05_REAL_SCAN_L2_PASS",flush=True)
+            else:
+                print('D08_CI_REAL_GUI_EIGHT_REPEAT_PATHS_L2_PASS',flush=True)
         # The calibration happens ONCE, only on the actual no-Goal L2 CI
         # path after real RGBD and the native Contact topic were verified.
         if lidar_pre_goal:
@@ -876,6 +912,10 @@ def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=Fals
         result['gazebo_actual']=True
         print('D08_REAL_GAZEBO_WAFFLE_RGBD_NO_GOAL_PASS',flush=True)
         if owner_gui:
+            # Owner's one real first cycle is an explicit NO_GOAL L3 trial.
+            # A Ctrl+C before this completed cycle must NEVER count as PASS.
+            if owner_first_only:
+                result['owner_gui_first_cycle_required']=True
             # Reuse EXACT same public no-Goal three-phase observer, same
             # native Gazebo World/physical human/official Planner. Keep the
             # live Gazebo+RViz2 windows open until Owner Ctrl+C.
@@ -903,8 +943,17 @@ def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=Fals
                     result['owner_completed_cycles']=cycle
                     print('D08_OWNER_GUI_REAL_OFFICIAL_PATH_CYCLE_PASS '+str(
                         cycle),flush=True)
+                    if owner_first_only and cycle==1:
+                        result['owner_gui_one_cycle_completed']=True
+                        result['owner_gui_auto_complete_after_one_cycle']=True
+                        print("D08_OWNER_GUI_ONE_REAL_CYCLE_COMPLETE",flush=True)
+                        time.sleep(2)  # bounded view, no arbitrary new TTL
+                        print("D08_OWNER_GUI_AUTO_COMPLETE_AFTER_ONE_CYCLE",flush=True)
+                        break
                     time.sleep(2)  # Classroom visual pause, not a TTL change
             except KeyboardInterrupt:
+                if owner_first_only and cycle<1:
+                    raise RuntimeError("D08_OWNER_FIRST_CYCLE_NOT_COMPLETED_HOLD")
                 result['owner_gui_user_stopped']=True
                 print('D08_OWNER_GUI_CTRLC_ACK',flush=True)
     except Exception as exc:
