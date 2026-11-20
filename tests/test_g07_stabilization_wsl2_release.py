@@ -46,6 +46,15 @@ class SafeOwnerRelease(unittest.TestCase):
         self.assertNotIn("pkill -f",text)
         self.assertNotIn("killall",text)
 
+    def test_fastdds_udpv4_mode_matches_strict_native_l2(self):
+        text=SCRIPT.read_text()
+        self.assertIn("export FASTDDS_BUILTIN_TRANSPORTS=UDPv4",text)
+        self.assertIn("AXIA_G07_FASTDDS_BUILTIN_TRANSPORTS=UDPv4",text)
+        self.assertIn("FASTDDS_XML_OVERRIDE_UNVERIFIED_HOLD",text)
+        # Applies to the entire run, before Jazzy nodes or any Goal launch.
+        self.assertLess(text.index("export FASTDDS_BUILTIN_TRANSPORTS=UDPv4"),
+                        text.index("source /opt/ros/jazzy/setup.bash",text.index("OUT=''")))
+
     def _gate(self,run,jobs):
         with tempfile.TemporaryDirectory() as d:
             p=Path(d)
