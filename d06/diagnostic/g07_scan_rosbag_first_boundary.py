@@ -21,7 +21,7 @@ def _safe_msec(value):
     return round(value/1_000_000,6) if type(value) is int and value>=0 else None
 
 def _out(status,**fields):
-    return dict(schema="axia.g07.scan_exact_rosbag_receive_first_pair.v1",
+    result=dict(schema="axia.g07.scan_exact_rosbag_receive_first_pair.v1",
                 status=status,root_cause="UNDETERMINED",
                 root_cause_proven=False,
                 gazebo_native_publish_root_proven=False,
@@ -32,7 +32,9 @@ def _out(status,**fields):
                 independent_bag_scan_gap_ms=None,
                 independent_bag_safety_scan_gap_ms=None,
                 matched_exact_first_header_pair=False,
-                certified_estop=False,goal_sent=False,release="HOLD",**fields)
+                certified_estop=False,goal_sent=False,release="HOLD")
+    result.update(fields)
+    return result
 
 def classify(first_pair, rows):
     if not isinstance(first_pair,dict) or not isinstance(rows,dict):
