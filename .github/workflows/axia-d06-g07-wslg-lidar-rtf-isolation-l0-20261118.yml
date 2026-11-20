@@ -34,6 +34,8 @@ on:
       - 'd06/tests/test_d06_c13_full_cli_noble_smoke.py'
       - 'd06/tests/test_d06_c14_native_core_evidence_pipeline.py'
       - 'd06/tests/test_d06_c16_wslg_gpu_runner_capability.py'
+      - 'd06/tests/test_d06_c17_g3_clean_or_core_verdict.py'
+      - 'd06/scripts/axia_d06_g3_independent_wslg_nogoal_once.sh'
       - 'd06/tools/d06_g3_wslg_gpu_capability.py'
       - 'd06/scripts/axia_d06_g07_wslg_sigsegv_capture_once.sh'
       - 'd06/tools/d06_wslg_latest_gz_sigsegv_core.py'
@@ -131,6 +133,7 @@ jobs:
           python3 -m unittest discover -s d06/tests -p 'test_d06_c13_full_cli_noble_smoke.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_c14_native_core_evidence_pipeline.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_c16_wslg_gpu_runner_capability.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_c17_g3_clean_or_core_verdict.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_l2_apt_https_bootstrap.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_ci_only_gui_nice.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_g07_no_goal_manager_discovery.py' -v
