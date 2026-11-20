@@ -152,6 +152,61 @@ def classify_rmw_first_pair(events, first_pair):
     return out
 
 
+
+def summarize_rmw_readiness(events):
+    """Is Jazzy MessageInfo *present* on both existing Observer subscriptions?
+
+    Counts only, never copies message content or crosses clock domains.
+    Consecutive sequence numbers are needed before a first RMW gap can be
+    interpreted. A missing sequence is not a healthy transport measurement.
+    """
+    stats={channel:{"received":0,"valid_metadata":0,"valid_pairs":0}
+           for channel in ("pre_guard","supervised")}
+    result={"schema":"axia.g07.rmw_readiness.v1",
+            "status":"RMW_METADATA_INSUFFICIENT_HOLD",
+            "pre_guard_valid_consecutive_pairs":0,
+            "supervised_valid_consecutive_pairs":0,
+            "missing_or_unusable_samples":0,
+            "sequence_discontinuities":0,
+            "first_boundary_proven":False,
+            "root_cause_proven":False,
+            "release":"HOLD"}
+    if not isinstance(events,list) or len(events)>120000:
+        return result
+    previous={"pre_guard":None,"supervised":None}
+    for row in events:
+        if not isinstance(row,dict) or row.get("kind") not in stats:
+            continue
+        channel=row["kind"]
+        info=stats[channel]
+        info["received"]+=1
+        t=row.get("t")
+        src,rx,seq=(row.get("rmw_source_ns"),
+                    row.get("rmw_received_ns"),
+                    row.get("rmw_publication_seq"))
+        if (not _finite(t) or type(src) is not int or type(rx) is not int
+                or type(seq) is not int or src<=0 or rx<src or seq<0):
+            result["missing_or_unusable_samples"]+=1
+            previous[channel]=None
+            continue
+        info["valid_metadata"]+=1
+        old=previous[channel]
+        if old:
+            if (seq-old[2]!=1 or src<=old[0] or rx<=old[1]
+                    or t<=old[3]):
+                result["sequence_discontinuities"]+=1
+            else:
+                info["valid_pairs"]+=1
+        previous[channel]=(src,rx,seq,t)
+    for channel in stats:
+        result[channel+"_valid_consecutive_pairs"]=stats[channel]["valid_pairs"]
+        result[channel+"_messageinfo_count"]=stats[channel]["valid_metadata"]
+        result[channel+"_callback_count"]=stats[channel]["received"]
+    if all(stats[k]["valid_pairs"]>0 for k in stats):
+        result["status"]="RMW_TWO_TOPICS_METADATA_READY"
+    return result
+
+
 def main(argv=None):
     p=argparse.ArgumentParser()
     p.add_argument("--events",type=Path,required=True)
@@ -179,6 +234,7 @@ def main(argv=None):
             cm_pair=v.get("first_pairs",{}).get("pre_guard")
             v["cm_rmw_first_pair"]=classify_rmw_first_pair(events,cm_pair)
 
+        v["rmw_readiness"]=summarize_rmw_readiness(events)
         v["actual_same_session_event_pairs_read"]=True
     except (OSError,ValueError,TypeError,KeyError):
         v=_hold("FIRST_DELIVERY_BOUNDARY_NOT_VERIFIED_HOLD",
