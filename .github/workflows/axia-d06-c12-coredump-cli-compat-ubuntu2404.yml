@@ -27,19 +27,32 @@ jobs:
           set -Eeuo pipefail
           # Keep package installation and systemd changes OUT of the runner
           # and OUT of the instructor WSL2; only this disposable container.
-          docker run --rm ubuntu:24.04 /bin/bash -euo pipefail -c '
+          # C13: not just dpkg manifest; exercise the exact shipped
+          # script under a clean Noble userspace, without WSLg/Gazebo.
+          docker run --rm \
+            --mount "type=bind,source=$GITHUB_WORKSPACE,target=/workspace,readonly" \
+            ubuntu:24.04 /bin/bash -euo pipefail -c '
             export DEBIAN_FRONTEND=noninteractive
             apt-get update -qq -o Acquire::Retries=2 -o Acquire::http::Timeout=20
-            apt-get install -y -qq --no-install-recommends systemd-coredump
+            apt-get install -y -qq --no-install-recommends \
+              systemd-coredump gdb mesa-utils curl git python3 \
+              procps coreutils grep sed tar
             command -v coredumpctl
             dpkg-query -W systemd-coredump | tee /tmp/axia-c12-package-manifest.txt
             grep -Eq "^systemd-coredump[[:space:]]+[^[:space:]]+" /tmp/axia-c12-package-manifest.txt
             dpkg -s systemd-coredump | grep -Fx "Status: install ok installed"
             coredumpctl --help | grep -F -- "--json"
+            bash -n /workspace/d06/scripts/axia_d06_g07_wslg_sigsegv_capture_once.sh
+            bash /workspace/d06/scripts/axia_d06_g07_wslg_sigsegv_capture_once.sh --self-check |
+              grep -F "HOST_DEPENDENCIES_NOT_TESTED"
+            bash /workspace/d06/scripts/axia_d06_g07_wslg_sigsegv_capture_once.sh --check-tools |
+              grep -Fx "D06_WSLG_CORE_ONCE_TOOLCHAIN_L0_OK_BACKEND_NOT_VERIFIED"
             echo "D06_C12_UBUNTU2404_COREDUMPCTL_CLI_PACKAGE_PASS_BACKEND_NOT_VERIFIED"
+            echo "D06_C13_ACTUAL_NOBLE_PINNED_LAUNCHER_CLI_GREEN"
           '
       - name: Scope disclaimer
         run: |
+          echo 'D06_C13_NOT_WSLG_GPU_NOT_REAL_CORE_NOT_GAZEBO'
           echo 'D06_C12_NOT_WSLG_GPU_NOT_REAL_CORE_NOT_GAZEBO'
           echo 'D06_GAZEBO_LIVE_RELEASE=HOLD'
           echo 'AXIA_MVP_DEMO_ACCEPTED=HOLD'
