@@ -212,6 +212,15 @@ unset AXIA_G07_OWNER_COMMON_RUNNER_AUTHORIZED AXIA_P2_OWNER_PINNED_SHA || true
 # Jazzy DDS isolation is chosen AFTER ROS is sourced, by a read-only ROS
 # endpoint probe. Do not reuse the stale fixed ROS_DOMAIN_ID=86.
 export ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
+# Verified in actual public Jazzy/Harmonic 2-cycle #44697383450:
+# Fast DDS 2.14.x healthy Shared Memory port may block ~333ms (#6535).
+# Limit this Owner child process tree to official UDPv4 built-in transport;
+# never relax CM120 / Guard150 / Scan300 / Clock300 / Odom300 TTL.
+# XML transport overrides can reenable SHM; fail closed instead.
+[[ -z "${FASTRTPS_DEFAULT_PROFILES_FILE:-}" && -z "${FASTDDS_DEFAULT_PROFILES_FILE:-}" ]] \
+  || hold FASTDDS_XML_OVERRIDE_UNVERIFIED_HOLD
+export FASTDDS_BUILTIN_TRANSPORTS=UDPv4
+echo 'AXIA_G07_FASTDDS_BUILTIN_TRANSPORTS=UDPv4 OWNER_SHM_333MS_MITIGATION_CI_FIRST'
 export QT_QPA_PLATFORM=xcb
 unset LIBGL_ALWAYS_SOFTWARE || true
 
