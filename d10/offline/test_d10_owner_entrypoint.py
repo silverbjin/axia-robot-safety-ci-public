@@ -119,5 +119,62 @@ class EntryPointTest(unittest.TestCase):
         self.assertIn('D10_DO_NOT_SOURCE_USE_BASH_SCRIPT',p.stderr)
         self.assertIn('CALLER_SURVIVED',p.stdout)
 
+
+    def cold_venv(self):
+        """Real Python 3.12 venv deliberately without scikit-learn."""
+        if sys.version_info[:2] != (3, 12):
+            self.skipTest('Python 3.12 regression runs in CI')
+        venv=self.work/'.venv-d10'
+        venv.parent.mkdir(parents=True,exist_ok=True)
+        subprocess.run([sys.executable,'-m','venv',str(venv)],check=True)
+        py=venv/'bin/python'
+        probe=subprocess.run([str(py),'-c','import sklearn'],capture_output=True,text=True)
+        self.assertNotEqual(probe.returncode,0)
+        return py
+
+    def test_missing_sklearn_install_disabled_holds_before_model(self):
+        self.cold_venv()
+        p=self.command(env=dict(self.env,AXIA_D10_AUTO_INSTALL='0'))
+        self.assertNotEqual(p.returncode,0,p.stdout)
+        self.assertIn('D10_PYTHON_DEPENDENCY_MISSING',p.stdout)
+        self.assertIn('D10_BLOCKED stage=PYTHON_DEPENDENCIES',p.stdout)
+        self.assertNotIn('D10_STAGE=C01_FIXTURE',p.stdout)
+        logs=list((self.work/'evidence').glob('run-*/initial_dependency_error.log'))
+        self.assertEqual(len(logs),1,p.stdout)
+        self.assertIn('ModuleNotFoundError',logs[0].read_text())
+
+    def test_doctor_missing_sklearn_does_not_install(self):
+        self.cold_venv()
+        p=self.command('--doctor')
+        self.assertNotEqual(p.returncode,0,p.stdout)
+        self.assertIn('doctor_only_missing_dependencies',p.stdout)
+        self.assertFalse(list((self.work/'evidence').glob('run-*/python_install.log')))
+
+    def test_external_explicit_python_never_mutated(self):
+        if sys.version_info[:2]!=(3,12):
+            self.skipTest('Python 3.12 regression runs in CI')
+        ext=self.root/'external-python'
+        subprocess.run([sys.executable,'-m','venv',str(ext)],check=True)
+        p=self.command(env=dict(self.env,AXIA_D10_PYTHON=str(ext/'bin/python')))
+        self.assertNotEqual(p.returncode,0,p.stdout)
+        self.assertIn('explicit_python_missing_dependencies',p.stdout)
+        self.assertFalse(list((self.work/'evidence').glob('run-*/python_install.log')))
+
+    def test_missing_sklearn_autoinstall_isolated_venv_and_reuse(self):
+        if os.environ.get('AXIA_D10_TEST_AUTO_BOOTSTRAP')!='1':
+            self.skipTest('cold venv network test is enabled only in public CI')
+        py=self.cold_venv()
+        p=self.command()
+        self.assertEqual(p.returncode,0,p.stdout)
+        self.assertIn('D10_PIP_INSTALL_PASS',p.stdout)
+        self.assertIn('D10_OWNER_OFFLINE_L0_PASS',p.stdout)
+        logs=list((self.work/'evidence').glob('run-*/python_install.log'))
+        self.assertEqual(len(logs),1,p.stdout)
+        self.assertEqual(subprocess.run([str(py),'-c','import sklearn,numpy;assert sklearn.__version__=="1.8.0"']).returncode,0)
+        doctor=self.command('--doctor')
+        self.assertEqual(doctor.returncode,0,doctor.stdout)
+        self.assertIn('D10_OWNER_DOCTOR_PASS',doctor.stdout)
+        self.assertNotIn('D10_PIP_INSTALL_BEGIN',doctor.stdout)
+
 if __name__=='__main__':
     unittest.main(verbosity=2)
