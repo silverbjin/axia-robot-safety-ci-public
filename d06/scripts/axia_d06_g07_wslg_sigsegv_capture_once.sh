@@ -64,8 +64,8 @@ printf 'kernel_core_pattern=%s\ncurrent_core_soft_limit=%s\n' "$PATTERN" "$(ulim
 PINNED_PUBLIC_SHA='d66e6052d777696c390ddbb791b346f7abb96711'
 OWNER_BLOB='0592044ade101dfdff7682e127953c976778e6fc'
 TRIAGE_BLOB='08d66ff3cac2dac4564b744a02f5a8e50faf7b61'
-FINDER_SHA='801e6b7be271da55a86101d25924edcafc98deb6'
-FINDER_BLOB='04cc7cab351f4542dba754262912900cd258ec25'
+FINDER_SHA='1188f0b0c67b1680a1bc7493a9646b67f271bff0'
+FINDER_BLOB='04e8669a8e4e4cb07673c021ae16beb02b87a6e1'
 RAW='https://raw.githubusercontent.com/silverbjin/axia-robot-safety-ci-public'
 TMP="$(mktemp -d)"
 for ent in \
@@ -109,9 +109,10 @@ PY
 }
 core_pid() {
   local file="$1" pid=''
-  pid="$(python3 "$TMP/finder" --json-file "$file" 2>/dev/null || true)"
+  pid="$(python3 "$TMP/finder" --server-only --json-file "$file" 2>/dev/null || true)"
   [[ "$pid" =~ ^[1-9][0-9]*$ ]] && printf '%s' "$pid"
 }
+echo "D06_WSLG_CORE_ONCE_SERVER_CORE_ONLY" >> "$RUN/summary.txt"
 listing "$RUN/before_cores.json" || {
   echo 'D06_WSLG_CORE_ONCE_HOLD_COREDUMP_INDEX_UNREADABLE' >&2;exit 3;
 }
