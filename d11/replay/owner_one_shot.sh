@@ -8,7 +8,7 @@ if [[ "${1:-}" == "--self-check" ]]; then
   exit 0
 fi
 if [[ $# -ne 0 ]]; then echo "Usage: bash owner_one_shot.sh [--self-check]" >&2;exit 2;fi
-PIN="${AXIA_D11_REPLAY_PUBLIC_SHA:-f28c536151fce6855d918391be5d28ce22ccdd1a}"
+PIN="${AXIA_D11_REPLAY_PUBLIC_SHA:-3dfab0ade5c8bc0d010899a3ec1f728fcfcc5483}"
 if [[ ! "$PIN" =~ ^[a-f0-9]{40}$ ]]; then echo D11_PUBLIC_SHA_INVALID >&2;exit 2;fi
 ROOT="${AXIA_D11_INSTRUCTOR_BLOCK_C:-}"
 DEFAULT_CLONE="$HOME/axia_d11_course/axia-robot-safety-instructor"
