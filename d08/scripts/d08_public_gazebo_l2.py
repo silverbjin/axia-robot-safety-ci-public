@@ -729,18 +729,40 @@ def run(out:Path,actor:Path,positive_contact:bool=False,lidar_pre_goal:bool=Fals
                   flush=True)
         if ci_owner_repro:
             from d08_same_world_replan import run as repeat_path
+            cm_ab=env.get("AXIA_D08_CM_AB_MODE")=="1"
+            cm_ab_rows=[]
+            if cm_ab:
+                from d08_cm_native_probe_isolated import (
+                    mode_for_cycle,summarize_cm_ab)
+                result["cm_service_ab_diagnostic_only"]=True
             for i in range(8):
                 if ci_gui.poll() is not None:
                     raise RuntimeError('D08_CI_GAZEBO_GUI_CLIENT_EXITED_DURING_REPLAN')
                 d=out/'ci_owner_replan_cycles'/('cycle_%04d'%i)
-                rc=repeat_path(d,env,checkout_sha)
+                cycle_env=dict(env)
+                if cm_ab:
+                    cycle_env["AXIA_D08_CM_SERVICE_PROBE_MODE"]=mode_for_cycle(
+                        i,enabled=True)
+                    print("D08_CM_AB_CYCLE_REAL_SERVICE_QUERY "
+                          +str(i)+" "+cycle_env["AXIA_D08_CM_SERVICE_PROBE_MODE"],
+                          flush=True)
+                rc=repeat_path(d,cycle_env,checkout_sha)
                 cycle=json.loads((d/'verdict.json').read_text())
+                if cm_ab:
+                    cm_ab_rows.append(cycle)
                 if rc!=0:
                     result['ci_owner_replan_failure_cycle']=i
                     result['ci_owner_replan_first_boundary']=cycle.get('first_boundary')
                     raise RuntimeError('D08_CI_REAL_GUI_EIGHT_CYCLES_FIRST_BOUNDARY:'+str(
                         cycle.get('first_boundary')))
                 result['ci_owner_replan_cycles']=i+1
+            if cm_ab:
+                summary=summarize_cm_ab(cm_ab_rows)
+                result["ci_cm_service_ab"]=summary
+                (out/"d08-cm-service-ab-comparison.json").write_text(
+                    json.dumps(summary,indent=2,sort_keys=True)+"\n")
+                print("D08_CM_AB_EIGHT_CYCLES_L2_PASS_NOT_ROOT_CAUSE "
+                      +json.dumps(summary["modes"],sort_keys=True),flush=True)
             print('D08_CI_REAL_GUI_EIGHT_REPEAT_PATHS_L2_PASS',flush=True)
         # The calibration happens ONCE, only on the actual no-Goal L2 CI
         # path after real RGBD and the native Contact topic were verified.
