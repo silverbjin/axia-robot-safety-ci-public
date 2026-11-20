@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+<meta name="color-scheme" content="dark">
+<title>AXIA D11 · AI 이상탐지 사건 수사실 · Offline Replay</title>
+<style>
+:root{--bg:#091326;--panel:#12243b;--edge:#314c69;--text:#edf6ff;--dim:#b0c6df;--teal:#50dbc7;--gold:#ffc779;--red:#ff9097;--blue:#91c0ff;--purple:#d5b9ff}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 10% 0%,#193451,#091326 50%);font:16px/1.47 system-ui,-apple-system,"Malgun Gothic","Noto Sans KR",sans-serif;color:var(--text)}
+main{max-width:1740px;margin:auto;padding:18px 24px 48px}button,select,input{font:inherit}button,select{border-radius:9px;border:1px solid #52708f;background:#233e5c;color:var(--text);padding:9px 12px;cursor:pointer}button:disabled{opacity:.42;cursor:default}button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-offset:2px}.primary{background:#20b7a5;color:#09252a;border:0;font-weight:800}.warningBtn{background:#72404d}.titleRow,.line,.controls,.buttons,.toolbar,.legend,.duo{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.titleRow{justify-content:space-between;margin-bottom:11px}h1{font-size:clamp(25px,2.4vw,36px);margin:0}h2{font-size:19px;margin:0 0 8px}.muted{color:var(--dim)}.small{font-size:13px}.tiny{font-size:11px}.tag{display:inline-block;border:1px solid #426381;border-radius:999px;padding:5px 11px;color:var(--gold);font-size:12px;font-weight:800}.notice{padding:10px 13px;background:#302b36;border-left:4px solid var(--gold);font-size:13px;margin-bottom:13px}.panel{border:1px solid var(--edge);border-radius:14px;background:linear-gradient(160deg,#162b45,#101f33);padding:14px}.layout{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(390px,1fr);gap:14px}.wide{grid-column:1/-1}.controls{justify-content:space-between;margin-bottom:12px}.controls label{font-size:13px;color:var(--dim)}.controls select{max-width:220px}.buttons{gap:7px}.signalChart{height:111px;width:100%;display:block;background:#0c1a2c;border-radius:8px;border:1px solid #243b54;margin:5px 0 9px}.scoreChart{height:102px;width:100%;display:block;background:#0c1a2c;border-radius:8px;border:1px solid #243b54}.sectionhead{display:flex;justify-content:space-between;align-items:center;margin:0 0 5px;gap:10px}.sectionhead strong{font-size:13px}.scoreCard{border:1px solid #3b5672;border-radius:12px;padding:12px;margin-bottom:11px;background:#142840}.scoreHead{display:flex;align-items:center;justify-content:space-between;gap:12px}.scoreHead strong{font-size:18px}.scoreValue{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}.scoreValue b{font:750 25px ui-monospace,Consolas,monospace;overflow-wrap:anywhere}.scoreValue span{font-size:12px;color:var(--dim)}.result{border-radius:9px;padding:8px 12px;font-weight:800;margin-top:8px;background:#243a55;border:1px solid #416282;min-height:43px}.result.normal{background:#21443d;color:#b4ffe6}.result.warning{background:#532f3a;color:#ffc2c8}.result.insufficient{background:#393049;color:#ecdbff}.result.locked{color:#d8e6f7}.question{border-left:3px solid var(--blue);padding:9px 12px;background:#1a304a;margin:9px 0 12px}.question strong{color:var(--blue)}#seek{width:100%;accent-color:var(--teal);margin:8px 0}#timeReadout{font:800 20px ui-monospace,Consolas,monospace}#stepWindow{font:800 20px ui-monospace,Consolas,monospace;color:var(--teal)}.stepMini{font-size:12px;color:var(--dim)}.panelTitle{font-size:14px;font-weight:800;margin-bottom:7px}.truth{min-height:60px;border:1px solid #576080;background:#20293e;border-radius:10px;padding:12px;font-size:14px}.truth.hidden{color:#b7cce1}.metricBar{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:9px}.metric{background:#1a2f47;border-radius:10px;padding:10px;font-size:12px}.metric strong{display:block;margin-top:4px;font:750 16px ui-monospace,Consolas,monospace}.footer{font-size:12px;color:var(--dim);margin-top:12px;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap}.spacer{height:1px;background:#35506b;margin:10px 0}.cue{margin:5px 0;color:var(--dim);font-size:12px}.guide{color:var(--gold);font-weight:800}.footnote{font-size:11px;color:#97adc4}.windows{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:4px;margin:9px 0}.win{padding:5px 1px;background:#1b3552;border:1px solid #45617d;border-radius:6px;min-height:31px;text-align:center;font:750 12px ui-monospace,monospace}.win.active{outline:2px solid var(--teal);background:#254f5c}.win.future{opacity:.38}
+@media(max-width:1120px){.layout{grid-template-columns:1fr}.controls{justify-content:flex-start}main{padding:14px}.wide{grid-column:auto}}
+@media(max-width:520px){.controls select{max-width:150px}.buttons button{flex:1 1 45%}.titleRow{align-items:flex-start}.metricBar{grid-template-columns:1fr}.signalChart{height:95px}}
+</style>
+</head>
+<body>
+<main>
+<header class="titleRow">
+  <div><div class="muted small" style="letter-spacing:.11em;font-weight:800">AXIA / BLOCK C / D11 · TEACHING LAB</div>
+    <h1>AI 이상탐지 사건 수사실</h1><div class="muted small">학생 예측 → IF/AE 판정 공개 → 합성 정답·오탐 해설</div></div>
+  <div style="text-align:right"><span class="tag">OFFLINE RECORDED REPLAY</span><div class="small muted">학습된 모델 실행 아님 · 교육용 합성 기록</div></div>
+</header>
+<div class="notice"><strong>안전 경계:</strong> SYNTHETIC_COURSE_FIXTURE · 합성 10Hz · 파일에 기록된 IF/AE 점수만 재생합니다. 실제 센서·ROS·Gazebo·Nav2·cmd_vel·SW Stop·인증된 E-Stop과 연결되지 않습니다.</div>
+<section class="panel controls" aria-label="재생 조작">
+ <div class="line"><label for="traceSelect">사건 Trace</label><select id="traceSelect"></select><label for="speedSelect">속도</label>
+ <select id="speedSelect"><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option></select></div>
+ <div class="buttons"><button class="primary" id="play">▶ 재생</button><button id="prev">◀ 이전 Window</button><button id="next">다음 Window ▶</button><button id="restart">↺ 처음으로</button></div>
+ <div class="line"><span id="stepWindow">W0</span><span id="timeReadout">0.0s</span></div>
+</section>
+<input id="seek" aria-label="기록 시각 이동" type="range" min="0" max="99" step="1" value="0">
+<div class="windows" id="windowStrip" aria-label="Window 위치"></div>
+<div class="layout">
+<section class="panel" aria-label="합성 시계열 파형">
+ <h2>01 · 기록된 신호 관찰</h2>
+ <div class="muted small">다음 질문에 먼저 답하세요: 지금 어느 Window부터 의심스럽습니까?</div>
+ <div class="sectionhead"><strong>전류 · current_a</strong><span class="muted tiny">단위 A · 합성 Raw</span></div><canvas class="signalChart" id="currentChart" role="img" aria-label="합성 전류 시계열"></canvas>
+ <div class="sectionhead"><strong>토크 · torque_nm</strong><span class="muted tiny">단위 N·m · 합성 Raw</span></div><canvas class="signalChart" id="torqueChart" role="img" aria-label="합성 토크 시계열"></canvas>
+ <div class="sectionhead"><strong>가속도 · accel_mps2</strong><span class="muted tiny">단위 m/s² · 합성 Raw</span></div><canvas class="signalChart" id="accelChart" role="img" aria-label="합성 가속도 시계열"></canvas>
+ <div class="footnote">그래프는 합성 기록의 현재 위치까지 표시합니다. 주입 구간과 정답은 '정답·오차 해설 공개' 뒤에만 나타납니다.</div>
+</section>
+<section class="panel" aria-label="AI 점수와 학생 예측">
+ <h2>02 · 판정을 내리기 전에 예측하기</h2>
+ <div class="question"><strong>학생 질문</strong><div>이 Window의 상태는 무엇이라고 예상하나요? 두 모델이 같은 결론을 낼까요?</div>
+ <div class="line" style="margin-top:8px"><label for="guessSelect">내 예측</label><select id="guessSelect"><option value="">— 먼저 예측하세요 —</option><option value="NORMAL">NORMAL</option><option value="WARNING">WARNING</option><option value="INSUFFICIENT_DATA">INSUFFICIENT_DATA</option></select></div></div>
+ <div class="scoreCard" id="ifCard"><div class="scoreHead"><strong>D10 · Isolation Forest</strong><span class="muted small">고립 위험도 · 독립 척도</span></div>
+ <div class="scoreValue"><b id="ifScore">비공개</b><span id="ifLimit"></span></div><canvas class="scoreChart" id="ifChart" role="img" aria-label="IF 점수 그래프"></canvas><div id="ifResult" class="result locked">학생이 먼저 예측 · 판정 숨김</div></div>
+ <div class="scoreCard" id="aeCard"><div class="scoreHead"><strong>D11 · AutoEncoder</strong><span class="muted small">정규화 복원 MSE · 독립 척도</span></div>
+ <div class="scoreValue"><b id="aeScore">비공개</b><span id="aeLimit"></span></div><canvas class="scoreChart" id="aeChart" role="img" aria-label="AE MSE 그래프"></canvas><div id="aeResult" class="result locked">학생이 먼저 예측 · 판정 숨김</div></div>
+ <div class="buttons"><button class="primary" id="showIF">IF 판정 공개</button><button class="primary" id="showAE">AE 판정 공개</button><button id="showTruth">정답·오차 해설 공개</button><button class="warningBtn" id="resetAnswers">다시 숨기기</button></div>
+ <div class="cue">각 모델의 Y축과 cutoff는 별도입니다. IF와 AE 원점수의 크기를 직접 비교하지 않습니다.</div>
+</section>
+<section class="panel wide" aria-label="정답 및 판정 해설">
+ <h2>03 · 정답을 확인하고 판단 이유를 설명하기</h2>
+ <div id="truthArea" class="truth hidden">합성 정답은 숨겨져 있습니다. 먼저 그래프에서 예측하고 IF/AE 결과를 확인한 뒤 공개하세요.</div>
+ <div class="metricBar" id="metricsArea" hidden><div class="metric"><span>IF · Test VALID 100</span><strong id="ifConfusion"></strong></div><div class="metric"><span>AE · Test VALID 100</span><strong id="aeConfusion"></strong></div></div>
+ <div class="footer"><span id="sourceSummary">SYNTHETIC_COURSE_FIXTURE · 수업용 기록</span><span>정답 공개 전에는 TP/FP/FN/TN을 표시하지 않습니다.</span></div>
+</section>
+</div>
+<div class="footer"><span>AXIA D11 · INSTRUCTOR VIEW ONLY · OFFLINE / NO MODEL INFERENCE</span><span>WINDOW 종료 시각 기반 재생 · 실제 로봇 센서/정지 타이밍 아님</span></div>
+</main>
+<script>
+"use strict";
+const DATA=/*__DATA_JSON__*/;
+const $=id=>document.getElementById(id);
+const state={trace:0,index:0,showIF:false,showAE:false,showTruth:false,playing:false,timer:null,speed:1};
+const traces=DATA.traces;
+const fmt=v=>v===null||v===undefined?"UNSCORED":Number(v).toFixed(8);
+const pct=v=>Math.max(0,Math.min(99.5,v));
+function current(){return traces[state.trace]}
+function windowId(){const t=current();return t.quality_reason?0:Math.min(9,Math.floor(state.index/10))}
+function selected(){return current().windows[windowId()]}
+function stop(){if(state.timer!==null){clearInterval(state.timer);state.timer=null}state.playing=false;$("play").textContent="▶ 재생"}
+function lockAnswers(){state.showIF=false;state.showAE=false;state.showTruth=false;$("guessSelect").value=""}
+function setIndex(idx){const next=Math.max(0,Math.min(current().samples.length-1,Math.floor(idx)));if(next!==state.index){state.index=next;lockAnswers()}render()}
+function resetTrace(i){stop();state.trace=i;state.index=0;lockAnswers();$("seek").max=current().samples.length-1;$("seek").value=0;render()}
+function windowStep(delta){stop();const t=current();if(t.quality_reason){setIndex(t.samples.length-1);return}
+ const cur=windowId();const dest=Math.max(0,Math.min(9,cur+delta));setIndex(Math.min(t.samples.length-1,(dest+1)*10-1))}
+function playback(){if(state.playing){stop();return}state.playing=true;$("play").textContent="❚❚ 일시정지";
+ state.timer=setInterval(()=>{if(state.index>=current().samples.length-1){stop();render();return}setIndex(state.index+1)},Math.max(25,100/state.speed))}
+function canvasInfo(id){const c=$(id);const rect=c.getBoundingClientRect();const w=Math.max(240,Math.round(rect.width));const h=Math.max(75,Math.round(rect.height));const dpr=Math.min(2,window.devicePixelRatio||1);
+ c.width=w*dpr;c.height=h*dpr;const ctx=c.getContext("2d");ctx.scale(dpr,dpr);ctx.clearRect(0,0,w,h);return {ctx,w,h}}
+function drawSignal(id,column,color){
+ const {ctx,w,h}=canvasInfo(id), samples=current().samples;const x0=35,x1=w-10,y0=12,y1=h-23;
+ ctx.strokeStyle="#31485e";ctx.lineWidth=1;for(let i=0;i<4;i++){const y=y0+i*(y1-y0)/3;ctx.beginPath();ctx.moveTo(x0,y);ctx.lineTo(x1,y);ctx.stroke()}
+ let vals=samples.map(r=>r[column]).filter(v=>v!==null&&Number.isFinite(v));if(!vals.length)vals=[0,1];
+ const min=Math.min(...vals),max=Math.max(...vals);const spread=Math.max(max-min,1e-5);const low=min-spread*.12, high=max+spread*.12;
+ const X=idx=>x0+(x1-x0)*idx/99;const Y=v=>y1-(v-low)/(high-low)*(y1-y0);
+ const win=windowId();ctx.fillStyle="rgba(255,199,121,.14)";ctx.fillRect(X(win*10),y0,X(Math.min(99,(win+1)*10))-X(win*10),y1-y0);
+ if(state.showTruth&&current().kind!=="NORMAL"&&!current().quality_reason){
+   ctx.fillStyle="rgba(255,120,130,.16)";ctx.fillRect(X(40),y0,X(70)-X(40),y1-y0);
+ }
+ ctx.beginPath();ctx.strokeStyle=color;ctx.lineWidth=2.4;let open=false;
+ for(const r of samples){if(r[0]>state.index)break;const v=r[column];if(v===null||!Number.isFinite(v)){open=false;continue}
+ const x=X(r[0]),y=Y(v);if(!open){ctx.moveTo(x,y);open=true}else ctx.lineTo(x,y)}
+ ctx.stroke();
+ ctx.fillStyle="#bed0e2";ctx.font="11px monospace";ctx.fillText(min.toFixed(2),3,h-24);ctx.fillText("0초",x0,h-7);ctx.fillText("10초",w-42,h-7)
+ ctx.fillStyle="#ffc779";ctx.fillText("W"+win,Math.min(w-40,X(Math.min(state.index,97))),14)
+}
+function drawScore(id,which,unlocked){
+ const {ctx,w,h}=canvasInfo(id),x0=30,x1=w-13,y0=12,y1=h-25;
+ if(!unlocked){ctx.fillStyle="#a8bed4";ctx.font="15px system-ui";ctx.fillText("학생 예측 후 판정 공개",14,h/2);return}
+ const t=current(), ws=t.windows, win=windowId(), lim=DATA.models[which.toUpperCase()].threshold;
+ if(t.quality_reason){ctx.fillStyle="#d9c3ff";ctx.font="14px system-ui";ctx.fillText("품질 실패 · 점수 없음",12,h/2);return}
+ const scores=ws.map(v=>v[which].score).filter(x=>x!==null);
+ const max=Math.max(lim*1.3,...scores)*1.07, min=Math.min(0,...scores);
+ const X=i=>x0+(x1-x0)*i/9;const Y=v=>y1-(v-min)/(max-min||1)*(y1-y0);
+ ctx.strokeStyle="#4b5f77";ctx.beginPath();ctx.moveTo(x0,Y(lim));ctx.lineTo(x1,Y(lim));ctx.stroke();
+ ctx.fillStyle="#ffc779";ctx.font="11px monospace";ctx.fillText("cutoff",x0+3,Math.max(10,Y(lim)-3));
+ ctx.beginPath();ctx.lineWidth=2.3;ctx.strokeStyle=which==="ae"?"#52dbc7":"#91c0ff";
+ let first=true;for(let i=0;i<=win;i++){const r=ws[i];const x=X(i),y=Y(r[which].score);if(first){ctx.moveTo(x,y);first=false}else ctx.lineTo(x,y)}ctx.stroke();
+ ctx.fillStyle="#f6e4a1";ctx.beginPath();ctx.arc(X(win),Y(ws[win][which].score),4,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle="#afc6df";ctx.font="11px monospace";ctx.fillText("W0",x0,h-6);ctx.fillText("W9",x1-22,h-6);
+}
+function modelView(which,reveal){
+ const w=selected(),v=w[which],prefix=which==="if"?"if":"ae";
+ $(prefix+"Score").textContent=reveal?fmt(v.score):"비공개";
+ $(prefix+"Limit").textContent=reveal?(v.threshold===null?"cutoff 미적용":"cutoff "+fmt(v.threshold)):"";
+ const div=$(prefix+"Result");div.className="result "+(reveal?(v.prediction==="WARNING"?"warning":v.prediction==="NORMAL"?"normal":"insufficient"):"locked");
+ div.textContent=reveal?v.prediction:"학생이 먼저 예측 · 판정 숨김";
+ drawScore(prefix+"Chart",prefix,reveal);
+}
+function truthView(){
+ const box=$("truthArea"),bar=$("metricsArea");box.classList.toggle("hidden",!state.showTruth);bar.hidden=!state.showTruth;
+ if(!state.showTruth){box.textContent="합성 정답은 숨겨져 있습니다. 먼저 그래프에서 예측하고 IF/AE 결과를 확인한 뒤 공개하세요.";return}
+ const t=current(),w=selected(),truth=w.truth;
+ const label=truth===1?"합성 이상(TRUE 1)":truth===0?"합성 정상(TRUE 0)":"품질 부족(TRUE -1)";
+ const pp=name=>w[name].case?name.toUpperCase()+" "+w[name].case:name.toUpperCase()+" 판정 불가";
+ let txt=t.id+" / W"+w.w+" · "+label+". ";
+ if(truth===-1){txt+="품질 사유 "+w.reason+". 두 모델 모두 점수 없이 INSUFFICIENT_DATA. 결측을 0점 NORMAL로 바꾸지 마세요."}
+ else{txt+="IF "+w.if.prediction+" ("+pp("if")+") / AE "+w.ae.prediction+" ("+pp("ae")+"). ";
+ txt+=truth===1?"실제 합성 이상 주입 Window는 W4~W6입니다.":"현재 Window는 합성 정상 정답입니다. 경고가 나왔다면 FP입니다."}
+ const guess=$("guessSelect").value;
+ if(guess)txt+=" 학생 예측 "+guess+" → "+((truth===-1?"INSUFFICIENT_DATA":truth===1?"WARNING":"NORMAL")===guess?"정답 일치":"정답과 다름")+" (합성 라벨 기준).";
+ box.textContent=txt;
+ for(const model of ("IF","AE")){
+ const c=DATA.models[model].confusion;$(model.toLowerCase()+"Confusion").textContent="TP "+c.TP+" / FP "+c.FP+" / FN "+c.FN+" / TN "+c.TN}
+}
+function render(){
+ const t=current(),w=selected(),wi=windowId();$("seek").max=t.samples.length-1;$("seek").value=state.index;
+ $("timeReadout").textContent=(t.samples[state.index][1]/1e9).toFixed(1)+"s";
+ $("stepWindow").textContent="W"+wi;
+ $("sourceSummary").textContent="SYNTHETIC_COURSE_FIXTURE / "+t.id+" · source SHA "+DATA.raw_sha256.slice(0,12);
+ const strip=$("windowStrip");strip.textContent="";
+ const slots=t.quality_reason?1:10;for(let i=0;i<slots;i++){const node=document.createElement("span");node.className="win"+(i===wi?" active":"")+(i>wi?" future":"");node.textContent="W"+i;strip.appendChild(node)}
+ drawSignal("currentChart",2,"#50dbc7");drawSignal("torqueChart",3,"#ffc779");drawSignal("accelChart",4,"#91c0ff");
+ modelView("if",state.showIF);modelView("ae",state.showAE);truthView();
+ $("prev").disabled=!!t.quality_reason||wi===0;
+ $("next").disabled=!!t.quality_reason||wi===9;
+}
+$("traceSelect").addEventListener("change",e=>resetTrace(Number(e.target.value)));
+$("speedSelect").addEventListener("change",e=>{state.speed=Number(e.target.value);if(state.playing){stop();playback()}});
+$("play").addEventListener("click",playback);
+$("prev").addEventListener("click",()=>windowStep(-1));
+$("next").addEventListener("click",()=>windowStep(1));
+$("restart").addEventListener("click",()=>{stop();setIndex(0);lockAnswers();render()});
+$("seek").addEventListener("input",e=>{stop();setIndex(Number(e.target.value))});
+$("showIF").addEventListener("click",()=>{state.showIF=true;render()});
+$("showAE").addEventListener("click",()=>{state.showAE=true;render()});
+$("showTruth").addEventListener("click",()=>{state.showTruth=true;render()});
+$("resetAnswers").addEventListener("click",()=>{lockAnswers();render()});
+$("guessSelect").addEventListener("change",()=>{if(state.showTruth)truthView()});
+window.addEventListener("keydown",e=>{
+ if(e.target&&["INPUT","SELECT","BUTTON","TEXTAREA"].includes(e.target.tagName))return;
+ if(e.code==="ArrowRight"){e.preventDefault();windowStep(1)}
+ if(e.code==="ArrowLeft"){e.preventDefault();windowStep(-1)}
+ if(e.code==="Space"){e.preventDefault();playback()}
+});
+window.addEventListener("resize",()=>render());
+for(let i=0;i<traces.length;i++){const o=document.createElement("option");o.value=i;
+ o.textContent=traces[i].id+" · "+(traces[i].quality_reason?"품질 조사":"신호 관찰");$("traceSelect").appendChild(o)}
+$("traceSelect").value="0";
+render();
+</script>
+</body>
+</html>
