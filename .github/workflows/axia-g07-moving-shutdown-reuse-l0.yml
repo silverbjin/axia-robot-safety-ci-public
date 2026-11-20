@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 9d8afed4182d3997d77b3cfca04383d3dd6db74c
+          ref: f4c9ba2acb4c7311c75aeb2e413285039fa1d0c2
           path: student
           persist-credentials: false
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -30,7 +30,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C student rev-parse HEAD)" = '9d8afed4182d3997d77b3cfca04383d3dd6db74c'
+          test "$(git -C student rev-parse HEAD)" = 'f4c9ba2acb4c7311c75aeb2e413285039fa1d0c2'
           test "$(git -C review rev-parse HEAD)" = '86c68a121bedffbf1d2bb91e1efac6a40b88c798'
           python3 -m unittest discover -s review/d06/tests -p 'test_d06_localization_manager_callback_probe.py' -v
           python3 -m unittest discover -s review/d06/tests -p 'test_d06_c07_navigation_manager_service_liveness.py' -v
@@ -38,4 +38,5 @@ jobs:
           (cd student/block_B/day07/h01_runtime && python3 -m unittest discover -s tools -p 'test_g07_task04_shutdown_gui_order.py' -v)
           (cd student/block_B/day07/h01_runtime && python3 -m unittest discover -s tools -p 'test_g07_context_publish_shutdown.py' -v)
           (cd student/block_B/day07/h01_runtime && python3 -m unittest discover -s tools -p 'test_g07_navigation_warm_participant_shutdown_ab.py' -v)
+          (cd student/block_B/day07/h01_runtime && python3 -m unittest discover -s tools -p 'test_g07_nav_owner_warm_authority.py' -v)
           echo 'G07_MOVING_SHUTDOWN_D06_REUSE_L0_PASS_NO_ACTUAL_L2'
