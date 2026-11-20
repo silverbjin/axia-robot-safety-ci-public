@@ -74,7 +74,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 589ebaea166130c1fba233c8f3af02352fa0211c
+          ref: 3cc4b8e4da5c7ca40d87cd70380306338805972d
           path: student
           persist-credentials: false
       # Keep the historic reviewer for older unrelated imports; the current
@@ -89,7 +89,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C student rev-parse HEAD)" = '589ebaea166130c1fba233c8f3af02352fa0211c'
+          test "$(git -C student rev-parse HEAD)" = '3cc4b8e4da5c7ca40d87cd70380306338805972d'
           test "$(git -C ci rev-parse HEAD)" = "$GITHUB_SHA"
           test "$FASTDDS_BUILTIN_TRANSPORTS" = UDPv4
           [[ -z "${FASTRTPS_DEFAULT_PROFILES_FILE:-}" && -z "${FASTDDS_DEFAULT_PROFILES_FILE:-}" ]] || {
@@ -283,7 +283,7 @@ jobs:
           import json,sys
           result=json.load(open(sys.argv[1]))
           assert result.get("goal_sent") is True,result
-          assert result.get("source_sha")=="589ebaea166130c1fba233c8f3af02352fa0211c",result
+          assert result.get("source_sha")=="3cc4b8e4da5c7ca40d87cd70380306338805972d",result
           print('AXIA_G07_REAL_OWNER_AMCL_PRIMARY_PATH_PASS actual_goal_sent=true')
           PY_REAL_TF
           # Real Guard 20Hz timing facts must be present in the actual
@@ -335,7 +335,7 @@ jobs:
                   --motion "$GITHUB_WORKSPACE/native/g07_ci_moving/ci_moving_goal_result.json" \
                   --shutdown "$GITHUB_WORKSPACE/native/g07_ordered_shutdown.json" \
                   --gui-windows 2 \
-                  --source-sha '589ebaea166130c1fba233c8f3af02352fa0211c' \
+                  --source-sha '3cc4b8e4da5c7ca40d87cd70380306338805972d' \
                   --output "$GITHUB_WORKSPACE/public_evidence/task04_mvp_visual_l2_verdict.json"; then
               sha256sum "$GITHUB_WORKSPACE/public_evidence/task04_mvp_visual_l2_verdict.json" \
                 > "$GITHUB_WORKSPACE/public_evidence/task04_mvp_visual_l2_verdict.sha256"
@@ -357,7 +357,7 @@ jobs:
           fi
           verify_real_goal_and_guard_evidence || exit 3
           windows_count=$((rviz_seen+gazebo_seen))
-          python3 tools/p2_g07_task04_moving_review.py             --motion-root "$GITHUB_WORKSPACE/native"             --witness "$GITHUB_WORKSPACE/native/s02_ecm_witness.json"             --source-sha '589ebaea166130c1fba233c8f3af02352fa0211c'             --gui-windows "$windows_count"             --output "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"
+          python3 tools/p2_g07_task04_moving_review.py             --motion-root "$GITHUB_WORKSPACE/native"             --witness "$GITHUB_WORKSPACE/native/s02_ecm_witness.json"             --source-sha '3cc4b8e4da5c7ca40d87cd70380306338805972d'             --gui-windows "$windows_count"             --output "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"
           sha256sum "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"             > "$GITHUB_WORKSPACE/public_evidence/task04_moving_verdict.sha256"
           echo 'AXIA_G07_TASK04_NATIVE_MOVING_GUI_XVFB_L2_PASS_OWNER_WSL2_NOT_RUN'
           echo 'AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false'
@@ -453,6 +453,23 @@ jobs:
             --launch-log "$GITHUB_WORKSPACE/native/launch.log" \
             --output "$GITHUB_WORKSPACE/public_evidence/first_nav_server_boundary.json"
           sha256sum "$GITHUB_WORKSPACE/public_evidence/first_nav_server_boundary.json" > "$GITHUB_WORKSPACE/public_evidence/first_nav_server_boundary.sha256"
+      - name: Independent first Scan header pair in existing ROS bag (numbers only)
+        if: always()
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          set +u; source /opt/ros/jazzy/setup.bash; set -u
+          mkdir -p "$GITHUB_WORKSPACE/public_evidence"
+          # FIRST Scan callback pair was saved before any attempted Goal.
+          # Independent rosbag2 receives on its own system clock. Never
+          # subtract a rosbag receive epoch from host monotonic.
+          python3 "$GITHUB_WORKSPACE/ci/d06/diagnostic/g07_scan_rosbag_first_boundary.py" \
+            --bag-root "$GITHUB_WORKSPACE/native/rosbag2" \
+            --first-report "$GITHUB_WORKSPACE/native/g07_ci_scan_pregoal.json" \
+            --output "$GITHUB_WORKSPACE/public_evidence/first_scan_rosbag_exact_pair.json"
+          sha256sum "$GITHUB_WORKSPACE/public_evidence/first_scan_rosbag_exact_pair.json" \
+            > "$GITHUB_WORKSPACE/public_evidence/first_scan_rosbag_exact_pair.sha256"
+          echo 'AXIA_G07_FIRST_SCAN_ROSBAG_EXACT_PAIR_NUMERIC_REPORT_SAVED_CAUSE_HOLD'
       - name: Upload allowlisted numeric verdict only no original raw bag
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -464,6 +481,8 @@ jobs:
             public_evidence/cm_stop_pub_first_latch.json
             public_evidence/first_delivery_actual_pairs.json
             public_evidence/first_scan_pregoal_boundary.json
+            public_evidence/first_scan_rosbag_exact_pair.json
+            public_evidence/first_scan_rosbag_exact_pair.sha256
             public_evidence/first_scan_pregoal_boundary.sha256
             public_evidence/first_nav_server_boundary.json
             public_evidence/first_nav_server_boundary.sha256
