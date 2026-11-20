@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 0f6e6bd47e03f01cb55e43e19a20ea31f65feb99
+          ref: 0e61f38d7b7a483eef73afd8225f963a6f1215fb
           path: student
           persist-credentials: false
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -30,8 +30,9 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C student rev-parse HEAD)" = '0f6e6bd47e03f01cb55e43e19a20ea31f65feb99'
+          test "$(git -C student rev-parse HEAD)" = '0e61f38d7b7a483eef73afd8225f963a6f1215fb'
           test "$(git -C review rev-parse HEAD)" = '86c68a121bedffbf1d2bb91e1efac6a40b88c798'
           python3 -m unittest discover -s review/d06/tests -p 'test_d06_localization_manager_callback_probe.py' -v
           python3 -m unittest discover -s review/d06/tests -p 'test_d06_c07_navigation_manager_service_liveness.py' -v
+          (cd student/block_B/day07/h01_runtime && python3 -m unittest discover -s tools -p 'test_g07_task04_gui_bounded_teardown.py' -v)
           echo 'G07_MOVING_SHUTDOWN_D06_REUSE_L0_PASS_NO_ACTUAL_L2'
