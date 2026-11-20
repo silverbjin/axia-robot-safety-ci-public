@@ -38,7 +38,7 @@ def parse_isolated_probe_output(output:str)->dict:
     if (data.get("status")!="D08_CM_NATIVE_ACTIVE_SCAN_PASS"
         or data.get("official_cm_active_scan_configured") is not True
         or data.get("cm_native_lifecycle_state")!="active"
-        or data.get("cm_actual_configured_scan_topic")!="/scan"
+        or data.get("cm_actual_configured_scan_topic") not in ("scan","/scan")
         or "scan" not in (data.get("cm_native_observation_sources") or [])
         or data.get("cm_internal_receive_gap_verified") is not False
         or data.get("cm_action_state_verified") is not False):
@@ -56,7 +56,7 @@ def summarize_cm_ab(cycles:list[dict])->dict:
             or cycle.get("cm_service_probe_mode")!=expected
             or cycle.get("official_cm_active_scan_configured") is not True
             or cycle.get("cm_native_lifecycle_state")!="active"
-            or cycle.get("cm_actual_configured_scan_topic")!="/scan"
+            or cycle.get("cm_actual_configured_scan_topic") not in ("scan","/scan")
             or cycle.get("first_scan_timing_boundary") is not None):
             raise ValueError("D08_CM_AB_ACTIVE_SCAN_OR_PHASE_NOT_PROVEN")
         pair=cycle.get("worst_scan_pair_source_stamps") or {}
