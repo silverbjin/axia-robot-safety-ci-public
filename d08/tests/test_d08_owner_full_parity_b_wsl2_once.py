@@ -5,9 +5,11 @@ Prior WSL2 first >500ms occurred ONLY AFTER live D05 passed. This regression
 must fail until the same session and release gate actually exercise that stage.
 """
 import unittest
+import sys
 from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[2]
+sys.path.insert(0,str(ROOT/"d08/harness"))
 
 class D08OwnerFullParity(unittest.TestCase):
     def test_01_real_ci_replays_first_owner_cycle_after_actual_live_yolo_d05(self):
