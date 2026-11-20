@@ -73,9 +73,11 @@ main() {
   printf 'D10_OWNER_START mode=%s work=%s cwd=%s evidence=%s\n' "$MODE" "$WORK" "$PWD" "$RUN"
   local root='' py="${AXIA_D10_PYTHON:-python3}" sha='' vers=''
   STAGE=SOURCE_DISCOVERY
+  printf 'D10_STAGE=%s\n' "$STAGE"
   root="$(resolve_block)" || fail 'instructor_checkout_not_available'
   printf 'D10_BLOCK_C_ROOT=%s\n' "$root"
   STAGE=SOURCE_VERSION
+  printf 'D10_STAGE=%s\n' "$STAGE"
   if ! command -v git >/dev/null 2>&1; then fail 'git_missing'; fi
   sha="$(git -C "$root" rev-parse HEAD)" || fail 'git_repo_invalid'
   printf '%s\n' "$sha" >"$RUN/instructor_sha.txt"
@@ -84,6 +86,7 @@ main() {
     printf '%s\n' 'D10_SOURCE_WORKTREE_MODIFIED local_tracked_changes_present'
   fi
   STAGE=PYTHON_DEPENDENCIES
+  printf 'D10_STAGE=%s\n' "$STAGE"
   command -v "$py" >/dev/null 2>&1 || fail 'python3_missing'
   if ! "$py" -c 'import sys,numpy,sklearn;print("python="+sys.version.split()[0]+" numpy="+numpy.__version__+" sklearn="+sklearn.__version__)' >"$RUN/versions.log" 2>&1; then
     cat "$RUN/versions.log"
@@ -98,12 +101,16 @@ main() {
     return 0
   fi
   STAGE=C01_FIXTURE
+  printf 'D10_STAGE=%s\n' "$STAGE"
   "$py" "$root/fixtures/generator.py" --check --fixture-dir "$root/fixtures" | tee "$RUN/fixture.log"
   STAGE=C02_FEATURES
+  printf 'D10_STAGE=%s\n' "$STAGE"
   "$py" "$root/day09/eda_pipeline.py" --fixtures "$root/fixtures" --out "$RUN/c02" | tee "$RUN/eda.log"
   STAGE=C03_ISOLATION_FOREST
+  printf 'D10_STAGE=%s\n' "$STAGE"
   "$py" "$root/day10/isolation_forest_pipeline.py" --features "$RUN/c02" --out "$RUN/c03" | tee "$RUN/if.log"
   STAGE=C03_RESULT_CONTRACT
+  printf 'D10_STAGE=%s\n' "$STAGE"
   "$py" - "$RUN/c03/if_metrics.json" "$RUN/c03/if_scores_test.csv" <<'PY' | tee "$RUN/check.log"
 import csv,json,sys
 from pathlib import Path
