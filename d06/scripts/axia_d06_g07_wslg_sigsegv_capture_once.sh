@@ -4,13 +4,49 @@
 set -Eeuo pipefail
 umask 077
 MODE="${1:---self-check}"
-[[ $# -le 1 && ( "$MODE" == --self-check || "$MODE" == --run-once ) ]] || {
-  echo 'D06_WSLG_CORE_ONCE_USAGE=--self-check|--run-once' >&2;exit 2;
+[[ $# -le 1 && ( "$MODE" == --self-check || "$MODE" == --check-tools || "$MODE" == --run-once ) ]] || {
+  echo 'D06_WSLG_CORE_ONCE_USAGE=--self-check|--check-tools|--run-once' >&2;exit 2;
 }
 if [[ "$MODE" == --self-check ]];then
   echo 'D06_WSLG_CORE_ONCE_L0_PASS_NO_ROS_NO_GAZEBO'
+  echo 'D06_WSLG_CORE_ONCE_HOST_DEPENDENCIES_NOT_TESTED'
   echo 'AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false'
   exit 0
+fi
+
+# This pure CLI-compatibility contract is shared by public CI and the
+# WSL2 --run-once path. --check-tools does not require WSL2 and never
+# starts ROS/Gazebo, installs packages or modifies host configuration.
+# L0 fixtures can exercise missing/present/invalid tools with isolated PATH.
+check_required_tools() {
+  local exe help_text
+  for exe in python3 curl sha256sum git bash gdb timeout tar glxinfo ps grep sed head mktemp chmod tee cat rm sleep;do
+    if ! command -v "$exe" >/dev/null 2>&1;then
+      echo "D06_WSLG_CORE_ONCE_HOLD_MISSING_TOOL=$exe" >&2
+      echo 'D06_WSLG_CORE_ONCE_HOLD_PRECONDITION_NOT_MET_NO_GAZEBO_RUN' >&2
+      return 3
+    fi
+  done
+  if ! command -v coredumpctl >/dev/null 2>&1;then
+    echo 'D06_WSLG_CORE_ONCE_HOLD_MISSING_TOOL=coredumpctl' >&2
+    echo 'D06_WSLG_CORE_ONCE_MISSING_UBUNTU_PACKAGE=systemd-coredump' >&2
+    echo 'D06_WSLG_CORE_ONCE_HOLD_PRECONDITION_NOT_MET_NO_GAZEBO_RUN' >&2
+    return 3
+  fi
+  help_text="$(coredumpctl --help 2>&1)" || {
+    echo 'D06_WSLG_CORE_ONCE_HOLD_COREDUMPCTL_NOT_EXECUTABLE' >&2
+    return 3
+  }
+  if [[ "$help_text" != *--json* ]];then
+    echo 'D06_WSLG_CORE_ONCE_HOLD_COREDUMPCTL_JSON_UNSUPPORTED' >&2
+    return 3
+  fi
+  echo 'D06_WSLG_CORE_ONCE_TOOLCHAIN_L0_OK_BACKEND_NOT_VERIFIED'
+}
+
+if [[ "$MODE" == --check-tools ]];then
+  check_required_tools
+  exit $?
 fi
 # WSL2-only, explicit NO_GOAL; no local settings/apt/driver modifications.
 [[ "${GITHUB_ACTIONS:-false}" != true && -n "${DISPLAY:-}" ]] || {
@@ -19,11 +55,7 @@ fi
 grep -qiE 'microsoft|wsl' /proc/sys/kernel/osrelease || {
   echo 'D06_WSLG_CORE_ONCE_HOLD_WSL2_KERNEL_REQUIRED' >&2;exit 3;
 }
-for exe in python3 curl sha256sum git bash gdb coredumpctl timeout tar glxinfo;do
-  command -v "$exe" >/dev/null 2>&1 || {
-    echo "D06_WSLG_CORE_ONCE_HOLD_MISSING_TOOL=$exe" >&2;exit 3;
-  }
-done
+check_required_tools
 # This is a diagnosis, NOT the approved Owner WSL2 L3 acceptance run.
 echo 'D06_WSLG_CORE_ONCE_DIAGNOSTIC_NO_GOAL_OWNER_L3_NOT_RUN'
 echo 'AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false'
