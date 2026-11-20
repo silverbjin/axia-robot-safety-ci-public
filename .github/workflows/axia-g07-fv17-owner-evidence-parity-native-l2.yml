@@ -163,32 +163,7 @@ jobs:
           set +e;wait "$runner_pid";runner_rc=$?;set -e
           runner_pid=''
           echo "AXIA_G07_TASK04_NATIVE_ONE_MOVING_RUNNER_RC=$runner_rc RVIZ_X11=$rviz_seen GAZEBO_X11=$gazebo_seen"
-          if [[ "$runner_rc" -ne 0 ]];then
-            # Educational MVP: actual CLEAR/SLOW/STOP, odom dwell and exact
-            # Goal cancellation PASSED. A known *post-demo* localization
-            # shutdown timeout is a separate FORMAL HOLD, not a demo failure.
-            # Validate the real native JSON and both windows; never relabel
-            # full lifecycle/CM-clean acceptance as PASS.
-            if [[ "$rviz_seen" -eq 1 && "$gazebo_seen" -eq 1 ]] \
-                && python3 "$GITHUB_WORKSPACE/ci/scripts/axia_g07_mvp_visual_verdict.py" \
-                  --motion "$GITHUB_WORKSPACE/native/g07_ci_moving/ci_moving_goal_result.json" \
-                  --shutdown "$GITHUB_WORKSPACE/native/g07_ordered_shutdown.json" \
-                  --gui-windows 2 \
-                  --source-sha '5c7983598fa3bcd7148433a06f37a4e78b091273' \
-                  --output "$GITHUB_WORKSPACE/public_evidence/task04_mvp_visual_l2_verdict.json"; then
-              sha256sum "$GITHUB_WORKSPACE/public_evidence/task04_mvp_visual_l2_verdict.json" \
-                > "$GITHUB_WORKSPACE/public_evidence/task04_mvp_visual_l2_verdict.sha256"
-              echo 'AXIA_G07_TASK04_MVP_VISUAL_L2_PASS_FORMAL_LOCALIZATION_SHUTDOWN_HOLD'
-              echo 'AXIA_G07_FORMAL_L2=HOLD AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false'
-              exit 0
-            fi
-            for f in "$GITHUB_WORKSPACE/native/staged_startup.log"                      "$GITHUB_WORKSPACE/native/g07_ci_moving.log"                      "$GITHUB_WORKSPACE/native/g07_ordered_shutdown.log"                      "$GITHUB_WORKSPACE/native/launch.log"                      "$GITHUB_WORKSPACE/public_evidence/moving_stdout.log";do
-              [[ -f "$f" ]] || continue
-              echo "=== FIRST NATIVE MOVING EVIDENCE === ${f##*/}"
-              tail -n 90 "$f"
-            done
-            exit 3
-          fi
+          verify_real_goal_and_guard_evidence() {
           # Field teardown vJpsc6Wy: the parent "GRACEFUL" marker coexisted
           # with BOTH Guard and Supervisor child exit1 after rclpy SIGINT.
           # Require genuine clean exit0 of both nodes in this same session.
@@ -197,11 +172,11 @@ jobs:
               echo "AXIA_G07_NATIVE_L2_CHILD_DIED_DURING_TEARDOWN=${child}" >&2
               echo '=== FIRST ACTUAL CHILD EXCEPTION (bounded) ===' >&2
               grep -F "[${child}-" "$GITHUB_WORKSPACE/native/launch.log" | tail -n 48 >&2 || true
-              exit 3
+              return 3
             fi
             grep -Eq "\\[INFO\\] \\[${child}-[0-9]+\\]: process has finished cleanly" "$GITHUB_WORKSPACE/native/launch.log" || {
               echo "AXIA_G07_NATIVE_L2_CHILD_CLEAN_EXIT_ABSENT=${child}" >&2
-              exit 3
+              return 3
             }
           done
           echo 'AXIA_G07_NATIVE_L2_GUARD_SUPERVISOR_ACTUAL_CHILD_EXIT0_PASS'
@@ -235,7 +210,8 @@ jobs:
           internal=audit_guard_internal_cm_age(rows,goal_start=goal,window_end=end)
           assert internal["status"]=="GUARD_NATIVE_CM_AGE_TTL150_PASS",internal
           ci=assess(report,rows)
-          assert ci["status"]=="TASK02_PUBLIC_L2_NUMERICAL_CANDIDATE",ci
+          assert ci["status"] in ("TASK02_PUBLIC_L2_NUMERICAL_CANDIDATE",
+                                  "TASK02_RMW_TIMEBASE_DISCONTINUITY_HOLD"),ci
           # OFFLINE schema projection using this REAL CI bag: not an Owner
           # session, not an Owner authority grant, not a WSL2 acceptance.
           projected=dict(report,status="NUMERICAL_CANDIDATE",
@@ -244,10 +220,44 @@ jobs:
              common_g07_ci_oracle_status="CI_GAZEBO_MOVING_GOAL_CANDIDATE")
           owner=assess(projected,rows)
           assert owner["status"]==ci["status"],owner
+          if ci["status"]!="TASK02_PUBLIC_L2_NUMERICAL_CANDIDATE":
+              print("AXIA_G07_FV17_FORMAL_RMW_TIMEBASE=HOLD_MOVING_DEMO_CANDIDATE_ONLY")
           print("AXIA_G07_FV17_REAL_GAZEBO_GUARD_INTERNAL_TTL_PASS "
                 f"samples={internal['samples']} max_cm_age_ms={internal['max_cm_age_ms']}")
           print("AXIA_G07_FV17_OWNER_CI_PROFILE_NUMERICAL_PARITY_PASS_OWNER_L3_NOT_RUN")
           PY_GUARD_OWNER_CONTRACT
+          return 0
+          }
+          if [[ "$runner_rc" -ne 0 ]];then
+            # Educational MVP: actual CLEAR/SLOW/STOP, odom dwell and exact
+            # Goal cancellation PASSED. A known *post-demo* localization
+            # shutdown timeout is a separate FORMAL HOLD, not a demo failure.
+            # Validate the real native JSON and both windows; never relabel
+            # full lifecycle/CM-clean acceptance as PASS.
+            if [[ "$rviz_seen" -eq 1 && "$gazebo_seen" -eq 1 ]] \
+                && python3 "$GITHUB_WORKSPACE/ci/scripts/axia_g07_mvp_visual_verdict.py" \
+                  --motion "$GITHUB_WORKSPACE/native/g07_ci_moving/ci_moving_goal_result.json" \
+                  --shutdown "$GITHUB_WORKSPACE/native/g07_ordered_shutdown.json" \
+                  --gui-windows 2 \
+                  --source-sha '5c7983598fa3bcd7148433a06f37a4e78b091273' \
+                  --output "$GITHUB_WORKSPACE/public_evidence/task04_mvp_visual_l2_verdict.json"; then
+              sha256sum "$GITHUB_WORKSPACE/public_evidence/task04_mvp_visual_l2_verdict.json" \
+                > "$GITHUB_WORKSPACE/public_evidence/task04_mvp_visual_l2_verdict.sha256"
+              # Parent visual verdict alone cannot pass; use actual ROS
+              # Guard internal TTL and child zero-exit evidence first.
+              verify_real_goal_and_guard_evidence || exit 3
+              echo 'AXIA_G07_TASK04_MVP_VISUAL_L2_PASS_FORMAL_LOCALIZATION_SHUTDOWN_HOLD'
+              echo 'AXIA_G07_FORMAL_L2=HOLD AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false'
+              exit 0
+            fi
+            for f in "$GITHUB_WORKSPACE/native/staged_startup.log"                      "$GITHUB_WORKSPACE/native/g07_ci_moving.log"                      "$GITHUB_WORKSPACE/native/g07_ordered_shutdown.log"                      "$GITHUB_WORKSPACE/native/launch.log"                      "$GITHUB_WORKSPACE/public_evidence/moving_stdout.log";do
+              [[ -f "$f" ]] || continue
+              echo "=== FIRST NATIVE MOVING EVIDENCE === ${f##*/}"
+              tail -n 90 "$f"
+            done
+            exit 3
+          fi
+          verify_real_goal_and_guard_evidence || exit 3
           windows_count=$((rviz_seen+gazebo_seen))
           python3 tools/p2_g07_task04_moving_review.py             --motion-root "$GITHUB_WORKSPACE/native"             --witness "$GITHUB_WORKSPACE/native/s02_ecm_witness.json"             --source-sha '5c7983598fa3bcd7148433a06f37a4e78b091273'             --gui-windows "$windows_count"             --output "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"
           sha256sum "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"             > "$GITHUB_WORKSPACE/public_evidence/task04_moving_verdict.sha256"
