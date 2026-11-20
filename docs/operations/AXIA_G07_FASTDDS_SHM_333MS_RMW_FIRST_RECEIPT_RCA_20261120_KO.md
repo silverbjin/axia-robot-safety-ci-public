@@ -58,3 +58,56 @@ python3 -m unittest discover -s block_B/day07/h01_runtime/tools -p 'test_g07_con
 - **근본 원인 판정**: SHM 333ms 잠금과 유사하고 UDP 4세션 주기 정상 → `FASTDDS_SHM_HEALTH_CHECK_CAUSE=HIGH_CONFIDENCE_CANDIDATE_NOT_NATIVE_STACK_PROVEN`.
 - **새 WSL2 인수**: 실제 동일 UDPv4 + 새 Student의 exact public 2-cycle strict PASS 확보 전 `WSL2_RELEASE=HOLD`. 기존 고정 Owner 원샷은 실패 CI를 참조하여 필드 Goal 진입 전에 차단함.
 - **안전**: CM120ms, Guard150ms, Scan300ms, Clock300ms, Odom300ms, goal cancel/odom dwell/출력 ZERO 유지, 인증 E-Stop false.
+
+
+## 7. 2026-11-20 재개: 실패 #163 분리 → Owner 권한 통합 → 공개 인수 준비 PASS
+
+### 7.1 이전 최신 L2의 정확한 종료 판정
+
+- 이전 Student `edd805e84f15a7eae9b14454803fc0912ec0ccf8` / UDPv4 전체 그래프 실제 공개 [#44698698767](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44698698767)는 **Cycle1 FAIL / Cycle2 PASS**.
+- Cycle1 실제 Navigation SHUTDOWN 한 번 발행 후 `SERVICE_TIMEOUT=40.000574s`. 직후 동일 공식 Nav2 callback group의 read-only `/lifecycle_manager_navigation/is_active`는 **79.579ms 안에 응답**, `is_active=true` (manager가 FINALIZED였다는 증거 없음). 실제 Moving Goal의 Scan/Odom/Clock/CM/Guard 수신 TTL 위반은 없었음. 서버의 원본 callback enter/finish 증거는 없음. 강제 SIGINT는 ACK가 아님.
+- 공식 [Fast-DDS Issue #6630](https://github.com/eProsima/Fast-DDS/issues/6630) (2026-11-13, OPEN): Jazzy Fast DDS 2.14.7을 포함한 신규 participant의 최초 DATA(p) 처리 시점에 UDP receiver 미등록으로 발견 응답을 잃는 사례; endpoint 완전 매칭이 다음 periodic announcement까지 지연될 수 있음. 이는 **AXIA 새 서비스 참여자의 무응답과 부합하는 원인 가설**, 정확한 service request packet이 누락됐다는 증거는 아직 없음.
+- 기존 `p2_g07_ordered_shutdown.py`는 `/get_parameters`에 응답한 ROS node를 이미 갖고 있으나 `_call_isolated_stage`에서 Navigation 종료 요청마다 **새 ROS participant**를 생성함. 새 구현은 **1회 Navigation 종료 요청에 한해 이미 응답을 받은 그 ROS node로 서비스 호출**; Localization 기존 격리 경로 보존. timeout 40/30, 전체 60, CCM120/Guard150/Scan300/Clock300/Odom300 불변. 가짜 ACK/재시도/ROS_DOMAIN 속임 없음.
+
+### 7.2 RED → GREEN → REFACTOR → REVIEW → COMMIT
+
+- CI 한정 A/B Student 개발 별도 Draft [#74](https://github.com/silverbjin/axia-robot-safety-student/pull/74). RED [#44705167014](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44705167014) 신규 `_call_shutdown_stage_for_ab` 부재로 예상 실패; GREEN [#44705607110](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44705607110) 기존 D06 종료·GUI·Context regression + 신규 A/B PASS. `test_d06_localization_manager_callback_probe.py`의 기존 정확한 `command="shutdown"` 코드 계약을 깨지 않도록 리팩터링하고 같은 검증 재확인. 실제 CI-only Student SHA `9d8afed4182d3997d77b3cfca04383d3dd6db74c`.
+- 실제 Jazzy/Harmonic/Waffle/공식 Nav2·CM·Guard Moving [#44705873381](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44705873381) **2/2 full strict L2 SUCCESS** (UDPv4 전송, Navigation warmed participant CI A/B): Runner 0/0, Navigation+Localization ACK, child exit0, 실제 Xvfb Gazebo+RViz 2창, exact Goal/Guard internal. Guard 최대 CM age 64.072976/45.825974ms; CM Observer 최대 75.673720/69.461942ms; Scan 202.622720/201.905471ms; Odom140.726833/142.025832ms, Clock82.441076/100.411251ms. 원본 SHM first stack는 여전히 미증명.
+- Owner 환경으로의 **위조 없는 별도 승인 분리**: Student source `4f4d07f6daf878dd8076f89669698f61f52a802b`, `AXIA_G07_NAV_WARM_PARTICIPANT_OWNER=1`은 `GITHUB_ACTIONS!=true`, `AXIA_G07_CI_SIM_GOAL_ALLOWED=0`, `AXIA_G07_TASK04_OWNER_MOVING_L3=1`, 기존 Jazzy·sim·실제 Owner parity·격리 GZ 조건에서만 허용. CI `AXIA_G07_NAV_WARM_PARTICIPANT_CI_AB=1`은 GitHub public scoped simulation에서만 허용. 두 모드 동시 선택 거부. 기본 모드는 원래 per-manager 분리. `tools/test_g07_nav_owner_warm_authority.py`: RED [#44706515418](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44706515418), GREEN [#44706713615](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44706713615).
+- Owner 승인 조건까지 내장된 Student 최종 후보 `4f4d07f6daf878dd8076f89669698f61f52a802b`를 정확히 고정해 새 공개 실제 Gazebo [**#44706879509**](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44706879509), workflow SHA **`fe2e4b2599c2fe3e136ffbd06899733a5ba17906`**, **엄격 2/2 full L2 PASS**. Cycle1/2: runner_rc0, actual Nav/Loc ACK+Guard/Supervisor child exit0; Guard 실제 CM age max **33.631482/19.298836ms**. CM Observer 최대 **59.601117/65.384796ms**, Scan198.739757/210.503537ms, Odom136.290192/134.609856ms, Clock103.585142/107.675570ms. FIRST gap 없음; 7-topic TTL 경계 모두 유지.
+- 새 Owner script `scripts/axia_g07_stabilization_wsl2_final_once.sh`는 이 exact Student SHA / Run ID / workflow head SHA에 고정됨. ROS 시작 전 `FASTDDS_BUILTIN_TRANSPORTS=UDPv4` 전역 상속(원본 공식 SHM 버그 회피), 외부 Fast DDS XML profile override는 fail-closed, 그리고 `AXIA_G07_NAV_WARM_PARTICIPANT_OWNER=1`을 사용하며 CI 전용 A/B는 **unset**. 실제 Owner controlling TTY·WSL2 Ubuntu24.04·WSLg·GPU·ROS_DOMAIN 분리·단일 Goal·small diagnostic ZIP 등의 기존 안전 게이트 보존.
+- 실제 공개 원샷 RELEASE RED [#44707183260](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44707183260) (Owner 변수 누락), 이후 정확 SHA/Run 고정 및 GREEN [#44707540242](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44707540242), **최종 live API strict admission** [#44707589554](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44707589554): Python **8/8 PASS**, `--self-check` 실 ROS/Gazebo 없음, `--ci-check` GitHub REST에서 exact SHA 및 두 real matrix jobs 모두 SUCCESS 검사 후 `PASS_TWO_STRICT_REAL_GAZEBO_GOALS_OWNER_WSL2_NOT_RUN`. 공개 일반 Python CI [#44707599045](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44707599045) PASS.
+- 사용자 WSL2 실제 시연 **L3 NOT_RUN**, 독립 NVIDIA WSLg G3 크래시 #186 **HOLD**. 실제 NVIDIA/WSLg renderer 예외나 native SIGABRT/SIGSEGV core가 없으므로 해당 부분을 PASS로 확대하지 않음.
+- `G07_CM_RMW_350MS=MITIGATED_CI_ONLY_NOT_ROOT_STACK_PROVEN`, `NAV_SHUTDOWN_ACK=CI_2_OF_2_PASS_CAUSE_HYPOTHESIS`, `FORMAL_NATIVE_L2=2_OF_2_PASS`, `WSL2_FINAL_L3=NOT_RUN`, `CERTIFIED_ESTOP=false`, `MAIN_MERGED=false`.
+
+### 7.3 강사 WSL2 최종 원샷: 단일 실행
+
+공개 CI에서 해당 bash 원샷을 문법·Mock 성공/실패·실제 GitHub API 성공까지 검증했으나, **사용자 강사 WSL2 NVIDIA 환경에서 이 명령을 아직 실행하지 않았음**.
+
+```bash
+(
+  set -Eeuo pipefail
+  PIN="29fb906d294aa6bcb13490a108dacd5596dd5779"
+  SCRIPT="$(mktemp --suffix=.sh)"
+  trap 'rm -f -- "$SCRIPT"' EXIT
+  curl -fLsS --retry 3 --max-time 90 \
+    "https://raw.githubusercontent.com/silverbjin/axia-robot-safety-ci-public/$PIN/scripts/axia_g07_stabilization_wsl2_final_once.sh" \
+    -o "$SCRIPT"
+  bash -n "$SCRIPT"
+  bash "$SCRIPT" --self-check
+  bash "$SCRIPT" --ci-check
+  bash "$SCRIPT" --run
+)
+```
+
+예상 원샷 입구 신호:
+- `AXIA_G07_STABILIZATION_WSL2_BOOTSTRAP_L0_PASS student_sha=4f4d07f6daf878dd8076f89669698f61f52a802b l2_run=44706879509 NO_ROS_NO_GAZEBO_NO_GOAL`
+- `AXIA_G07_STABILIZATION_CI_L2=PASS_TWO_STRICT_REAL_GAZEBO_GOALS_OWNER_WSL2_NOT_RUN`
+- `AXIA_G07_FASTDDS_BUILTIN_TRANSPORTS=UDPv4 OWNER_SHM_333MS_MITIGATION_CI_FIRST`
+- `--run`에서 실제 ROS2/Gazebo/Goal/Stop/Cancel/Nav2 ACK/GUI 및 ZIP evidence는 **현장에서만** 결정됨. User TTY 수동 승인 보존, 가짜 성공 불가. 스크립트 출력의 현장 `...HOLD`는 임의로 PASS로 수정하지 않음.
+
+### 7.4 출고 규칙과 보존
+
+- CI_PASS는 위 **정확한 native 2-cycle 시연 범위만** 보증합니다. 최초 native SHM mutex stack, 신규 DDS 참여자 request drop stack, 독립 WSLg NVIDIA GPU/G3/Owner L3는 미검증입니다.
+- 실패가 Owner WSL2에서 발생하면 최초 `first_failure.txt`, 첫 Guard 상태 전이 및 수신주기 위반, `*.diagnostics.zip`를 확보해 공개 CI에 재현 가능한 부분만 회귀 테스트 편입. 같은 현장 오류 반복 실행 금지.
+- 공개 [Draft PR #199](https://github.com/silverbjin/axia-robot-safety-ci-public/pull/199) / Student [Draft PR #74](https://github.com/silverbjin/axia-robot-safety-student/pull/74); main 병합은 승인 전까지 금지. 강사 비공개 정답은 별도 저장소 보존.
