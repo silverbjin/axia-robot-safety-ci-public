@@ -11,6 +11,12 @@ class FirstPregoalArtifactContract(unittest.TestCase):
         self.assertIn("first_scan_pregoal_boundary.json",flow)
         self.assertIn("AXIA_G07_SCAN_PREFLIGHT_FIRST_BOUNDARY_RECORDED",flow)
         self.assertIn("first_scan_timing_boundary",flow)
+        # #44773940465 Cycle1 /clock334.226 + /odom335.862 wall:
+        # previous exporter dropped this earliest global event entirely.
+        self.assertIn('"first_delivery_violation","topic_results"',flow)
+        self.assertIn('"clock_max_wall_gap_ms"',flow)
+        self.assertIn('"odom_max_wall_gap_ms"',flow)
+        self.assertIn('first_delivery_violation',flow)
         self.assertIn("local_window_rtf_estimate",flow)
         self.assertIn("scan_generation_vs_bridge_root_cause",flow)
         self.assertIn("goal_sent",flow)
