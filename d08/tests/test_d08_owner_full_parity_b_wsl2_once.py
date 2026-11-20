@@ -95,6 +95,20 @@ class D08OwnerFullParity(unittest.TestCase):
         self.assertNotIn("/usr/bin/python3 -c 'import rclpy",live[begin:check])
         self.assertIn("python3 -c 'import rclpy",live[begin:check])
 
+    def test_08_owner_wrapper_pins_successful_l2_and_verifies_cyclone_before_ros(self):
+        wrapper=(ROOT/"d08/scripts/d08_owner_full_parity_b_wsl2_once.sh").read_text()
+        self.assertIn('RUNTIME_SHA="af841aa09fa780683c191ab3e7b4188883daa5f5"',wrapper)
+        self.assertIn("FIELD_RELEASE_READY=1",wrapper)
+        self.assertIn("ros-jazzy-rmw-cyclonedds-cpp",wrapper)
+        self.assertIn("export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp",wrapper)
+        self.assertIn("source /opt/ros/jazzy/setup.bash",wrapper)
+        self.assertIn("rclpy.get_rmw_implementation_identifier()",wrapper)
+        self.assertIn("D08_OWNER_SELECTED_RMW=rmw_cyclonedds_cpp",wrapper)
+        self.assertIn("D08_OWNER_ONE_FIRST_CYCLE_AUTO_STOP=1",wrapper)
+        self.assertIn('D08_OWNER_UPLOAD_ONLY_THIS_ZIP=',wrapper)
+        self.assertIn("D08_OWNER_WSL2_L3_NOT_PREVERIFIED",wrapper)
+        self.assertNotIn("AXIA_MVP_DEMO_ACCEPTED=PASS",wrapper)
+
     def test_05_wrapper_is_pinned_and_does_not_inflate_diagnostics(self):
         script=ROOT/"d08/scripts/d08_owner_full_parity_b_wsl2_once.sh"
         self.assertTrue(script.exists())
