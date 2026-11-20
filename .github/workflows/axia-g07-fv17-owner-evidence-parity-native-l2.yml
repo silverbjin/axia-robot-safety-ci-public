@@ -11,11 +11,8 @@ on:
       - 'd06/diagnostic/g07_cm_stop_pub_boundary.py'
       - 'tests/test_g07_cm_stop_pub_boundary.py'
       - 'd06/tests/test_d06_g07_cm_stop_pub_guard_real_policy.py'
-  pull_request:
-    branches: [main]
-    paths:
-      - '.github/workflows/axia-g07-fv17-owner-evidence-parity-native-l2.yml'
-      - 'd06/tests/test_d06_g07_cm_stop_pub_guard_real_policy.py'
+      - 'd06/diagnostic/g07_first_actual_delivery_gap.py'
+      - 'tests/test_g07_cross_stream_first_gap.py'
 permissions:
   contents: read
 concurrency:
@@ -296,6 +293,18 @@ jobs:
             --output "$GITHUB_WORKSPACE/public_evidence/cm_stop_pub_first_latch.json"
           # This is solely an evidence classifier. Any missing source-pair
           # or non-reproduced latch remains UNVERIFIED, never a timing PASS.
+      - name: Summarize first actual native ROS inter-node delivery gap (no root claim)
+        if: always()
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/public_evidence"
+          python3 "$GITHUB_WORKSPACE/ci/d06/diagnostic/g07_first_actual_delivery_gap.py" \
+            --events "$GITHUB_WORKSPACE/native/g07_ci_moving/actual_ros_events.jsonl" \
+            --report "$GITHUB_WORKSPACE/native/g07_ci_moving/ci_moving_goal_result.json" \
+            --output "$GITHUB_WORKSPACE/public_evidence/first_delivery_actual_pairs.json"
+          # Report is derived timing metadata only; no raw bag, UUID or
+          # client/source packet contents leave the native job workspace.
       - name: Upload allowlisted numeric verdict only no original raw bag
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -305,6 +314,7 @@ jobs:
             public_evidence/task04_mvp_visual_l2_verdict.json
             public_evidence/task04_mvp_visual_l2_verdict.sha256
             public_evidence/cm_stop_pub_first_latch.json
+            public_evidence/first_delivery_actual_pairs.json
             public_evidence/task04_moving_l2_verdict.json
             public_evidence/task04_moving_verdict.sha256
             task04_witness_SHA256SUMS.txt
