@@ -673,9 +673,35 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
         result["scan_graph_anonymous_subscriber_count"]=sum(
             p.node_name=="_NODE_NAME_UNKNOWN_" for p in consumers)
         if not pubs:raise RuntimeError("D08_REAL_SCAN_PUBLISHER_ABSENT")
+        # A/B is diagnostic ONLY. The official CM lifecycle and its real
+        # observation_source/scan.topic checks are REQUIRED in BOTH modes.
+        cm_probe_mode=env.get("AXIA_D08_CM_SERVICE_PROBE_MODE","in_process")
+        if cm_probe_mode not in ("in_process","isolated_process"):
+            raise RuntimeError("D08_CM_SERVICE_PROBE_MODE_INVALID")
+        result["cm_service_probe_mode"]=cm_probe_mode
         cm_probe_start=time.monotonic()
-        result.update(read_official_cm_native_state_and_scan())
-        record_span("cm_native_service_probe",cm_probe_start)
+        try:
+            if cm_probe_mode=="isolated_process":
+                from d08_cm_native_probe_isolated import parse_isolated_probe_output
+                isolated_cm=subprocess.run(
+                    ["/usr/bin/python3","-u",
+                     str(Path(__file__).with_name("d08_cm_native_probe_isolated.py")),
+                     "--once"],env=env,stdin=subprocess.DEVNULL,
+                    capture_output=True,text=True,timeout=50,check=False)
+                result["cm_isolated_native_process_exit"]=isolated_cm.returncode
+                if isolated_cm.returncode!=0:
+                    raise RuntimeError(
+                        "D08_CM_ISOLATED_REAL_SERVICE_QUERY_FAILED:"+
+                        isolated_cm.stderr[-350:])
+                cm_witness=parse_isolated_probe_output(isolated_cm.stdout)
+                cm_witness.pop("status",None)  # Not a full safety PASS
+                result.update(cm_witness)
+            else:
+                result.update(read_official_cm_native_state_and_scan())
+        finally:
+            # First-fault evidence survives even if service query fails.
+            record_span("cm_native_service_probe",cm_probe_start)
+        print("D08_CM_SERVICE_OBSERVER_AB_MODE "+cm_probe_mode,flush=True)
         print("D08_OFFICIAL_CM_NATIVE_ACTIVE_SCAN_SOURCE_NO_GOAL "+
               json.dumps({k:result.get(k) for k in (
                 "official_cm_active_scan_configured",
