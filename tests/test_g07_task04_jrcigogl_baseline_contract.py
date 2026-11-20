@@ -97,7 +97,16 @@ class FirstGuardLatchFailClosedRegression(unittest.TestCase):
         self.assertAlmostEqual(guard_age_ms,188.577986,places=3)
         self.assertAlmostEqual(observer_age_ms,173.465091,places=3)
         self.assertGreater(guard_age_ms,a["guard_ttl_ms"])
-        self.assertGreater(observer_age_ms,a["cm_observer_ttl_ms"])
+        # Observer age is a snapshot of staleness, NOT a measured pair gap.
+        self.assertEqual(a["cm_observer_interarrival_ceiling_ms"],120)
+        self.assertGreater(observer_age_ms,150)
+        self.assertTrue(a["cm_observer_last_rx_derived_from_age"])
+        self.assertLess(a["last_unlatched_guard_status_monotonic_sec"],
+                        a["guard_tick_monotonic_sec"])
+        self.assertLess(a["guard_tick_monotonic_sec"],
+                        a["first_latched_guard_status_monotonic_sec"])
+        self.assertLess(a["first_latched_guard_status_monotonic_sec"]-
+                        a["guard_tick_monotonic_sec"],0.05)
         self.assertAlmostEqual(
             (a["cm_observer_last_rx_monotonic_sec"]-
              a["guard_last_cm_rx_monotonic_sec"])*1000,
