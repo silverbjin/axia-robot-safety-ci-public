@@ -252,7 +252,24 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
     path_pub=node.create_publisher(NavPath,"/axia/d08/official_path_readonly",
         QoSProfile(depth=1,reliability=ReliabilityPolicy.RELIABLE,
                    durability=DurabilityPolicy.TRANSIENT_LOCAL))
-    exe=SingleThreadedExecutor()
+    take_probe_enabled=env.get("AXIA_D08_TAKE_DISPATCH_PROBE")=="1"
+    take_timeline=None
+    take_classifier=None
+    if take_probe_enabled:
+        # Exact Jazzy rclpy callback path; original /scan only, no global patch.
+        from rclpy.executors import await_or_execute as rclpy_await_or_execute
+        from rclpy.exceptions import InvalidHandle
+        from rclpy.subscription import Subscription
+        from d08_rcl_take_dispatch_probe import (
+            TakeTimeline, build_scan_take_executor, classify_source_pair)
+        take_timeline=TakeTimeline(limit=1024)
+        take_classifier=classify_source_pair
+        ProbeExecutor=build_scan_take_executor(
+            SingleThreadedExecutor,InvalidHandle,rclpy_await_or_execute,
+            Subscription.CallbackType.MessageOnly)
+        exe=ProbeExecutor(take_timeline)
+    else:
+        exe=SingleThreadedExecutor()
     exe.add_node(node)
 
     spin_once_events=new_spin_once_event_buffer()
@@ -375,6 +392,8 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
                        durability=DurabilityPolicy.TRANSIENT_LOCAL)),
         node.create_subscription(Odometry,"/odom",on_odom,qos_profile_sensor_data),
     ]
+    if take_probe_enabled:
+        exe.arm_scan(subs[0])
     action=ActionClient(node,ComputePathToPose,"/compute_path_to_pose")
     tfbuf=Buffer()
     listener=TransformListener(tfbuf,node,spin_thread=False)
@@ -985,6 +1004,37 @@ def run(out:Path, env:dict, source_sha:str, timeout_s=35.) -> int:
             result.setdefault("first_boundary",
                               "D08_PROCESS_HEARTBEAT_EVIDENCE_INCOMPLETE")
         result["read_only_operation_spans"]=operation_spans[:48]
+        if take_probe_enabled:
+            # Source-stamp matched /scan take-completion vs original callback.
+            # Reading this does not change the same-world 500ms fail-closed gate.
+            take_events=take_timeline.snapshot()
+            pair=result.get("worst_scan_pair_source_stamps")
+            independent_gap=(result.get("worst_scan_causal_pair") or {}).get(
+                "isolated_ros_gap_sec")
+            verdict=take_classifier(pair,take_events,independent_gap)
+            if not take_timeline.complete():
+                verdict["candidate"]="TAKE_DISPATCH_EVIDENCE_INCOMPLETE"
+                verdict["exact_source_pair_proven"]=False
+            result["observer_take_probe_summary"]={
+                "enabled":True,
+                "source":"rclpy_sub_handle_take_message_after_return_and_callback",
+                "event_count":len(take_events),
+                "history_complete":take_timeline.complete(),
+                "original_scan_only":True,
+                "modifies_gazebo_cm_guard_ttl":False,
+            }
+            result["original_rcl_take_vs_callback"]=verdict
+            if result.get("first_scan_timing_boundary") and not verdict[
+                    "exact_source_pair_proven"]:
+                result["status"]="HOLD"
+                result.setdefault("first_boundary",
+                    "D08_EXACT_SCAN_TAKE_CALLBACK_PAIR_INCOMPLETE")
+            print("D08_ORIGINAL_SCAN_TAKE_CALLBACK_FIRST_BOUNDARY "
+                  +json.dumps({k:verdict.get(k) for k in (
+                    "candidate","exact_source_pair_proven",
+                    "take_gap_sec","callback_dispatch_gap_sec",
+                    "current_take_to_dispatch_sec","root_cause")},
+                    sort_keys=True),flush=True)
         # No synthetic /scan or arbitrary ROS cmd_vel publisher is created here.
         (out/"verdict.json").write_text(json.dumps(result,indent=2,sort_keys=True)+"\n")
         independent_executor.shutdown(timeout_sec=2)

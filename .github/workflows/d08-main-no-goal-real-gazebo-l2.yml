@@ -108,7 +108,7 @@ jobs:
           echo D08_PUBLIC_MAIN_NO_GOAL_L0_PASS
   gazebo-contact-positive-once:
     needs: l0-human-proxy-red-green
-    if: (github.head_ref != 'diag/d08-live-rcl-publish-take-20261119' && github.head_ref != 'fix/d08-owner-rmw-one-shot-20261119') && github.head_ref != 'fix/d08-first-scan-gap-boundary-20261119' && github.head_ref != 'fix/d08-native-scan-first-gap-20261119' && github.head_ref != 'fix/d08-scan-independent-ros-process-20261119' && github.head_ref != 'fix/d08-executor-spin-timing-20261119' && github.head_ref != 'diag/d08-ros-trace-preflight-20261119' && github.head_ref != 'fix/d08-owner-gui-renderer-isolation-20261120'
+    if: (github.head_ref != 'diag/d08-live-rcl-publish-take-20261119' && github.head_ref != 'fix/d08-owner-rmw-one-shot-20261119') && github.head_ref != 'fix/d08-first-scan-gap-boundary-20261119' && github.head_ref != 'fix/d08-native-scan-first-gap-20261119' && github.head_ref != 'fix/d08-scan-independent-ros-process-20261119' && github.head_ref != 'fix/d08-executor-spin-timing-20261119' && github.head_ref != 'diag/d08-ros-trace-preflight-20261119' && github.head_ref != 'fix/d08-owner-gui-renderer-isolation-20261120' && github.head_ref != 'diag/d08-exact-rcl-take-dispatch-20261120'
     runs-on: ubuntu-24.04
     timeout-minutes: 22
     container:
@@ -330,7 +330,7 @@ jobs:
     # skipped Nav2/AMCL here even while the overall public workflow was GREEN.
     # On this exact PR, one real official Nav2 same-world job is REQUIRED.
     # Other branches retain their existing manual diagnostic scope.
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && (github.head_ref == 'fix/d08-owner-gui-renderer-isolation-20261120' || github.head_ref == 'feat/d08-unified-sensor-cm-path-20261118' || github.head_ref == 'fix/d08-first-scan-gap-boundary-20261119' || github.head_ref == 'fix/d08-native-scan-first-gap-20261119' || github.head_ref == 'fix/d08-scan-independent-ros-process-20261119' || github.head_ref == 'fix/d08-executor-spin-timing-20261119' || (github.head_ref == 'diag/d08-ros-trace-preflight-20261119' || (github.head_ref == 'diag/d08-live-rcl-publish-take-20261119' || (github.head_ref == 'fix/d08-owner-rmw-one-shot-20261119' || github.head_ref == 'fix/d08-owner-gui-renderer-isolation-20261120')))))
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && ((github.head_ref == 'fix/d08-owner-gui-renderer-isolation-20261120' || github.head_ref == 'diag/d08-exact-rcl-take-dispatch-20261120') || github.head_ref == 'feat/d08-unified-sensor-cm-path-20261118' || github.head_ref == 'fix/d08-first-scan-gap-boundary-20261119' || github.head_ref == 'fix/d08-native-scan-first-gap-20261119' || github.head_ref == 'fix/d08-scan-independent-ros-process-20261119' || github.head_ref == 'fix/d08-executor-spin-timing-20261119' || (github.head_ref == 'diag/d08-ros-trace-preflight-20261119' || (github.head_ref == 'diag/d08-live-rcl-publish-take-20261119' || (github.head_ref == 'fix/d08-owner-rmw-one-shot-20261119' || (github.head_ref == 'fix/d08-owner-gui-renderer-isolation-20261120' || github.head_ref == 'diag/d08-exact-rcl-take-dispatch-20261120'))))))
     runs-on: ubuntu-24.04
     timeout-minutes: 22
     container:
@@ -342,9 +342,10 @@ jobs:
       # CI-only two-second readiness-decision delay while real ROS sensor
       # subscriptions/TF continue; this does NOT pause Gazebo publishers.
       AXIA_D08_CI_AMCL_SERVICE_READY_DELAY_SEC: "2.0"
-      AXIA_D08_NATIVE_RX_PROBE: ${{ (github.head_ref == 'fix/d08-native-scan-first-gap-20261119' || (github.head_ref == 'fix/d08-scan-independent-ros-process-20261119' || github.head_ref == 'fix/d08-executor-spin-timing-20261119' || (github.head_ref == 'diag/d08-ros-trace-preflight-20261119' || (github.head_ref == 'diag/d08-live-rcl-publish-take-20261119' || (github.head_ref == 'fix/d08-owner-rmw-one-shot-20261119' || github.head_ref == 'fix/d08-owner-gui-renderer-isolation-20261120'))))) && '1' || '0' }}
-      AXIA_D08_ROS_ISOLATED_RX_PROBE: ${{ (github.head_ref == 'fix/d08-scan-independent-ros-process-20261119' || github.head_ref == 'fix/d08-executor-spin-timing-20261119' || (github.head_ref == 'diag/d08-ros-trace-preflight-20261119' || (github.head_ref == 'diag/d08-live-rcl-publish-take-20261119' || (github.head_ref == 'fix/d08-owner-rmw-one-shot-20261119' || github.head_ref == 'fix/d08-owner-gui-renderer-isolation-20261120')))) && '1' || '0' }}
-      AXIA_D08_ROS_TRACE_PREFLIGHT: ${{ (github.head_ref == 'diag/d08-ros-trace-preflight-20261119' || (github.head_ref == 'diag/d08-live-rcl-publish-take-20261119' || (github.head_ref == 'fix/d08-owner-rmw-one-shot-20261119' || github.head_ref == 'fix/d08-owner-gui-renderer-isolation-20261120'))) && '1' || '0' }}
+      AXIA_D08_TAKE_DISPATCH_PROBE: "1"
+      AXIA_D08_NATIVE_RX_PROBE: ${{ (github.head_ref == 'fix/d08-native-scan-first-gap-20261119' || (github.head_ref == 'fix/d08-scan-independent-ros-process-20261119' || github.head_ref == 'fix/d08-executor-spin-timing-20261119' || (github.head_ref == 'diag/d08-ros-trace-preflight-20261119' || (github.head_ref == 'diag/d08-live-rcl-publish-take-20261119' || (github.head_ref == 'fix/d08-owner-rmw-one-shot-20261119' || (github.head_ref == 'fix/d08-owner-gui-renderer-isolation-20261120' || github.head_ref == 'diag/d08-exact-rcl-take-dispatch-20261120')))))) && '1' || '0' }}
+      AXIA_D08_ROS_ISOLATED_RX_PROBE: ${{ (github.head_ref == 'fix/d08-scan-independent-ros-process-20261119' || github.head_ref == 'fix/d08-executor-spin-timing-20261119' || (github.head_ref == 'diag/d08-ros-trace-preflight-20261119' || (github.head_ref == 'diag/d08-live-rcl-publish-take-20261119' || (github.head_ref == 'fix/d08-owner-rmw-one-shot-20261119' || (github.head_ref == 'fix/d08-owner-gui-renderer-isolation-20261120' || github.head_ref == 'diag/d08-exact-rcl-take-dispatch-20261120'))))) && '1' || '0' }}
+      AXIA_D08_ROS_TRACE_PREFLIGHT: ${{ (github.head_ref == 'diag/d08-ros-trace-preflight-20261119' || (github.head_ref == 'diag/d08-live-rcl-publish-take-20261119' || (github.head_ref == 'fix/d08-owner-rmw-one-shot-20261119' || (github.head_ref == 'fix/d08-owner-gui-renderer-isolation-20261120' || github.head_ref == 'diag/d08-exact-rcl-take-dispatch-20261120')))) && '1' || '0' }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -382,7 +383,7 @@ jobs:
             /usr/bin/python3 -c 'from gz.transport13 import Node; from gz.msgs10.laserscan_pb2 import LaserScan; from gz.msgs10.clock_pb2 import Clock; print("D08_NATIVE_PYTHON_APT_IMPORT_L2_PASS")'
           fi
       - name: CI-only official Jazzy ROS userspace tracing preflight
-        if: (github.head_ref == 'diag/d08-ros-trace-preflight-20261119' || (github.head_ref == 'diag/d08-live-rcl-publish-take-20261119' || (github.head_ref == 'fix/d08-owner-rmw-one-shot-20261119' || github.head_ref == 'fix/d08-owner-gui-renderer-isolation-20261120')))
+        if: (github.head_ref == 'diag/d08-ros-trace-preflight-20261119' || (github.head_ref == 'diag/d08-live-rcl-publish-take-20261119' || (github.head_ref == 'fix/d08-owner-rmw-one-shot-20261119' || (github.head_ref == 'fix/d08-owner-gui-renderer-isolation-20261120' || github.head_ref == 'diag/d08-exact-rcl-take-dispatch-20261120'))))
         shell: bash
         run: |
           set -eo pipefail
@@ -391,7 +392,7 @@ jobs:
             ros-jazzy-ros2trace lttng-tools babeltrace
           bash d08/scripts/d08_ros_trace_preflight.sh
       - uses: actions/upload-artifact@v4
-        if: always() && (github.head_ref == 'diag/d08-ros-trace-preflight-20261119' || (github.head_ref == 'diag/d08-live-rcl-publish-take-20261119' || (github.head_ref == 'fix/d08-owner-rmw-one-shot-20261119' || github.head_ref == 'fix/d08-owner-gui-renderer-isolation-20261120')))
+        if: always() && (github.head_ref == 'diag/d08-ros-trace-preflight-20261119' || (github.head_ref == 'diag/d08-live-rcl-publish-take-20261119' || (github.head_ref == 'fix/d08-owner-rmw-one-shot-20261119' || (github.head_ref == 'fix/d08-owner-gui-renderer-isolation-20261120' || github.head_ref == 'diag/d08-exact-rcl-take-dispatch-20261120'))))
         with:
           name: d08-ros-trace-preflight
           path: results/d08-ros-trace-preflight/
@@ -433,7 +434,7 @@ jobs:
           print('D08_REAL_GAZEBO_TEMPFILE_RED_REPRODUCED exit=255 NOT_SAFETY_PASS')
           PY
       - name: Start REAL L2 rcl publish/take trace before Gazebo/ROS bridge
-        if: (github.head_ref == 'diag/d08-live-rcl-publish-take-20261119' || (github.head_ref == 'fix/d08-owner-rmw-one-shot-20261119' || github.head_ref == 'fix/d08-owner-gui-renderer-isolation-20261120'))
+        if: (github.head_ref == 'diag/d08-live-rcl-publish-take-20261119' || (github.head_ref == 'fix/d08-owner-rmw-one-shot-20261119' || (github.head_ref == 'fix/d08-owner-gui-renderer-isolation-20261120' || github.head_ref == 'diag/d08-exact-rcl-take-dispatch-20261120')))
         shell: bash
         run: |
           set -euo pipefail
@@ -573,13 +574,13 @@ jobs:
           print('D08_OFFICIAL_NAV2_SAME_WORLD_FIRST_PATH_L2_PASS_NO_GOAL')
           PY
       - name: Stop REAL L2 rcl trace even when first Scan gap blocked
-        if: always() && (github.head_ref == 'diag/d08-live-rcl-publish-take-20261119' || (github.head_ref == 'fix/d08-owner-rmw-one-shot-20261119' || github.head_ref == 'fix/d08-owner-gui-renderer-isolation-20261120'))
+        if: always() && (github.head_ref == 'diag/d08-live-rcl-publish-take-20261119' || (github.head_ref == 'fix/d08-owner-rmw-one-shot-20261119' || (github.head_ref == 'fix/d08-owner-gui-renderer-isolation-20261120' || github.head_ref == 'diag/d08-exact-rcl-take-dispatch-20261120')))
         shell: bash
         run: |
           set -euo pipefail
           bash d08/scripts/d08_ros_trace_live_ci.sh stop
       - name: Contract check Owner first-gap classifier using same-run real Gazebo RMW evidence
-        if: success() && (github.head_ref == 'fix/d08-owner-rmw-one-shot-20261119' || github.head_ref == 'fix/d08-owner-gui-renderer-isolation-20261120')
+        if: success() && (github.head_ref == 'fix/d08-owner-rmw-one-shot-20261119' || (github.head_ref == 'fix/d08-owner-gui-renderer-isolation-20261120' || github.head_ref == 'diag/d08-exact-rcl-take-dispatch-20261120'))
         shell: bash
         run: |
           set -euo pipefail
@@ -616,7 +617,7 @@ jobs:
           print('D08_OWNER_RMW_PUBLIC_L2_OFFLINE_CONTRACT_PASS_NOT_WSL2')
           PY
       - uses: actions/upload-artifact@v4
-        if: always() && (github.head_ref == 'diag/d08-live-rcl-publish-take-20261119' || (github.head_ref == 'fix/d08-owner-rmw-one-shot-20261119' || github.head_ref == 'fix/d08-owner-gui-renderer-isolation-20261120'))
+        if: always() && (github.head_ref == 'diag/d08-live-rcl-publish-take-20261119' || (github.head_ref == 'fix/d08-owner-rmw-one-shot-20261119' || (github.head_ref == 'fix/d08-owner-gui-renderer-isolation-20261120' || github.head_ref == 'diag/d08-exact-rcl-take-dispatch-20261120')))
         with:
           name: d08-real-rcl-publish-take-trace
           path: |
