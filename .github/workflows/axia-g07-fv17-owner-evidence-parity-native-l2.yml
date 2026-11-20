@@ -1,6 +1,6 @@
 # Task04 one REAL moving Goal + two actual Xvfb windows, public CI only.
 # Baseline Task03 positive Contact calibration is frozen, not repeated.
-name: AXIA G07 FV17 Real Moving Goal Guard Evidence Owner Contract L2
+name: AXIA G07 FV17 Independent 2-cycle Real Moving Goal Guard TTL L2
 on:
   push:
     branches: ['fix/g07-task04-fv17-evidence-contract-20261120']
@@ -12,6 +12,13 @@ concurrency:
   cancel-in-progress: false
 jobs:
   one-real-gazebo-moving-gui:
+    # Two physically independent native Gazebo runs. The earlier genuine
+    # Guard CM age 188.578ms latch was intermittent; one green L2 cannot
+    # prove the same safety boundary on another fresh runner.
+    strategy:
+      fail-fast: false
+      matrix:
+        cycle: [1, 2]
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     container:
@@ -267,7 +274,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: axia-task04-moving-native-numeric-${{ github.run_id }}
+          name: axia-task04-moving-native-numeric-${{ github.run_id }}-cycle-${{ matrix.cycle }}
           path: |
             public_evidence/task04_mvp_visual_l2_verdict.json
             public_evidence/task04_mvp_visual_l2_verdict.sha256
