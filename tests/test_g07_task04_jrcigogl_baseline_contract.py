@@ -79,5 +79,40 @@ class ActualFieldMvpBaseline(unittest.TestCase):
         self.assertIn(a["source_sha"],OWNER.read_text())
         self.assertIn("CI_L2_RUN=44653465671",OWNER.read_text())
 
+
+class FirstGuardLatchFailClosedRegression(unittest.TestCase):
+    """Real public Gazebo Moving Goal #44652034063, never relabel as PASS.
+
+    Original job 136009021796 logged actual Guard tick, last CM RX and
+    independent CM Observer. It did NOT prove the CM publisher's matching
+    source-publish timestamp, so root cause must remain undetermined.
+    """
+
+    def test_actual_first_guard_latch_and_unproven_source_cause(self):
+        a=json.loads((ROOT/"tests/fixtures/g07_c32_first_guard_latch_44652034063.json").read_text())
+        self.assertEqual(a["run_id"],44652034063)
+        self.assertEqual(a["first_transition"],"UPSTREAM_STALE_AFTER_MOTION")
+        guard_age_ms=(a["guard_tick_monotonic_sec"]-a["guard_last_cm_rx_monotonic_sec"])*1000
+        observer_age_ms=(a["guard_tick_monotonic_sec"]-a["cm_observer_last_rx_monotonic_sec"])*1000
+        self.assertAlmostEqual(guard_age_ms,188.577986,places=3)
+        self.assertAlmostEqual(observer_age_ms,173.465091,places=3)
+        self.assertGreater(guard_age_ms,a["guard_ttl_ms"])
+        self.assertGreater(observer_age_ms,a["cm_observer_ttl_ms"])
+        self.assertAlmostEqual(
+            (a["cm_observer_last_rx_monotonic_sec"]-
+             a["guard_last_cm_rx_monotonic_sec"])*1000,
+            15.112895,places=3)
+        self.assertEqual(a["cm_observer_newer_samples"],1)
+        self.assertFalse(a["cm_publisher_stopped_proven"])
+        self.assertFalse(a["cm_source_publication_pair_proven"])
+        self.assertEqual(a["root_cause"],"UNDETERMINED")
+        self.assertTrue(a["guard_fail_closed_zero"])
+        self.assertFalse(a["exact_goal_cancel_accepted"])
+        self.assertFalse(a["formal_timing_accepted"])
+        accepted=json.loads(FIXTURE.read_text())
+        self.assertTrue(accepted["scope_education_numeric_baseline_accepted"])
+        self.assertFalse(accepted["intermittent_ci_guard_first_latch_root_cause_resolved"])
+
+
 if __name__=="__main__":
     unittest.main()
