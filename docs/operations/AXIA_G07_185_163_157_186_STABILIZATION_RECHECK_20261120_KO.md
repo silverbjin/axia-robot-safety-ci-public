@@ -116,3 +116,18 @@
 `G07_EDUCATIONAL_MVP_BASELINE=ACCEPTED`  
 `MAIN_MERGED=false`  
 `CERTIFIED_ESTOP=false`
+
+
+### 6.1 REFACTOR / 최초 상태전이 계약 고정
+
+- REFACTOR 커밋 `1a926cc02a06f6b0f564d8406ec2529f999220a0` (Python 회귀) 및 `b1590dd6f9c0f85720091e4e378accfe64a2e18b` (파생 fixture).
+- 실제 Guard FSM 최초 상태 전이 전 마지막 비래치 `255.328142s` → 최초 내부 검사 Tick `255.365083096s` → 최초 래치 관측 이벤트 `255.381865s`. 실제 라치의 `reason=UPSTREAM_STALE_AFTER_MOTION`, 출력 ZERO.
+- 독립 Observer 마지막 수신 시각 `255.191618005s`는 **관측된 최신 수신 age173.465091ms에서 역산한 진단값**. 이는 **두 연속 Observer 수신의 interarrival gap이나 CM publisher publish 간격을 증명하지 않는다**. 기존 CM source/Observer 120ms 주기 한도는 변경·완화하지 않았고, 이 스냅샷만으로 정확한 첫 CM source 위반 판정 금지.
+- [최종 REFACTOR 공개 Python L0 #44664219189](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44664219189): **SUCCESS**.
+- [최종 Baseline L0 #44664219191](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44664219191): **SUCCESS**.
+- [최종 Canary #44664219211](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44664219211): **SUCCESS**.
+- 이번 리팩터는 표본의 시간축 정의를 정확하게 한 계약 변경뿐이며 ROS/Gazebo/CM/Guard 동작을 수정하지 않았음.
+
+### 6.2 다음 실제 원인 검증에 필요한 좁은 증거
+
+첫 `UPSTREAM_STALE_AFTER_MOTION` 전후의 **동일 세션**에서 CM 프로세스 내부 마지막 출력 publish host-monotonic, ROS RMW source timestamp/sequence, 독립 Observer 수신, Guard 수신·Tick을 같은 시간축에 맞춰 확보해야 함. 기존 `d06/diagnostic/g07_task02_strict_gate.py`, D08-derived receipt witness, Student native Guard `cm_age_sec` 필드를 우선 재사용. 이 증거 없이 새 퍼블리셔/스케줄러 설정이나 Safety TTL 변경 금지. Root cause는 여전히 OPEN/HOLD.
