@@ -117,6 +117,17 @@ fi
         self.assertIn("FASTDDS_BUILTIN_TRANSPORTS: UDPv4",flow)
         self.assertIn("AXIA_G07_NAV_WARM_PARTICIPANT_CI_AB: '1'",flow)
 
+    def test_actual_two_cycle_one_failed_response_is_denied_offline(self):
+        # Public native L2 #44764186378: cycle1 Navigation ACK timeout,
+        # cycle2 success. Reproduce *that* API payload without unreliable
+        # unauthenticated GitHub API network access in the CI runner.
+        run,jobs=inputs(conclusion="failure",second="success")
+        jobs["jobs"][0]["conclusion"]="failure"
+        r=self._gate(run,jobs)
+        self.assertEqual(r.returncode,3,r.stdout+r.stderr)
+        self.assertIn("HOLD_NO_NEW_WSL2_MOVING_RELEASE",r.stdout)
+        self.assertNotIn("OWNER_MOVING_L3=PASS",r.stdout)
+
     def test_bad_command_refused(self):
         r=subprocess.run(["bash",str(SCRIPT),"--force-run"],
                          capture_output=True,text=True,timeout=8)
