@@ -9,7 +9,7 @@ readonly STUDENT_REPO='silverbjin/axia-robot-safety-student'
 readonly STUDENT_SHA='5c7983598fa3bcd7148433a06f37a4e78b091273'
 readonly REVIEW_REPO='silverbjin/axia-robot-safety-ci-public'
 readonly REVIEW_SHA='362da68e31dd163a8d321601e191069c0d0a438b'
-readonly CI_L2_RUN=44651220532
+readonly CI_L2_RUN=44652361407
 MODE="${1:---run}"
 if [[ $# -gt 1 ]];then echo 'AXIA_G07_TASK04_FIRST_FAILURE=BAD_ARGUMENTS' >&2;exit 3;fi
 case "$MODE" in
