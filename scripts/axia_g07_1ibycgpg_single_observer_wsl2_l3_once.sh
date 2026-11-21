@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# AXIA G07 Task04 — exact-public-L2-verified ONE Owner WSL2 L3 acceptance candidate.
-# Strict Gazebo 2-cycle #44855963095: exact public HEAD 9b0fef8c...; checked on entry.
+# AXIA G07 Task04 — CI-BLOCKED candidate: strict Native L2 #44855963095 FAILED 1/2. NO L3 CLAIM.
+# One actual Gazebo cycle STOP/Cancel PASS, other cycle FIRST odom360ms/CM378ms TTL FAIL.
 # --run RECHECKS run+2 matrix jobs against GitHub API; 403/failed job -> NO GOAL.
 # Simulation-only. Manual controlling TTY consent is performed by the
 # identical Student scenario runner AFTER real Nav2 and safety node readiness.
