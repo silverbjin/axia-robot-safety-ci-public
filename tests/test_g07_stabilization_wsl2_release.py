@@ -150,7 +150,7 @@ fi
     def test_original_multi2_release_must_not_enable_failed_executor_candidates(self):
         src=SCRIPT.read_text()
         self.assertIn("unset AXIA_G07_CI_EXECUTOR_GUARD_WAKE_AB",src)
-        self.assertIn("unset AXIA_G07_CI_EXECUTOR_WAIT_BOUNDED_AB",src)
+        self.assertRegex(src,r"unset [^\n]*AXIA_G07_CI_EXECUTOR_WAIT_BOUNDED_AB")
         self.assertNotIn("export AXIA_G07_OBSERVER_EXECUTOR_AB=single",src)
         self.assertIn("AXIA_G07_CI_SIM_GOAL_ALLOWED=0",src)
 
