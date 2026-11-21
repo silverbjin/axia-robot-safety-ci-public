@@ -1,0 +1,27 @@
+name: AXIA G07 Jazzy Events Executor Scoped Runtime L0
+on:
+  push:
+    branches: ['fix/g07-events-executor-jazzy-ci-20261121']
+    paths: ['.github/workflows/axia-g07-events-executor-scoped-l0.yml']
+permissions: {contents: read}
+jobs:
+  safely-gated-observer-and-pregoal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: 26f4abecad2d714721ad27cebe6e5c36d7705b2c
+          path: student
+          persist-credentials: false
+      - name: Scoped fail-closed EventsExecutor official Jazzy A/B
+        run: |
+          set -Eeuo pipefail
+          cd student/block_B/day07/h01_runtime
+          python3 -m py_compile tools/p2_g07_scan_wall_pregoal.py tools/p2_g07_ci_moving_goal.py
+          python3 -m unittest discover -s tools -p 'test_g07_events_executor_ci_ab.py' -v
+          python3 -m unittest discover -s tools -p 'test_g07_pregoal_stream_discovery.py' -v
+          python3 -m unittest discover -s tools -p 'test_g07_observer_io_first_boundary.py' -v
+          python3 -m unittest discover -s tools -p 'test_g07_task04_mvp_minimal_fix.py' -v
+          echo 'AXIA_G07_JAZZY_EVENTS_EXECUTOR_CI_SCOPED_L0_PASS_NO_GOAL'

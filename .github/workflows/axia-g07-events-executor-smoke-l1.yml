@@ -1,0 +1,49 @@
+name: AXIA G07 Jazzy Official EventsExecutor Smoke L1 No Goal
+on:
+  push:
+    branches: ['fix/g07-events-executor-jazzy-ci-20261121']
+    paths: ['.github/workflows/axia-g07-events-executor-smoke-l1.yml']
+permissions: {contents: read}
+jobs:
+  actual-jazzy-events-backport-no-goal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+    env:
+      ROS_DOMAIN_ID: '94'
+      ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+      FASTDDS_BUILTIN_TRANSPORTS: UDPv4
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with: {persist-credentials: false}
+      - name: Real ROS Jazzy installed EventsExecutor backport API without any Goal
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          set +u;source /opt/ros/jazzy/setup.bash;set -u
+          python3 - <<'PY'
+          import rclpy, time
+          from rclpy.experimental import EventsExecutor
+          rclpy.init()
+          node=rclpy.create_node("axia_g07_event_exec_l1_no_goal")
+          marks=[]
+          timer=node.create_timer(.04,lambda:marks.append(time.monotonic()))
+          ex=EventsExecutor()
+          ex.add_node(node)
+          try:
+              end=time.monotonic()+1.5
+              while time.monotonic()<end and len(marks)<8:
+                  ex.spin_once(timeout_sec=.15)
+              assert len(marks)>=8,("JAZZY_EVENTS_BACKPORT_CALLBACKS_NOT_DELIVERED",len(marks))
+              mx=max((b-a for a,b in zip(marks,marks[1:])),default=0)*1000
+              assert mx<300,("JAZZY_EVENTS_BACKPORT_TIMER_GAP_UNSTABLE_HOLD",mx)
+              print("AXIA_G07_JAZZY_EVENTS_EXECUTOR_REAL_RCLPY_L1_PASS "
+                    f"callback_count={len(marks)} max_timer_gap_ms={mx:.3f} "
+                    "NO_GAZEBO_NO_GOAL_NO_ESTOP_CERTIFICATION",flush=True)
+          finally:
+              ex.shutdown(timeout_sec=2)
+              node.destroy_timer(timer)
+              node.destroy_node()
+              rclpy.try_shutdown()
+          PY
