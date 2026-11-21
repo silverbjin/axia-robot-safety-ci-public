@@ -200,7 +200,7 @@ class NativeFirstBoundaryAttribution(unittest.TestCase):
 
     def test_strict_native_bounded_multi2_waitset_is_only_opt_in_under_ci(self):
         s=WORKFLOW.read_text()
-        self.assertIn("AXIA_G07_CI_EXECUTOR_WAIT_BOUNDED_AB: '1'",s)
+        self.assertIn("AXIA_G07_CI_EXECUTOR_WAIT_BOUNDED_AB: '0'",s)
         self.assertIn("FIRST_EXECUTOR_SILENCE_STACK",s)
         self.assertIn("AXIA_G07_OWNER_STARTUP_PARITY: '1'",s)
         self.assertIn("AXIA_G07_CI_OWNER_OBSERVER_PARITY: '1'",s)
@@ -212,20 +212,20 @@ class NativeFirstBoundaryAttribution(unittest.TestCase):
         self.assertNotIn("CERTIFIED_ESTOP=true",s)
 
 
-    def test_original_multi_cyclone_candidate_reuses_d08_public_transport_on_native_2cycle(self):
-        # Existing D08 #208 scoped real Gazebo Cyclone validation is a
-        # *hypothesis*, not proof of G07 Moving Goal 120/150/300ms PASS.
+    def test_owner_lock_disallows_unvalidated_cyclone_release_in_native_2cycle(self):
+        # D08 #208 is no-Goal scoped and G07 Owner lock explicitly requires
+        # rmw_fastrtps_cpp. NEVER promote experimental Cyclone to Owner.
         s=WORKFLOW.read_text()
-        self.assertIn("RMW_IMPLEMENTATION: rmw_cyclonedds_cpp",s)
-        self.assertIn("ros-jazzy-rmw-cyclonedds-cpp",s)
-        self.assertIn("rclpy.get_rmw_implementation_identifier()",s)
+        self.assertNotIn("RMW_IMPLEMENTATION: rmw_cyclonedds_cpp",s)
+        self.assertNotIn("ros-jazzy-rmw-cyclonedds-cpp",s)
+        self.assertIn("FASTDDS_BUILTIN_TRANSPORTS: UDPv4",s)
         self.assertIn("AXIA_G07_CI_EXECUTOR_WAIT_BOUNDED_AB: '0'",s)
         self.assertNotIn("AXIA_G07_CI_EXECUTOR_WAIT_BOUNDED_AB: '1'",s)
         self.assertIn("cycle: [1, 2]",s)
+        self.assertIn("ref: "+STUDENT,s)
         self.assertIn("AXIA_G07_TASK03_FORMAL_CI: '1'",s)
         self.assertIn("AXIA_G07_SCAN_PREFLIGHT_STRICT: '1'",s)
         self.assertIn("AXIA_G07_EVENTS_EXECUTOR_AB: '0'",s)
-        self.assertIn("ref: "+STUDENT,s)
         self.assertNotIn("CERTIFIED_ESTOP=true",s)
 
 if __name__=="__main__":
