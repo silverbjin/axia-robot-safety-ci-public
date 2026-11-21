@@ -515,7 +515,7 @@ jobs:
           mkdir -p "$GITHUB_WORKSPACE/public_evidence"
           src="$GITHUB_WORKSPACE/native/g07_ci_moving/first_health_boundary.json"
           dst="$GITHUB_WORKSPACE/public_evidence/first_health_boundary.json"
-          if [[ -f "$src" && ! -L "$src" && "$(stat -c %s "$src")" -lt 16384 ]];then
+          if [[ -f "$src" && ! -L "$src" && "$(stat -c %s "$src")" -lt 65536 ]];then
             python3 - "$src" "$dst" <<'PY_HEALTH_EVIDENCE'
           import json,sys
           from pathlib import Path
