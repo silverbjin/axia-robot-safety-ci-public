@@ -30,6 +30,18 @@ class G25ManagedExit(unittest.TestCase):
         self.assertEqual(r['status'],'FIRST_SLOW_TIMEOUT_BEFORE_TEARDOWN_HOLD')
         self.assertFalse(r['root_cause_proven'])
 
+    def test_actual_native_448768_first_forward_entry_timeout_not_existing_slow_timeout(self):
+        # Real native #44876802910: physical SLOW set_pose was NOT performed.
+        log=("AXIA_G07_PUBLIC_CI_MOVING_CLEAR_REAL_GAZEBO_LIDAR_CM_PASS\\n"
+             "RuntimeError:CI_MOVING_GOAL_TIMEOUT_SLOW_ENTRY_FORWARD\\n"
+             "AXIA_G07_TASK03_EXACT_GOAL_UUID_CANCELED_NATIVE_ACTION_PASS")
+        r=assess(None,"",log)
+        self.assertEqual(r["status"],"FIRST_SLOW_ENTRY_FORWARD_TIMEOUT_HOLD")
+        self.assertEqual(r["first_failure"],"CI_MOVING_GOAL_TIMEOUT_SLOW_ENTRY_FORWARD")
+        self.assertFalse(r["clean_child_exit_proven"])
+        self.assertFalse(r["root_cause_proven"])
+        self.assertEqual(r["release"],"HOLD")
+
     def test_invalid_ps_or_no_ack_is_not_cleanup_pass(self):
         r=assess("not ps\n1 1 S echo secret-data", "", "")
         self.assertEqual(r['release'],'HOLD')
