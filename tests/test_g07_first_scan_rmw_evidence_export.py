@@ -7,7 +7,7 @@ from pathlib import Path
 from d06.diagnostic.g07_first_scan_pair_attribution import assess
 
 ROOT=Path(__file__).resolve().parents[1]
-STUDENT="ba20f93a8cfc839342df9b543d29a0ae3a4e51c9"
+STUDENT="6895f90815fe62a4358abe6b306854af5b8cb6a5"
 WORKFLOW=ROOT/".github/workflows/axia-g07-original-multi-first-scan-rmw-native-l2.yml"
 
 def first_run():
@@ -201,6 +201,7 @@ class NativeFirstBoundaryAttribution(unittest.TestCase):
     def test_strict_native_bounded_multi2_waitset_is_only_opt_in_under_ci(self):
         s=WORKFLOW.read_text()
         self.assertIn("AXIA_G07_CI_EXECUTOR_WAIT_BOUNDED_AB: '1'",s)
+        self.assertIn("FIRST_EXECUTOR_SILENCE_STACK",s)
         self.assertIn("AXIA_G07_OWNER_STARTUP_PARITY: '1'",s)
         self.assertIn("AXIA_G07_CI_OWNER_OBSERVER_PARITY: '1'",s)
         self.assertIn("AXIA_G07_OBSERVER_IO_PROBE: '1'",s)
