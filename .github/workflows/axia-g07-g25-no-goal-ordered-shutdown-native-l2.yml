@@ -28,6 +28,10 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
+          path: ci
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
           repository: silverbjin/axia-robot-safety-student
           ref: c0a2b4d727383fd97c1541b22238ba67026d70e0
           path: student
@@ -42,6 +46,7 @@ jobs:
           test "${AXIA_G07_SHUTDOWN_L2_ONLY}" = 1
           python3 -m unittest discover -s tools -p 'test_g07_g25_guard_shutdown_publish_race.py' -v
           python3 -m unittest discover -s tools -p 'test_g07_context_publish_shutdown.py' -v
+          python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/tests" -p 'test_g07_g25_nogoal_first_stage.py' -v
           python3 -m py_compile ros2_ws/src/axia_safety_supervisor/axia_safety_supervisor/p2_base_guard_node.py
           bash -n scripts/p2_no_goal_smoke_ci.sh
           echo 'AXIA_G07_G25_NATIVE_NO_GOAL_L0_NO_UNAUTHORIZED_GOAL_PASS'
@@ -93,6 +98,15 @@ jobs:
         run: |
           set -Eeuo pipefail
           mkdir -p "$GITHUB_WORKSPACE/public_evidence"
+          python3 "$GITHUB_WORKSPACE/ci/d06/diagnostic/g07_g25_teardown_process_boundary.py" \
+              --processes "$GITHUB_WORKSPACE/native/teardown_processes.txt" \
+              --teardown "$GITHUB_WORKSPACE/native/teardown.txt" \
+              --stdout "$GITHUB_WORKSPACE/native/smoke_stdout.log" \
+              --output "$GITHUB_WORKSPACE/public_evidence/g25_launch_survivor_roles.json"
+          python3 "$GITHUB_WORKSPACE/ci/d06/diagnostic/g07_g25_nogoal_first_stage.py" \
+              --stdout "$GITHUB_WORKSPACE/native/smoke_stdout.log" \
+              --roles "$GITHUB_WORKSPACE/public_evidence/g25_launch_survivor_roles.json" \
+              --output "$GITHUB_WORKSPACE/public_evidence/g25_first_no_goal_stage.json"
           python3 - <<'PY'
           import json,re,os
           from pathlib import Path
@@ -118,5 +132,8 @@ jobs:
         if: always()
         with:
           name: axia-g07-g25-no-goal-exit-${{ github.run_id }}
-          path: public_evidence/g25_first_shutdown_signals.json
+          path: |
+            public_evidence/g25_first_shutdown_signals.json
+            public_evidence/g25_first_no_goal_stage.json
+            public_evidence/g25_launch_survivor_roles.json
           retention-days: 14
