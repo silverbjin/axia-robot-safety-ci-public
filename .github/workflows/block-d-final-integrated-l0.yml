@@ -1,0 +1,109 @@
+name: AXIA BLOCK_D Final D13-D15 Integrated L0
+on:
+  push:
+    branches:
+      - release/block-d-d13-d15-final-20261121
+      - release/p2-g06-cm-ttl-20261110
+      - main
+    paths:
+      - '.github/workflows/block-d-final-integrated-l0.yml'
+      - 'docs/reports/AXIA_BLOCK_D_FINAL_RELEASE_REPORT_20261121_KO.md'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/block-d-final-integrated-l0.yml'
+      - 'docs/reports/AXIA_BLOCK_D_FINAL_RELEASE_REPORT_20261121_KO.md'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  student-and-g07-pinned-baseline:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Fetch exact already-accepted G07 public baseline
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-ci-public
+          ref: 2a28d475e8be31af3327c5fe72560157f3f85804
+          path: baseline
+          persist-credentials: false
+      - name: Immutable old G07 owner/fixture/report and four original numeric contracts
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cd baseline
+          test "$(git hash-object tests/fixtures/g07_task04_jrcigogl_20261120_public_derived.json)" = 'ae7d594b5452d96cc8802bc53bc8ad578fe99fb7'
+          test "$(git hash-object scripts/axia_g07_task04_owner_moving_l3_once.sh)" = '26570de6762db8ade5c92b9d821fad0ebe368374'
+          test "$(git hash-object docs/operations/AXIA_G07_TASK04_JRCIGOL_OWNER_MVP_ACCEPTANCE_20261120_KO.md)" = '58dd49845e57fe4a47ea2c1d8407e41cb734c654'
+          bash -n scripts/axia_g07_task04_owner_moving_l3_once.sh
+          python3 -m unittest discover -s tests -p 'test_g07_task04_jrcigogl_baseline_contract.py' -v
+          echo BLOCK_D_EXISTING_G07_BASELINE_4_OF_4_PASS_NO_NEW_GAZEBO
+      - name: Fetch exact Student complete Block D release candidate
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: f70d421276cf152ad2e00f7e3fa9e1d2a64e9e7c
+          path: student
+          persist-credentials: false
+      - name: Verify public Student main-ready D13/D14 intentional RED, D15 GREEN
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C student rev-parse HEAD)" = 'f70d421276cf152ad2e00f7e3fa9e1d2a64e9e7c'
+          cd student
+          python3 -m unittest discover -s block_D/tests -p 'test_*.py' -v
+          python3 block_D/tools/verify_student_release.py --out "$RUNNER_TEMP/block_d_final"
+          python3 - "$RUNNER_TEMP/block_d_final/BLOCK_D_RELEASE_RESULT.json" <<'PY'
+          import json,sys
+          d=json.load(open(sys.argv[1]))
+          assert d["status"]=="BLOCK_D_RELEASE_STUDENT_CONTRACT_PASS"
+          assert (d["D13"]["test_count"],d["D13"]["expected_failures"])==(10,2)
+          assert (d["D14"]["test_count"],d["D14"]["expected_failures"])==(20,11)
+          assert (d["D15"]["test_count"],d["D15"]["expected_failures"])==(18,0)
+          assert d["D15"]["negative_mutations_detected"]==5
+          assert d["g07_runtime_immutable"] and not d["teacher_answer_published"]
+          assert not d["new_ros_gazebo_goal_executed"]
+          print("BLOCK_D_PUBLIC_STUDENT_10_20_18_SUITES_AND_5_MUTATIONS_PASS")
+          PY
+          test -s "$RUNNER_TEMP/block_d_final/d15/d15_offline_replay.html"
+          echo BLOCK_D_STUDENT_PUBLIC_MAIN_READY_L0_PASS
+      - name: Remove Student and historic public checkouts
+        if: always()
+        run: rm -rf -- baseline student
+
+  private-instructor-verification:
+    if: github.ref == 'refs/heads/release/p2-g06-cm-ttl-20261110'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: axia-instructor-sealed
+    steps:
+      - name: Protected exact Instructor candidate checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 435451f45792494a3252e4bb41ed0ed975b66a80
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          path: instructor
+          persist-credentials: false
+      - name: 33 private reference contracts, 4 private release tests, original P3 SHA
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C instructor rev-parse HEAD)" = '435451f45792494a3252e4bb41ed0ed975b66a80'
+          cd instructor
+          python3 -m unittest discover -s training/block_D/tests -p 'test_*.py' -v
+          python3 training/block_D/tools/verify_instructor_release.py --out "$RUNNER_TEMP/block_d_teacher"
+          python3 - "$RUNNER_TEMP/block_d_teacher/BLOCK_D_INSTRUCTOR_REPORT.json" <<'PY'
+          import json,sys
+          d=json.load(open(sys.argv[1]))
+          assert d["status"]=="BLOCK_D_INSTRUCTOR_REFERENCE_L0_PASS"
+          assert [d[k]["test_count"] for k in ("D13","D14","D15")]==[8,18,7]
+          assert d["private_reference_available"] and not d["new_ros_gazebo_goal_executed"]
+          print("BLOCK_D_PRIVATE_REFERENCE_8_18_7_SUITES_PASS")
+          PY
+          echo BLOCK_D_SEALED_PRIVATE_NO_ANSWER_EXPORT_L0_PASS
+      - name: Destroy private source and temporary evidence
+        if: always()
+        shell: bash
+        run: rm -rf -- instructor
