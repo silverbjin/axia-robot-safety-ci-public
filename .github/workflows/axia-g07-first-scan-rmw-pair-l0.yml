@@ -23,3 +23,18 @@ jobs:
           set -Eeuo pipefail
           python3 -m unittest discover -s tests -p 'test_g07_first_scan_rmw_evidence_export.py' -v
           echo 'AXIA_G07_FIRST_SCAN_PAIR_L0_PASS_L2_NOT_RUN_WSL2_HOLD'
+
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: 1cd80c36240b85b99d0d5d952c7e725ffcf99203
+          path: student
+          persist-credentials: false
+      - name: First Observer executor silence captured without ROS or Goal (RED expected)
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C student rev-parse HEAD)" = 1cd80c36240b85b99d0d5d952c7e725ffcf99203
+          cd student/block_B/day07/h01_runtime
+          python3 -m unittest discover -s tools -p 'test_g07_observer_io_first_boundary.py' -v
+          echo 'G07_EXECUTOR_SILENCE_L0_GREEN_DIAGNOSTIC_ONLY_L2_NOT_RUN'
