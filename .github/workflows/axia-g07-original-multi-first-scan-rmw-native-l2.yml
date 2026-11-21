@@ -1,6 +1,6 @@
-# Task04 two independent real Moving Goals, each with 2 actual Xvfb windows.
-# PR #199 candidate: D06 per-manager shutdown + read-only missing-ACK probe.
-# Revert to accepted Baseline Student SHA for a release; this CI tests only candidate.
+# G07 differentiated S3 read-only first RMW diagnostic: ONE independent native trial only; not formal 2/2 acceptance.
+# Reuses previously tested full native Goal/Cancel/Guard/Nav2 contractual checks unmodified.
+# Student exact diagnostic candidate SHA; NEVER use this workflow as Owner WSL2 release evidence.
 # Baseline Task03 positive Contact calibration is frozen, not repeated.
 name: AXIA G07 Original Multi First Scan RMW Exact Pair Diagnostic Native L2
 on:
@@ -16,7 +16,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   one-real-gazebo-moving-gui:
-    # Two physically independent native Gazebo runs. The earlier genuine
+    # ONE native diagnostic run (cycle [1]) only; formal release still needs separate 2/2. Earlier
     # Guard CM age 188.578ms latch was intermittent; one green L2 cannot
     # prove the same safety boundary on another fresh runner.
     strategy:
