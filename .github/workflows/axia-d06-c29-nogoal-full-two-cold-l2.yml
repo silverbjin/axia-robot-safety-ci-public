@@ -1,0 +1,464 @@
+name: AXIA D06 C29 full same-world NO_GOAL two independent cold L2
+on:
+  push:
+    branches: ['fix/d06-wslg-lidar-vs-rtf-ci-20261118']
+    paths:
+      - '.github/workflows/axia-d06-c29-nogoal-full-two-cold-l2.yml'
+      - 'd06/tests/test_d06_g07_nogoal_ordered_cm_shutdown.py'
+      - 'd06/tests/test_d06_c29_real_full_two_cold_l2.py'
+      - 'd06/ci/c29_source_manifest.json'
+      - 'd06/tools/d06_gz_native_scan_probe_safe.py'
+      - 'd06/tests/test_d06_gz_native_witness_teardown.py'
+      - 'd06/tools/d06_g07_scan_rx_witness.py'
+      - 'd06/tests/test_d06_g07_student_first_receipt_pair.py'
+      - 'd06/tests/test_d06_existing_gazebo_core_triage.py'
+      - 'd06/tests/test_d06_localization_manager_callback_probe.py'
+      - 'd06/tests/test_d06_student_scan_clock_executor_isolation.py'
+      - 'd06/tests/test_d06_c06_two_executor_scan_receipt.py'
+      - 'd06/tests/test_d06_c07_navigation_manager_service_liveness.py'
+      - 'd06/tests/test_d06_c08_ci_gui_pre_nav2_ready.py'
+      - 'd06/tests/test_d06_c09_deferred_scan_geometry.py'
+      - 'd06/tests/test_d06_ci_only_gui_nice.py'
+      - 'd06/scripts/axia_d06_g07_wslg_existing_core_once.sh'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: axia-d06-c29-nogoal-full-two-cold-l2
+  cancel-in-progress: false
+jobs:
+  native-c29-full-no-goal:
+    name: C29 NO_GOAL full cold-cycle ${{ matrix.cycle }} / 2
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        cycle: [1, 2]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 32
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+    env:
+      ROS_DOMAIN_ID: '89'
+      ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+      # CI-only supported alternate RMW; Owner WSLg default unchanged.
+      RMW_IMPLEMENTATION: rmw_fastrtps_cpp
+      GZ_PARTITION: axia_p2_nogoal_ordered_shutdown
+      AXIA_P0_SIM_ONLY: '1'
+      AXIA_P2_G07_PHYSICAL_PREFLIGHT: '1'
+      AXIA_G07_OWNER_STARTUP_PARITY: '1'
+      AXIA_P2_G07_RELOCATED_OBSTACLE: '1'
+      AXIA_G07_OWNER_SENSOR_TRUTH_NO_GOAL: '1'
+      AXIA_G07_CI_SENSOR_TRUTH_NO_GOAL: '1'
+      AXIA_D06_L2_GUI_NICE_ONLY: '15'
+      AXIA_D06_L2_GUI_PRE_NAV2_READY: '1'
+      AXIA_G07_NO_GOAL_ORDERED_SHUTDOWN: '1'
+      AXIA_G07_NO_GOAL_WITNESS_HANDOFF: '1'
+      AXIA_G07_NO_GOAL_GZ_PAUSE_BEFORE_SIGINT: '1'
+      AXIA_G07_NO_GOAL_GZ_STOP_BEFORE_SIGINT: '1'
+      AXIA_G07_CI_SIM_GOAL_ALLOWED: '0'
+      AXIA_G07_TASK04_OWNER_MOVING_L3: '0'
+      AXIA_G07_TASK04_CI_GUI_MOVING: '0'
+      AXIA_G07_CI_OWNER_BAG_PARITY: '0'
+      AXIA_G07_TASK02_SIMPLE_TF_CANDIDATE: '0'
+      AXIA_D07_H01_GUI_NO_GOAL: '0'
+      AXIA_WSLG_SENSOR_PROBE_DURATION_SEC: '20'
+      QT_QPA_PLATFORM: offscreen
+      LIBGL_ALWAYS_SOFTWARE: '1'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          path: ci
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: 6c79c09d91f13c81961492eb30e66d99d307831c
+          path: student
+          persist-credentials: false
+      - name: Exact public Student and official lifecycle offline contract
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C ci rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git -C student rev-parse HEAD)" = '6c79c09d91f13c81961492eb30e66d99d307831c'
+          test "$(git hash-object student/block_B/day07/h01_runtime/scripts/p2_no_goal_smoke_ci.sh)" = 'cc3c64f7ae769a11d9daad4acdbdb48141253f7c'
+          test "$(git hash-object student/block_B/day07/h01_runtime/tools/g07_gazebo_server_exit_guard.sh)" = '72a117d9a1b22748ffd16171d213916c095a623e'
+          test "$(git hash-object ci/d06/ci/c29_source_manifest.json)" = "$(git -C ci hash-object ci/d06/ci/c29_source_manifest.json 2>/dev/null || git -C ci hash-object d06/ci/c29_source_manifest.json)"
+          echo 'C29_C27_STUDENT_EXACT_SOURCE_AUTHENTICATED'
+          cd student/block_B/day07/h01_runtime
+          set +u; source /opt/ros/jazzy/setup.bash;set -u
+          bash -n scripts/p2_no_goal_smoke_ci.sh
+          python3 -m py_compile tools/p2_g07_ordered_shutdown.py tools/p2_g07_owner_shutdown_audit.py
+          python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/d06/tests" -p 'test_d06_g07_nogoal_ordered_cm_shutdown.py' -v
+          python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/d06/tests" -p 'test_d06_g07_student_first_receipt_pair.py' -v
+          python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/d06/tests" -p 'test_d06_existing_gazebo_core_triage.py' -v
+          python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/d06/tests" -p 'test_d06_localization_manager_callback_probe.py' -v
+          python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/d06/tests" -p 'test_d06_student_scan_clock_executor_isolation.py' -v
+          python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/d06/tests" -p 'test_d06_c06_two_executor_scan_receipt.py' -v
+          python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/d06/tests" -p 'test_d06_c07_navigation_manager_service_liveness.py' -v
+          python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/d06/tests" -p 'test_d06_c08_ci_gui_pre_nav2_ready.py' -v
+          python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/d06/tests" -p 'test_d06_c09_deferred_scan_geometry.py' -v
+          python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/d06/tests" -p 'test_d06_ci_only_gui_nice.py' -v
+          echo 'AXIA_D06_G07_ORDERED_SHUTDOWN_SOURCE_L0_PASS_NO_GOAL'
+      - name: Actual same-world Gazebo and official Nav2 CM NO_GOAL teardown
+        shell: bash
+        timeout-minutes: 25
+        run: |
+          set -Eeuo pipefail
+          set +u; source /opt/ros/jazzy/setup.bash;set -u
+          # CI_ONLY_UBUNTU_APT_HTTPS_BEFORE_GAZEBO:
+          # #44534113749 died BEFORE Gazebo on HTTP security archive
+          # InRelease download (rc100). Never disable GPG checks or alter
+          # the Owner WSL2 image; container apt sources only.
+          for apt_src in /etc/apt/sources.list /etc/apt/sources.list.d/*.sources;do
+            [[ -f "$apt_src" ]] || continue
+            sed -i -e 's@http://security.ubuntu.com/ubuntu@https://security.ubuntu.com/ubuntu@g' \
+                   -e 's@http://archive.ubuntu.com/ubuntu@https://archive.ubuntu.com/ubuntu@g' \
+                   "$apt_src"
+          done
+          if ! command -v Xvfb >/dev/null || ! command -v rviz2 >/dev/null || ! command -v xwininfo >/dev/null;then
+            apt-get update -qq -o Acquire::Retries=2 -o Acquire::http::Timeout=20
+            DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends --no-upgrade xvfb x11-utils ros-jazzy-rviz2
+          fi
+          # CI_TARGET_FAST_DDS_L2_NO_GOAL:
+          # Use the exact same world, Nav2, LiDAR, scan TTL and shutdown.
+          # Install the signed official ROS Jazzy RMW if absent, in this
+          # disposable Linux container only. Never alter WSL2 Owner or QoS.
+          if ! dpkg-query -W -f='${Status}' ros-jazzy-rmw-fastrtps-cpp 2>/dev/null |
+               grep -Fxq 'install ok installed';then
+            apt-get update -qq -o Acquire::Retries=2 -o Acquire::http::Timeout=20
+            DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends --no-upgrade ros-jazzy-rmw-fastrtps-cpp
+          fi
+          test -r /opt/ros/jazzy/lib/librmw_fastrtps_cpp.so
+          echo "CI_TARGET_FAST_DDS_L2_NO_GOAL requested=${RMW_IMPLEMENTATION}"
+          # Matrix jobs run on separate fresh hosted runners with separate
+          # Gazebo worlds, DDS participant graphs, and evidence workspaces.
+          export ROS_DOMAIN_ID="$((80 + ${{ matrix.cycle }}))"
+          export DISPLAY=:96
+          export GZ_PARTITION="axia_p2_nogoal_ordered_shutdown_${GITHUB_RUN_ID}_$$"
+          export AXIA_P2_SMOKE_RESULTS="$GITHUB_WORKSPACE/native"
+          mkdir -p "$GITHUB_WORKSPACE/native"
+          Xvfb :96 -screen 0 1600x900x24 -nolisten tcp > "$GITHUB_WORKSPACE/xvfb.log" 2>&1 &
+          xvfb_pid=$!
+          runner_pid=''
+          native_rx_pid=''
+          ros_rx_pid=''
+          witness_handoff_done=0
+          native_rx_rc=0
+          ros_rx_rc=0
+          cleanup() {
+            trap - EXIT
+            set +e
+            if [[ -n "$runner_pid" ]] && kill -0 "$runner_pid" 2>/dev/null;then
+              kill -INT -- "-$runner_pid" 2>/dev/null || true
+              sleep 1
+              kill -TERM -- "-$runner_pid" 2>/dev/null || true
+              wait "$runner_pid" 2>/dev/null || true
+            fi
+            for witness_pid in "$native_rx_pid" "$ros_rx_pid";do
+              if [[ -n "$witness_pid" ]];then
+                kill -TERM "$witness_pid" 2>/dev/null || true
+                wait "$witness_pid" 2>/dev/null || true
+              fi
+            done
+            kill -TERM "$xvfb_pid" 2>/dev/null || true
+            wait "$xvfb_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+          sleep 2
+          kill -0 "$xvfb_pid"
+          # Independent native Gazebo + ROS witness in the SAME real Gazebo
+          # simulation, no second world, no Goal. D08 implementation pinned.
+          if ! /usr/bin/python3 -c 'from gz.transport13 import Node; from gz.msgs10.laserscan_pb2 import LaserScan; from gz.msgs10.clock_pb2 import Clock' >/dev/null 2>&1;then
+            apt-get update -qq -o Acquire::Retries=2 -o Acquire::http::Timeout=20
+            DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends python3-gz-transport13 python3-gz-msgs10
+          fi
+          # Reuse D08 native receipt schema; only Gazebo Transport13
+          # shutdown has been scoped to explicit unsubscribe-before-destroy.
+          cp "$GITHUB_WORKSPACE/ci/d06/tools/d06_gz_native_scan_probe_safe.py" \
+            "$GITHUB_WORKSPACE/native/d06_gz_native_scan_probe_safe.py"
+          test "$(git hash-object "$GITHUB_WORKSPACE/native/d06_gz_native_scan_probe_safe.py")" = '653ec644e80eb832f32c4db6ed46a5a0db02b60d'
+          /usr/bin/python3 -m py_compile "$GITHUB_WORKSPACE/native/d06_gz_native_scan_probe_safe.py" "$GITHUB_WORKSPACE/ci/d06/tools/d06_g07_scan_rx_witness.py"
+          /usr/bin/python3 -u "$GITHUB_WORKSPACE/native/d06_gz_native_scan_probe_safe.py" \
+            --topic /scan --out "$GITHUB_WORKSPACE/native/d06_gz_scan_receipts.jsonl" \
+            --clock-out "$GITHUB_WORKSPACE/native/d06_gz_clock_receipts.jsonl" \
+            > "$GITHUB_WORKSPACE/native/d06_gz_scan_rx.log" 2>&1 &
+          native_rx_pid=$!
+          /usr/bin/python3 -u "$GITHUB_WORKSPACE/ci/d06/tools/d06_g07_scan_rx_witness.py" \
+            --capture --ros-jsonl "$GITHUB_WORKSPACE/native/d06_ros_scan_receipts.jsonl" \
+            --output "$GITHUB_WORKSPACE/native/d06_ros_capture_unused.json" \
+            > "$GITHUB_WORKSPACE/native/d06_ros_scan_rx.log" 2>&1 &
+          ros_rx_pid=$!
+          sleep 2
+          kill -0 "$native_rx_pid" "$ros_rx_pid" || {
+            echo 'AXIA_D06_G07_NATIVE_ROS_SAME_SESSION_WITNESS_NOT_ALIVE_BEFORE_SMOKE' >&2
+            exit 3
+          }
+          echo 'AXIA_D06_G07_NATIVE_ROS_WITNESSES_STARTED_NO_GOAL'
+          cd "$GITHUB_WORKSPACE/student/block_B/day07/h01_runtime"
+          setsid timeout --signal=TERM --kill-after=8s 960s \
+            bash scripts/p2_no_goal_smoke_ci.sh \
+            > "$GITHUB_WORKSPACE/no_goal_stdout.log" 2>&1 &
+          runner_pid=$!
+          rviz_seen=0;gazebo_seen=0
+          for ((i=0;i<730;i++));do
+            kill -0 "$runner_pid" 2>/dev/null || break
+            if [[ "$witness_handoff_done" == 0 &&
+                  -f "$GITHUB_WORKSPACE/native/g07_witness_probe_complete.signal" ]];then
+              # Stop instrumentation BEFORE Student shutdown starts.
+              # This is a process scheduling boundary, NOT Scan300/CM120/Guard150.
+              kill -TERM "$native_rx_pid" "$ros_rx_pid" 2>/dev/null || true
+              wait "$native_rx_pid" || native_rx_rc=$?
+              wait "$ros_rx_pid" || ros_rx_rc=$?
+              native_rx_pid='';ros_rx_pid=''
+              witness_handoff_done=1
+              if [[ "$native_rx_rc" == 0 && "$ros_rx_rc" == 0 ]];then
+                echo 'G07_READONLY_WITNESSES_STOPPED' > "$GITHUB_WORKSPACE/native/g07_witness_stopped.ack"
+                echo 'AXIA_D06_G07_READONLY_WITNESSES_STOPPED_BEFORE_NAV2_ACK'
+              else
+                echo "AXIA_D06_G07_WITNESS_FAILED_BEFORE_NAV2 native=$native_rx_rc ros=$ros_rx_rc" >&2
+              fi
+            fi
+            # Avoid repeated X-server tree traversal once both GUI windows
+            # are positively observed. Xvfb software renderer contention is
+            # a single candidate only; later real L2 measures the effect.
+            if [[ "$rviz_seen" == 0 || "$gazebo_seen" == 0 ]];then
+              windows="$(timeout 3s xwininfo -root -tree 2>/dev/null || true)"
+              grep -Eiq 'RViz' <<< "$windows" && rviz_seen=1
+              grep -Eiq 'Gazebo' <<< "$windows" && gazebo_seen=1
+            fi
+            sleep 1
+          done
+          set +e; wait "$runner_pid"; smoke_rc=$?;set -e
+          runner_pid=''
+          # On early startup failure there is no probe-complete marker;
+          # collect whatever evidence exists, but do NOT claim shutdown PASS.
+          if [[ "$witness_handoff_done" == 0 ]];then
+            kill -TERM "$native_rx_pid" "$ros_rx_pid" 2>/dev/null || true
+            wait "$native_rx_pid" || native_rx_rc=$?
+            wait "$ros_rx_pid" || ros_rx_rc=$?
+            native_rx_pid='';ros_rx_pid=''
+          fi
+          echo "AXIA_D06_G07_WITNESS_EXIT native=$native_rx_rc ros=$ros_rx_rc"
+          if [[ "$native_rx_rc" == 0 ]];then
+            grep -Fq 'D06_GZ_NATIVE_SUBSCRIPTIONS_RELEASED' \
+              "$GITHUB_WORKSPACE/native/d06_gz_scan_rx.log" || {
+              echo 'D06_GZ_NATIVE_UNSUBSCRIBE_PROOF_MISSING_HOLD' >&2; exit 3;
+            }
+            echo 'D06_GZ_NATIVE_RX_UNSUBSCRIBE_BEFORE_GAZEBO_SHUTDOWN_PASS'
+          fi
+          [[ "$witness_handoff_done" == 1 ]] || {
+            echo 'AXIA_D06_G07_READONLY_WITNESS_HANDOFF_NOT_COMPLETED' >&2;exit 3;
+          }
+          if [[ "$native_rx_rc" -ne 0 || "$ros_rx_rc" -ne 0 ]];then
+            cat "$GITHUB_WORKSPACE/native/d06_gz_scan_rx.log" >&2 || true
+            cat "$GITHUB_WORKSPACE/native/d06_ros_scan_rx.log" >&2 || true
+            echo 'AXIA_D06_G07_WITNESS_PROCESS_NONCLEAN_L2' >&2;exit 3
+          fi
+          /usr/bin/python3 "$GITHUB_WORKSPACE/ci/d06/tools/d06_g07_scan_rx_witness.py" \
+            --analyze \
+            --ros-jsonl "$GITHUB_WORKSPACE/native/d06_ros_scan_receipts.jsonl" \
+            --native-jsonl "$GITHUB_WORKSPACE/native/d06_gz_scan_receipts.jsonl" \
+            --native-clock-jsonl "$GITHUB_WORKSPACE/native/d06_gz_clock_receipts.jsonl" \
+            --student-truth "$GITHUB_WORKSPACE/native/g07_wslg_sensor_truth.json" \
+            --startup-verdict "$GITHUB_WORKSPACE/native/startup_verdict.json" \
+            --output "$GITHUB_WORKSPACE/native/d06_g07_scan_delivery_layer.json"
+          echo "AXIA_D06_G07_NATIVE_SHUTDOWN_SMOKE_RC=$smoke_rc RVIZ=$rviz_seen GAZEBO=$gazebo_seen"
+          python3 - "$GITHUB_WORKSPACE/native" "$smoke_rc" "$rviz_seen" "$gazebo_seen" <<'PY'
+          import json,sys,re
+          from pathlib import Path
+          root=Path(sys.argv[1]);rc=int(sys.argv[2]);rv=int(sys.argv[3]);gz=int(sys.argv[4])
+          required=["startup_verdict.json","g07_wslg_sensor_truth.json",
+                    "g07_ordered_shutdown.json","g07_shutdown_audit.json",
+                    "launch.log","teardown.txt"]
+          missing=[x for x in required if not (root/x).is_file()]
+          assert not missing,("FIRST_MISSING_EVIDENCE",missing,rc)
+          start=json.loads((root/"startup_verdict.json").read_text())
+          sensor=json.loads((root/"g07_wslg_sensor_truth.json").read_text())
+          nav=json.loads((root/"g07_ordered_shutdown.json").read_text())
+          audit=json.loads((root/"g07_shutdown_audit.json").read_text())
+          log=(root/"launch.log").read_text(errors="replace")
+          teardown=(root/"teardown.txt").read_text()
+          print("AXIA_D06_L2_FIRST_SENSOR_STATUS="+str(sensor.get("status"))+
+                " reasons="+repr(sensor.get("reasons")))
+          # First boundary evidence when Localization SHUTDOWN was sent,
+          # response timed out: classify manager parameter-service liveness.
+          print("AXIA_D06_L2_LOCALIZATION_FIRST_TIMEOUT_PROBE="+
+                str(nav.get("localization_parameter_probe","NOT_TRIGGERED")))
+          print("AXIA_D06_L2_NAV2_SHUTDOWN="+str(nav.get("status"))+
+                " nav_ack="+str(nav.get("navigation_ack"))+
+                " loc_ack="+str(nav.get("localization_ack")))
+          print("AXIA_D06_L2_CM_PROCESS_AUDIT="+str(audit.get("status"))+
+                " cm_exit_code="+str(audit.get("cm_exit_code")))
+          print("AXIA_D06_L2_TEARDOWN="+teardown.strip().replace("\n","|"))
+          assert start["status"]=="SMOKE_READY" and start["goal_sent"] is False
+          assert sensor["goal_sent"] is False and sensor["fixture_moved"] is False
+          assert sensor["metrics"]["raw"]["count"]>=20
+          assert sensor["metrics"]["safety"]["count"]>=20
+          # A 20s qualified Student window cannot erase a prior post-Nav2
+          # READY Scan300 violation. Same exact source + host monotonic.
+          paired=json.loads((root/"d06_g07_scan_delivery_layer.json").read_text())
+          post_ready=paired["post_ready_proxy"]
+          assert not post_ready["goal_allowed"]
+          assert post_ready["scope"]=="POST_NAV2_READY_PROXY"
+          print("AXIA_D06_L2_POST_READY_FIRST_BOUNDARY="+str(post_ready.get("candidate"))+
+                " native_gap="+str(post_ready.get("native_gap_sec"))+
+                " raw_gap="+str(post_ready.get("raw_gap_sec"))+
+                " safety_gap="+str(post_ready.get("safety_gap_sec")))
+          # Require a full 20-sec source proof in the exact Nav2 READY window.
+          ready=float(post_ready["ready_window_start_host_sec"])
+          end=ready+20.0
+          for topic,filename in (("native","d06_gz_scan_receipts.jsonl"),
+                                 ("raw","d06_ros_scan_receipts.jsonl"),
+                                 ("safety","d06_ros_scan_receipts.jsonl")):
+            observations=[]
+            for line in (root/filename).read_text().splitlines():
+              try: x=json.loads(line)
+              except ValueError:continue
+              if filename.startswith("d06_ros") and x.get("topic")!=topic:continue
+              if ready<=x.get("host_monotonic_sec",-1)<=end:
+                observations.append(x)
+            assert len(observations)>=20,("POST_READY_SCAN_EVIDENCE_INCOMPLETE",topic,len(observations))
+            for before,after in zip(observations,observations[1:]):
+              gap=after["host_monotonic_sec"]-before["host_monotonic_sec"]
+              assert after["source_stamp_ns"]>before["source_stamp_ns"],(
+                "POST_READY_SCAN_SOURCE_NONMONOTONIC",topic)
+              assert gap<=.300,(
+                "POST_READY_"+topic.upper()+"_SCAN300_FIRST_BREACH",round(gap,6),
+                before["source_stamp_ns"],after["source_stamp_ns"])
+          # Distinguish missing peer/source pairing from measured no-violation.
+          assert post_ready["candidate"]=="NO_ROS_TTL_VIOLATION_WITNESSED",(
+            "POST_READY_ROS_EXACT_PAIR_CAUSAL_HOLD",post_ready)
+          # Trace labels as explicit contract strings in first failure reports:
+          # POST_READY_NATIVE_SCAN300_FIRST_BREACH
+          # POST_READY_RAW_SCAN300_FIRST_BREACH
+          # POST_READY_SAFETY_SCAN300_FIRST_BREACH
+          # Previous runs silently passed the shutdown-only L2 while the
+          # original Raw/Safety Scan300 safety window was HOLD. This
+          # integrated NO_GOAL candidate MUST pass both, without changing TTL.
+          # Exact source RMW response in Nav2 ordered-shutdown JSON,
+          # not just an environment variable claim or apt install status.
+          assert nav["rmw_implementation_identifier"]=="rmw_fastrtps_cpp",(
+            "C10_ACTUAL_RMW_MISMATCH",nav.get("rmw_implementation_identifier"))
+          print("AXIA_D06_C29_RMW_FASTDDS_ACTUAL_L2_VERIFIED")
+          assert rc==0, ("REAL_NO_GOAL_SMOKE_RC",rc,sensor.get("reasons"))
+          assert sensor["status"]=="NO_GOAL_SENSOR_WINDOW_CLEAR_CANDIDATE",sensor
+          assert not sensor["reasons"],sensor["reasons"]
+          startup=sensor["startup_pre_both_scan_diagnostics"]
+          assert startup["both_topics_ready"] is True
+          assert startup["pre_ready_observations_not_motion_authority"] is True
+          assert sensor["dual_topic_actual_wall_observation_sec"]>=20
+          assert sensor["dual_topic_required_observation_sec"]==20
+          assert sensor["metrics"]["safety"]["clear_count"]==sensor["metrics"]["safety"]["count"]
+          assert sensor["metrics"]["safety"]["front_median_m"]>.75
+          assert sensor["metrics"]["safety"]["side_median_m"]>1.2
+          for topic in ("raw","safety"):
+            assert sensor["metrics"][topic]["max_receipt_gap_sec"]<=.3,(
+              "REAL_SCAN300_BLOCK",topic,sensor["metrics"][topic])
+            assert sensor["metrics"][topic]["first_receipt_ttl_breach_at_index"] is None
+
+          paired=json.loads((root/"d06_g07_scan_delivery_layer.json").read_text())
+          assert paired["native_count"]>=20 and paired["observer_raw_count"]>=20
+          assert paired["observer_safety_count"]>=20 and paired["native_clock_count"]>=20
+          actual=paired.get("student_first_ttl",{})
+          first=actual.get("student_first_candidate","NOT_MEASURED")
+          print("AXIA_D06_G07_REAL_FIRST_STUDENT_SCAN_TTL candidate="+first+
+                " topic="+str(actual.get("student_first_topic"))+
+                " native_gap_sec="+str(actual.get("student_first_native_gap_sec"))+
+                " host_gap_sec="+str(actual.get("student_first_host_gap_sec")))
+          compact=sensor.get("scan_receipts_compact",{})
+          assert compact.get("schema")=="axia.g07.first_ttl_host_pair.v1"
+          any_bad=False
+          for topic in ("raw","safety"):
+            bad=sensor["metrics"][topic]["max_receipt_gap_sec"]>.3
+            if bad:
+              any_bad=True
+              assert compact.get(topic), ("MISSING_FIRST_TTL_PAIR",topic)
+              assert compact[topic]["gap_sec"]>.3
+            else:
+              assert compact.get(topic) is None, ("UNEXPECTED_FIRST_TTL_PAIR",topic)
+          if any_bad:
+            assert actual.get("student_first_stamp_pair_verified") is True,(
+              "STUDENT_NATIVE_EXACT_FIRST_PAIR_UNVERIFIED",actual)
+            assert actual.get("student_first_native_gap_sec") is not None
+          else:
+            assert first=="STUDENT_FIRST_PAIR_UNAVAILABLE"
+          # This L2 is scoped to sensor and native teardown; no moving authority.
+
+          assert nav["status"]=="NAV2_LIFECYCLE_SHUTDOWN_ACK"
+          assert nav["cm_managed_by_navigation"] is True
+          assert nav["navigation_ack"] is True and nav["localization_ack"] is True
+          assert audit["status"]=="SHUTDOWN_CLEAN_CANDIDATE"
+          assert audit["cm_exit_code"]==0
+          assert rv==1 and gz==1
+          assert "FORCED" not in teardown and "GRACEFUL" in teardown
+          assert not re.search(r"\[collision_monitor-\d+\].*exit code -11",log)
+          assert not re.search(r"\[gz-\d+\].*exit code -11",log)
+          # The original ZOAgryLW owner log had GRACEFUL parent marker but
+          # gz sim server -11. Positive child exit0 is REQUIRED for scoped L2.
+          gz_clean=any('[gz-' in row and 'process has finished cleanly' in row for row in log.splitlines())
+          gz_bad=[row for row in log.splitlines() if '[gz-' in row and 'process has died' in row]
+          print("AXIA_D06_G07_REAL_GAZEBO_CHILD_EXIT0="+str(gz_clean)+
+                " bad="+repr(gz_bad[:2]))
+          pause=(root/"g07_gz_world_pause.log")
+          assert pause.is_file(), "G07_NO_GOAL_GAZEBO_PAUSE_PROOF_MISSING"
+          assert "data: true" in pause.read_text(), "G07_NO_GOAL_GAZEBO_PAUSE_ACK_MISSING"
+          server_stop=root/"g07_gz_server_stop.log"
+          assert server_stop.is_file(), "G07_NO_GOAL_GAZEBO_SERVER_STOP_PROOF_MISSING"
+          assert "data: true" in server_stop.read_text(), "G07_NO_GOAL_GAZEBO_SERVER_STOP_ACK_MISSING"
+          out=(Path(__import__("os").environ["GITHUB_WORKSPACE"])/"no_goal_stdout.log").read_text()
+          assert "D06_CI_L2_GUI_PRE_NAV2_STARTED" in out
+          assert "D06_CI_L2_GUI_EARLY_REUSED_NOT_SPAWNED" in out
+          assert out.index("D06_CI_L2_GUI_PRE_NAV2_STARTED") < out.index(
+              "P2_NO_GOAL_STATIC_AND_RUNTIME_READINESS_OBSERVED"), (
+              "CI_GUI_NOT_WARM_BEFORE_NAV2_READY")
+          assert out.count("D06_CI_L2_GUI_PRE_NAV2_STARTED")==1, "CI_GUI_DUPLICATE_LAUNCH"
+          print("AXIA_D06_C08_GUI_PRE_NAV2_READY_L2_PROVEN")
+          assert "G07_NO_GOAL_GAZEBO_SERVER_STOP_ACK_BEFORE_SIGINT" in out
+          assert "G07_GAZEBO_SERVER_NATIVE_EXIT0_BEFORE_GROUP_SIGINT" in out, (
+              "C29_STOP_ACK_NOT_NATIVE_GAZEBO_EXIT0", out[-800:])
+          print("AXIA_D06_G07_GAZEBO_SERVER_CONTROL_STOP_ACK_L2_PASS")
+          assert gz_clean and not gz_bad, "GAZEBO_SERVER_EXIT0_NOT_PROVEN_L2"
+          # A handoff flag alone is insufficient: both real source files
+          # must prove that the extra observers stopped before lifecycle.
+          probe_marker=root/"g07_witness_probe_complete.signal"
+          stopped_ack=root/"g07_witness_stopped.ack"
+          assert probe_marker.is_file(), "SENSOR_PROBE_COMPLETE_MARKER_MISSING"
+          assert stopped_ack.is_file(), "WITNESS_STOP_BEFORE_LIFECYCLE_ACK_MISSING"
+          assert "G07_READONLY_SENSOR_PROBE_FINISHED" in probe_marker.read_text()
+          assert stopped_ack.read_text().strip()=="G07_READONLY_WITNESSES_STOPPED"
+          print("AXIA_D06_G07_NO_GOAL_STRICT_INTEGRATED_L2_PASS_SENSOR300_NAV2_ACK_CM0_GZ0")
+          print("C29_COLD_RUN=${{ matrix.cycle }} FIRST_FAILURE_NONE_NATIVE_GZ_EXIT0")
+          print("C29_L2_NOT_WSL2_NOT_WSLG_D3D12")
+          print("AXIA_D06_G07_ACTUAL_NAV2_CM_CHILD_EXIT0_L2_PASS_NO_GOAL_SENSOR_TTL_INDEPENDENT")
+          print("D06_GAZEBO_LIVE_RELEASE=HOLD CERTIFIED_ESTOP=false OWNER_WSLG_L3_NOT_RUN")
+          PY
+      - name: First-failure numeric and process evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: axia-d06-c29-cold-cycle-${{ matrix.cycle }}-${{ github.run_id }}
+          path: |
+            native/startup_verdict.json
+            native/g07_wslg_sensor_truth.json
+            native/d06_g07_scan_delivery_layer.json
+            native/d06_gz_scan_receipts.jsonl
+            native/d06_ros_scan_receipts.jsonl
+            native/d06_gz_clock_receipts.jsonl
+            native/d06_gz_scan_rx.log
+            native/d06_ros_scan_rx.log
+            native/g07_witness_probe_complete.signal
+            native/g07_witness_stopped.ack
+            native/g07_ordered_shutdown.json
+            native/g07_ordered_shutdown.log
+            native/g07_gz_world_pause.log
+            native/g07_gz_server_stop.log
+            native/g07_gz_world_pause_err.log
+            native/g07_shutdown_audit.json
+            native/teardown.txt
+            native/teardown_processes.txt
+            native/launch.log
+            no_goal_stdout.log
+          retention-days: 14
+          if-no-files-found: warn
