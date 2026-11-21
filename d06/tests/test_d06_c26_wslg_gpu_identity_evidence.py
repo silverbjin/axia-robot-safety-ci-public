@@ -48,6 +48,15 @@ class C26GpuIdentityEvidence(unittest.TestCase):
         self.assertFalse(info["nvidia_glx_confirmed"])
         self.assertFalse(info["core_capture_proven"])
 
+    def test_real_glxinfo_indented_device_and_bounded_output(self):
+        m=load()
+        raw=("    Device: D3D12 (Intel(R) Iris(R) Xe Graphics) (0xffffffff)\\n"
+             "OpenGL renderer string: D3D12 (Intel(R) Iris(R) Xe Graphics)\\n")
+        info=m.summarize_wsl2_layers("6.18-microsoft-standard-wsl2","systemd",
+          True,True,raw,True,False)
+        self.assertIn("Intel(R) Iris(R) Xe Graphics",info["gl_device_line"])
+        self.assertLessEqual(len(info["gl_device_line"]),160)
+
     def test_persistent_journal_directory_does_not_prove_event_recovery(self):
         m=load()
         info=m.summarize_wsl2_layers("6.18-microsoft-standard-wsl2","systemd",
