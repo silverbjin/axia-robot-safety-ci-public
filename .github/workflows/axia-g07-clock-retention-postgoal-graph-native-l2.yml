@@ -2,7 +2,7 @@
 # PR #199 candidate: D06 per-manager shutdown + read-only missing-ACK probe.
 # Revert to accepted Baseline Student SHA for a release; this CI tests only candidate.
 # Baseline Task03 positive Contact calibration is frozen, not repeated.
-name: AXIA G07 Native Clock Retention PostGoal Graph Strict 2-cycle L2
+name: AXIA G07 Actual PreGoal Four-Stream Strict 2-cycle CM RMW L2
 on:
   push:
     branches:
@@ -69,7 +69,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 92fa6c137eb751792eb6f830f55e64c4803c195c
+          ref: 54d001f393b2c60547879f25ed5a78ebbad8239b
           path: student
           persist-credentials: false
       # Keep the historic reviewer for older unrelated imports; the current
@@ -84,7 +84,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C student rev-parse HEAD)" = '92fa6c137eb751792eb6f830f55e64c4803c195c'
+          test "$(git -C student rev-parse HEAD)" = '54d001f393b2c60547879f25ed5a78ebbad8239b'
           test "$(git -C ci rev-parse HEAD)" = "$GITHUB_SHA"
           test "$FASTDDS_BUILTIN_TRANSPORTS" = UDPv4
           [[ -z "${FASTRTPS_DEFAULT_PROFILES_FILE:-}" && -z "${FASTDDS_DEFAULT_PROFILES_FILE:-}" ]] || {
@@ -100,6 +100,7 @@ jobs:
           python3 -m unittest discover -s tools -p 'test_g07_scan_wall_pregoal.py' -v
           python3 -m unittest discover -s tools -p 'test_g07_observer_io_first_boundary.py' -v
           python3 -m unittest discover -s tools -p 'test_g07_clock_window_postgoal_graph.py' -v
+          python3 -m unittest discover -s tools -p 'test_g07_pregoal_stream_discovery.py' -v
           python3 -m py_compile tools/p2_g07_scan_wall_pregoal.py
           python3 -m py_compile tools/p2_g07_observer_io_probe.py tools/p2_l3_live_session.py
           test "$AXIA_G07_OBSERVER_IO_PROBE" = 1
@@ -121,6 +122,7 @@ jobs:
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_owner_gui_d3d12_isolation.py' -v
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_owner_sensor_renderer_parity.py' -v
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/tests" -p 'test_g07_cm_stop_pub_boundary.py' -v
+          python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/tests" -p 'test_g07_jazzy_info_dict_independent_cm.py' -v
           python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/d06/tests" -p 'test_d06_g07_cm_stop_pub_guard_real_policy.py' -v
           echo 'AXIA_G07_TASK04_PUBLIC_NATIVE_MOVING_L0_PASS=29_PLUS_MVP_STAGE'
       # Check the pinned CI image before installing build-only Gazebo dev packages.
@@ -283,7 +285,7 @@ jobs:
           import json,sys
           result=json.load(open(sys.argv[1]))
           assert result.get("goal_sent") is True,result
-          assert result.get("source_sha")=="92fa6c137eb751792eb6f830f55e64c4803c195c",result
+          assert result.get("source_sha")=="54d001f393b2c60547879f25ed5a78ebbad8239b",result
           print('AXIA_G07_REAL_OWNER_AMCL_PRIMARY_PATH_PASS actual_goal_sent=true')
           PY_REAL_TF
           # Real Guard 20Hz timing facts must be present in the actual
@@ -335,7 +337,7 @@ jobs:
                   --motion "$GITHUB_WORKSPACE/native/g07_ci_moving/ci_moving_goal_result.json" \
                   --shutdown "$GITHUB_WORKSPACE/native/g07_ordered_shutdown.json" \
                   --gui-windows 2 \
-                  --source-sha '92fa6c137eb751792eb6f830f55e64c4803c195c' \
+                  --source-sha '54d001f393b2c60547879f25ed5a78ebbad8239b' \
                   --output "$GITHUB_WORKSPACE/public_evidence/task04_mvp_visual_l2_verdict.json"; then
               sha256sum "$GITHUB_WORKSPACE/public_evidence/task04_mvp_visual_l2_verdict.json" \
                 > "$GITHUB_WORKSPACE/public_evidence/task04_mvp_visual_l2_verdict.sha256"
@@ -357,7 +359,7 @@ jobs:
           fi
           verify_real_goal_and_guard_evidence || exit 3
           windows_count=$((rviz_seen+gazebo_seen))
-          python3 tools/p2_g07_task04_moving_review.py             --motion-root "$GITHUB_WORKSPACE/native"             --witness "$GITHUB_WORKSPACE/native/s02_ecm_witness.json"             --source-sha '92fa6c137eb751792eb6f830f55e64c4803c195c'             --gui-windows "$windows_count"             --output "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"
+          python3 tools/p2_g07_task04_moving_review.py             --motion-root "$GITHUB_WORKSPACE/native"             --witness "$GITHUB_WORKSPACE/native/s02_ecm_witness.json"             --source-sha '54d001f393b2c60547879f25ed5a78ebbad8239b'             --gui-windows "$windows_count"             --output "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"
           sha256sum "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"             > "$GITHUB_WORKSPACE/public_evidence/task04_moving_verdict.sha256"
           echo 'AXIA_G07_TASK04_NATIVE_MOVING_GUI_XVFB_L2_PASS_OWNER_WSL2_NOT_RUN'
           echo 'AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false'
