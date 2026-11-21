@@ -148,5 +148,36 @@ class NativeFirstBoundaryAttribution(unittest.TestCase):
         self.assertIn("ref: "+STUDENT,workflow)
         self.assertNotIn("1edd816039381719b4b3a4b0725dd18320ea6ae9",workflow)
 
+
+    def test_first_supervisor_observed_transition_relative_to_original_gap(self):
+        # No inference from final Navigation error or a later NORMAL state.
+        from d06.diagnostic.g07_first_actual_delivery_gap import first_observed_safety_transition
+        events=[
+            {"kind":"supervisor","t":10.00,"data":{"state":"NORMAL"}},
+            {"kind":"guard","t":10.02,"data":{"latched":False}},
+            {"kind":"supervisor","t":10.20,"data":{"state":"NORMAL"}},
+            {"kind":"supervisor","t":10.32,"data":{"state":"HEALTH_BAD_DIAGNOSTIC"}},
+            {"kind":"guard","t":10.33,"data":{"latched":True}},
+        ]
+        gap={"channel":"guard","previous_rx_monotonic":10.05,
+             "current_rx_monotonic":10.31,"gap_ms":260.,"limit_ms":150}
+        v=first_observed_safety_transition(events,gap)
+        self.assertEqual(v["first_observed_state"],"NORMAL")
+        self.assertEqual(v["first_observed_transition"]["from_state"],"NORMAL")
+        self.assertEqual(v["first_observed_transition"]["to_state"],"HEALTH_BAD_DIAGNOSTIC")
+        self.assertEqual(v["relative_to_first_gap"],"AFTER_FIRST_CALLBACK_BREACH")
+        self.assertAlmostEqual(v["first_observed_guard_latch_at"],10.33)
+        self.assertFalse(v["root_cause_proven"])
+        self.assertEqual(v["release"],"HOLD")
+
+    def test_first_supervisor_state_cannot_infer_transition_from_missing_data(self):
+        from d06.diagnostic.g07_first_actual_delivery_gap import first_observed_safety_transition
+        d=first_observed_safety_transition(
+            [{"kind":"supervisor","t":10.1,"data":{"state":"NORMAL"}}],None)
+        self.assertIsNone(d["first_observed_transition"])
+        self.assertEqual(d["status"],"FIRST_SAFETY_TRANSITION_NOT_OBSERVED_HOLD")
+        self.assertFalse(d["root_cause_proven"])
+        self.assertNotIn("accepted",str(d))
+
 if __name__=="__main__":
     unittest.main()
