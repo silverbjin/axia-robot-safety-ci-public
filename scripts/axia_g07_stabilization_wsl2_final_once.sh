@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # AXIA G07 Task04 — exact-public-L2-verified ONE Owner WSL2 L3 acceptance candidate.
-# Strict Gazebo Moving 2/2 PASS: #44830956042, exact public HEAD a54c40c6...
+# Strict native Gazebo Moving 2/2 PASS #44878063103, Public 0711e583..., Student fb1aae6c...
 # --run RECHECKS run+2 matrix jobs against GitHub API; 403/failed job -> NO GOAL.
 # Simulation-only. Manual controlling TTY consent is performed by the
 # identical Student scenario runner AFTER real Nav2 and safety node readiness.
@@ -8,10 +8,10 @@
 set -Eeuo pipefail
 umask 077
 readonly STUDENT_REPO='silverbjin/axia-robot-safety-student'
-readonly STUDENT_SHA='891bf65349cf8dfb203bb8b97ffe0346b3fb8b3f'
+readonly STUDENT_SHA='fb1aae6cbde54ff0ed4e78317f403aa5cef4d550'
 readonly REVIEW_REPO='silverbjin/axia-robot-safety-ci-public'
-readonly REVIEW_SHA='90e809e858e04adee3c72cee36c5dc7dd9f3d632'
-readonly CI_L2_RUN=44830956042
+readonly REVIEW_SHA='0711e583f3c0c546a64c687edd8e280c2ae8e776'
+readonly CI_L2_RUN=44878063103
 MODE="${1:---run}"
 if [[ $# -gt 1 ]];then echo 'AXIA_G07_TASK04_FIRST_FAILURE=BAD_ARGUMENTS' >&2;exit 3;fi
 case "$MODE" in
@@ -21,7 +21,7 @@ esac
 # RELEASE ADMISSION: an educational visual HOLD cannot authorize a new
 # field run. Public CI must have both actual Gazebo Moving Goal matrix jobs
 # SUCCESS on the exact candidate Student source, with formal fallback exiting 3.
-readonly CI_L2_HEAD='a54c40c630b14bc2b71449f3030c5c194a5f8408'
+readonly CI_L2_HEAD='0711e583f3c0c546a64c687edd8e280c2ae8e776'
 ci_l2_release_gate() {
   local run_json jobs_json rc=0
   run_json="$(mktemp)" || return 3
@@ -44,7 +44,7 @@ try:
              run.get("event")=="push" and
              run.get("status")=="completed" and
              run.get("conclusion")=="success" and
-             run.get("name")=="AXIA G07 FV17 Independent 2-cycle Real Moving Goal Guard TTL L2")
+             run.get("name")=="AXIA G07 Original Multi First Scan RMW Exact Pair Diagnostic Native L2")
     expected={"one-real-gazebo-moving-gui (1)",
               "one-real-gazebo-moving-gui (2)"}
     actual=[j for j in jobs.get("jobs",[]) if j.get("name") in expected]
@@ -236,6 +236,9 @@ export AXIA_G07_TASK03_ECM_WITNESS=1
 export AXIA_NAV2_USE_COMPOSITION=False
 unset AXIA_G07_TASK03_FORMAL_CI AXIA_G07_TASK03_POSITIVE_ONLY AXIA_D07_H01_GUI_NO_GOAL AXIA_G07_TASK04_CI_GUI_MOVING || true
 unset AXIA_G07_OWNER_COMMON_RUNNER_AUTHORIZED AXIA_P2_OWNER_PINNED_SHA || true
+# Rejected CI diagnostics must never affect the real Owner/TTY Goal session.
+unset AXIA_G07_CI_EXECUTOR_GUARD_WAKE_AB AXIA_G07_CI_EXECUTOR_WAIT_BOUNDED_AB || true
+unset AXIA_G07_OBSERVER_EXECUTOR_AB AXIA_G07_EVENTS_EXECUTOR_AB || true
 # Jazzy DDS isolation is chosen AFTER ROS is sourced, by a read-only ROS
 # endpoint probe. Do not reuse the stale fixed ROS_DOMAIN_ID=86.
 export ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
@@ -537,7 +540,7 @@ PY_MVP
     NUMERICAL='MVP_PHYSICAL_DEMO_CANDIDATE_VISUAL_REVIEW_PENDING'
     echo 'AXIA_G07_TASK04_OWNER_MVP_CLEAR_SLOW_STOP_GOAL_CANCEL_CANDIDATE'
     echo 'AXIA_G07_TASK04_OWNER_FORMAL_SHUTDOWN_HOLD VISUAL_REVIEW_PENDING CERTIFIED_ESTOP=false'
-    exit 0
+    exit 3
   fi
   FIRST_FAILURE='NATIVE_RUNNER_FAILED_REVIEW_RAW'
   # Preserve the FIRST upstream safety failure instead of masking it with
@@ -612,7 +615,7 @@ print("AXIA_G07_TASK04_OWNER_FORMAL_RMW_TIMEBASE_HOLD "
 PY_TIMEBASE
     FIRST_FAILURE='FORMAL_RMW_TIMEBASE_HOLD_ONLY'
     NUMERICAL='PHYSICAL_DEMO_CANDIDATE_FORMAL_RMW_HOLD'
-    exit 0
+    exit 3
   fi
   hold NATIVE_NUMERICAL_REVIEW_BLOCKED
 fi
