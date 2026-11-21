@@ -32,7 +32,8 @@ jobs:
         run: |
           set -Eeuo pipefail
           set +u; source /opt/ros/jazzy/setup.bash; set -u
-          export PYTHONPATH="$GITHUB_WORKSPACE/student/block_B/day07/h01_runtime/tools:$GITHUB_WORKSPACE/d08/d08/harness"
+          export PYTHONPATH="$GITHUB_WORKSPACE/student/block_B/day07/h01_runtime/tools:$GITHUB_WORKSPACE/d08/d08/harness${PYTHONPATH:+:$PYTHONPATH}"
+          python3 -c "import rclpy; print('AXIA_G07_G10_REAL_JAZZY_RCLPY_IMPORTED_AFTER_SETUP_PASS')"
           cat > /tmp/g07_first_take_l1.py <<'PY_L1'
           from multiprocessing import Process
           from time import monotonic
