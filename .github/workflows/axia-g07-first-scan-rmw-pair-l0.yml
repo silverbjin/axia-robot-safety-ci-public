@@ -28,14 +28,14 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 3c9149074f92e6e520240fb59169dc30747b416d
+          ref: e3d88d6754a5ff9192214e3000f3248ff01da962
           path: student
           persist-credentials: false
       - name: First Observer executor silence captured without ROS or Goal (GREEN candidate)
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C student rev-parse HEAD)" = 3c9149074f92e6e520240fb59169dc30747b416d
+          test "$(git -C student rev-parse HEAD)" = e3d88d6754a5ff9192214e3000f3248ff01da962
           cd student/block_B/day07/h01_runtime
           python3 -m unittest discover -s tools -p 'test_g07_observer_io_first_boundary.py' -v
           python3 -m unittest discover -s tools -p 'test_g07_task04_mvp_stage_sequence.py' -v
