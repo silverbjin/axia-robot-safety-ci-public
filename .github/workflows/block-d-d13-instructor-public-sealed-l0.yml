@@ -97,7 +97,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 59c2aa9ae22db7a9974bb6b30a3680bfdbd04cf7
+          ref: 1ecc156fb7359d2cc34b27d81843d5164e9f3753
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -105,7 +105,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor rev-parse HEAD)" = '59c2aa9ae22db7a9974bb6b30a3680bfdbd04cf7'
+          test "$(git -C instructor rev-parse HEAD)" = '1ecc156fb7359d2cc34b27d81843d5164e9f3753'
           test "$(git -C instructor hash-object training/block_D/day13/solution/p3_oracles.py)" = '85dd0fa35b2e7982b0c86020fdd4f4952e6a039f'
           if [ -d instructor/.github/workflows ]; then
             test -z "$(find instructor/.github/workflows -maxdepth 1 -type f -name '*.yml' -print)"
@@ -132,9 +132,9 @@ jobs:
             echo 'PRIVATE_D13_L0_HOLD (private diagnostics not published)'
             exit 1
           fi
-          echo 'PRIVATE_D13_L0_PASS instructor_sha=59c2aa9ae22db7a9974bb6b30a3680bfdbd04cf7 reference=8 docs=3'
+          echo 'PRIVATE_D13_L0_PASS instructor_sha=1ecc156fb7359d2cc34b27d81843d5164e9f3753 reference=8 docs=3'
           echo 'PRIVATE_D13_STORY_24_SLIDES_PASS main=24 appendix=4 script_tests=3'
-          echo 'PRIVATE_D13_LIVE_REPLAY_GUIDE_PASS instructor_sha=59c2aa9ae22db7a9974bb6b30a3680bfdbd04cf7 private_doc_tests=3'
+          echo 'PRIVATE_D13_LIVE_REPLAY_GUIDE_PASS instructor_sha=1ecc156fb7359d2cc34b27d81843d5164e9f3753 private_doc_tests=3'
           echo 'NO_ROS_GAZEBO_GOAL_NO_PRIVATE_ANSWER_EXPORT'
       - name: Destroy all private source and logs
         if: always()
