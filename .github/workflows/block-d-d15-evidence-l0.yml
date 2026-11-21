@@ -18,6 +18,7 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
+          ref: 29a8c86f1fbfed51172353fd6c2df66af6867c0a
           path: public
       - name: Original G07 derived fixture and Owner script immutable contract
         shell: bash
