@@ -224,7 +224,11 @@ class NativeFirstBoundaryAttribution(unittest.TestCase):
         self.assertIn("FIRST_EXECUTOR_SILENCE_STACK",s)
         self.assertIn("AXIA_G07_OWNER_STARTUP_PARITY: '1'",s)
         self.assertIn("AXIA_G07_CI_OWNER_OBSERVER_PARITY: '1'",s)
-        self.assertIn("AXIA_G07_OBSERVER_IO_PROBE: '1'",s)
+        if "AXIA_G07_LEAN_PROFILE: '1'" in s:
+            self.assertIn("AXIA_G07_OBSERVER_IO_PROBE: '0'",s)
+            self.assertIn("AXIA_G07_CI_INDEPENDENT_CM_WITNESS: '0'",s)
+        else:
+            self.assertIn("AXIA_G07_OBSERVER_IO_PROBE: '1'",s)
         self.assertIn("AXIA_G07_EVENTS_EXECUTOR_AB: '0'",s)
         self.assertIn("cycle: [1, 2]",s)
         self.assertIn("ref: "+STUDENT,s)
@@ -263,7 +267,11 @@ class NativeFirstBoundaryAttribution(unittest.TestCase):
         s=WORKFLOW.read_text()
         self.assertIn("AXIA_G07_CI_EXECUTOR_GUARD_WAKE_AB: '0'",s)
         self.assertIn("AXIA_G07_CI_EXECUTOR_WAIT_BOUNDED_AB: '0'",s)
-        self.assertIn("AXIA_G07_OBSERVER_IO_PROBE: '1'",s)
+        if "AXIA_G07_LEAN_PROFILE: '1'" in s:
+            self.assertIn("AXIA_G07_OBSERVER_IO_PROBE: '0'",s)
+            self.assertIn("AXIA_G07_CI_INDEPENDENT_CM_WITNESS: '0'",s)
+        else:
+            self.assertIn("AXIA_G07_OBSERVER_IO_PROBE: '1'",s)
         self.assertIn("AXIA_G07_EVENTS_EXECUTOR_AB: '0'",s)
         self.assertIn("FASTDDS_BUILTIN_TRANSPORTS: UDPv4",s)
         self.assertIn("AXIA_G07_TASK03_FORMAL_CI: '1'",s)
