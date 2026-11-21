@@ -114,9 +114,99 @@ def assess(report, events):
                  max_odom_period_ms=round(report["max_odom_interval_sec"]*1000,6),
                  max_clock_period_ms=round(report["max_clock_interval_sec"]*1000,6),
                  odom_zero_dwell_ms=round(report["odom_stopped_dwell_sec"]*1000,6))
+    # WSL2 Owner 1ibYCGPg: TWO independent sequential Twist streams had
+    # source+receive DDS timestamps jump forward ~2.815s in ~34ms of host
+    # monotonic callbacks. Such an offset step is NOT a 2.815s publisher
+    # pause. Any independent >120ms Observer callback gap still blocks L3.
+    step=_first_correlated_forward_rmw_timestamp_step(received,events)
+    if step is not None:
+        return _hold(
+            ("TASK02_RMW_FORWARD_TIMEBASE_AND_OBSERVER_GAP_HOLD"
+             if step["first_real_observer_gap_ms"] is not None
+             else "TASK02_RMW_FORWARD_TIMEBASE_DISCONTINUITY_HOLD"),
+            timebase=step,**details)
     if max_s>120_000_000 or max_o>120_000_000:
         return _hold("TASK02_CM120_SOURCE_OR_OBSERVER_FIRST_VIOLATION_HOLD",**details)
     return _hold("TASK02_PUBLIC_L2_NUMERICAL_CANDIDATE",**details)
+
+
+
+def _first_correlated_forward_rmw_timestamp_step(cm, events):
+    """First disproportionate forward DDS timestamp step, not an ACK/PASS.
+
+    Requires source AND receiver timestamp gaps >120ms, single sequential
+    publication, host monotonic callback <120ms, and a correlated second
+    Twist publisher with same disparity. This rules out calling the
+    ~2.8-second offset step an actual 2.8-second CM publishing stall.
+    Exact operating-system sync mechanism is NOT proved.
+    """
+    supervised=sorted(
+        [v for v in events if isinstance(v,dict)
+         and v.get("kind")=="supervised" and _isfloat(v.get("t"))],
+        key=lambda row:row["t"])
+
+    def pair(prev,nxt):
+        if not all(type(prev.get(k)) is int and type(nxt.get(k)) is int
+                   for k in ("rmw_source_ns","rmw_received_ns","rmw_publication_seq")):
+            return None
+        a=nxt["t"]-prev["t"]
+        if not (_isfloat(a) and a>0 and
+                nxt["rmw_publication_seq"]==prev["rmw_publication_seq"]+1):
+            return None
+        source=(nxt["rmw_source_ns"]-prev["rmw_source_ns"])/1e6
+        received=(nxt["rmw_received_ns"]-prev["rmw_received_ns"])/1e6
+        return dict(
+            t=nxt["t"],observer=a*1000,source=source,
+            received=received,seq_delta=1)
+
+    first_callback_gap=None
+    for a,b in zip(cm,cm[1:]):
+        p=pair(a,b)
+        if p and p["observer"]>120:
+            first_callback_gap=p
+            break
+
+    for a,b in zip(cm,cm[1:]):
+        primary=pair(a,b)
+        if primary is None:
+            continue
+        if not (0<primary["observer"]<=120
+                and primary["source"]>120 and primary["received"]>120
+                and abs(primary["source"]-primary["received"])<=100):
+            continue
+        for sa,sb in zip(supervised,supervised[1:]):
+            other=pair(sa,sb)
+            if (other and abs(other["t"]-primary["t"])<=.15
+                    and 0<other["observer"]<=120
+                    and other["source"]>120 and other["received"]>120
+                    and abs(other["source"]-other["received"])<=100
+                    and abs(primary["source"]-other["source"])<=100):
+                return {
+                    "classification":"CORRELATED_FORWARD_RMW_TIMESTAMP_STEP_CANDIDATE",
+                    "first_at_host_monotonic":round(primary["t"],9),
+                    "pre_guard_source_gap_ms":round(primary["source"],6),
+                    "pre_guard_received_gap_ms":round(primary["received"],6),
+                    "pre_guard_observer_gap_ms":round(primary["observer"],6),
+                    "supervised_source_gap_ms":round(other["source"],6),
+                    "supervised_received_gap_ms":round(other["received"],6),
+                    "supervised_observer_gap_ms":round(other["observer"],6),
+                    "first_real_observer_gap_ms":(
+                        round(first_callback_gap["observer"],6)
+                        if first_callback_gap else None),
+                    "first_real_observer_source_gap_ms":(
+                        round(first_callback_gap["source"],6)
+                        if first_callback_gap else None),
+                    "first_real_observer_received_gap_ms":(
+                        round(first_callback_gap["received"],6)
+                        if first_callback_gap else None),
+                    "first_real_observer_seq_delta":(
+                        first_callback_gap["seq_delta"]
+                        if first_callback_gap else None),
+                    "system_clock_or_rmw_cause_proven":False,
+                    "guard_internal_ttl_proven":False,
+                    "observer_callback_gap_120ms_limit_unchanged":True,
+                    "release":"HOLD"}
+    return None
 
 
 def _first_rmw_timestamp_regression(events, prev, nxt):

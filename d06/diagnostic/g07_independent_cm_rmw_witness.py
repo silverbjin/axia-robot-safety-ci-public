@@ -29,6 +29,70 @@ class BoundedCmEvidence:
         self.rows.append(row)
 
 
+def normalize_witness_metadata(info):
+    """Retain source/received fields even when sequence is unsupported.
+
+    Some Jazzy rclpy MessageInfo adapters omit publication_sequence_number.
+    Missing that *one* member must not destroy two valid timestamps; it
+    does block exact same-publication matching and hence any safety PASS.
+    """
+    def one(name):
+        try:
+            value=getattr(info,name)
+            if type(value) is bool:
+                return -1
+            v=int(value)
+            return v if v>=0 else -1
+        except (AttributeError,TypeError,ValueError,OverflowError):
+            return -1
+    return (one("source_timestamp"),one("received_timestamp"),
+            one("publication_sequence_number"))
+
+
+def _independent_monotonic_continuity_hold(result,original,independent,start,end):
+    """Host monotonic independent callback continuity only, NOT exact DDS pair.
+
+    A complete independent witness over the original host interval is
+    weaker than exact pub-seq pairing but demonstrates source availability
+    at this *topic* on this host while the original subscriber missed its
+    120ms callback interval. Never infer DDS, Executor or scheduler root.
+    """
+    if any(_valid(row) for row in independent):
+        # Fully specified metadata but a different sequence/source stamp:
+        # original strict exact-pair policy rejects it.
+        return result
+    times=sorted(row["t"] for row in independent
+                 if isinstance(row,dict) and row.get("kind")=="pre_guard"
+                 and type(row.get("t")) in (float,int)
+                 and math.isfinite(row["t"]))
+    before=[t for t in times if t<=start]
+    after=[t for t in times if t>=end]
+    if not before or not after:
+        return result
+    left,right=before[-1],after[0]
+    if start-left>.12 or right-end>.12:
+        return result
+    span=[t for t in times if left<=t<=right]
+    inside=[t for t in span if start<t<end]
+    if len(inside)<5 or len(span)<7:
+        return result
+    maxgap=max((b-a for a,b in zip(span,span[1:])),default=float("inf"))
+    if maxgap<=0 or maxgap>.12 or end-start<=.12:
+        return result
+    return {**result,
+            "status":"INDEPENDENT_CM_CALLBACKS_CONTINUED_EXACT_PAIR_UNVERIFIED_HOLD",
+            "original_host_callback_gap_ms":round((end-start)*1000,6),
+            "independent_host_callback_count_inside_gap":len(inside),
+            "independent_max_callback_interval_ms":round(maxgap*1000,6),
+            "independent_host_coverage_start_delta_ms":round((start-left)*1000,6),
+            "independent_host_coverage_end_delta_ms":round((right-end)*1000,6),
+            "same_publication_exact_pair_proven":False,
+            "metadata_publication_sequence_available":False,
+            "original_executor_root_proven":False,
+            "transport_root_proven":False,
+            "root_cause_proven":False,"release":"HOLD"}
+
+
 def _valid(row):
     return (isinstance(row,dict) and row.get("kind")=="pre_guard" and
             type(row.get("t")) in (int,float) and math.isfinite(row["t"]) and
@@ -76,7 +140,9 @@ def compare_same_cm_pair(original,independent,start,end):
         candidates=[row for row in independent if _valid(row) and
             (row["rmw_publication_seq"],row["rmw_source_ns"])==
             (p["rmw_publication_seq"],p["rmw_source_ns"])]
-        if len(candidates)!=1:return result
+        if len(candidates)!=1:
+            return _independent_monotonic_continuity_hold(
+                result,original,independent,start,end)
         pair.append(candidates[0])
     c,d=pair
     orig_src=b["rmw_source_ns"]-a["rmw_source_ns"]
@@ -120,12 +186,7 @@ def run(out, max_samples=12000):
                            start_parameter_services=False)
     def on_cm(_message,info):
         at=time.monotonic()
-        try:
-            src=int(info.source_timestamp)
-            rx=int(info.received_timestamp)
-            seq=int(info.publication_sequence_number)
-        except (TypeError,ValueError,AttributeError):
-            src=rx=seq=-1
+        src,rx,seq=normalize_witness_metadata(info)
         evidence.add(dict(kind="pre_guard",t=round(at,9),
                           rmw_source_ns=src,rmw_received_ns=rx,
                           rmw_publication_seq=seq))

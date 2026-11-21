@@ -1,0 +1,27 @@
+name: AXIA G07 1ibYCGPg Single Observer Reuse L0
+on:
+  push:
+    branches: ['fix/g07-owner-1ibycgpg-cm120-firstclock-20261121']
+    paths: ['.github/workflows/axia-g07-1ibycgpg-single-observer-l0.yml']
+permissions: {contents: read}
+jobs:
+  scoped-single-observer-reuse:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with: {persist-credentials: false}
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: 2218584a907d3b7082588dc40625c8156cc88486
+          path: student
+          persist-credentials: false
+      - name: Existing tested PR73 observer selector regression and existing Stop/Scan contract
+        run: |
+          set -Eeuo pipefail
+          cd student/block_B/day07/h01_runtime
+          python3 -m unittest discover -s tools -p 'test_g07_rmw_observer_executor_ab.py' -v
+          python3 -m unittest discover -s tools -p 'test_g07_scan_wall_pregoal.py' -v
+          python3 -m unittest discover -s tools -p 'test_g07_task04_mvp_minimal_fix.py' -v
+          echo 'AXIA_G07_SINGLE_OBSERVER_REUSE_L0_PASS_ACTUAL_GAZEBO_NOT_RUN'

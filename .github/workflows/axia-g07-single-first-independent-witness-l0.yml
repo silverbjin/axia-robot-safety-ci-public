@@ -1,0 +1,23 @@
+name: AXIA G07 Native Single Observer First Independent CM Witness L0
+on:
+  push:
+    branches: ['fix/g07-owner-1ibycgpg-cm120-firstclock-20261121']
+    paths:
+      - '.github/workflows/axia-g07-single-first-independent-witness-l0.yml'
+      - 'tests/test_g07_native_single_44855963095_independent_witness.py'
+      - 'tests/fixtures/g07_native_single_44855963095_first_gap.json'
+      - 'd06/diagnostic/g07_independent_cm_rmw_witness.py'
+permissions: {contents: read}
+jobs:
+  no-seq-yet-independent-callback-interval:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with: {persist-credentials: false}
+      - name: Real native 1/2 first violated boundary, independent witness and original strict exact match preserved
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest discover -s tests -p 'test_g07_native_single_44855963095_independent_witness.py' -v
+          python3 -m unittest discover -s tests -p 'test_g07_isolated_cm_witness.py' -v
+          echo 'G07_NATIVE_SINGLE_FIRST_WITNESS_L0_PASS_UNRESOLVED_L3_HOLD'

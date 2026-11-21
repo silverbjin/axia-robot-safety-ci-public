@@ -1,0 +1,80 @@
+{
+  "schema": "axia.g07.owner_1ibycgpg_cm_first_timing_numeric.v1",
+  "source": "sha256_verified_owner_archive_user_supplied_numeric_only",
+  "report_version": "task04_owner_numeric_review_v1",
+  "first_clock_step": {
+    "pre_guard": {
+      "observer_prev_monotonic": 254.459381067,
+      "observer_curr_monotonic": 254.493788471,
+      "observer_gap_ms": 34.407404,
+      "source_gap_ms": 2815.517569,
+      "received_gap_ms": 2813.345501,
+      "pub_seq_delta": 1
+    },
+    "supervised": {
+      "observer_prev_monotonic": 254.459514295,
+      "observer_curr_monotonic": 254.493977101,
+      "observer_gap_ms": 34.462806,
+      "source_gap_ms": 2815.603594,
+      "received_gap_ms": 2815.470742,
+      "pub_seq_delta": 1
+    }
+  },
+  "first_cm_observer_breach": {
+    "pre_guard": {
+      "observer_prev_monotonic": 257.45567252,
+      "observer_curr_monotonic": 257.579741902,
+      "observer_gap_ms": 124.069382,
+      "source_gap_ms": 48.746752,
+      "received_gap_ms": 41.902093,
+      "pub_seq_delta": 1
+    },
+    "supervised": {
+      "observer_prev_monotonic": 257.455896294,
+      "observer_curr_monotonic": 257.579867875,
+      "observer_gap_ms": 123.971581,
+      "source_gap_ms": 49.054477,
+      "received_gap_ms": 49.806923,
+      "pub_seq_delta": 1
+    },
+    "other_observed_topics": {
+      "final_observer_gap_ms": 126.885826,
+      "guard_observer_gap_ms": 127.189781,
+      "supervisor_observer_gap_ms": 124.013226
+    }
+  },
+  "motion_window_end_monotonic": 257.49063479,
+  "guard_internal_cm_age_max_ms": 62.715465,
+  "motion_scan_max_ms": 271.170908,
+  "scan_limit_ms": 300,
+  "guard_ttl_ms": 150,
+  "cm_ttl_ms": 120,
+  "classification": "CLOCK_OR_RMW_FORWARD_TIMEBASE_STEP_CANDIDATE_PLUS_REAL_OBSERVER_GAP_HOLD",
+  "root_cause_proven": false,
+  "certified_estop": false,
+  "owner_wsl2_l3_accepted": false,
+  "first_pre_cancel_observer_backlog": {
+    "pre_guard": {
+      "previous_rx_host_monotonic": 257.339658534,
+      "current_rx_host_monotonic": 257.451571284,
+      "observer_gap_ms": 111.91275,
+      "rmw_received_gap_ms": 50.552019,
+      "rmw_source_gap_ms": 53.162591,
+      "pub_seq_delta": 1
+    },
+    "supervised": {
+      "previous_rx_host_monotonic": 257.339825869,
+      "current_rx_host_monotonic": 257.451683595,
+      "observer_gap_ms": 111.857726,
+      "rmw_received_gap_ms": 50.158554,
+      "rmw_source_gap_ms": 53.084577,
+      "pub_seq_delta": 1
+    }
+  },
+  "independent_bag_max_receive_gap_around_first_callback": {
+    "pre_guard": 66.794719,
+    "supervised": 66.838248,
+    "clock": 29.794173,
+    "odom": 80.519276
+  }
+}

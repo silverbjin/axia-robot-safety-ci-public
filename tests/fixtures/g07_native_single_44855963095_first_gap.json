@@ -1,0 +1,48 @@
+{
+  "schema": "axia.g07.native_single_l2_44855963095_first_gap_v1",
+  "evidence": "public_GitHub_Actions_run_44855963095_cycle1_SHA_verified_numeric_artifact_14687796916",
+  "source_sha": "2218584a907d3b7082588dc40625c8156cc88486",
+  "public_native_run": 44855963095,
+  "first_timing_violation": {
+    "channel": "odom",
+    "previous_rx_monotonic": 264.699048484,
+    "current_rx_monotonic": 265.059473585,
+    "gap_ms": 360.425101,
+    "limit_ms": 300,
+    "stage": "PRE_STOP"
+  },
+  "first_cm_observer_pair": {
+    "previous_rx_monotonic": 264.681983906,
+    "current_rx_monotonic": 265.059718064,
+    "callback_gap_ms": 377.734158,
+    "rmw_source_gap_ms": 52.640339,
+    "rmw_received_gap_ms": 378.084177,
+    "publication_seq_delta": 1
+  },
+  "cross_stream_max_gap_ms": {
+    "clock": 338.477114,
+    "guard": 374.237092,
+    "odom": 360.425101,
+    "pre_guard": 377.734158,
+    "scan": 342.189295,
+    "supervised": 377.355937,
+    "supervisor": 377.391612
+  },
+  "independent_cm_callback_host_monotonic": [
+    264.67797407,
+    264.731572444,
+    264.778861969,
+    264.827377844,
+    264.880176291,
+    264.930406623,
+    264.978028339,
+    265.030589733,
+    265.081052661
+  ],
+  "independent_publication_seq_metadata": "UNAVAILABLE_NEGATIVE_1",
+  "independent_receiver_topic": "/cmd_vel_pre_guard",
+  "owner_new_release": "HOLD_ACTUAL_L2_1_OF_2_FAILED",
+  "real_gazebo": true,
+  "certified_estop": false,
+  "root_cause_proven": false
+}
