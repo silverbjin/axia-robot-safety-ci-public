@@ -29,7 +29,7 @@
 - bounded first reason 추가 RED [#44877197366](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44877197366)→GREEN [#44877261269](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44877261269) 8/8.
 - 추가 실제 Native [#44877303360](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44877303360), Public `30602b281df799343988bf34811b6dfc56c497ef` (Student `f6b77dd6ab0f3e8427825ffe7c5508afaec7d1ad`) **FAIL**. 첫 차단 `SUPERVISED_FORWARD_BELOW_ENTRY_GATE`, 실패 종료 시 vin0.018827m/s, 실제 CLEAR vin0.03763954m/s, 부모 최종 rc2. 기존 CLEAR >0.03보다 **추가 0.05 조건이 과도**.
 - 정확한 실제 CLEAR 양의 진입 조건으로만 정렬: RED [#44877613136](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44877613136) → GREEN [#44877658981](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44877658981), `Ran 9 tests / OK`; Student `c07f0f278673519191f7e5c310056e74d9bc4287`; forward entry >0.03, 실제 0.018827은 여전히 FAIL, odom angular/positive guards 유지. 120/150/300ms Safety TTL 수정 없음.
-- 동일 변경을 실제 scoped native 1-cycle [#448776... **신규 run ID 확인 필요**]에서 검증 중. **분리된 G20 L2는 아직 PASS 아님**.
+- 동일 변경을 실제 scoped native 1-cycle [#44877702505](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44877702505) (실제 종료 판정 조회 전: L2 HOLD)에서 검증 중. **분리된 G20 L2는 아직 PASS 아님**.
 
 ## G25 — 종료 최초 위반 분리, 실제 root 미해결
 
