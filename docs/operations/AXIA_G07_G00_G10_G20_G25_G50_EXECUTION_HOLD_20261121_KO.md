@@ -44,3 +44,12 @@
 - A(G10)=HOLD, B(G20)=HOLD, T(G25)=HOLD. FULL G30 strict independent cold-run 2/2=NOT PASS. G40 SHA-pinned Owner executable=NOT RELEASED. **G50 actual instructor WSL2=NOT_RUN**.
 - 다음 최초 경계: G20 .03 기준 실제 Gazette RMW/Goal physical SLOW와 odom yaw; 정상 SLOW라면 G25 26초 첫 child role; G10 원래 wait/take 600ms 재현 시 새 D08 hook으로 동일 Header join. 문제 없던 성공 이력의 중복 시험 금지.
 - 신규 WSL2 명령 출고·main 병합 금지, SW stop ≠ certified hardware E-Stop.
+
+## G20 보완 실증: 기존 Goal heading과 장애물 배치 시점의 불일치
+
+- 최신 native #44877702505 (Public 6293eaa97334dd94a17775f7625f2f7d2518115b, Student c07f0f278673519191f7e5c310056e74d9bc4287): 12초 Scan PASS, 실 Nav2 Goal EXECUTING, CLEAR 실제 vin0.03617092m/s→45초가 아닌 기존 12초 진입 대기 동안 -0.024844m/s로 전이, **첫 장애: CI_MOVING_GOAL_TIMEOUT_SLOW_ENTRY_FORWARD**. 물리 Cylinder 아직 배치하지 않음; 인증 STOP 아님.
+- 기준 source `tools/p2_g07_demo_corridor.py`: DEMO_START=(-2,-0.5), DEMO_GOAL=(-1.7,+0.7), 목표 방위 atan2(1.2,0.3)≈1.326rad(~76°). 원본 #44871515361 실제 odom yaw .1147rad→1.5198rad 동안 로봇이 회전한 뒤 forward speed가 양(+)이 되고 전방 장애물은 원래 각도에서 사라짐.
+- 이 데이터는 **초기 heading 방향과 실제 목표 진행방향이 일치하지 않는 상태의 장애물 배치** 가설을 강하게 뒷받침하되, 그 자체로 실제 SLOW root/수정 성공을 입증하지 않는다.
+- Student `p2_g07_ci_slow_entry.py`: 기존 `make_frame_anchor`의 실제 map/odom 원점을 이용하고 DEMO_GOAL 목표 방위와 live yaw 간 오차 ≤0.30rad일 때만 기존 Cylinder를 앞으로 이동. 새로운 TF publisher/Goal/cmd_vel 없으며 원본 `p2_l3_coordinate_frames.py`, Planner, CM 및 Guard 수정 없음. 실제 회전 약 35sec를 고려한 시연 **stage-readiness** bounded wait 45sec는 Scan300/CM120/Guard150 안전 TTL 변경이 아니다. 실행 전 max 45sec 동안 실제 Goal EXECUTING/Guard unlatched 및 양의 전진・yaw 안정성/센서 300ms fresh를 계속 요구하며 실패 시 Goal Cancel + HOLD.
+- TDD 공개 RED [#44878069580](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44878069580) → GREEN [#44878130168](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44878130168), **11/11**. Student exact `8f995fe3d600c3f0c1df78700981178d39f5aa46`; Public CI workflow at `eaa717ddabccadbcfd692f9d760fc4b2ce67a72d`.
+- 실제 **단일 scoped** Jazzy/Harmonic/Xvfb/Goal trial [#44878195833](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44878195833) source Public `9206b92ff5ceb1d3a7ce7df463a008e5fbe30c4b`, Student `8f995...` → **최종 결과 확인 전 HOLD**. 이것은 G30 독립 2/2를 대체하지 않음.
