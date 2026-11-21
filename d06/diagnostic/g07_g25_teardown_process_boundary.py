@@ -49,11 +49,22 @@ def assess(ps_text,teardown_text,ordered_and_run_log):
       active_non_zombie_count=0,roles={})
     log=ordered_and_run_log if isinstance(ordered_and_run_log,str) else ""
     if len(log)>131072: log=""
-    slow=log.find("CI_MOVING_GOAL_TIMEOUT_SLOW")
+    # Exact fault token, not a prefix. #44876802910 stopped before native
+    # cylinder placement at SLOW_ENTRY_FORWARD, unlike earlier SLOW timeout.
+    forward=log.find("CI_MOVING_GOAL_TIMEOUT_SLOW_ENTRY_FORWARD")
+    slow_match=re.search(r"CI_MOVING_GOAL_TIMEOUT_SLOW(?![A-Za-z0-9_])",log)
+    slow=slow_match.start() if slow_match else -1
     nonexit=log.find("G07_CI_LAUNCH_LIVE_AFTER_MANAGED_EXIT_BUDGET")
-    if slow>=0 and (nonexit<0 or slow<nonexit):
-        out["status"]="FIRST_SLOW_TIMEOUT_BEFORE_TEARDOWN_HOLD"
-        out["first_failure"]="CI_MOVING_GOAL_TIMEOUT_SLOW"
+    first=[(i,name,status) for i,name,status in (
+        (forward,"CI_MOVING_GOAL_TIMEOUT_SLOW_ENTRY_FORWARD",
+         "FIRST_SLOW_ENTRY_FORWARD_TIMEOUT_HOLD"),
+        (slow,"CI_MOVING_GOAL_TIMEOUT_SLOW",
+         "FIRST_SLOW_TIMEOUT_BEFORE_TEARDOWN_HOLD"))
+        if i>=0 and (nonexit<0 or i<nonexit)]
+    if first:
+        _,name,status=min(first)
+        out["status"]=status
+        out["first_failure"]=name
         return out
     if nonexit<0:
         out["status"]="NO_26S_EXIT_BOUNDARY_OBSERVED_HOLD"
