@@ -5,6 +5,7 @@ on:
     paths:
       - '.github/workflows/axia-g07-first-scan-rmw-pair-l0.yml'
       - 'd06/diagnostic/g07_first_scan_pair_attribution.py'
+      - 'd06/diagnostic/g07_first_actual_delivery_gap.py'
       - 'tests/test_g07_first_scan_rmw_evidence_export.py'
       - '.github/workflows/axia-g07-original-multi-first-scan-rmw-native-l2.yml'
 permissions:
