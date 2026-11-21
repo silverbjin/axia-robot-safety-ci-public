@@ -1,0 +1,177 @@
+{
+  "source_uploaded_archive_sha256": "5fe3f39b02cda4a7255a0e733a425efb0a9880fddb89285c8c85fcef72618a03",
+  "provenance": "original_user_supplied_ZOAgryLW_20261119",
+  "student_source_sha": "835a5285c49300a8d9943d2e19d0c07f3fa06901",
+  "nav2_action_ready_host_monotonic_sec": 5131.995,
+  "proxy_window_sec": 20,
+  "sensor_truth": {
+    "status": "NO_GOAL_SENSOR_UNSAFE_HOLD",
+    "reasons": [
+      "SAFETY_RECEIPT_TTL_300MS_BLOCKED",
+      "RAW_RECEIPT_TTL_300MS_BLOCKED"
+    ],
+    "raw_max_gap_sec": 0.45254,
+    "safety_max_gap_sec": 0.458803,
+    "raw_count": 158,
+    "safety_count": 157,
+    "front_median_m": 1.414382,
+    "side_median_m": 2.520205,
+    "rtf_global": 0.782939
+  },
+  "shutdown": {
+    "navigation_ack": true,
+    "localization_ack": true,
+    "cm_exit_code": 0,
+    "gazebo_server_exit_code": -11,
+    "teardown_marker": "P2_L2_GRACEFUL_TEARDOWN",
+    "goal_sent": false
+  },
+  "native": [
+    {
+      "host_monotonic_sec": 5096.465309,
+      "source_stamp_ns": 16701000000
+    },
+    {
+      "host_monotonic_sec": 5096.561699,
+      "source_stamp_ns": 16800000000
+    },
+    {
+      "host_monotonic_sec": 5099.574581,
+      "source_stamp_ns": 19602000000
+    },
+    {
+      "host_monotonic_sec": 5099.687447,
+      "source_stamp_ns": 19701000000
+    },
+    {
+      "host_monotonic_sec": 5132.355288,
+      "source_stamp_ns": 47901000000
+    },
+    {
+      "host_monotonic_sec": 5132.729528,
+      "source_stamp_ns": 48000000000
+    }
+  ],
+  "raw": [
+    {
+      "topic": "raw",
+      "host_monotonic_sec": 5096.465282,
+      "source_stamp_ns": 16701000000
+    },
+    {
+      "topic": "raw",
+      "host_monotonic_sec": 5096.562073,
+      "source_stamp_ns": 16800000000
+    },
+    {
+      "topic": "raw",
+      "host_monotonic_sec": 5099.575259,
+      "source_stamp_ns": 19602000000
+    },
+    {
+      "topic": "raw",
+      "host_monotonic_sec": 5099.932104,
+      "source_stamp_ns": 19701000000
+    },
+    {
+      "topic": "raw",
+      "host_monotonic_sec": 5132.372511,
+      "source_stamp_ns": 47901000000
+    },
+    {
+      "topic": "raw",
+      "host_monotonic_sec": 5132.729658,
+      "source_stamp_ns": 48000000000
+    }
+  ],
+  "safety": [
+    {
+      "topic": "safety",
+      "host_monotonic_sec": 5096.466308,
+      "source_stamp_ns": 16701000000
+    },
+    {
+      "topic": "safety",
+      "host_monotonic_sec": 5096.845806,
+      "source_stamp_ns": 16800000000
+    },
+    {
+      "topic": "safety",
+      "host_monotonic_sec": 5099.577224,
+      "source_stamp_ns": 19602000000
+    },
+    {
+      "topic": "safety",
+      "host_monotonic_sec": 5099.932765,
+      "source_stamp_ns": 19701000000
+    },
+    {
+      "topic": "safety",
+      "host_monotonic_sec": 5132.372821,
+      "source_stamp_ns": 47901000000
+    },
+    {
+      "topic": "safety",
+      "host_monotonic_sec": 5132.737526,
+      "source_stamp_ns": 48000000000
+    }
+  ],
+  "clock": [
+    {
+      "host_monotonic_sec": 5096.419433,
+      "sim_stamp_ns": 16668000000
+    },
+    {
+      "host_monotonic_sec": 5096.461427,
+      "sim_stamp_ns": 16710000000
+    },
+    {
+      "host_monotonic_sec": 5096.503339,
+      "sim_stamp_ns": 16752000000
+    },
+    {
+      "host_monotonic_sec": 5096.545407,
+      "sim_stamp_ns": 16794000000
+    },
+    {
+      "host_monotonic_sec": 5096.587379,
+      "sim_stamp_ns": 16836000000
+    },
+    {
+      "host_monotonic_sec": 5132.293192,
+      "sim_stamp_ns": 47901000000
+    },
+    {
+      "host_monotonic_sec": 5132.338515,
+      "sim_stamp_ns": 47919000000
+    },
+    {
+      "host_monotonic_sec": 5132.387576,
+      "sim_stamp_ns": 47931000000
+    },
+    {
+      "host_monotonic_sec": 5132.434364,
+      "sim_stamp_ns": 47937000000
+    },
+    {
+      "host_monotonic_sec": 5132.533867,
+      "sim_stamp_ns": 47946000000
+    },
+    {
+      "host_monotonic_sec": 5132.581965,
+      "sim_stamp_ns": 47952000000
+    },
+    {
+      "host_monotonic_sec": 5132.637773,
+      "sim_stamp_ns": 47976000000
+    },
+    {
+      "host_monotonic_sec": 5132.681831,
+      "sim_stamp_ns": 48012000000
+    },
+    {
+      "host_monotonic_sec": 5132.72774,
+      "sim_stamp_ns": 48048000000
+    }
+  ]
+}

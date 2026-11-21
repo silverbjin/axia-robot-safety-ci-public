@@ -1,0 +1,34 @@
+{
+  "schema": "axia.d06.g07.owner_nvidia_20261119.v1",
+  "provenance": "uploaded original compact d06-forensic-ab-no-goal-yBT9gFbJ.tar.gz SHA256 ba460947ac0415eb539b090d17f21dd056c9cde8fe77db1e497326f21973503e",
+  "sensor_status": "NO_GOAL_SENSOR_UNSAFE_HOLD",
+  "rtf": 0.913157,
+  "safety": {
+    "first_gap_index": 6,
+    "max_host_gap_sec": 0.421172,
+    "count": 180,
+    "clear_count": 180,
+    "front_median_m": 1.414687,
+    "side_median_m": 2.520466
+  },
+  "raw": {
+    "first_gap_index": 11,
+    "max_host_gap_sec": 0.427761,
+    "count": 185,
+    "paired_safety_receipt_gap_sec": 0.387036,
+    "first_raw_receipt_gap_sec": 0.390708
+  },
+  "process_crashes": [
+    "collision_monitor",
+    "gazebo_server"
+  ],
+  "first_crash_log_line": 427,
+  "second_crash_log_line": 428,
+  "first_safety_transition_host_time": null,
+  "first_scan_timing_breach_host_time": null,
+  "source_native_scan_receipt_pairs_available": false,
+  "source_ros_scan_receipt_pairs_available": false,
+  "goal_sent": false,
+  "certified_estop": false,
+  "release": "HOLD"
+}

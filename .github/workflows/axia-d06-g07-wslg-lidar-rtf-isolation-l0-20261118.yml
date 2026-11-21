@@ -1,0 +1,185 @@
+name: AXIA D06 G07 WSLg LiDAR geometry versus RTF isolation L0
+on:
+  push:
+    branches: ['fix/d06-wslg-lidar-vs-rtf-ci-20261118']
+    paths:
+      - '.github/workflows/axia-d06-g07-wslg-lidar-rtf-isolation-l0-20261118.yml'
+      - 'd06/tests/test_d06_lidar_rtf_field_evidence.py'
+      - 'd06/tools/axia_d06_lidar_rtf_compare.py'
+      - 'd06/fixtures/g07_intel_d3d12_rtf_original_20261118.json'
+      - 'd06/scripts/axia_d06_g07_wslg_gpu_rtf_compare_once.sh'
+      - 'd06/scripts/axia_d06_g07_wslg_sensor_no_goal_once.sh'
+      - 'd06/tests/test_d06_gpu_rtf_runner_safety.py'
+      - 'd06/tests/test_d06_forensic_bundle_once.py'
+      - 'd06/tests/test_d06_existing_gazebo_core_triage.py'
+      - 'd06/scripts/axia_d06_g07_wslg_existing_core_once.sh'
+      - 'd06/tests/test_d06_gz_native_witness_teardown.py'
+      - 'd06/tools/d06_gz_native_scan_probe_safe.py'
+      - 'd06/tests/test_d06_g07_native_scan_layer.py'
+      - 'd06/tests/test_d06_g07_native_clock_and_rclpy_shutdown.py'
+      - 'd06/tests/test_d06_g07_zoa_scope_regression.py'
+      - 'd06/fixtures/g07_zoa_first_boundary_20261119.json'
+      - 'd06/tests/test_d06_g07_nogoal_ordered_cm_shutdown.py'
+      - 'd06/tests/test_d06_g07_student_first_receipt_pair.py'
+      - 'd06/tests/test_d06_g07_post_ready_first_breach_l2.py'
+      - 'd06/tests/test_d06_localization_manager_callback_probe.py'
+      - 'd06/tests/test_d06_student_scan_clock_executor_isolation.py'
+      - 'd06/tests/test_d06_c06_two_executor_scan_receipt.py'
+      - 'd06/tests/test_d06_c07_navigation_manager_service_liveness.py'
+      - 'd06/tests/test_d06_c08_ci_gui_pre_nav2_ready.py'
+      - 'd06/tests/test_d06_c09_deferred_scan_geometry.py'
+      - 'd06/tests/test_d06_c10_ci_rmw_comparison.py'
+      - 'd06/tests/test_d06_c11_wslg_core_once.py'
+      - 'd06/tests/test_d06_c12_field_missing_coredumpctl.py'
+      - 'd06/tests/test_d06_c13_full_cli_noble_smoke.py'
+      - 'd06/tests/test_d06_c14_native_core_evidence_pipeline.py'
+      - 'd06/tests/test_d06_c16_wslg_gpu_runner_capability.py'
+      - 'd06/tests/test_d06_c17_g3_clean_or_core_verdict.py'
+      - 'd06/tests/test_d06_c18_no_independent_g3_release_gate.py'
+      - 'd06/tests/test_d06_c20_missing_coredumpctl_host_repair.py'
+      - 'd06/tests/test_d06_c22_wsl2_core_pipeline_preflight.py'
+      - 'd06/tests/test_d06_c23_core_index_readonly_doctor.py'
+      - 'd06/tests/test_d06_c24_wsl2_wslg_layer_parity.py'
+      - 'd06/tests/test_d06_c26_wslg_gpu_identity_evidence.py'
+      - 'd06/tests/test_d06_c27_gz_native_stop_drain.py'
+      - 'd06/tests/test_d06_c27_owner_candidate_pin.py'
+      - 'd06/tests/test_d06_c27_owner_compact_once.py'
+      - 'd06/tests/test_d06_c28_actual_wsl2_compact_eof_and_safety.py'
+      - 'd06/tests/test_d06_c29_ci_first_release_manifest.py'
+      - 'd06/tests/test_d06_c29_real_full_two_cold_l2.py'
+      - 'd06/tests/test_d06_c29_cyclone_ab_candidate.py'
+      - 'd06/tests/test_d06_c29_owner_final_compact_gate.py'
+      - 'd06/tools/d06_c29_no_goal_compact_gate.py'
+      - 'd06/scripts/axia_d06_c29_owner_final_no_goal_once.sh'
+      - 'd06/ci/c29_selected_cyclonedds_release.json'
+      - '.github/workflows/axia-d06-c29-cyclonedds-ab-two-cold-l2.yml'
+      - '.github/workflows/axia-d06-c29-nogoal-full-two-cold-l2.yml'
+      - 'd06/ci/c29_source_manifest.json'
+      - 'd06/scripts/axia_d06_c27_owner_wsl2_nogoal_once.sh'
+      - 'd06/scripts/axia_d06_g07_wslg_sensor_no_goal_once.sh'
+      - 'd06/tools/d06_c23_core_index_readonly_doctor.py'
+      - 'd06/scripts/axia_d06_c22_wsl2_core_pipeline_probe_once.sh'
+      - 'd06/scripts/axia_d06_c20_coredumpctl_existing_only_repair.sh'
+      - 'd06/docs/AXIA_D06_C18_NO_G3_OWNER_WSL2_DIRECT_ACCEPTANCE_20261120_KO.md'
+      - 'd06/scripts/axia_d06_g3_independent_wslg_nogoal_once.sh'
+      - 'd06/tools/d06_g3_wslg_gpu_capability.py'
+      - 'd06/scripts/axia_d06_g07_wslg_sigsegv_capture_once.sh'
+      - 'd06/tools/d06_wslg_latest_gz_sigsegv_core.py'
+      - 'd06/tests/test_d06_l2_apt_https_bootstrap.py'
+      - 'd06/tests/test_d06_ci_only_gui_nice.py'
+      - '.github/workflows/axia-d06-g07-native-nogoal-cm-clean-l2-20261119.yml'
+      - 'd06/tests/test_d06_g07_no_goal_manager_discovery.py'
+      - 'd06/tests/test_d06_owner_full_native_gate.py'
+      - 'd06/fixtures/g07_owner_nvidia_native_scan_clock_first_gap_20261119.json'
+      - 'd06/tools/d06_g07_scan_rx_witness.py'
+      - 'd06/fixtures/g07_owner_nvidia_first_ttl_20261119.json'
+      - 'd06/docs/AXIA_D06_D08_MVP_NVIDIA_NO_GOAL_REUSE_RCA_20261119_KO.md'
+      - 'd06/docs/AXIA_D06_G07_NATIVE_SCAN_TTL_ACTION_20261119_KO.md'
+      - 'd06/docs/AXIA_D06_G07_ZOA_FIRST_BOUNDARY_RCA_20261119_KO.md'
+      - 'd06/docs/AXIA_D06_G07_NO_GOAL_ORDERED_CM_L2_ACCEPTANCE_REPORT_20261119_KO.md'
+      - 'd06/docs/AXIA_D06_G07_FIRST_STUDENT_PAIR_READY_WINDOW_AND_SHUTDOWN_RCA_20261119_KO.md'
+      - 'd06/docs/AXIA_D06_G07_OWNER_L3_SINGLE_RUN_RELEASE_GATE_20261119_KO.md'
+      - 'd06/docs/AXIA_D06_G07_TCLJT2QC_EARLY_FAILURE_FORENSIC_RCA_20261119_KO.md'
+      - 'd06/docs/AXIA_D06_G07_TCLJT2QC_FROZEN_PROBE_BLOB_RCA_20261119_KO.md'
+      - 'd06/docs/AXIA_D06_G07_FR1_NO_GOAL_SENSOR_PASS_NATIVE_SHUTDOWN_HOLD_20261119_KO.md'
+      - 'd06/docs/AXIA_D06_G07_LOCALIZATION_FIRST_TIMEOUT_READONLY_PROBE_L2_20261119_KO.md'
+      - 'd06/tests/test_d06_native_raw_scan_ttl_boundary.py'
+  pull_request:
+    paths:
+      - 'd06/scripts/axia_d06_g07_wslg_gpu_rtf_compare_once.sh'
+      - 'd06/tests/test_d06_gpu_rtf_runner_safety.py'
+      - 'd06/tests/test_d06_forensic_bundle_once.py'
+      - 'd06/tests/test_d06_existing_gazebo_core_triage.py'
+      - 'd06/scripts/axia_d06_g07_wslg_existing_core_once.sh'
+      - 'd06/tests/test_d06_gz_native_witness_teardown.py'
+      - 'd06/tools/d06_gz_native_scan_probe_safe.py'
+      - 'd06/tests/test_d06_g07_native_scan_layer.py'
+      - 'd06/tests/test_d06_g07_native_clock_and_rclpy_shutdown.py'
+      - 'd06/tests/test_d06_g07_zoa_scope_regression.py'
+      - 'd06/fixtures/g07_zoa_first_boundary_20261119.json'
+      - 'd06/tests/test_d06_g07_nogoal_ordered_cm_shutdown.py'
+      - 'd06/tests/test_d06_g07_student_first_receipt_pair.py'
+      - 'd06/tests/test_d06_g07_post_ready_first_breach_l2.py'
+      - 'd06/tests/test_d06_localization_manager_callback_probe.py'
+      - 'd06/tests/test_d06_student_scan_clock_executor_isolation.py'
+      - 'd06/tests/test_d06_l2_apt_https_bootstrap.py'
+      - 'd06/tests/test_d06_ci_only_gui_nice.py'
+      - '.github/workflows/axia-d06-g07-native-nogoal-cm-clean-l2-20261119.yml'
+      - 'd06/tests/test_d06_g07_no_goal_manager_discovery.py'
+      - 'd06/tests/test_d06_owner_full_native_gate.py'
+      - 'd06/fixtures/g07_owner_nvidia_native_scan_clock_first_gap_20261119.json'
+      - 'd06/tools/d06_g07_scan_rx_witness.py'
+      - 'd06/fixtures/g07_owner_nvidia_first_ttl_20261119.json'
+      - 'd06/docs/AXIA_D06_D08_MVP_NVIDIA_NO_GOAL_REUSE_RCA_20261119_KO.md'
+      - 'd06/docs/AXIA_D06_G07_NATIVE_SCAN_TTL_ACTION_20261119_KO.md'
+      - 'd06/docs/AXIA_D06_G07_ZOA_FIRST_BOUNDARY_RCA_20261119_KO.md'
+      - 'd06/docs/AXIA_D06_G07_NO_GOAL_ORDERED_CM_L2_ACCEPTANCE_REPORT_20261119_KO.md'
+      - '.github/workflows/axia-d06-g07-wslg-lidar-rtf-isolation-l0-20261118.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  six-independent-axes:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: 0565e580f5b7c80d719960a6046de3e45c8ea477
+          path: student
+          persist-credentials: false
+      - name: Verify immutable Student SHA and six independent geometry/RTF cases
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C student rev-parse HEAD)" = 0565e580f5b7c80d719960a6046de3e45c8ea477
+          python3 -m unittest discover -s student/block_B/day07/h01_runtime/tools -p 'test_g07_lidar_rtf_separation.py' -v
+          python3 -m unittest discover -s student/block_B/day07/h01_runtime/tools -p 'test_g07_wslg_no_goal_sensor_probe.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_lidar_rtf_field_evidence.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_gpu_rtf_runner_safety.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_forensic_bundle_once.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_existing_gazebo_core_triage.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_gz_native_witness_teardown.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_g07_native_scan_layer.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_g07_native_clock_and_rclpy_shutdown.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_g07_zoa_scope_regression.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_g07_nogoal_ordered_cm_shutdown.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_g07_student_first_receipt_pair.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_g07_post_ready_first_breach_l2.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_localization_manager_callback_probe.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_student_scan_clock_executor_isolation.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_c06_two_executor_scan_receipt.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_c07_navigation_manager_service_liveness.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_c08_ci_gui_pre_nav2_ready.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_c09_deferred_scan_geometry.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_c10_ci_rmw_comparison.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_c11_wslg_core_once.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_c12_field_missing_coredumpctl.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_c13_full_cli_noble_smoke.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_c14_native_core_evidence_pipeline.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_c16_wslg_gpu_runner_capability.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_c17_g3_clean_or_core_verdict.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_c18_no_independent_g3_release_gate.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_c20_missing_coredumpctl_host_repair.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_c22_wsl2_core_pipeline_preflight.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_c23_core_index_readonly_doctor.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_c24_wsl2_wslg_layer_parity.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_c26_wslg_gpu_identity_evidence.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_c27_gz_native_stop_drain.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_c27_owner_candidate_pin.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_c27_owner_compact_once.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_c28_actual_wsl2_compact_eof_and_safety.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_c29_ci_first_release_manifest.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_c29_real_full_two_cold_l2.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_c29_cyclone_ab_candidate.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_c29_owner_final_compact_gate.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_l2_apt_https_bootstrap.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_ci_only_gui_nice.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_g07_no_goal_manager_discovery.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_owner_full_native_gate.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_native_raw_scan_ttl_boundary.py' -v
+          bash -n d06/scripts/axia_d06_g07_wslg_sensor_no_goal_once.sh
+          bash -n d06/scripts/axia_d06_g07_wslg_gpu_rtf_compare_once.sh
+          bash d06/scripts/axia_d06_g07_wslg_gpu_rtf_compare_once.sh --self-check
+          echo 'AXIA_D06_G07_LIDAR_RTF_ISOLATION_L0_PASS_NO_ROS_NO_GAZEBO_NO_GOAL'

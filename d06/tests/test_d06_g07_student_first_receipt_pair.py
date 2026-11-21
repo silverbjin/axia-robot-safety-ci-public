@@ -1,0 +1,301 @@
+"""Real WSL2 ZOA lacks exact Student first raw/safety source-stamp pair.
+
+Capture only the FIRST host-receipt TTL violation per topic, preserving
+existing 300ms acceptance and revealing simultaneous native Gazebo cause
+without logging 100s of MB or requiring another manual grep.
+"""
+import importlib.util
+import pathlib
+import unittest
+
+ROOT=pathlib.Path(__file__).resolve().parents[2]
+SRC_ROOT=(ROOT/"student" if (ROOT/"student").is_dir() else ROOT.parent/"student")
+SRC=SRC_ROOT/"block_B/day07/h01_runtime/tools/g07_wslg_no_goal_sensor_probe.py"
+# Match Student's own test import layout (pure assess_window; no ROS started).
+import sys
+sys.path.insert(0,str(SRC.parent))
+
+def load():
+    spec=importlib.util.spec_from_file_location("g07_student_first_pair",SRC)
+    m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+    return m
+
+class StudentFirstHostGap(unittest.TestCase):
+    def test_scan_host_receipt_timestamp_precedes_geometry_work(self):
+        # Actual same-stamp L2 first breach was 385ms Student vs 112ms peer.
+        # Existing Student observer captured host time only *after* computing
+        # distance sectors, so it did not measure callback entry correctly.
+        source=SRC.read_text()
+        callback=source.split("    def scan_callback(msg, kind):",1)[1]
+        callback=callback.split("    def on_odom(msg):",1)[0]
+        # C09 preserves the exact callback entry timestamp while moving
+        # CPU-heavy geometry out of the ROS Scan executor entirely.
+        self.assertLess(callback.index("now = time.monotonic()"),
+                        callback.index("records[kind].append("))
+        self.assertNotIn("sector_min(msg)",callback)
+        self.assertNotIn("near_ring_fraction(msg)",callback)
+        geometry=source.split("def enrich_scan_geometry(records):",1)[1]
+        geometry=geometry.split("def run(out, duration):",1)[0]
+        self.assertIn("side=sector_min(msg)",geometry)
+        self.assertIn("near,beams=near_ring_fraction(msg)",geometry)
+        self.assertIn("SCAN_TTL_SEC = .300",source)
+        self.assertIn('"goal_sent": False',source)
+        self.assertIn('"certified_estop": False',source)
+
+    def test_source_header_and_host_clock_first_ttl_same_pair(self):
+        m=load()
+        def row(recv,stamp):
+            return {"recv":recv,"stamp":stamp,
+                    "front":1.4,"side":2.5,"near":.1,"beams":160}
+        records={
+           "raw":[row(100.,50.0),row(100.1,50.1),row(100.43,50.2)],
+           "safety":[row(100.005,50.0),row(100.107,50.1),row(100.512,50.2)],
+           "odom":[{"vx":0,"wz":0} for _ in range(3)],
+           "clock":[50,50.1,50.2],
+        }
+        report=m.assess_window(records)
+        self.assertEqual(report["status"],"NO_GOAL_SENSOR_UNSAFE_HOLD")
+        self.assertIn("SAFETY_RECEIPT_TTL_300MS_BLOCKED",report["reasons"])
+        self.assertIn("RAW_RECEIPT_TTL_300MS_BLOCKED",report["reasons"])
+        witness=report["scan_receipts_compact"]
+        self.assertEqual(witness["schema"],"axia.g07.first_ttl_host_pair.v1")
+        self.assertEqual(witness["safety"]["before"]["source_stamp_ns"],50100000000)
+        self.assertEqual(witness["safety"]["after"]["source_stamp_ns"],50200000000)
+        self.assertAlmostEqual(witness["safety"]["gap_sec"],.405,places=5)
+        self.assertAlmostEqual(witness["raw"]["gap_sec"],.33,places=5)
+        self.assertAlmostEqual(witness["raw"]["after"]["host_monotonic_sec"],100.43,places=5)
+        self.assertEqual(report["metrics"]["safety"]["first_receipt_ttl_breach_at_index"],2)
+
+    def test_no_first_breach_does_not_invent_evidence(self):
+        m=load()
+        records={"safety":[{"recv":100+i*.1,"stamp":50+i*.1,"front":1.4,"side":2.5,"near":.1} for i in range(22)],
+                 "raw":[{"recv":100+i*.1,"stamp":50+i*.1} for i in range(22)],
+                 "clock":[1,2], "odom":[{"vx":0,"wz":0} for _ in range(3)]}
+        v=m.assess_window(records)
+        self.assertIsNone(v["scan_receipts_compact"]["safety"])
+        self.assertIsNone(v["scan_receipts_compact"]["raw"])
+        self.assertEqual(v["status"],"NO_GOAL_SENSOR_WINDOW_CLEAR_CANDIDATE")
+
+class DualTopicReadinessGate(unittest.TestCase):
+    """Warmup is NOT clearance; prove 20s of raw+safe only after both active."""
+    def test_real_ci_first_raw_gap_pre_safety_does_not_truncate_dual_topic_dwell(self):
+        m=load()
+        def row(t,stamp):
+            return {"recv":t,"stamp":stamp,"front":1.42,"side":2.52,"near":.05,"beams":360}
+        raw=[row(200+i*.1,40+i*.1) for i in range(4)]
+        raw += [row(200.74,40.4),row(200.84,40.5),row(201.00,40.6)]
+        raw += [row(201.1+i*.1,40.7+i*.1) for i in range(206)]
+        safety=[row(201.15+i*.1,40.8+i*.1) for i in range(205)]
+        inp={"raw":raw,"safety":safety,"clock":[1,2,3],
+             "odom":[{"vx":0,"wz":0} for _ in range(4)]}
+        self.assertIn("RAW_RECEIPT_TTL_300MS_BLOCKED",m.assess_window(inp)["reasons"])
+        win=m.select_dual_topic_window(inp)
+        self.assertTrue(win["both_topics_ready"])
+        self.assertGreater(win["start_host_monotonic_sec"],201.)
+        self.assertGreaterEqual(win["observed_dwell_sec"],20.)
+        self.assertGreater(win["pre_ready_raw_first_gap_sec"],.3)
+        self.assertTrue(win["pre_ready_breach_evidence_retained"])
+        result=m.assess_window(win["records"])
+        self.assertNotIn("RAW_RECEIPT_TTL_300MS_BLOCKED",result["reasons"])
+        self.assertEqual(result["status"],"NO_GOAL_SENSOR_WINDOW_CLEAR_CANDIDATE")
+
+    def test_real_44473547759_first_safety_355ms_is_not_qualified_ready(self):
+        m=load()
+        def row(recv,stamp):
+            return {"recv":recv,"stamp":stamp,"front":1.414,"side":2.520,
+                    "near":.05,"beams":360}
+        raw=[row(538+i*.1,44.6+i*.1) for i in range(240)]
+        safety=[row(538.049124,44.700),row(538.404659,44.802)]
+        safety += [row(538.504659+i*.1,44.903+i*.1) for i in range(220)]
+        records={"raw":raw,"safety":safety,
+                 "odom":[{"vx":0,"wz":0} for _ in range(4)],
+                 "clock":[1,2,3]}
+        self.assertIn("SAFETY_RECEIPT_TTL_300MS_BLOCKED",
+                      m.assess_window(records)["reasons"])
+        window=m.select_dual_topic_window(records)
+        self.assertTrue(window["both_topics_ready"])
+        self.assertGreaterEqual(window["start_host_monotonic_sec"],538.504659)
+        self.assertGreaterEqual(window["observed_dwell_sec"],20)
+        self.assertTrue(window["pre_ready_breach_evidence_retained"])
+        self.assertAlmostEqual(window["startup_safety_first_breach"]["gap_sec"],
+                               .355535,places=5)
+        self.assertFalse(window["goal_allowed"])
+        self.assertEqual(m.assess_window(window["records"])["status"],
+                         "NO_GOAL_SENSOR_WINDOW_CLEAR_CANDIDATE")
+
+    def test_first_qualified_two_topic_receipts_then_late_safety_355ms_blocks(self):
+        m=load()
+        def row(t):return {"recv":t,"stamp":t,"front":1.414,"side":2.52,"near":.05}
+        raw=[row(100+i*.1) for i in range(240)]
+        safe=[row(100.01+i*.1) for i in range(10)]
+        safe += [row(101.265535+i*.1) for i in range(220)]
+        window=m.select_dual_topic_window({"raw":raw,"safety":safe,
+                     "odom":[{"vx":0,"wz":0} for _ in range(4)],
+                     "clock":[1,2]})
+        self.assertTrue(window["both_topics_ready"])
+        self.assertIn("SAFETY_RECEIPT_TTL_300MS_BLOCKED",
+                      m.assess_window(window["records"])["reasons"])
+
+    def test_after_dual_topic_ready_any_gap_over_300ms_still_blocks(self):
+        m=load()
+        def row(t,stamp):
+            return {"recv":t,"stamp":stamp,"front":1.42,"side":2.52,"near":.05}
+        raw=[row(10+i*.1,10+i*.1) for i in range(3)]
+        raw += [row(10.7,10.3)]
+        raw += [row(10.8+i*.1,10.4+i*.1) for i in range(202)]
+        safe=[row(10.03+i*.1,10.03+i*.1) for i in range(215)]
+        inp={"raw":raw,"safety":safe,"clock":[1,2,3],
+             "odom":[{"vx":0,"wz":0} for _ in range(4)]}
+        w=m.select_dual_topic_window(inp)
+        self.assertTrue(w["both_topics_ready"])
+        self.assertIn("RAW_RECEIPT_TTL_300MS_BLOCKED",m.assess_window(w["records"])["reasons"])
+
+    def test_missing_safety_topic_never_establishes_window(self):
+        m=load()
+        v=m.select_dual_topic_window({"raw":[{"recv":1,"stamp":1}], "safety":[],
+                                       "odom":[],"clock":[]})
+        self.assertFalse(v["both_topics_ready"])
+        self.assertEqual(v["status"],"BOTH_TOPIC_READINESS_MISSING")
+        self.assertFalse(v["goal_allowed"])
+
+    def test_live_probe_waits_full_dwell_after_both_topics_are_live(self):
+        s=SRC.read_text()
+        self.assertIn("dual_ready_at",s)
+        self.assertIn("select_dual_topic_window(records)",s)
+        self.assertIn("first_scan_at and",s)  # original liveness start retained
+        self.assertIn("time.monotonic() - dual_ready_at >= duration",s)
+        self.assertIn("startup_pre_both_scan_diagnostics",s)
+
+
+class ExactStudentPairGazeboBoundary(unittest.TestCase):
+    def test_actual_first_student_breach_matched_to_native(self):
+        witness=ROOT/"d06/tools/d06_g07_scan_rx_witness.py"
+        spec=importlib.util.spec_from_file_location("g07_first_student_witness",witness)
+        m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+        def sample(stamp,t):
+            return {"source_stamp_ns":stamp,"host_monotonic_sec":t}
+        truth={"scan_receipts_compact":{"schema":"axia.g07.first_ttl_host_pair.v1",
+            "raw":{"before":sample(51100000000,100.1),
+                   "after":sample(51200000000,100.45),"gap_sec":.35},
+            "safety":{"before":sample(51100000000,100.12),
+                      "after":sample(51200000000,100.46),"gap_sec":.34}}}
+        native=[sample(51100000000,100.08),sample(51200000000,100.42)]
+        result=m.classify_student_first(native,truth)
+        self.assertTrue(result["student_first_stamp_pair_verified"])
+        self.assertEqual(result["student_first_topic"],"raw")
+        self.assertEqual(result["student_first_candidate"],"AT_OR_BEFORE_NATIVE_TRANSPORT_RX")
+        self.assertAlmostEqual(result["student_first_native_gap_sec"],.34)
+        self.assertEqual(result["release"],"HOLD")
+        self.assertFalse(result["goal_allowed"])
+
+    def test_native_fast_student_raw_callback_slow_stays_after_native(self):
+        witness=ROOT/"d06/tools/d06_g07_scan_rx_witness.py"
+        spec=importlib.util.spec_from_file_location("g07_first_student_witness2",witness)
+        m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+        raw={"before":{"source_stamp_ns":10100000000,"host_monotonic_sec":100.0},
+             "after":{"source_stamp_ns":10200000000,"host_monotonic_sec":100.41},"gap_sec":.41}
+        v=m.classify_student_first([
+          {"source_stamp_ns":10100000000,"host_monotonic_sec":99.99},
+          {"source_stamp_ns":10200000000,"host_monotonic_sec":100.09},
+        ],{"scan_receipts_compact":{"raw":raw,"safety":None}})
+        self.assertEqual(v["student_first_candidate"],"AFTER_NATIVE_TRANSPORT_RX")
+        self.assertTrue(v["student_first_stamp_pair_verified"])
+
+    def test_l2_44489912476_first_student_gap_is_after_independent_ros(self):
+        """Exact same source-stamp pair from real independent CI receipts.
+
+        Native=109.453ms, independent ROS safety=112.480ms, Student safety
+        callback=385.188ms. Never mislabel this as Gazebo/bridge delay or
+        assert the Linux scheduler versus Python executor root cause.
+        """
+        witness=ROOT/"d06/tools/d06_g07_scan_rx_witness.py"
+        spec=importlib.util.spec_from_file_location("student_peer_pair",witness)
+        m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+        a,b=36300000000,36402000000
+        def rec(t,stamp,topic=None):
+            r={"host_monotonic_sec":t,"source_stamp_ns":stamp}
+            if topic is not None:r["topic"]=topic
+            return r
+        truth={"scan_receipts_compact":{
+            "schema":"axia.g07.first_ttl_host_pair.v1",
+            "raw":{"before":rec(492.097119,a),
+                   "after":rec(492.485648,b),"gap_sec":.388529},
+            "safety":{"before":rec(492.098214,a),
+                      "after":rec(492.483402,b),"gap_sec":.385188}}}
+        native=[rec(492.097196,a),rec(492.206649,b)]
+        peer=[rec(492.097117,a,"raw"),rec(492.207775,b,"raw"),
+              rec(492.097441,a,"safety"),rec(492.209921,b,"safety")]
+        v=m.classify_student_first(native,truth,ros_observer=peer)
+        self.assertTrue(v["student_first_stamp_pair_verified"])
+        self.assertTrue(v["student_first_ros_peer_pair_verified"])
+        self.assertEqual(v["student_first_topic"],"safety")
+        self.assertAlmostEqual(v["student_first_native_gap_sec"],.109453)
+        self.assertAlmostEqual(v["student_first_ros_peer_gap_sec"],.112480)
+        self.assertAlmostEqual(v["student_first_host_gap_sec"],.385188)
+        self.assertAlmostEqual(
+            v["student_first_ros_peer_to_student_after_sec"],.273481)
+        self.assertEqual(v["student_first_boundary"],
+                         "AFTER_INDEPENDENT_ROS_RECEIPT")
+        self.assertEqual(v["cause"],"UNDETERMINED")
+        self.assertEqual(v["release"],"HOLD")
+        self.assertFalse(v["goal_allowed"])
+
+    def test_without_student_ttl_pair_dont_fake_first_cause(self):
+        witness=ROOT/"d06/tools/d06_g07_scan_rx_witness.py"
+        spec=importlib.util.spec_from_file_location("g07_first_student_witness3",witness)
+        m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+        result=m.classify_student_first([],{"scan_receipts_compact":{"raw":None,"safety":None}})
+        self.assertEqual(result["student_first_candidate"],"STUDENT_FIRST_PAIR_UNAVAILABLE")
+        self.assertFalse(result["student_first_stamp_pair_verified"])
+
+
+    def test_r6_exact_stamp_clock_and_ros_peer_decomposition(self):
+        """Owner r6YhIvPx SHA db6c130...; exact synchronized host trace, no ROS runtime."""
+        witness=ROOT/'d06/tools/d06_g07_scan_rx_witness.py'
+        spec=importlib.util.spec_from_file_location('r6_native_witness',witness)
+        m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+        s0,s1=68901000000,69000000000
+        def packet(stamp,at,topic=None):
+            v={"source_stamp_ns":stamp,"host_monotonic_sec":at}
+            if topic is not None:v["topic"]=topic
+            return v
+        truth={"scan_receipts_compact":{"safety":{
+            "before":packet(s0,7964.014425),
+            "after":packet(s1,7964.317578),"gap_sec":.303153},
+            "raw":None}}
+        native=[packet(s0,7964.013676),packet(s1,7964.301244)]
+        ros=[packet(s0,7964.018297,"raw"),packet(s1,7964.308777,"raw"),
+             packet(s0,7964.018692,"safety"),packet(s1,7964.324221,"safety")]
+        clock=[{"sim_stamp_ns":s0,"host_monotonic_sec":7963.970236},
+               {"sim_stamp_ns":s1,"host_monotonic_sec":7964.248479}]
+        v=m.classify_student_first(native,truth,ros_observer=ros,native_clock=clock)
+        self.assertEqual(v["student_first_boundary"],"AT_OR_BEFORE_INDEPENDENT_ROS_RECEIPT")
+        self.assertAlmostEqual(v["student_first_native_gap_sec"],.287568,places=6)
+        self.assertAlmostEqual(v["student_first_ros_peer_gap_sec"],.305529,places=6)
+        self.assertAlmostEqual(v["student_first_native_clock_same_stamp_rtf"],.355805,places=4)
+        self.assertAlmostEqual(v["student_first_native_to_peer_extra_gap_sec"],.017961,places=6)
+        self.assertEqual(v["student_first_decomposition"],"NATIVE_NEAR_LIMIT_WITH_ROS_PEER_TTL_BREACH")
+        self.assertFalse(v["publisher_send_timing_proven"])
+        self.assertFalse(v["root_cause_proven"])
+        self.assertEqual(v["release"],"HOLD")
+        self.assertFalse(v["goal_allowed"])
+
+    def test_r6_mismatched_clock_must_not_fake_instantaneous_rtf(self):
+        witness=ROOT/'d06/tools/d06_g07_scan_rx_witness.py'
+        spec=importlib.util.spec_from_file_location('r6_native_witness',witness)
+        m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+        def p(s,t):return {"source_stamp_ns":s,"host_monotonic_sec":t}
+        truth={"scan_receipts_compact":{"safety":{
+            "before":p(68901000000,10.01),
+            "after":p(69000000000,10.32),"gap_sec":.31}}}
+        v=m.classify_student_first(
+            [p(68901000000,10.),p(69000000000,10.28)],truth,
+            native_clock=[{"sim_stamp_ns":68901000000,"host_monotonic_sec":9.9},
+                          {"sim_stamp_ns":99900000000,"host_monotonic_sec":10.2}])
+        self.assertIsNone(v["student_first_native_clock_same_stamp_rtf"])
+        self.assertFalse(v["student_first_clock_stamp_pair_verified"])
+        self.assertEqual(v["release"],"HOLD")
+
+
+if __name__=="__main__":
+    unittest.main()

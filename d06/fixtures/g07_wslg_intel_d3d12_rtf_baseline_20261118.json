@@ -1,0 +1,27 @@
+{
+  "schema": "axia_d06_wslg_intel_field_lidar_rtf_baseline_v1",
+  "original_archive_sha256": "8ccb54fe9ec7d9b9e6290002e8f6458ee6c18ca7a224d929e6b3f2dc212ad62d",
+  "source_student_sha": "9862353e7116bc4a14a5bb365ae356642e83ef0e",
+  "renderer": "D3D12 (Intel(R) Iris(R) Xe Graphics)",
+  "relative_hardware_window_sec": 20.019,
+  "safety_scans": 60,
+  "front_median_m": 0.52556,
+  "side_median_m": 0.630749,
+  "all_azimuth_near_ring_fraction": 1,
+  "first_receipt_ttl_breach_index": 2,
+  "max_safety_host_receipt_gap_sec": 0.788704,
+  "max_raw_host_receipt_gap_sec": 0.786086,
+  "max_scan_source_stamp_gap_sec": 0.102,
+  "clock_messages": 1926,
+  "ros_clock_host_receipt_pairs_saved": false,
+  "ros_clock_rtf": null,
+  "inferred_lidar_wall_rate_hz_approx": 3,
+  "rtf_ratio_certified": false,
+  "goal_sent": false,
+  "certified_estop": false,
+  "notes": [
+    "This is numeric evidence directly read from immutable uploaded TAR; no personal raw logs or rosbag published.",
+    "The source timestamp rate is not host RTF. Native Gazebo RTF and ROS Clock receive pairing were not recorded.",
+    "Original Intel renders were not matched to new NVIDIA evidence under identical GPU A/B session; renderer causation unverified."
+  ]
+}
