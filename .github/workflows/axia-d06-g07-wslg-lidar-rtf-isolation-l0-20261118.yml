@@ -48,6 +48,10 @@ on:
       - 'd06/tests/test_d06_c29_ci_first_release_manifest.py'
       - 'd06/tests/test_d06_c29_real_full_two_cold_l2.py'
       - 'd06/tests/test_d06_c29_cyclone_ab_candidate.py'
+      - 'd06/tests/test_d06_c29_owner_final_compact_gate.py'
+      - 'd06/tools/d06_c29_no_goal_compact_gate.py'
+      - 'd06/scripts/axia_d06_c29_owner_final_no_goal_once.sh'
+      - 'd06/ci/c29_selected_cyclonedds_release.json'
       - '.github/workflows/axia-d06-c29-cyclonedds-ab-two-cold-l2.yml'
       - '.github/workflows/axia-d06-c29-nogoal-full-two-cold-l2.yml'
       - 'd06/ci/c29_source_manifest.json'
@@ -169,6 +173,7 @@ jobs:
           python3 -m unittest discover -s d06/tests -p 'test_d06_c29_ci_first_release_manifest.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_c29_real_full_two_cold_l2.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_c29_cyclone_ab_candidate.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_c29_owner_final_compact_gate.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_l2_apt_https_bootstrap.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_ci_only_gui_nice.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_g07_no_goal_manager_discovery.py' -v
