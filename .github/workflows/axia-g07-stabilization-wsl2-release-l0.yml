@@ -1,0 +1,29 @@
+name: AXIA G07 strict WSL2 final one-shot offline release L0
+on:
+  push:
+    branches: ['docs/g07-185-163-157-186-stabilization-recheck-20261120']
+    paths:
+      - '.github/workflows/axia-g07-stabilization-wsl2-release-l0.yml'
+      - 'scripts/axia_g07_stabilization_wsl2_final_once.sh'
+      - 'tests/test_g07_stabilization_wsl2_release.py'
+permissions:
+  contents: read
+jobs:
+  ci-first-release-check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Strict CI status fail-closed plus WSL2 owner script syntax (NO ROS)
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          bash -n scripts/axia_g07_stabilization_wsl2_final_once.sh
+          python3 -m unittest discover -s tests -p 'test_g07_stabilization_wsl2_release.py' -v
+          bash scripts/axia_g07_stabilization_wsl2_final_once.sh --self-check
+          # This ONLY reads the public exact native 2-cycle's conclusion and
+          # both matrix job statuses. No ROS, Gazebo, Goal, WSLg or TTY.
+          bash scripts/axia_g07_stabilization_wsl2_final_once.sh --ci-check
+          echo 'AXIA_G07_WSL2_RELEASE_BOOTSTRAP_L0_AND_PUBLIC_NATIVE_ADMISSION_PASS_L3_NOT_RUN'

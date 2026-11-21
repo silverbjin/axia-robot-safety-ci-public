@@ -1,0 +1,72 @@
+{
+  "schema": "axia.g07.actual_public_moving_7stream_first_pair_v1",
+  "run_id": 44676844639,
+  "job_id": 136090592168,
+  "source": "GitHub Actions first_delivery_actual_pairs.json result and job log; derived numeric pairs only",
+  "url": "https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44676844639",
+  "student_sha": "0f6e6bd47e03f01cb55e43e19a20ea31f65feb99",
+  "status": "HOLD_FIRST_ODOM300_CROSS_STREAM",
+  "first_violation": {
+    "channel": "odom",
+    "previous_rx_monotonic": 210.972923052,
+    "current_rx_monotonic": 211.315680928,
+    "gap_ms": 342.757876,
+    "limit_ms": 300
+  },
+  "first_pairs": {
+    "clock": {
+      "previous_rx_monotonic": 210.980861211,
+      "current_rx_monotonic": 211.317166958,
+      "gap_ms": 336.305747,
+      "limit_ms": 300
+    },
+    "guard": {
+      "previous_rx_monotonic": 210.936360346,
+      "current_rx_monotonic": 211.315950778,
+      "gap_ms": 379.590432,
+      "limit_ms": 150
+    },
+    "odom": {
+      "previous_rx_monotonic": 210.972923052,
+      "current_rx_monotonic": 211.315680928,
+      "gap_ms": 342.757876,
+      "limit_ms": 300
+    },
+    "pre_guard": {
+      "previous_rx_monotonic": 210.958446994,
+      "current_rx_monotonic": 211.315821235,
+      "gap_ms": 357.374241,
+      "limit_ms": 120
+    },
+    "scan": {
+      "previous_rx_monotonic": 210.966722434,
+      "current_rx_monotonic": 211.317267471,
+      "gap_ms": 350.545037,
+      "limit_ms": 300
+    },
+    "supervised": {
+      "previous_rx_monotonic": 210.95851998,
+      "current_rx_monotonic": 211.315877875,
+      "gap_ms": 357.357895,
+      "limit_ms": 150
+    },
+    "supervisor": {
+      "previous_rx_monotonic": 210.958596612,
+      "current_rx_monotonic": 211.316981534,
+      "gap_ms": 358.384922,
+      "limit_ms": 150
+    }
+  },
+  "first_guard_latch_observed": false,
+  "cm_source_publication_pair_available": false,
+  "ros_scan_source_timestamp_pair_available": false,
+  "native_gz_clock_pair_available": false,
+  "scheduler_trace_available": false,
+  "observed_on_same_host_monotonic": true,
+  "cross_stream_joint_callback_resume_window_ms": 1.586543,
+  "physical_moving_oracle_status": "BLOCKED_TTL_BOUNDARY",
+  "root_cause": "UNDETERMINED",
+  "intermittent_cause_fixed": false,
+  "certified_estop": false,
+  "release": "HOLD"
+}
