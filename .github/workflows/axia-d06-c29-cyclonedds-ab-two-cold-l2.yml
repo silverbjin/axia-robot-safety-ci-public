@@ -1,24 +1,9 @@
 name: AXIA D06 C29 RMW CycloneDDS A-B full NO_GOAL two cold L2
+# C29 Cyclone A/B two independent real L2 jobs completed SUCCESS
+# run #44876761417 (both cold cycles) at immutable source branch.
+# Keep costly real L2 manual-only during release packaging; no duplicate
+# field replays on documentation/source-guard changes.
 on:
-  pull_request:
-    paths:
-      - '.github/workflows/axia-d06-c29-cyclonedds-ab-two-cold-l2.yml'
-      - 'd06/tests/test_d06_g07_nogoal_ordered_cm_shutdown.py'
-      - 'd06/tests/test_d06_c29_real_full_two_cold_l2.py'
-      - 'd06/ci/c29_source_manifest.json'
-      - 'd06/tools/d06_gz_native_scan_probe_safe.py'
-      - 'd06/tests/test_d06_gz_native_witness_teardown.py'
-      - 'd06/tools/d06_g07_scan_rx_witness.py'
-      - 'd06/tests/test_d06_g07_student_first_receipt_pair.py'
-      - 'd06/tests/test_d06_existing_gazebo_core_triage.py'
-      - 'd06/tests/test_d06_localization_manager_callback_probe.py'
-      - 'd06/tests/test_d06_student_scan_clock_executor_isolation.py'
-      - 'd06/tests/test_d06_c06_two_executor_scan_receipt.py'
-      - 'd06/tests/test_d06_c07_navigation_manager_service_liveness.py'
-      - 'd06/tests/test_d06_c08_ci_gui_pre_nav2_ready.py'
-      - 'd06/tests/test_d06_c09_deferred_scan_geometry.py'
-      - 'd06/tests/test_d06_ci_only_gui_nice.py'
-      - 'd06/scripts/axia_d06_g07_wslg_existing_core_once.sh'
   workflow_dispatch:
 permissions:
   contents: read
