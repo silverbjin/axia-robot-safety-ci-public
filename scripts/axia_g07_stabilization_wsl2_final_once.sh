@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # AXIA G07 Task04 — exact-public-L2-verified ONE Owner WSL2 L3 acceptance candidate.
-# Strict native Gazebo Moving 2/2 PASS #44878063103, Public 0711e583..., Student fb1aae6c...
+# Strict native Gazebo Moving 2/2 PASS #44902396373, Public 09ea6cbc, Student 5667575a.
+# GUI-present native 2/2 only; headless separate L2 #44903962133 0/2 HOLD.
 # --run RECHECKS run+2 matrix jobs against GitHub API; 403/failed job -> NO GOAL.
 # Simulation-only. Manual controlling TTY consent is performed by the
 # identical Student scenario runner AFTER real Nav2 and safety node readiness.
@@ -8,10 +9,10 @@
 set -Eeuo pipefail
 umask 077
 readonly STUDENT_REPO='silverbjin/axia-robot-safety-student'
-readonly STUDENT_SHA='fb1aae6cbde54ff0ed4e78317f403aa5cef4d550'
+readonly STUDENT_SHA='5667575aac777c374735b1c351445bcc8f83140e'
 readonly REVIEW_REPO='silverbjin/axia-robot-safety-ci-public'
-readonly REVIEW_SHA='0711e583f3c0c546a64c687edd8e280c2ae8e776'
-readonly CI_L2_RUN=44878063103
+readonly REVIEW_SHA='09ea6cbc8b9079532ef13c0962d193966e99a03b'
+readonly CI_L2_RUN=44902396373
 MODE="${1:---run}"
 if [[ $# -gt 1 ]];then echo 'AXIA_G07_TASK04_FIRST_FAILURE=BAD_ARGUMENTS' >&2;exit 3;fi
 case "$MODE" in
@@ -21,7 +22,7 @@ esac
 # RELEASE ADMISSION: an educational visual HOLD cannot authorize a new
 # field run. Public CI must have both actual Gazebo Moving Goal matrix jobs
 # SUCCESS on the exact candidate Student source, with formal fallback exiting 3.
-readonly CI_L2_HEAD='0711e583f3c0c546a64c687edd8e280c2ae8e776'
+readonly CI_L2_HEAD='09ea6cbc8b9079532ef13c0962d193966e99a03b'
 ci_l2_release_gate() {
   local run_json jobs_json rc=0
   run_json="$(mktemp)" || return 3
