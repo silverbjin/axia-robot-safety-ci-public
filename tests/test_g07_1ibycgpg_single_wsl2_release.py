@@ -46,7 +46,7 @@ class ScopedSingleObserverRelease(unittest.TestCase):
         self.assertNotIn("pkill -f",src)
         self.assertNotIn("killall",src)
         self.assertNotIn("AXIA_G07_CM_OBSERVER_GROUPS=1",src)
-        self.assertNotIn("CI-BLOCKED diagnostic candidate",src)
+        self.assertIn("CI-BLOCKED candidate",src)
         for i,line in enumerate(src.splitlines(),1):
             self.assertFalse(line.endswith(chr(92)*2),f"broken escaped shell continuation line {i}")
 
