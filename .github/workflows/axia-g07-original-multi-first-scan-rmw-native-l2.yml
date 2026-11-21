@@ -1,5 +1,7 @@
 # G07 native strict two independent cold cycles; a failed cycle blocks Owner WSL2 release.
-# Headless native sensor/Goal/Guard proof: Gazebo+RViz GUI are diagnostic only.
+# Restore measured 2/2 native GUI-present physics profile after headless 0/2 first safety boundary.
+# GUI windows are diagnostic only: an absent GUI may never override sensor/safety TTL.
+# Headless recheck #44903962133 produced Clock/Odom 333/357ms and Scan Observer discovery HOLD.
 # Reuses previously tested full native Goal/Cancel/Guard/Nav2 contractual checks unmodified.
 # Student exact diagnostic candidate SHA; NEVER use this workflow as Owner WSL2 release evidence.
 # Baseline Task03 positive Contact calibration is frozen, not repeated.
@@ -63,12 +65,12 @@ jobs:
       AXIA_G07_TASK02_SIMPLE_TF_CANDIDATE: '1'
       AXIA_G07_TASK03_FORMAL_CI: '1'
       AXIA_G07_TASK03_ECM_WITNESS: '1'
-      AXIA_G07_TASK04_CI_GUI_MOVING: '0'
+      AXIA_G07_TASK04_CI_GUI_MOVING: '1'
       # Reproduce missing late AMCL pose from vJpsc6Wy. This affects only
       # the extra read-only CI Observer, never the actual AMCL/Nav2 or Owner.
       # Use official AMCL primary path, as the actual FV17 Owner did.
       AXIA_G07_CI_FORCE_MAP_TF_FALLBACK: '0'
-      QT_QPA_PLATFORM: offscreen
+      QT_QPA_PLATFORM: xcb
       QT_X11_NO_MITSHM: '1'
       LIBGL_ALWAYS_SOFTWARE: '1'
     steps:
