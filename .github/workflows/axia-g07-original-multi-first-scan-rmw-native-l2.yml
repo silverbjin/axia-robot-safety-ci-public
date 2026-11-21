@@ -10,6 +10,7 @@ on:
   push:
     branches:
       - 'diag/g07-first-scan-rmw-exact-native-20261121'
+      - 'perf/g07-lean-native-no-heavy-probe-20261121'
     paths:
       - '.github/workflows/axia-g07-original-multi-first-scan-rmw-native-l2.yml'
 permissions:
@@ -56,14 +57,16 @@ jobs:
       AXIA_G07_OWNER_STARTUP_PARITY: '1'
       AXIA_G07_CI_OWNER_OBSERVER_PARITY: '1'
       # Official rclpy Jazzy experimental backport PR #1435; CI only.
+      AXIA_G07_LEAN_PROFILE: '1'
       AXIA_G07_EVENTS_EXECUTOR_AB: '0'
-      # S1 only: read-only I/O callback timing and independent 20ms heartbeat.
-      AXIA_G07_OBSERVER_IO_PROBE: '1'
+      # MVP lean: no CI-only callback I/O probe, 20ms heartbeat, or stack capture.
+      AXIA_G07_OBSERVER_IO_PROBE: '0'
       # Rejected 20ms wait-set A/B #44870974857 0/2; original Multi2 spin maintained.
       AXIA_G07_CI_EXECUTOR_WAIT_BOUNDED_AB: '0'
       # #44877524595 CI Guard Wake A/B 0/2 REJECTED; original Multi2 kept.
       AXIA_G07_CI_EXECUTOR_GUARD_WAKE_AB: '0'
-      # Original 2-thread Observer plus read-only independent DDS witness.
+      # Disable additional diagnostic DDS participant in lean performance mode.
+      AXIA_G07_CI_INDEPENDENT_CM_WITNESS: '0'
       AXIA_G07_CI_OWNER_BAG_PARITY: '1'
       AXIA_P2_G07_OWNER_PARITY_CHECK: '1'
       AXIA_G07_TASK02_SIMPLE_TF_CANDIDATE: '1'
@@ -134,7 +137,7 @@ jobs:
           test "$AXIA_G07_EVENTS_EXECUTOR_AB" = 0
           python3 -m py_compile tools/p2_g07_scan_wall_pregoal.py
           python3 -m py_compile tools/p2_g07_observer_io_probe.py tools/p2_l3_live_session.py
-          test "$AXIA_G07_OBSERVER_IO_PROBE" = 1
+          test "$AXIA_G07_OBSERVER_IO_PROBE" = 0
           python3 -m unittest discover -s tools -p 'test_g07_nav_early_manage_client.py' -v
           python3 -m unittest discover -s tools -p 'test_g07_navigation_warm_participant_shutdown_ab.py' -v
           python3 -m unittest discover -s tools -p 'test_g07_localization_warm_shutdown_20261121.py' -v
@@ -232,6 +235,8 @@ jobs:
           sleep 2
           kill -0 "$xvfb_pid"
           cd "$GITHUB_WORKSPACE/student/block_B/day07/h01_runtime"
+          # Optional original RMW witness stays available on diagnostic-only branch.
+          if [[ "$AXIA_G07_CI_INDEPENDENT_CM_WITNESS" == 1 ]];then
           # Independent read-only DDS participant, using D08 #202 pattern.
           python3 "$GITHUB_WORKSPACE/ci/d06/diagnostic/g07_independent_cm_rmw_witness.py" \
             --out "$GITHUB_WORKSPACE/public_evidence/independent_cm_rmw.jsonl" \
@@ -248,6 +253,10 @@ jobs:
             echo 'G07_INDEPENDENT_CM_RMW_STARTUP_BLOCKED' >&2;exit 3;
           }
           echo 'AXIA_G07_INDEPENDENT_CM_RMW_READY_NO_NEW_GOAL'
+          else
+            isolated_cm_pid=''
+            echo 'AXIA_G07_LEAN_INDEPENDENT_CM_WITNESS_DISABLED_DIAGNOSTIC_ONLY'
+          fi
           setsid env -u LD_PRELOAD -u AXIA_G07_TASK01_TF_AVAIL_PROBE timeout --signal=TERM --kill-after=10s 1000s             bash scripts/p2_no_goal_smoke_ci.sh > "$GITHUB_WORKSPACE/public_evidence/moving_stdout.log" 2>&1 &
           runner_pid=$!
           rviz_seen=0;gazebo_seen=0
@@ -260,6 +269,7 @@ jobs:
           done
           set +e;wait "$runner_pid";runner_rc=$?;set -e
           runner_pid=''
+          if [[ -n "$isolated_cm_pid" ]];then
           kill -INT "$isolated_cm_pid" 2>/dev/null || true
           for ((k=0;k<30;k++));do
             kill -0 "$isolated_cm_pid" 2>/dev/null || break
@@ -275,6 +285,7 @@ jobs:
           fi
           wait "$isolated_cm_pid" 2>/dev/null || true
           isolated_cm_pid=''
+          fi
           [[ -s "$GITHUB_WORKSPACE/public_evidence/independent_cm_rmw.jsonl" ]] \
             || echo 'G07_INDEPENDENT_CM_RMW_NO_EXACT_PAIR_HOLD'
           echo "AXIA_G07_TASK04_NATIVE_ONE_MOVING_RUNNER_RC=$runner_rc RVIZ_X11=$rviz_seen GAZEBO_X11=$gazebo_seen"
