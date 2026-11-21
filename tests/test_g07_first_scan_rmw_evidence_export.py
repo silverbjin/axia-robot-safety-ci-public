@@ -56,6 +56,26 @@ class NativeFirstBoundaryAttribution(unittest.TestCase):
         self.assertFalse(r["pregoal_goal_sent"])
         self.assertNotIn("actual_goal_sent",r) # report cannot infer post-pregoal actual Goal
 
+    def test_same_first_clock_exact_bag_pair_is_attribution_only_not_release(self):
+        original=first_run()
+        original["first_delivery_violation"].update(
+            previous_header_sim=62.101,current_header_sim=62.201,
+            header_sim_gap_ms=100.0)
+        bag=first_bag()
+        bag.update(matched_exact_first_clock_pair=True,
+                   independent_first_clock_rx_gap_ms=103.5,
+                   observer_first_clock_gap_ms=331.671633,
+                   clock_odom_exact_first_class=(
+                     "FIRST_CLOCK_OBSERVER_GAP_NOT_REPRODUCED_IN_BAG_CANDIDATE_HOLD"))
+        evidence=assess(original,bag)
+        self.assertTrue(evidence["same_first_clock_rosbag_pair_proven"])
+        self.assertEqual(evidence["independent_first_clock_rosbag_gap_ms"],103.5)
+        self.assertEqual(evidence["clock_odom_exact_first_class"],
+                         "FIRST_CLOCK_OBSERVER_GAP_NOT_REPRODUCED_IN_BAG_CANDIDATE_HOLD")
+        self.assertFalse(evidence["root_cause_proven"])
+        self.assertFalse(evidence["owner_l3_accepted"])
+        self.assertEqual(evidence["release"],"HOLD")
+
     def test_latest_real_424ms_scan_with_synthetic_valid_rmw_intervals_is_candidate_only(self):
         d=first_run()
         d["first_delivery_violation"]={"channel":"clock",
