@@ -65,7 +65,7 @@ class SafeOwnerRelease(unittest.TestCase):
             text.index("export AXIA_G07_NAV_WARM_PARTICIPANT_OWNER=1"),
             text.index("source /opt/ros/jazzy/setup.bash",text.index("OUT=''")))
 
-    def _gate(self,run,jobs):
+    def _gate(self,run,jobs,mode='--ci-check'):
         with tempfile.TemporaryDirectory() as d:
             p=Path(d)
             (p/"run.json").write_text(json.dumps(run))
@@ -89,7 +89,7 @@ fi
             curl.chmod(0o755)
             env=dict(os.environ,PATH=str(p)+os.pathsep+os.environ.get("PATH",""),
                      AXIA_MOCK_RUN=str(p/"run.json"),AXIA_MOCK_JOBS=str(p/"jobs.json"))
-            return subprocess.run(["bash",str(SCRIPT),"--ci-check"],
+            return subprocess.run(["bash",str(SCRIPT),mode],
                                   capture_output=True,text=True,env=env,timeout=8)
 
     def test_two_exact_real_native_jobs_success_admit_only_execution_not_acceptance(self):
@@ -153,6 +153,16 @@ fi
         self.assertRegex(src,r"unset [^\n]*AXIA_G07_CI_EXECUTOR_WAIT_BOUNDED_AB")
         self.assertNotIn("export AXIA_G07_OBSERVER_EXECUTOR_AB=single",src)
         self.assertIn("AXIA_G07_CI_SIM_GOAL_ALLOWED=0",src)
+
+
+    def test_real_ci_gate_success_never_auto_authorizes_goal_without_owner_tty(self):
+        r=self._gate(*inputs(),mode="--run")
+        self.assertEqual(r.returncode,3,r.stdout+r.stderr)
+        self.assertTrue("CI_AUTHORITY_DENIED" in r.stderr or
+                        "OWNER_CONTROLLING_TTY_REQUIRED" in r.stderr,
+                        r.stdout+r.stderr)
+        self.assertNotIn("OWNER_MOVING_L3=PASS",r.stdout)
+        self.assertNotIn("OWNER_MOVING_BEGIN",r.stdout)
 
 if __name__=="__main__":
     unittest.main()
