@@ -1,0 +1,102 @@
+name: AXIA D06 C27 actual Gazebo Harmonic server-control native exit0 L2
+on:
+  push:
+    branches: ['fix/d06-wslg-lidar-vs-rtf-ci-20261118']
+    paths:
+      - '.github/workflows/axia-d06-c27-gz-server-stop-drain-real-l2.yml'
+      - 'd06/tests/test_d06_c27_gz_native_stop_drain.py'
+  pull_request:
+    paths:
+      - '.github/workflows/axia-d06-c27-gz-server-stop-drain-real-l2.yml'
+      - 'd06/tests/test_d06_c27_gz_native_stop_drain.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  real-harmonic-server-control-l2:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    container:
+      image: ros:jazzy-ros-base-noble
+    env:
+      DEBIAN_FRONTEND: noninteractive
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Install official Gazebo Harmonic via Jazzy ROS packages
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          apt-get update -qq -o Acquire::Retries=2
+          apt-get install -y -qq --no-install-recommends ros-jazzy-ros-gz curl git
+          set +u
+          source /opt/ros/jazzy/setup.bash
+          set -u
+          command -v gz
+          python3 -c 'import launch; from launch.actions import ExecuteProcess'
+          echo 'D06_C27_REAL_GAZEBO_DEPENDENCIES_AVAILABLE_NOT_WSLG'
+      - name: REAL Gazebo server stop request and native child exit0 BEFORE launch SIGINT
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          set +u
+          source /opt/ros/jazzy/setup.bash
+          set -u
+          export GZ_PARTITION="axia_d06_c27_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}"
+          LOG="$RUNNER_TEMP/d06-c27-real-gz-launch.log"
+          SCRIPT="$RUNNER_TEMP/d06-c27-native-gz.launch.py"
+          HELPER="$RUNNER_TEMP/d06-c27-exit-guard.sh"
+          curl -fLsS --retry 3 --max-time 90 \
+            "https://raw.githubusercontent.com/silverbjin/axia-robot-safety-student/6c79c09d91f13c81961492eb30e66d99d307831c/block_B/day07/h01_runtime/tools/g07_gazebo_server_exit_guard.sh" \
+            -o "$HELPER"
+          test "$(git hash-object "$HELPER")" = "72a117d9a1b22748ffd16171d213916c095a623e"
+          bash -n "$HELPER"
+          cat > "$SCRIPT" <<'PY'
+          from launch import LaunchDescription
+          from launch.actions import ExecuteProcess
+
+          def generate_launch_description():
+              return LaunchDescription([
+                  ExecuteProcess(
+                      cmd=['gz', 'sim', '-r', '-s', '-v', '4', 'empty.sdf'],
+                      name='gz', output='screen')])
+          PY
+          ros2 launch "$SCRIPT" > "$LOG" 2>&1 &
+          LAUNCH_PID=$!
+          cleanup() {
+            rc=$?
+            trap - EXIT
+            set +e
+            if kill -0 "$LAUNCH_PID" 2>/dev/null;then
+              kill -INT "$LAUNCH_PID" 2>/dev/null || true
+              sleep 2
+              kill -TERM "$LAUNCH_PID" 2>/dev/null || true
+            fi
+            wait "$LAUNCH_PID" 2>/dev/null || true
+            if [[ "$rc" != 0 ]];then tail -n 100 "$LOG" || true;fi
+            exit "$rc"
+          }
+          trap cleanup EXIT
+          found=0
+          for i in $(seq 1 50);do
+            if ! kill -0 "$LAUNCH_PID" 2>/dev/null;then
+              echo 'D06_C27_REAL_GZ_DIED_BEFORE_SERVICE';exit 1
+            fi
+            if timeout 6s gz service -l 2>/dev/null | grep -Fxq /server_control;then
+              found=1
+              break
+            fi
+            sleep 1
+          done
+          [[ "$found" == 1 ]] || { echo 'D06_C27_REAL_GZ_SERVER_CONTROL_NOT_AVAILABLE';exit 1; }
+          reply="$(timeout 12s gz service -s /server_control \
+            --reqtype gz.msgs.ServerControl --reptype gz.msgs.Boolean \
+            --timeout 5000 --req 'stop: true')"
+          echo "D06_C27_GAZEBO_SERVER_STOP_REPLY=$reply"
+          grep -Eq '(^|[[:space:]])data:[[:space:]]*true([[:space:]]|$)' <<< "$reply"
+          bash "$HELPER" --wait "$LOG" 20
+          ! grep -Eq '^\[ERROR\] +\[gz-[0-9]+\]: process has died ' "$LOG"
+          echo 'D06_C27_REAL_HARMONIC_GZ_NATIVE_EXIT0_AFTER_SERVER_CONTROL_PASS'
+          echo 'D06_C27_NOT_WSL2_NOT_WSLG_NOT_GPU_LIDAR_NOT_NAV2_NOT_MOVING'
+          echo 'AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false'
