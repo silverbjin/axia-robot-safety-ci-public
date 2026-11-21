@@ -561,6 +561,8 @@ jobs:
             public_evidence/first_scan_pregoal_boundary.json
             public_evidence/first_scan_rosbag_exact_pair.json
             public_evidence/first_scan_rosbag_exact_pair.sha256
+            public_evidence/first_scan_rmw_bag_attribution.json
+            public_evidence/first_scan_rmw_bag_attribution.sha256
             public_evidence/first_scan_pregoal_boundary.sha256
             public_evidence/first_nav_server_boundary.json
             public_evidence/first_nav_server_boundary.sha256
