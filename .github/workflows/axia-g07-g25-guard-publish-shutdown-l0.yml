@@ -1,0 +1,25 @@
+name: AXIA G07 G25 Actual Guard SIGINT First Publish Race L0
+on:
+  push:
+    branches: ['fix/g07-g50-first-boundary-ci-20261121']
+    paths: ['.github/workflows/axia-g07-g25-guard-publish-shutdown-l0.yml']
+permissions: {contents: read}
+jobs:
+  actual_first_guard_publish_shutdown:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: a3547586fd837b2175caf069faf947b551327fa9
+          path: student
+          persist-credentials: false
+      - name: RED first actual Guard invalid publisher after ROS context shutdown
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cd student/block_B/day07/h01_runtime
+          python3 -m unittest discover -s tools -p 'test_g07_g25_guard_shutdown_publish_race.py' -v
+          python3 -m unittest discover -s tools -p 'test_g07_context_publish_shutdown.py' -v
+          echo 'AXIA_G07_G25_GUARD_POST_SIGINT_CLASSIFIER_L0_PASS_NATIVE_L2_NOT_RUN_HOLD'
