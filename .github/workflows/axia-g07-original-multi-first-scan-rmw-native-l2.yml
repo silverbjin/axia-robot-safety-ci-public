@@ -1,14 +1,12 @@
 # G07 G25 scoped read-only first process evidence: single native diagnosis, NOT strict 2/2.
 # Reuses previously tested full native Goal/Cancel/Guard/Nav2 contractual checks unmodified.
-# Student exact diagnostic candidate SHA; NEVER use this workflow as Owner WSL2 release evidence.
+# Rejected Student SHA 8f995fe3.. remained native FAIL #44878195833; runtime restored exact parent Student #89. DO NOT RELEASE.
 # Baseline Task03 positive Contact calibration is frozen, not repeated.
-name: AXIA G07 G25 First Teardown PID Role Native Scoped L2
+name: AXIA G07 G20 Rejected Native Candidate Disabled HOLD
+# G20 original native #44878195833 FAIL. No additional automatic Goal.
+# Future CI-only diagnostic requires evidence-driven new branch and code review.
 on:
-  push:
-    branches:
-      - 'fix/g07-g50-first-boundary-ci-20261121'
-    paths:
-      - '.github/workflows/axia-g07-original-multi-first-scan-rmw-native-l2.yml'
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:
@@ -16,6 +14,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   one-real-gazebo-moving-gui:
+    if: ${{ false }} # REJECTED G20 candidate, do not run physical Goal
     # ONE native scoped G20/G25 diagnostic run, not formal 2/2 acceptance. Earlier
     # Guard CM age 188.578ms latch was intermittent; one green L2 cannot
     # prove the same safety boundary on another fresh runner.
@@ -73,7 +72,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 8f995fe3d600c3f0c1df78700981178d39f5aa46
+          ref: 13455b232f24f94b4fb5dd2bbc4222b2b64360f0
           path: student
           persist-credentials: false
       # Keep the historic reviewer for older unrelated imports; the current
@@ -88,7 +87,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C student rev-parse HEAD)" = '8f995fe3d600c3f0c1df78700981178d39f5aa46'
+          test "$(git -C student rev-parse HEAD)" = '13455b232f24f94b4fb5dd2bbc4222b2b64360f0'
           test "$(git -C ci rev-parse HEAD)" = "$GITHUB_SHA"
           test "$FASTDDS_BUILTIN_TRANSPORTS" = UDPv4
           [[ -z "${FASTRTPS_DEFAULT_PROFILES_FILE:-}" && -z "${FASTDDS_DEFAULT_PROFILES_FILE:-}" ]] || {
@@ -294,7 +293,7 @@ jobs:
           import json,sys
           result=json.load(open(sys.argv[1]))
           assert result.get("goal_sent") is True,result
-          assert result.get("source_sha")=="8f995fe3d600c3f0c1df78700981178d39f5aa46",result
+          assert result.get("source_sha")=="13455b232f24f94b4fb5dd2bbc4222b2b64360f0",result
           print('AXIA_G07_REAL_OWNER_AMCL_PRIMARY_PATH_PASS actual_goal_sent=true')
           PY_REAL_TF
           # Real Guard 20Hz timing facts must be present in the actual
@@ -346,7 +345,7 @@ jobs:
                   --motion "$GITHUB_WORKSPACE/native/g07_ci_moving/ci_moving_goal_result.json" \
                   --shutdown "$GITHUB_WORKSPACE/native/g07_ordered_shutdown.json" \
                   --gui-windows 2 \
-                  --source-sha '8f995fe3d600c3f0c1df78700981178d39f5aa46' \
+                  --source-sha '13455b232f24f94b4fb5dd2bbc4222b2b64360f0' \
                   --output "$GITHUB_WORKSPACE/public_evidence/task04_mvp_visual_l2_verdict.json"; then
               sha256sum "$GITHUB_WORKSPACE/public_evidence/task04_mvp_visual_l2_verdict.json" \
                 > "$GITHUB_WORKSPACE/public_evidence/task04_mvp_visual_l2_verdict.sha256"
@@ -368,7 +367,7 @@ jobs:
           fi
           verify_real_goal_and_guard_evidence || exit 3
           windows_count=$((rviz_seen+gazebo_seen))
-          python3 tools/p2_g07_task04_moving_review.py             --motion-root "$GITHUB_WORKSPACE/native"             --witness "$GITHUB_WORKSPACE/native/s02_ecm_witness.json"             --source-sha '8f995fe3d600c3f0c1df78700981178d39f5aa46'             --gui-windows "$windows_count"             --output "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"
+          python3 tools/p2_g07_task04_moving_review.py             --motion-root "$GITHUB_WORKSPACE/native"             --witness "$GITHUB_WORKSPACE/native/s02_ecm_witness.json"             --source-sha '13455b232f24f94b4fb5dd2bbc4222b2b64360f0'             --gui-windows "$windows_count"             --output "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"
           sha256sum "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"             > "$GITHUB_WORKSPACE/public_evidence/task04_moving_verdict.sha256"
           echo 'AXIA_G07_TASK04_NATIVE_MOVING_GUI_XVFB_L2_PASS_OWNER_WSL2_NOT_RUN'
           echo 'AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false'
