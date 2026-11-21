@@ -61,7 +61,13 @@ class C28ActualWsl2FirstFailure(unittest.TestCase):
                               "first_receipt_ttl_breach_at_index":69},
                        "safety":{"max_receipt_gap_sec":0.357472,
                                  "first_receipt_ttl_breach_at_index":108}},
-            "raw_first_gap_diagnostics":{"first_gap_sec":0.316032}}
+            "raw_first_gap_diagnostics":{"first_gap_sec":0.316032},
+            "scan_receipts_compact":{
+                "raw":{"before":{"host_monotonic_sec":1969.666745},
+                       "after":{"host_monotonic_sec":1969.982777}},
+                "safety":{"before":{"host_monotonic_sec":1976.217830},
+                          "after":{"host_monotonic_sec":1976.575302}}
+            }}
         nav={"status":"BLOCKED_LIFECYCLE_NAVIGATION_SERVICE_TIMEOUT",
              "navigation_service_status":"SERVICE_TIMEOUT",
              "navigation_ack":False,"localization_ack":False,
