@@ -179,5 +179,23 @@ class NativeFirstBoundaryAttribution(unittest.TestCase):
         self.assertFalse(d["root_cause_proven"])
         self.assertNotIn("accepted",str(d))
 
+
+    def test_original_multi_two_independent_cold_native_cycles_required(self):
+        # Earlier #44870025677 was ONLY one scoped PASS without the first
+        # intermittent breach. Never call it accepted independent 2/2.
+        s=WORKFLOW.read_text()
+        self.assertIn("cycle: [1, 2]",s)
+        self.assertIn("name: AXIA G07 Original Multi First Scan RMW Exact Pair",s)
+        self.assertIn("ref: "+STUDENT,s)
+        self.assertIn('AXIA_G07_EVENTS_EXECUTOR_AB: \'0\'',s)
+        self.assertIn('AXIA_G07_SCAN_PREFLIGHT_STRICT: \'1\'',s)
+        self.assertIn('AXIA_G07_TASK03_FORMAL_CI: \'1\'',s)
+        self.assertIn("first_delivery_actual_pairs.json",s)
+        self.assertIn("observer_io_first_boundary.json",s)
+        self.assertIn("first_scan_rmw_bag_attribution.json",s)
+        self.assertIn("public_evidence/first_nav_server_boundary.json",s)
+        self.assertNotIn("scan_wall_limit_ms: 500",s)
+        self.assertNotIn("CERTIFIED_ESTOP=true",s)
+
 if __name__=="__main__":
     unittest.main()
