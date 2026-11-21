@@ -33,8 +33,8 @@ def summarize_wsl2_layers(kernel_release, pid1, dxg_present, wslg_visible,
     def adapter_line(prefix):
         line = next((ln.split(":", 1)[1].strip()
                      for ln in glx_output.splitlines()
-                     if ln.startswith(prefix)), "")
-        return re.sub(r"[\\x00-\\x1f\\x7f]", "", line)[:160]
+                     if ln.lstrip().startswith(prefix)), "")
+        return re.sub(r"[\x00-\x1f\x7f]", "", line)[:160]
 
     gl_renderer_line = adapter_line("OpenGL renderer string:")
     gl_device_line = adapter_line("Device:")
