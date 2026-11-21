@@ -41,6 +41,50 @@ class SameExactBagPair(unittest.TestCase):
         self.assertIsNone(r["independent_bag_scan_gap_ms"])
         self.assertFalse(r["certified_estop"])
 
+    def test_first_clock_exact_header_pair_independent_bag_readback(self):
+        # Actual native showed one /clock ~334ms first violation, but the
+        # bag max is over an entire session and cannot attribute THAT pair.
+        a=10_000_000_000
+        d=rows()
+        d["/clock"]=[
+            {"rx_ns":a, "header_sim_ns":61_100_000_000},
+            {"rx_ns":a+101_000_000, "header_sim_ns":61_200_000_000}]
+        first={"goal_sent":False,"first_delivery_violation":{
+            "channel":"clock","gap_ms":334.279256,
+            "previous_header_sim":61.1,"current_header_sim":61.2,
+            "header_sim_gap_ms":100.0}}
+        result=classify(None,d,pregoal_report=first)
+        self.assertTrue(result["matched_exact_first_clock_pair"],result)
+        self.assertEqual(result["independent_first_clock_rx_gap_ms"],101.0)
+        self.assertEqual(result["observer_first_clock_gap_ms"],334.279256)
+        self.assertEqual(result["clock_odom_exact_first_class"],
+                         "FIRST_CLOCK_OBSERVER_GAP_NOT_REPRODUCED_IN_BAG_CANDIDATE_HOLD")
+        self.assertFalse(result["root_cause_proven"])
+        self.assertEqual(result["release"],"HOLD")
+
+    def test_first_odom_exact_pair_and_ambiguous_fail_closed(self):
+        a=10_000_000_000
+        first={"first_delivery_violation":{
+            "channel":"odom","gap_ms":357.160233,
+            "previous_header_sim":61.0,"current_header_sim":61.1,
+            "header_sim_gap_ms":100.0}}
+        d=rows()
+        d["/odom"]=[
+            {"rx_ns":a,"header_sim_ns":61_000_000_000},
+            {"rx_ns":a+359_000_000,"header_sim_ns":61_100_000_000}]
+        ok=classify(None,d,pregoal_report=first)
+        self.assertTrue(ok["matched_exact_first_odom_pair"])
+        self.assertEqual(ok["independent_first_odom_rx_gap_ms"],359.0)
+        self.assertEqual(ok["clock_odom_exact_first_class"],
+                         "FIRST_ODOM_BAG_AND_OBSERVER_GAP_CANDIDATE_HOLD")
+        d["/odom"].append({"rx_ns":a+361_000_000,
+                            "header_sim_ns":61_100_000_000})
+        ambiguous=classify(None,d,pregoal_report=first)
+        self.assertFalse(ambiguous["matched_exact_first_odom_pair"])
+        self.assertIsNone(ambiguous["independent_first_odom_rx_gap_ms"])
+        self.assertEqual(ambiguous["clock_odom_exact_first_class"],
+                         "FIRST_ODOM_EXACT_BAG_PAIR_UNVERIFIED_HOLD")
+
     def test_no_cross_clock_epoch_subtraction(self):
         r=classify(FIRST,rows())
         self.assertTrue(r["all_clock_intervals_same_rosbag_receive_timebase"])

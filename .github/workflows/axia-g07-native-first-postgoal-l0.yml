@@ -1,0 +1,22 @@
+name: AXIA G07 Native First PostGoal Failure L0 RED-GREEN
+on:
+  push:
+    branches: ['diag/g07-first-scan-rmw-exact-native-20261121']
+    paths:
+      - '.github/workflows/axia-g07-native-first-postgoal-l0.yml'
+      - 'tests/test_g07_native_first_postgoal_failure_448650_448652.py'
+      - 'd06/diagnostic/g07_first_postgoal_boundary.py'
+permissions: {contents: read}
+jobs:
+  native_first_shutdown_or_slow_fail_closed:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with: {persist-credentials: false}
+      - name: Actual native #448650/#448652 first boundary frozen numeric regression
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest discover -s tests -p 'test_g07_native_first_postgoal_failure_448650_448652.py' -v
+          echo 'AXIA_G07_POSTGOAL_FIRST_FAILURE_L0_PASS_NATIVE_NEW_RUN_NOT_EXECUTED_L3_HOLD'

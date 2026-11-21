@@ -51,7 +51,7 @@ def _out(status,**fields):
     result.update(fields)
     return result
 
-def classify(first_pair, rows, *, pregoal_report=None):
+def _classify_scan(first_pair, rows, *, pregoal_report=None):
     if not isinstance(rows,dict):
         return _out("EXACT_LASERSCAN_BAG_PAIR_UNVERIFIED_HOLD")
     clock_max=_bag_max_rx_gap_ms(rows,"/clock")
@@ -116,7 +116,70 @@ def classify(first_pair, rows, *, pregoal_report=None):
                 rosbag_odom_record_count=len(odom) if isinstance(odom,list) else None,
                 same_header_pair_rosbag_timebase_only=True)
 
-def _load_bag_numeric(bag_root, first):
+def _with_first_clock_odom(result, rows, pregoal):
+    """Match the FIRST Clock/Odom callback pair to this rosbag's same stamps.
+
+    Never infer the gap from bag session maxima, nor compare absolute
+    system/monotonic clocks. Exact duplicate or missing pair is HOLD.
+    These observations classify delivery and do not assert a DDS root cause.
+    """
+    result["matched_exact_first_clock_pair"]=False
+    result["matched_exact_first_odom_pair"]=False
+    result["independent_first_clock_rx_gap_ms"]=None
+    result["independent_first_odom_rx_gap_ms"]=None
+    result["observer_first_clock_gap_ms"]=None
+    result["observer_first_odom_gap_ms"]=None
+    result["clock_odom_exact_first_class"]="FIRST_CLOCK_ODOM_PAIR_NOT_APPLICABLE_HOLD"
+    if not isinstance(pregoal,dict) or not isinstance(rows,dict):
+        return result
+    first=pregoal.get("first_delivery_violation")
+    topic=first.get("channel") if isinstance(first,dict) else None
+    if topic not in ("clock","odom"):
+        return result
+    result["clock_odom_exact_first_class"]=(
+        "FIRST_"+topic.upper()+"_EXACT_BAG_PAIR_UNVERIFIED_HOLD")
+    gap=first.get("gap_ms")
+    if type(gap) not in (int,float) or not math.isfinite(gap) or gap<=0:
+        return result
+    result["observer_first_"+topic+"_gap_ms"]=round(float(gap),6)
+    h0=_ns_from_float(first.get("previous_header_sim"))
+    h1=_ns_from_float(first.get("current_header_sim"))
+    if h0 is None or h1 is None or h1<=h0:
+        return result
+    simgap=first.get("header_sim_gap_ms")
+    if (type(simgap) not in (int,float) or not math.isfinite(simgap)
+            or simgap<=0 or abs(simgap-(h1-h0)/1_000_000)>.02):
+        return result
+    matches={}
+    for row in rows.get("/"+topic,[]):
+        if not isinstance(row,dict):
+            continue
+        if row.get("header_sim_ns") in (h0,h1):
+            matches.setdefault(row["header_sim_ns"],[]).append(row.get("rx_ns"))
+    if len(matches.get(h0,[]))!=1 or len(matches.get(h1,[]))!=1:
+        return result
+    a,b=matches[h0][0],matches[h1][0]
+    if type(a) is not int or type(b) is not int or a<=0 or b<=a:
+        return result
+    result["matched_exact_first_"+topic+"_pair"]=True
+    bag_gap=_safe_msec(b-a)
+    result["independent_first_"+topic+"_rx_gap_ms"]=bag_gap
+    if gap>300 and bag_gap<=300:
+        status="FIRST_"+topic.upper()+"_OBSERVER_GAP_NOT_REPRODUCED_IN_BAG_CANDIDATE_HOLD"
+    elif bag_gap>300:
+        status="FIRST_"+topic.upper()+"_BAG_AND_OBSERVER_GAP_CANDIDATE_HOLD"
+    else:
+        status="FIRST_"+topic.upper()+"_DELIVERY_EXACT_BAG_PAIR_WITHIN_BOUND_HOLD"
+    result["clock_odom_exact_first_class"]=status
+    return result
+
+
+def classify(first_pair, rows, *, pregoal_report=None):
+    scan=_classify_scan(first_pair,rows,pregoal_report=pregoal_report)
+    return _with_first_clock_odom(scan,rows,pregoal_report)
+
+
+def _load_bag_numeric(bag_root, first, *, first_delivery=None):
     """Read existing rosbag2 sequentially, serialize no message content."""
     import rosbag2_py
     from rclpy.serialization import deserialize_message
@@ -136,8 +199,18 @@ def _load_bag_numeric(bag_root, first):
         raise RuntimeError("ROSBAG_SCAN_TOPIC_MISSING")
     # A bounded numeric-only buffer; on overrun we stop with HOLD, never PASS.
     out={k:[] for k in wanted}
-    msgtypes={topic:get_message(types[topic]) for topic in wanted if topic in types
-              and topic in ("/scan","/safety/scan")}
+    matched_topic=(
+        "/"+first_delivery["channel"]
+        if isinstance(first_delivery,dict)
+           and first_delivery.get("channel") in ("clock","odom")
+           and _ns_from_float(first_delivery.get("previous_header_sim")) is not None
+           and _ns_from_float(first_delivery.get("current_header_sim")) is not None
+        else None)
+    decode_types={"/scan","/safety/scan"}
+    if matched_topic is not None:
+        decode_types.add(matched_topic)
+    msgtypes={topic:get_message(types[topic]) for topic in wanted
+              if topic in types and topic in decode_types}
     maxread=1_000_000
     seen=0
     while reader.has_next():
@@ -149,7 +222,15 @@ def _load_bag_numeric(bag_root, first):
             continue
         if topic in ("/clock","/odom"):
             if len(out[topic])<100000:
-                out[topic].append({"rx_ns":int(rx_ns)})
+                row={"rx_ns":int(rx_ns)}
+                # Decode ONLY the first violating sensor's exact message
+                # stamps for offline pair matching; never during Goal.
+                if topic==matched_topic and topic in msgtypes:
+                    msg=deserialize_message(payload,msgtypes[topic])
+                    stamp=(msg.clock if topic=="/clock" else msg.header.stamp)
+                    row["header_sim_ns"]=(
+                        int(stamp.sec)*1_000_000_000+int(stamp.nanosec))
+                out[topic].append(row)
             continue
         if topic not in msgtypes:
             continue
@@ -179,7 +260,8 @@ def main(argv=None):
             result=_out("PREG0AL_FIRST_SCAN_PAIR_NOT_AVAILABLE_HOLD")
         else:
             rows,count,storage=_load_bag_numeric(
-                a.bag_root,first if isinstance(first,dict) else {})
+                a.bag_root,first if isinstance(first,dict) else {},
+                first_delivery=first_delivery)
             result=classify(first,rows,pregoal_report=report)
             result["bag_rows_inspected"]=count
             result["bag_storage_id"]=storage

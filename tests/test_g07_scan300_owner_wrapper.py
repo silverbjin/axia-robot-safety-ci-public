@@ -9,9 +9,9 @@ WRAPPER=ROOT/'scripts/axia_g07_stabilization_wsl2_final_once.sh'
 class StrictOwnerScanWrapper(unittest.TestCase):
     def test_release_ready_pin_matches_two_successful_strict_l2(self):
         s=WRAPPER.read_text()
-        self.assertIn("readonly STUDENT_SHA='891bf65349cf8dfb203bb8b97ffe0346b3fb8b3f'",s)
-        self.assertIn('readonly CI_L2_RUN=44830956042',s)
-        self.assertIn("readonly CI_L2_HEAD='a54c40c630b14bc2b71449f3030c5c194a5f8408'",s)
+        self.assertIn("readonly STUDENT_SHA='5667575aac777c374735b1c351445bcc8f83140e'",s)
+        self.assertIn('readonly CI_L2_RUN=44902396373',s)
+        self.assertIn("readonly CI_L2_HEAD='09ea6cbc8b9079532ef13c0962d193966e99a03b'",s)
         self.assertIn('export AXIA_G07_SCAN_PREFLIGHT_STRICT=1',s)
         self.assertIn('AXIA_G07_CI_SIM_GOAL_ALLOWED=0',s)
         self.assertIn('OWNER_CONTROLLING_TTY_REQUIRED',s)
@@ -33,9 +33,9 @@ class StrictOwnerScanWrapper(unittest.TestCase):
 
     def test_strict_two_cycle_success_pin_and_single_shell_line_continuations(self):
         s=WRAPPER.read_text()
-        self.assertIn('readonly CI_L2_RUN=44830956042',s)
-        self.assertIn("readonly CI_L2_HEAD='a54c40c630b14bc2b71449f3030c5c194a5f8408'",s)
-        self.assertIn("readonly STUDENT_SHA='891bf65349cf8dfb203bb8b97ffe0346b3fb8b3f'",s)
+        self.assertIn('readonly CI_L2_RUN=44902396373',s)
+        self.assertIn("readonly CI_L2_HEAD='09ea6cbc8b9079532ef13c0962d193966e99a03b'",s)
+        self.assertIn("readonly STUDENT_SHA='5667575aac777c374735b1c351445bcc8f83140e'",s)
         self.assertNotIn('CI-BLOCKED diagnostic candidate',s)
         for no,line in enumerate(s.splitlines(),1):
             self.assertFalse(line.endswith(chr(92)*2),
