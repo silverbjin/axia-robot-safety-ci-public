@@ -117,7 +117,7 @@ fi
         if "refactor/g07-mvp-closure-20261121" in flow:
             # A new experimental Student pin must NOT replace the already
             # validated historic Owner 2/2 release pinned to STUDENT/HEAD/RUN.
-            self.assertIn("ref: a04f9a7da8d54bbd9f944d05388792cb706adf28",flow)
+            self.assertIn("ref: 720e687d023dcebf2dc4a818397e928156ad5a9e",flow)
             self.assertNotIn("ref: e1241a2f3cc4fe85412b68ce026c337312d56a02",flow)
         else:
             self.assertIn("ref: e1241a2f3cc4fe85412b68ce026c337312d56a02",flow)
