@@ -2,7 +2,10 @@ name: AXIA G07 Clock Window Graph Full Public L0 Safety Contracts
 on:
   push:
     branches: ['fix/g07-clock-retention-postgoal-graph-ci-20261121']
-    paths: ['.github/workflows/axia-g07-clock-graph-full-public-l0.yml']
+    paths:
+      - '.github/workflows/axia-g07-clock-graph-full-public-l0.yml'
+      - 'tests/test_g07_jazzy_info_dict_independent_cm.py'
+      - 'd06/diagnostic/g07_independent_cm_rmw_witness.py'
 permissions: {contents: read}
 jobs:
   full-public-and-minimum-student-safety-contract:
@@ -24,6 +27,7 @@ jobs:
           set -Eeuo pipefail
           python -m pip install pytest==8.3.5 Pillow==11.3.0
           cd public
+          python3 -m unittest discover -s tests -p 'test_g07_jazzy_info_dict_independent_cm.py' -v
           python3 -m pytest -q -ra tests
           cd ../student/block_B/day07/h01_runtime
           python3 -m unittest discover -s tools -p 'test_g07_clock_window_postgoal_graph.py' -v
