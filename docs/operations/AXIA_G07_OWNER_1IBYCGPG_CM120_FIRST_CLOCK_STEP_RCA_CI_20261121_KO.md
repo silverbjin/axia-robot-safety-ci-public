@@ -134,3 +134,49 @@ MAIN_MERGED=false
 - **L1 GREEN ≠ WSL2 최초 장애 근본 원인 확정**. 안정적인 독립 퍼블리셔 주기, 차단 콜백 재현, 개선된 Observer<=120ms까지 세 조건 모두 충족 시에만 현장 가설을 유효 후보로 올림.
 - L1 실패 시 CI 환경 퍼블리셔/RMW/Executor 타임라인을 먼저 분리하고, 사용자 WSL2 Goal 재시도 및 새 Gazebo moving 테스트는 HOLD 유지.
 
+
+## 7. 후속 RED→GREEN: 기존 SingleThreaded Observer 실제 Gazebo L2 실패 원인 분리
+
+### 구현 최소 범위와 선행 성공
+- 기존 Student PR #73 `fix/g07-rmw-receive-observer-executor-20261120`의 **읽기 전용** Observer Executor 선택만 새로운 독립 Student 브랜치 `fix/g07-owner-1ibycgpg-single-observer-20261121`에 재사용. 기존 CM 별도 callback group 시도는 배제함.
+- Student 정확 SHA `2218584a907d3b7082588dc40625c8156cc88486`. 명시적 `AXIA_G07_OBSERVER_EXECUTOR_AB=single`에서만 SingleThreadedExecutor, 기본 2-worker Multi unchanged. Nav2, CM/Guard, Goal/Cancel, QoS, CM120/Guard150/Scan/Odom/Clock300 **변경 없음**.
+- 먼저 실제 ROS2 Jazzy 3-OS-process independent publisher/witness controlled L1: [#44855618065](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44855618065) **PASS**. Multi original 62/75, callback max990.999ms vs Single 75/75, max40.522ms. 양측 독립 Subscriber 75/75 max~40.8ms. 이는 합성 2-topic 테스트일 뿐 실제 Gazebo 고주기 센서/Goal 검증 아님.
+- 재사용 Source test [RED #44855873545](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44855873545) missing selector; [GREEN #44855930009](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44855930009): 신규4 + Scan12 + Stop3 PASS. Student [Draft PR #80](https://github.com/silverbjin/axia-robot-safety-student/pull/80). 
+
+### 새 실제 Gazebo/Nav2/Moving Goal 2-cycle 결론: **1/2 FAIL**
+- Native CI [#44855963095](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44855963095), 정확한 공개 workflow SHA `9b0fef8c5c1502685c5e16486408225c7930eb00`, 2개 독립 Ubuntu24.04/Jazzy/Harmonic/Nav2+RViz Xvfb 세션, Student `2218584...`, ROS DDS UDPv4. 
+- **Cycle 1 FAIL**, Runner RC2. Goal 전 12초 Scan/Clock/Odom300 PASS였으나 실제 Goal 이후 CLEAR→SLOW→STOP·정확한 Goal Cancel ACK 이후 raw strict oracle에서 탈락. 첫 Monotonic TTL breach = `/odom 264.699048484 → 265.059473585` **360.425101ms >300ms**, PRE_STOP.
+- 동일 최초 공백에서 `/scan 342.189295ms>300`, `/clock 338.477114ms>300`, `/cmd_vel_pre_guard 377.734158ms>120`, `/cmd_vel_supervised 377.355937ms>150`, Guard state374.237092ms>150, Supervisor state377.391612ms>150. **7개 토픽의 동시 안전 전달 경계 위반**, 어느 한 CM 고립 수정으로 전체 안정성을 인증할 수 없음.
+- 정확한 CM seq+1 쌍의 **RMW Source gap52.640339ms** vs **RMW Received gap378.084177ms**, Host Observer gap377.734158ms: *발행 중단 378ms는 입증되지 않음*. DDS receive/take와 callback scheduling의 정확한 구분도 입증되지 않음.
+- **Cycle 2 PASS**, Runner RC0, Gazebo/RViz 2 GUI, 12s Scan preflight, CLEAR→SLOW→STOP, exact Cancel, Nav2 Nav/Localization ACK, Guard/CM 150/120/300 계약. read-only Observer Scan max200.965ms, Odom136.385ms, Clock105.817ms, Guard63.648ms, CM58.139ms, Guard internal CM age19.360ms.
+- Run 결과 **FAIL 1/2**. 하나의 Cycle 성공을 두 Cycle PASS로 승격 금지. 새 WSL2 Goal 원샷은 `--ci-check`에서 엄격히 차단. `scripts/axia_g07_1ibycgpg_single_observer_wsl2_l3_once.sh`은 **CI-BLOCKED 개발 후보**이지 배포 명령이 아님. 원래 2-worker public native #44830956042 2/2 PASS 보존. Owner WSL2 이전 원본 1ibYCGPg 124.069ms는 여전히 HOLD.
+
+### 실제 동일 native 세션 독립 CM 수신기 재분석
+- #44855963095 Cycle 1 GitHub numeric artifact `14687796916`, SHA256 `2dae0ff344123420c5d873b23a619d1f4c7e6532dcdf83d3043dfebe1ab6db08` (원본 public artifact). 기존 별도 read-only CM RMW process의 같은 호스트 monotonic 수신이 **264.677974070, 264.731572444, 264.778861969, 264.827377844, 264.880176291, 264.930406623, 264.978028339, 265.030589733, 265.081052661**로 연속. 원래 Observer 공백 `264.681983906→265.059718064` 내 독립 callback **7건**, 최대 약53ms 간격. 즉 **한 호스트의 별도 DDS 구독자는 계속 수신**하는 동안 주 Observer만 378ms 간격을 기록함.
+- 단, 해당 독립 수신기 원본에 `rmw_publication_seq=-1`이 기록돼 정확한 동일 publication pair 조인 불가. 원인은 기존 `g07_independent_cm_rmw_witness.py`가 `publication_sequence_number` 하나만 누락돼도 정상 source/received timestamp까지 모두 -1로 버리는 진단 오류. 송신 정체 또는 DDS 계층 root 증명으로 가공하는 것 금지.
+- 숫자 최소 fixture `tests/fixtures/g07_native_single_44855963095_first_gap.json`; `d06/diagnostic/g07_independent_cm_rmw_witness.py` 수정:
+  * metadata 필드를 독립적으로 정규화해 seq 미지원에도 source/received 보존;
+  * 정확한 pair metadata 없이 같은 호스트 monotonic witness가 첫 interval을 좌우에서 덮고, 7건 이상의 충분한 표본, 내부 gap 120ms 이내인 경우에만 `INDEPENDENT_CM_CALLBACKS_CONTINUED_EXACT_PAIR_UNVERIFIED_HOLD` 후보 출력;
+  * 정확한 sequence+source pair matcher는 그대로 유지, **미검증 exact pair = HOLD**, 아무 근본 원인 확정 없음.
+- read-only 진단 최소 테스트 RED [#44856676609](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44856676609) → GREEN [#44856739727](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44856739727): 신규3/3 + 기존 exact matcher5/5 PASS.
+- 변경된 진단 전체 Python 회귀 [#44856744719](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44856744719): **304 passed, 3 skipped**. 완전한 실제 Gazebo L2는 위 #44855963095 1/2 FAIL, 이 후속 read-only 진단 변경에 대한 신규 L2 PASS를 주장하지 않음.
+
+### 처음 안전 상태 전이/타이밍 위반 기준 최종 결론
+```text
+WSL2_OWNER_ORIGINAL=HOLD_CM_OBSERVER_124_069MS
+PUBLIC_NATIVE_SINGLE_L2=FAIL_1_OF_2
+PUBLIC_NATIVE_MULTI_PRIOR_L2=PASS_2_OF_2_HISTORIC
+PUBLIC_NUMERIC_FIRST_BOUNDARY_REGRESSION=PASS
+PUBLIC_FULL_PYTHON_L0=304_PASS_3_SKIP
+SINGLE_OBSERVER_LOCAL_L1=PASS_SCOPED_SYNTHETIC_ONLY
+INDEPENDENT_SAME_SESSION_WITNESS=CONTINUOUS_HOST_RX_CANDIDATE
+DDS_EXACT_PUBLICATION_PAIR=UNAVAILABLE
+EXECUTOR_VS_DDS_TAKE_ROOT_CAUSE=UNPROVEN
+NVIDIA_WSLG_CAUSAL_ROOT_CAUSE=UNPROVEN
+NEW_OWNER_WSL2_SCRIPT=NOT_RELEASED_CI_BLOCKED
+CERTIFIED_ESTOP=false
+MAIN_MERGED=false
+```
+
+### 추가 개발 MVP 제한
+새 Planner/Supervisor/Guard/CM QoS·안전 한계 조정 불허. 추가 실험은 **실제 Gazebo와 동일한 Clock/Odom/Scan/Guard 다중 토픽의 Executor/take 경계**만 좁히되, 이미 성공한 전체 Gazebo 2/2 Baseline 회귀 반복 금지. 새로운 WSL2 Goal 반복은 실행기 출고 요건 2/2 L2 충족 전에 수행하지 않음. 안전 상태 전이와 다른 계층 TTL 검증을 누락한 채 전체 시연 PASS 주장 금지.
