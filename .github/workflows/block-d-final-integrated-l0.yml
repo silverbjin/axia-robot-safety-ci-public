@@ -8,6 +8,7 @@ on:
     paths:
       - '.github/workflows/block-d-final-integrated-l0.yml'
       - 'docs/reports/AXIA_BLOCK_D_FINAL_RELEASE_REPORT_20261121_KO.md'
+      - 'tests/test_block_d_final_report_l0.py'
   pull_request:
     branches: [main]
     paths:
@@ -17,6 +18,19 @@ on:
 permissions:
   contents: read
 jobs:
+  public-report-release-contract:
+    if: github.ref != 'refs/heads/release/p2-g06-cm-ttl-20261110'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Final public report original HOLD and release scope
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest discover -s tests -p 'test_block_d_final_report_l0.py' -v
+          echo BLOCK_D_PUBLIC_REPORT_SCOPE_L0_PASS
+
   student-and-g07-pinned-baseline:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
