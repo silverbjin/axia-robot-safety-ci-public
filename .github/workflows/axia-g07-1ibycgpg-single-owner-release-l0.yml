@@ -1,0 +1,21 @@
+name: AXIA G07 1ibYCGPg Single Observer Owner Release L0
+on:
+  push:
+    branches: ['fix/g07-owner-1ibycgpg-cm120-firstclock-20261121']
+    paths:
+      - '.github/workflows/axia-g07-1ibycgpg-single-owner-release-l0.yml'
+      - 'tests/test_g07_1ibycgpg_single_wsl2_release.py'
+      - 'scripts/axia_g07_1ibycgpg_single_observer_wsl2_l3_once.sh'
+permissions: {contents: read}
+jobs:
+  exact-l2-gate-no-goal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with: {persist-credentials: false}
+      - name: Exact one-shot identity and negative API run/job payloads, no ROS
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest discover -s tests -p 'test_g07_1ibycgpg_single_wsl2_release.py' -v
+          echo 'AXIA_G07_SINGLE_OBSERVER_OWNER_L0_PASS_L3_NOT_RUN'
