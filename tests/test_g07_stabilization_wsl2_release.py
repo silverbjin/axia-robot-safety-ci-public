@@ -8,10 +8,10 @@ import unittest
 
 ROOT=Path(__file__).resolve().parents[1]
 SCRIPT=ROOT/"scripts/axia_g07_stabilization_wsl2_final_once.sh"
-STUDENT="891bf65349cf8dfb203bb8b97ffe0346b3fb8b3f"
-HEAD="a54c40c630b14bc2b71449f3030c5c194a5f8408"
-RUN=44830956042
-NAME="AXIA G07 FV17 Independent 2-cycle Real Moving Goal Guard TTL L2"
+STUDENT="fb1aae6cbde54ff0ed4e78317f403aa5cef4d550"
+HEAD="0711e583f3c0c546a64c687edd8e280c2ae8e776"
+RUN=44878063103
+NAME="AXIA G07 Original Multi First Scan RMW Exact Pair Diagnostic Native L2"
 
 
 def inputs(conclusion="success", second="success", sha=HEAD):
@@ -108,7 +108,7 @@ fi
                 self.assertIn("HOLD_NO_NEW_WSL2_MOVING_RELEASE",r.stdout)
 
     def test_strict_native_run_and_owner_source_share_exact_committed_sha(self):
-        flow=(ROOT/".github/workflows/axia-g07-fv17-owner-evidence-parity-native-l2.yml").read_text()
+        flow=(ROOT/".github/workflows/axia-g07-original-multi-first-scan-rmw-native-l2.yml").read_text()
         script=SCRIPT.read_text()
         self.assertIn("ref: "+STUDENT,flow)
         self.assertIn("readonly STUDENT_SHA='"+STUDENT+"'",script)
@@ -133,6 +133,26 @@ fi
                          capture_output=True,text=True,timeout=8)
         self.assertNotEqual(r.returncode,0)
 
+
+
+    def test_formal_shutdown_or_rmw_failed_candidate_must_exit_nonzero(self):
+        # A complete physical educational demo is NOT the accepted final L3
+        # if Localization ACK or formal CM/RMW timing remained HOLD.
+        src=SCRIPT.read_text()
+        assert "FIRST_FAILURE='FORMAL_LOCALIZATION_SHUTDOWN_TIMEOUT_AFTER_DEMO'" in src
+        assert "FIRST_FAILURE='FORMAL_RMW_TIMEBASE_HOLD_ONLY'" in src
+        a=src.index("FIRST_FAILURE='FORMAL_LOCALIZATION_SHUTDOWN_TIMEOUT_AFTER_DEMO'")
+        b=src.index("FIRST_FAILURE='FORMAL_RMW_TIMEBASE_HOLD_ONLY'")
+        self.assertIn("exit 3",src[a:a+650])
+        self.assertIn("exit 3",src[b:b+220])
+        self.assertIn("AXIA_G07_TASK04_OWNER_MOVING_L3=HOLD",src)
+
+    def test_original_multi2_release_must_not_enable_failed_executor_candidates(self):
+        src=SCRIPT.read_text()
+        self.assertIn("unset AXIA_G07_CI_EXECUTOR_GUARD_WAKE_AB",src)
+        self.assertIn("unset AXIA_G07_CI_EXECUTOR_WAIT_BOUNDED_AB",src)
+        self.assertNotIn("export AXIA_G07_OBSERVER_EXECUTOR_AB=single",src)
+        self.assertIn("AXIA_G07_CI_SIM_GOAL_ALLOWED=0",src)
 
 if __name__=="__main__":
     unittest.main()
