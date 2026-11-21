@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: bccd2a65ef04ebb8877785e8e7a2afc5a1cc365c
+          ref: fadb216a55db11301562a93eecf848bdb6688073
           path: student
           persist-credentials: false
       - name: Official Nav2 /plan first physical fixture boundary RED
