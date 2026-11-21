@@ -94,9 +94,9 @@ jobs:
           set -Eeuo pipefail
           mkdir -p "$GITHUB_WORKSPACE/public_evidence"
           python3 - <<'PY'
-          import json,re
+          import json,re,os
           from pathlib import Path
-          root=Path.cwd().parent/'native'
+          root=Path(os.environ['GITHUB_WORKSPACE'])/'native'
           lines=(root/'smoke_stdout.log').read_text(errors='replace').splitlines() if (root/'smoke_stdout.log').exists() else []
           keys=["G07_SHUTDOWN_L2_NO_GOAL","G07_REAL_NAV2_ORDERED_SHUTDOWN",
                 "G07_CI_LAUNCH_LIVE_AFTER_MANAGED_EXIT_BUDGET","P2_L2_SMOKE_RC="]
@@ -110,7 +110,7 @@ jobs:
                    no_goal=True,release="HOLD",owner_l3_accepted=False,
                    certified_estop=False,strict_moving_2of2_verified=False,
                    first_exit_signals=clean)
-          dest=Path.cwd().parent/'public_evidence'/'g25_first_shutdown_signals.json'
+          dest=Path(os.environ['GITHUB_WORKSPACE'])/'public_evidence'/'g25_first_shutdown_signals.json'
           dest.write_text(json.dumps(out,indent=2,sort_keys=True)+"\n")
           print("AXIA_G07_G25_NO_GOAL_NATIVE_NUMERIC_EVIDENCE_CAPTURED_HOLD")
           PY
