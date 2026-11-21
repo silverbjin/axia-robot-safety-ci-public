@@ -39,6 +39,10 @@ jobs:
       # G07 #163 first lost SHUTDOWN request A/B: same already proven
       # get_parameters ROS node, NO resend and no change to Nav2/CM/Guard.
       AXIA_G07_NAV_WARM_PARTICIPANT_CI_AB: '1'
+      # #44904732397: genuine NAV ACK but BOTH cycles missing LOC shutdown ACK.
+      # One existing participant precreated LOC service endpoint; NO retry,
+      # ACK spoof, official manager changes or safety TTL modification.
+      AXIA_G07_LOCALIZATION_WARM_PARTICIPANT_AB: '1'
       # Before any CI Goal, reuse the same runtime's 12s real Scan receipt gate.
       AXIA_G07_SCAN_PREFLIGHT_STRICT: '1'
       AXIA_G07_STARTUP_READONLY_RECONCILE: '1'
@@ -81,7 +85,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 5667575aac777c374735b1c351445bcc8f83140e
+          ref: b56a1d12bdf32b25880cd9ddbe7bb1bb82265788
           path: student
           persist-credentials: false
       # Keep the historic reviewer for older unrelated imports; the current
@@ -96,7 +100,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C student rev-parse HEAD)" = '5667575aac777c374735b1c351445bcc8f83140e'
+          test "$(git -C student rev-parse HEAD)" = 'b56a1d12bdf32b25880cd9ddbe7bb1bb82265788'
           test "$(git -C ci rev-parse HEAD)" = "$GITHUB_SHA"
           test "$FASTDDS_BUILTIN_TRANSPORTS" = UDPv4
           [[ -z "${FASTRTPS_DEFAULT_PROFILES_FILE:-}" && -z "${FASTDDS_DEFAULT_PROFILES_FILE:-}" ]] || {
@@ -133,6 +137,7 @@ jobs:
           test "$AXIA_G07_OBSERVER_IO_PROBE" = 1
           python3 -m unittest discover -s tools -p 'test_g07_nav_early_manage_client.py' -v
           python3 -m unittest discover -s tools -p 'test_g07_navigation_warm_participant_shutdown_ab.py' -v
+          python3 -m unittest discover -s tools -p 'test_g07_localization_warm_shutdown_20261121.py' -v
           python3 -m py_compile tools/p2_g07_task04_moving_review.py tools/p2_g07_ci_moving_goal.py
           python3 -m py_compile "$GITHUB_WORKSPACE/ci/scripts/axia_g07_mvp_visual_verdict.py"
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_owner_shell_contract.py' -v
@@ -327,7 +332,7 @@ jobs:
           import json,sys
           result=json.load(open(sys.argv[1]))
           assert result.get("goal_sent") is True,result
-          assert result.get("source_sha")=="5667575aac777c374735b1c351445bcc8f83140e",result
+          assert result.get("source_sha")=="b56a1d12bdf32b25880cd9ddbe7bb1bb82265788",result
           print('AXIA_G07_REAL_OWNER_AMCL_PRIMARY_PATH_PASS actual_goal_sent=true')
           PY_REAL_TF
           # Real Guard 20Hz timing facts must be present in the actual
@@ -379,7 +384,7 @@ jobs:
                   --motion "$GITHUB_WORKSPACE/native/g07_ci_moving/ci_moving_goal_result.json" \
                   --shutdown "$GITHUB_WORKSPACE/native/g07_ordered_shutdown.json" \
                   --gui-windows 2 \
-                  --source-sha '5667575aac777c374735b1c351445bcc8f83140e' \
+                  --source-sha 'b56a1d12bdf32b25880cd9ddbe7bb1bb82265788' \
                   --output "$GITHUB_WORKSPACE/public_evidence/task04_mvp_visual_l2_verdict.json"; then
               sha256sum "$GITHUB_WORKSPACE/public_evidence/task04_mvp_visual_l2_verdict.json" \
                 > "$GITHUB_WORKSPACE/public_evidence/task04_mvp_visual_l2_verdict.sha256"
@@ -401,7 +406,7 @@ jobs:
           fi
           verify_real_goal_and_guard_evidence || exit 3
           windows_count=$((rviz_seen+gazebo_seen))
-          python3 tools/p2_g07_task04_moving_review.py             --motion-root "$GITHUB_WORKSPACE/native"             --witness "$GITHUB_WORKSPACE/native/s02_ecm_witness.json"             --source-sha '5667575aac777c374735b1c351445bcc8f83140e'             --gui-windows "$windows_count"             --output "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"
+          python3 tools/p2_g07_task04_moving_review.py             --motion-root "$GITHUB_WORKSPACE/native"             --witness "$GITHUB_WORKSPACE/native/s02_ecm_witness.json"             --source-sha 'b56a1d12bdf32b25880cd9ddbe7bb1bb82265788'             --gui-windows "$windows_count"             --output "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"
           sha256sum "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"             > "$GITHUB_WORKSPACE/public_evidence/task04_moving_verdict.sha256"
           echo 'AXIA_G07_TASK04_NATIVE_MOVING_HEADLESS_SAFETY_L2_PASS_GUI_DIAGNOSTIC_ONLY_OWNER_WSL2_NOT_RUN'
           echo 'AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false'
@@ -639,6 +644,8 @@ jobs:
             public_evidence/independent_cm_rmw.jsonl
             native/g07_depth_absence.json
             native/g07_phase_timings.tsv
+            native/g07_ordered_shutdown.json
+            native/g07_ordered_shutdown.log
             public_evidence/task04_moving_l2_verdict.json
             public_evidence/task04_moving_verdict.sha256
             task04_witness_SHA256SUMS.txt
