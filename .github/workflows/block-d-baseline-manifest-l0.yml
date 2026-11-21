@@ -1,0 +1,39 @@
+name: AXIA Block D Stage1 Baseline Manifest L0
+on:
+  push:
+    branches:
+      - feat/block-d-baseline-inventory-20261121
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'block_d/release/RELEASE_MANIFEST.json'
+      - 'tests/test_block_d_release_manifest.py'
+      - '.github/workflows/block-d-baseline-manifest-l0.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  block-d-stage1-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+      - name: Reject G07 runtime changes, only allow stage1 metadata
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git fetch origin main --depth=1
+          git diff --name-only origin/main...HEAD | tee /tmp/block_d_files.txt
+          if grep -Ev '^(block_d/release/RELEASE_MANIFEST\.json|tests/test_block_d_release_manifest\.py|\.github/workflows/block-d-baseline-manifest-l0\.yml)$' /tmp/block_d_files.txt; then
+            echo 'BLOCK_D_STAGE1_FORBIDDEN_G07_OR_UNRELATED_CHANGE' >&2
+            exit 1
+          fi
+          echo 'BLOCK_D_STAGE1_NO_G07_MAIN_FILE_MODIFICATION=PASS'
+      - name: Verify provenance exact pins and scoped CI status (metadata L0)
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest discover -s tests -p 'test_block_d_release_manifest.py' -v
+          echo 'BLOCK_D_STAGE1_METADATA_L0_PASS=1 ROS_GAZEBO_GOAL_NOT_RUN=1'
