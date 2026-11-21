@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 1ec2b7002b82cf8c8c1b3df24b44d8abda8abde9
+          ref: 2b6b7eee4895ea66db119fc8f43894da38a1cdc4
           path: student
           persist-credentials: false
       - name: Scoped fail-closed EventsExecutor official Jazzy A/B
