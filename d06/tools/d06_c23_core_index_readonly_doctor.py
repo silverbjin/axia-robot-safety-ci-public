@@ -27,13 +27,26 @@ def summarize_wsl2_layers(kernel_release, pid1, dxg_present, wslg_visible,
     Ubuntu distro and WSLg system distro do not share the same GUI service
     process boundary. A present D3D12 renderer is not an exit0 or safety proof.
     """
+    # Keep only the bounded adapter identity of glxinfo. C24 stored just
+    # D3D12_OTHER and could not distinguish iGPU, AMD, or an unknown GPU.
+    # The OpenGL query is NOT evidence of Gazebo's actual selected adapter.
+    def adapter_line(prefix):
+        line = next((ln.split(":", 1)[1].strip()
+                     for ln in glx_output.splitlines()
+                     if ln.startswith(prefix)), "")
+        return re.sub(r"[\\x00-\\x1f\\x7f]", "", line)[:160]
+
+    gl_renderer_line = adapter_line("OpenGL renderer string:")
+    gl_device_line = adapter_line("Device:")
+    value = gl_renderer_line.lower()
     renderer = "UNAVAILABLE"
-    if "OpenGL renderer string:" in glx_output:
-        raw = next((line for line in glx_output.splitlines()
-                    if "OpenGL renderer string:" in line), "")
-        value = raw.split(":", 1)[1].strip().lower()
+    if value:
         if "d3d12" in value and "nvidia" in value:
             renderer = "D3D12_NVIDIA"
+        elif "d3d12" in value and "intel" in value:
+            renderer = "D3D12_INTEL"
+        elif "d3d12" in value and ("amd" in value or "radeon" in value):
+            renderer = "D3D12_AMD"
         elif "d3d12" in value:
             renderer = "D3D12_OTHER"
         elif "llvmpipe" in value:
@@ -52,7 +65,12 @@ def summarize_wsl2_layers(kernel_release, pid1, dxg_present, wslg_visible,
         "dxg_present": bool(dxg_present),
         "wslg_visible": bool(wslg_visible),
         "renderer_class": renderer,
+        "gl_renderer_line": gl_renderer_line,
+        "gl_device_line": gl_device_line,
+        "nvidia_glx_confirmed": renderer == "D3D12_NVIDIA",
+        "gazebo_renderer_proven": False,
         "journal_storage_class": storage,
+        "journal_persistence_proven": False,
         "core_capture_proven": False,
         "gazebo_exit0_proven": False,
     }
@@ -229,6 +247,8 @@ def doctor():
         Path("/mnt/wslg").exists(), glx_text,
         Path("/var/log/journal").is_dir(),
         Path("/run/log/journal").is_dir())
+    layers["adapter_override_requested"] = (
+        "MESA_D3D12_DEFAULT_ADAPTER_NAME" in os.environ)
     snapshot = {
         "pid": PID,
         "event_boot_known": False,  # C22 did not record a boot UUID.
@@ -249,6 +269,13 @@ def doctor():
     print("D06_C24_WSL2_PID1_SYSTEMD=" + str(layers["pid1_systemd"]).lower())
     print("D06_C24_WSLG_RENDERER_CLASS=" + layers["renderer_class"])
     print("D06_C24_WSL2_JOURNAL_STORAGE_DIR=" + layers["journal_storage_class"])
+    print("D06_C26_GLX_RENDERER=" + layers["gl_renderer_line"])
+    print("D06_C26_GLX_DEVICE=" + layers["gl_device_line"])
+    print("D06_C26_NVIDIA_GLX_CONFIRMED=" +
+          str(layers["nvidia_glx_confirmed"]).lower())
+    print("D06_C26_ADAPTER_OVERRIDE_PRESENT=" +
+          str(layers["adapter_override_requested"]).lower())
+    print("D06_C26_JOURNAL_PERSISTENCE_PROVEN=false")
     print("D06_C24_WSL2_LAYER_DIAGNOSTIC_ONLY_NOT_GAZEBO_ACCEPTANCE")
     print("D06_C23_SYSTEMD_SOCKET_ACTIVE=" + str(socket_active).lower())
     print("D06_C23_CURRENT_BOOT_JOURNAL_RECORDS=" + str(len(journal_rows)))
