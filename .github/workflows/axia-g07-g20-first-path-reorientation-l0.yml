@@ -1,0 +1,23 @@
+name: AXIA G07 G20 First Real Nav2 Reorientation Numeric L0
+on:
+  push:
+    branches: ['fix/g07-g50-first-boundary-ci-20261121']
+    paths: ['.github/workflows/axia-g07-g20-first-path-reorientation-l0.yml']
+permissions: {contents: read}
+jobs:
+  first_actual_native_cylinder_path_delta:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: 14613b02f1e7e271b59bb5ace774a1aa8a8e7247
+          path: student
+          persist-credentials: false
+      - shell: bash
+        run: |
+          set -Eeuo pipefail
+          cd student/block_B/day07/h01_runtime
+          python3 -m unittest discover -s tools -p 'test_g07_g20_first_plan_reorientation_native.py' -v
+          echo 'AXIA_G07_G20_FIRST_REAL_PATH_REORIENTATION_L0_PASS_LOCAL_CONTROLLER_ROOT_HOLD'
