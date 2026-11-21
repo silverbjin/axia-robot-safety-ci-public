@@ -5,8 +5,8 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 POLICY = ROOT / "docs/operations/AXIA_INSTRUCTOR_PUBLIC_CI_ONLY_POLICY_20261121_KO.md"
 WORKFLOW = ROOT / ".github/workflows/block-d-d13-instructor-public-sealed-l0.yml"
-STUDENT_SHA = "10f8895dfd0729fd41ac20acc7855e81001e0aec"
-INSTRUCTOR_SHA = "a668ab912842958bc09e463da21d86727e80bba7"
+STUDENT_SHA = "89e94f78dce6537d8be032759f4bf6274d0d5996"
+INSTRUCTOR_SHA = "32ee25c5ff6d4319d66eaf0652642a86b8e70751"
 
 class PublicOnlyInstructorCIContract(unittest.TestCase):
     def test_documented_trust_and_status_policy(self):
@@ -18,6 +18,10 @@ class PublicOnlyInstructorCIContract(unittest.TestCase):
     def test_workflow_pins_exact_source_and_synthetic_contract(self):
         txt = WORKFLOW.read_text(encoding="utf-8")
         for token in (STUDENT_SHA, INSTRUCTOR_SHA, "Ran 10 tests", "test_d13_beginner_guide_contract.py", "test_d13_story_24_slides_contract.py", "PRIVATE_D13_STORY_24_SLIDES_PASS",
+                      "test_d13_live_replay_contract.py",
+                      "test_d13_live_replay_instructor_contract.py",
+                      "PUBLIC_D13_LIVE_REPLAY_6_TESTS_1920X1080_HEADLESS_CHROME_PASS",
+                      "PRIVATE_D13_LIVE_REPLAY_GUIDE_PASS",
                       "FAILED (failures=2)", "Ran 8 tests", "Ran 3 tests",
                       "85dd0fa35b2e7982b0c86020fdd4f4952e6a039f"):
             self.assertIn(token, txt)
@@ -39,6 +43,8 @@ class PublicOnlyInstructorCIContract(unittest.TestCase):
         self.assertIn("PRIVATE_D13_L0_HOLD", txt)
         self.assertIn("PRIVATE_D13_L0_PASS", txt)
         self.assertIn("NO_ROS_GAZEBO_GOAL", txt)
+        self.assertIn("private_d13_live_guide.log", txt)
+        self.assertEqual(txt.count("  protected-instructor-l0:"), 1)
 
 if __name__ == "__main__":
     unittest.main()
