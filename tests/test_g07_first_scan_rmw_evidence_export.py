@@ -7,7 +7,7 @@ from pathlib import Path
 from d06.diagnostic.g07_first_scan_pair_attribution import assess
 
 ROOT=Path(__file__).resolve().parents[1]
-STUDENT="1edd816039381719b4b3a4b0725dd18320ea6ae9"
+STUDENT="a95156156c0c60da6c2185a53e8ec4956ba35928"
 WORKFLOW=ROOT/".github/workflows/axia-g07-original-multi-first-scan-rmw-native-l2.yml"
 
 def first_run():
@@ -134,6 +134,17 @@ class NativeFirstBoundaryAttribution(unittest.TestCase):
         self.assertIn('public_evidence/first_scan_rmw_bag_attribution.sha256',artifact)
         self.assertNotIn('native/rosbag2/',artifact)
         self.assertIn("AXIA_G07_EVENTS_EXECUTOR_AB: '0'",workflow)
+
+
+    def test_native_must_pin_proven_jazzy_two_arg_messageinfo_student(self):
+        # #44864568561 / #44865087050 had 1-arg rclpy callback due to
+        # optional 'info=None' at old Student SHA, so all 238 RMW fields
+        # were absent. Student #89 fixed to required 'cb(msg, info)'.
+        # Native Jazzy separate-process L1 #44865731221 verified
+        # source/received/sequence 35/35/35. CI must pin THAT snapshot.
+        workflow=WORKFLOW.read_text()
+        self.assertIn("ref: "+STUDENT,workflow)
+        self.assertNotIn("1edd816039381719b4b3a4b0725dd18320ea6ae9",workflow)
 
 if __name__=="__main__":
     unittest.main()
