@@ -1,12 +1,12 @@
-# G07 native strict two independent cold cycles; a failed cycle blocks Owner WSL2 release.
+# G07 G25 scoped read-only first process evidence: single native diagnosis, NOT strict 2/2.
 # Reuses previously tested full native Goal/Cancel/Guard/Nav2 contractual checks unmodified.
 # Student exact diagnostic candidate SHA; NEVER use this workflow as Owner WSL2 release evidence.
 # Baseline Task03 positive Contact calibration is frozen, not repeated.
-name: AXIA G07 Original Multi First Scan RMW Exact Pair Diagnostic Native L2
+name: AXIA G07 G25 First Teardown PID Role Native Scoped L2
 on:
   push:
     branches:
-      - 'diag/g07-first-scan-rmw-exact-native-20261121'
+      - 'fix/g07-g50-first-boundary-ci-20261121'
     paths:
       - '.github/workflows/axia-g07-original-multi-first-scan-rmw-native-l2.yml'
 permissions:
@@ -22,7 +22,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        cycle: [1, 2]
+        cycle: [1]
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     container:
@@ -49,8 +49,8 @@ jobs:
       AXIA_G07_EVENTS_EXECUTOR_AB: '0'
       # S1 only: read-only I/O callback timing and independent 20ms heartbeat.
       AXIA_G07_OBSERVER_IO_PROBE: '1'
-      # Only THIS independent public A/B: original Multi2, finite 20ms wait.
-      AXIA_G07_CI_EXECUTOR_WAIT_BOUNDED_AB: '1'
+      # Original Multi2 spin restored; rejected bounded 20ms wait candidate not adopted.
+      AXIA_G07_CI_EXECUTOR_WAIT_BOUNDED_AB: '0'
       # Original 2-thread Observer plus read-only independent DDS witness.
       AXIA_G07_CI_OWNER_BAG_PARITY: '1'
       AXIA_P2_G07_OWNER_PARITY_CHECK: '1'
@@ -558,12 +558,28 @@ jobs:
             echo 'AXIA_G07_FIRST_HEALTH_NOT_CAPTURED_OR_HEALTH_PASSED_UNVERIFIED_HOLD'
           fi
           sha256sum "$dst" > "$dst.sha256"
+      - name: G25 preserve original first managed teardown roles without paths or PIDs
+        if: always()
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/public_evidence"
+          python3 "$GITHUB_WORKSPACE/ci/d06/diagnostic/g07_g25_teardown_process_boundary.py" \
+            --processes "$GITHUB_WORKSPACE/native/teardown_processes.txt" \
+            --teardown "$GITHUB_WORKSPACE/native/teardown.txt" \
+            --stdout "$GITHUB_WORKSPACE/public_evidence/moving_stdout.log" \
+            --output "$GITHUB_WORKSPACE/public_evidence/teardown_first_process_boundary.json"
+          sha256sum "$GITHUB_WORKSPACE/public_evidence/teardown_first_process_boundary.json" \
+            > "$GITHUB_WORKSPACE/public_evidence/teardown_first_process_boundary.sha256"
+          echo 'AXIA_G07_G25_ROLE_EVIDENCE_HOLD_NATIVE_1_OF_1_DIAGNOSTIC_ONLY'
       - name: Upload allowlisted numeric verdict only no original raw bag
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: axia-task04-moving-native-numeric-${{ github.run_id }}-cycle-${{ matrix.cycle }}-cycle-${{ matrix.cycle }}
           path: |
+            public_evidence/teardown_first_process_boundary.json
+            public_evidence/teardown_first_process_boundary.sha256
             public_evidence/task04_mvp_visual_l2_verdict.json
             public_evidence/task04_mvp_visual_l2_verdict.sha256
             public_evidence/cm_stop_pub_first_latch.json
