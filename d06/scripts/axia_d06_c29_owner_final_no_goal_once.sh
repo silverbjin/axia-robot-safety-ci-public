@@ -4,7 +4,7 @@
 # Trigger ONLY after C29 CycloneDDS full real Linux L2 2/2 PASS.
 set -Eeuo pipefail
 umask 077
-MODE="\${1:---self-check}"
+MODE="${1:---self-check}"
 if [[ "$MODE" == --self-check && $# == 1 ]];then
   echo 'C29_OWNER_SELF_CHECK_L0_PASS_NO_ROS_NO_GAZEBO_NO_GOAL'
   echo 'C29_CI_CYCLONE_NATIVE_L2_TWO_COLD=PASS_2_OF_2_RUN_44876761417'
@@ -12,17 +12,17 @@ if [[ "$MODE" == --self-check && $# == 1 ]];then
   exit 0
 fi
 [[ "$MODE" == --run && $# == 1 ]] || { echo 'C29_USAGE=--self-check|--run' >&2;exit 2; }
-if [[ "\${GITHUB_ACTIONS:-}" == true ]];then
+if [[ "${GITHUB_ACTIONS:-}" == true ]];then
   echo 'C29_OWNER_WSL2_ONLY_NO_SIMULATION' >&2;exit 3
 fi
 grep -Eqi 'microsoft|wsl' /proc/sys/kernel/osrelease || {
   echo 'C29_OWNER_WSL2_ONLY_NO_SIMULATION' >&2;exit 3;
 }
 . /etc/os-release
-if [[ "\${ID:-}" != ubuntu || "\${VERSION_ID:-}" != 24.04 ]];then
+if [[ "${ID:-}" != ubuntu || "${VERSION_ID:-}" != 24.04 ]];then
   echo 'C29_OWNER_WSL2_UBUNTU2404_REQUIRED_NO_SIMULATION' >&2;exit 3
 fi
-[[ -n "\${DISPLAY:-}" && -r /opt/ros/jazzy/setup.bash ]] || {
+[[ -n "${DISPLAY:-}" && -r /opt/ros/jazzy/setup.bash ]] || {
   echo 'C29_OWNER_WSLG_GUI_OR_ROS_JAZZY_MISSING_NO_SIM' >&2;exit 3
 }
 for bin in curl git sha256sum python3 bash tar glxinfo timeout;do
@@ -38,7 +38,7 @@ fi
 set +u
 source /opt/ros/jazzy/setup.bash
 set -u
-[[ "\${ROS_DISTRO:-}" == jazzy ]] || {
+[[ "${ROS_DISTRO:-}" == jazzy ]] || {
   echo 'C29_OWNER_ROS_JAZZY_REQUIRED_NO_SIMULATION' >&2;exit 3
 }
 # RMW selection is explicit and limited to this ONE process tree, never a
@@ -58,7 +58,7 @@ export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 export ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
 for flag in AXIA_G07_CI_SIM_GOAL_ALLOWED AXIA_G07_TASK04_OWNER_MOVING_L3 \
   AXIA_G07_TASK04_CI_GUI_MOVING AXIA_FAULT_INJECTION_ENABLED;do
-  [[ "\${!flag:-0}" != 1 ]] || {
+  [[ "${!flag:-0}" != 1 ]] || {
     echo "C29_OWNER_MOVING_OR_FAULT_AUTHORITY_DENIED=$flag";exit 3;
   }
 done
