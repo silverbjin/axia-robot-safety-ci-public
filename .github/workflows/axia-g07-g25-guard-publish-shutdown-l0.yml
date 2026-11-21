@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: a3547586fd837b2175caf069faf947b551327fa9
+          ref: c0a2b4d727383fd97c1541b22238ba67026d70e0
           path: student
           persist-credentials: false
       - name: RED first actual Guard invalid publisher after ROS context shutdown
