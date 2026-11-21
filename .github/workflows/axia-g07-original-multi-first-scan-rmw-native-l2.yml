@@ -566,6 +566,40 @@ jobs:
             echo 'AXIA_G07_NATIVE_IO_PROBE_NOT_CAPTURED_CAUSE_HOLD'
           fi
           sha256sum "$dest" > "$dest.sha256"
+      - name: Join first postGoal exact CM RMW and same-window heartbeat diagnostic only
+        if: always()
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/public_evidence"
+          PYTHONPATH="$GITHUB_WORKSPACE/ci" python3 - \
+            "$GITHUB_WORKSPACE/public_evidence/first_delivery_actual_pairs.json" \
+            "$GITHUB_WORKSPACE/public_evidence/independent_cm_pair_verdict.json" \
+            "$GITHUB_WORKSPACE/public_evidence/observer_io_first_boundary.json" \
+            "$GITHUB_WORKSPACE/public_evidence/first_postgoal_rmw_heartbeat_join.json" <<'PY_FIRST_POSTGOAL'
+          import json,sys
+          from pathlib import Path
+          from d06.diagnostic.g07_first_actual_delivery_gap import first_postgoal_reception_boundary
+          source=[Path(x) for x in sys.argv[1:4]]
+          dest=Path(sys.argv[4])
+          def read(path):
+              if (not path.is_file() or path.is_symlink()
+                      or path.stat().st_size>131072):
+                  return {}
+              try:
+                  x=json.loads(path.read_text())
+                  return x if isinstance(x,dict) else {}
+              except (ValueError,OSError,UnicodeError):
+                  return {}
+          result=first_postgoal_reception_boundary(*(read(x) for x in source))
+          assert result["release"]=="HOLD" and result["root_cause_proven"] is False
+          assert result["actual_safety_delivery_pass"] is False
+          assert result["owner_l3_accepted"] is False and result["certified_estop"] is False
+          dest.write_text(json.dumps(result,sort_keys=True,allow_nan=False,indent=2)+"\n")
+          print("AXIA_G07_FIRST_POSTGOAL_RMW_HEARTBEAT_JOIN "+json.dumps(result,sort_keys=True))
+          PY_FIRST_POSTGOAL
+          sha256sum "$GITHUB_WORKSPACE/public_evidence/first_postgoal_rmw_heartbeat_join.json" \
+            > "$GITHUB_WORKSPACE/public_evidence/first_postgoal_rmw_heartbeat_join.sha256"
       - name: Preserve actual first HEALTH readiness boundary numeric-only
         if: always()
         shell: bash
@@ -630,6 +664,8 @@ jobs:
             public_evidence/first_health_boundary.json.sha256
             public_evidence/observer_io_first_boundary.json
             public_evidence/observer_io_first_boundary.json.sha256
+            public_evidence/first_postgoal_rmw_heartbeat_join.json
+            public_evidence/first_postgoal_rmw_heartbeat_join.sha256
             public_evidence/first_scan_pregoal_boundary.json
             public_evidence/first_scan_rosbag_exact_pair.json
             public_evidence/first_scan_rosbag_exact_pair.sha256
