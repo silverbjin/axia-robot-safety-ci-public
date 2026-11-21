@@ -478,20 +478,20 @@ jobs:
           dest="$GITHUB_WORKSPACE/public_evidence/observer_io_first_boundary.json"
           if [[ -f "$source" && ! -L "$source" && "$(stat -c %s "$source")" -lt 131072 ]];then
             python3 - "$source" "$dest" <<'PY_OBSERVER_PROBE'
-import json,sys
-from pathlib import Path
-source,target=map(Path,sys.argv[1:])
-d=json.loads(source.read_text())
-assert d.get("schema")=="axia.g07.observer_callback_io_probe.v1",d
-assert d.get("release")=="HOLD" and not d.get("root_cause_proven")
-assert d.get("certified_estop") is False and d.get("owner_l3_accepted") is False
-assert d.get("captured",0)>=1
-target.write_text(json.dumps(d,sort_keys=True,indent=2)+"\n")
-print("AXIA_G07_REAL_NATIVE_OBSERVER_IO_BOUNDARY "+
-    json.dumps({k:d.get(k) for k in ("status","first_violation",
-    "correlated_channels","max_lock_wait_ms","max_json_ms","max_write_ms",
-    "max_flush_ms","heartbeat_max_gap_ms","release")},sort_keys=True))
-PY_OBSERVER_PROBE
+          import json,sys
+          from pathlib import Path
+          source,target=map(Path,sys.argv[1:])
+          d=json.loads(source.read_text())
+          assert d.get("schema")=="axia.g07.observer_callback_io_probe.v1",d
+          assert d.get("release")=="HOLD" and not d.get("root_cause_proven")
+          assert d.get("certified_estop") is False and d.get("owner_l3_accepted") is False
+          assert d.get("captured",0)>=1
+          target.write_text(json.dumps(d,sort_keys=True,indent=2)+"\n")
+          print("AXIA_G07_REAL_NATIVE_OBSERVER_IO_BOUNDARY "+
+              json.dumps({k:d.get(k) for k in ("status","first_violation",
+              "correlated_channels","max_lock_wait_ms","max_json_ms","max_write_ms",
+              "max_flush_ms","heartbeat_max_gap_ms","release")},sort_keys=True))
+          PY_OBSERVER_PROBE
           else
             printf '%s\n' '{"schema":"axia.g07.observer_callback_io_probe.v1","status":"NATIVE_IO_PROBE_MISSING_HOLD","release":"HOLD","root_cause_proven":false,"certified_estop":false}' > "$dest"
             echo 'AXIA_G07_NATIVE_IO_PROBE_NOT_CAPTURED_CAUSE_HOLD'
