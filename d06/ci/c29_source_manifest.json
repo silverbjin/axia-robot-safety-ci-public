@@ -1,0 +1,57 @@
+{
+  "schema": "axia.d06.c29.ci-first.v1",
+  "scope": "C29-01 immutable baseline before real C29-03 two cold-run FULL NO_GOAL L2",
+  "public_baseline_sha": "4fd31b87de381b3c72d2cde02bebf309ce683f63",
+  "public_c28_sha": "ffe0d467e159efcf1b60da6263203d3cee86f9d5",
+  "c28_owner_compact_blob": "cefe00b6304c7bab0265b7b5d660cfb9a909a3a3",
+  "student_sha": "6c79c09d91f13c81961492eb30e66d99d307831c",
+  "smoke_blob": "cc3c64f7ae769a11d9daad4acdbdb48141253f7c",
+  "guard_blob": "72a117d9a1b22748ffd16171d213916c095a623e",
+  "launch_blob": "b2886cdf509d99ea62528cd013669258764b05e0",
+  "ordered_shutdown_blob": "0d25b753772ababf309cc57783a1572f4cfcc8d3",
+  "baseline_l2_workflow": ".github/workflows/axia-d06-g07-native-nogoal-cm-clean-l2-20261119.yml",
+  "baseline_l2_workflow_blob": "3d8a69b23147a81a97bb869d6f3d3409819c57d9",
+  "runtime_image": "ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e",
+  "runtime_image_digest": "sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e",
+  "ros": "jazzy",
+  "gazebo": "harmonic",
+  "os_ci": "Ubuntu 24.04 container hosted Linux",
+  "os_owner": "Windows WSL2 Ubuntu 24.04 / WSLg D3D12 NVIDIA RTX 2060 Max-Q",
+  "target_rmw": "rmw_fastrtps_cpp",
+  "wsL2_owner_rmw_verified": false,
+  "window_sec": 20,
+  "scan_ttl_ms": 300,
+  "cycle_count": 2,
+  "goal_authorized": false,
+  "moving_goal_scope": "NOT_TESTED",
+  "certified_estop": false,
+  "main_merge_allowed": false,
+  "preexisting_C27_empty_world_l2": {
+    "run_id": 44866813322,
+    "status": "PASS",
+    "scope": "real gz sim empty.sdf only; NOT TB3 Nav2 CM Scan / NVIDIA WSLg"
+  },
+  "preexisting_C28_l0": {
+    "run_id": 44866661745,
+    "status": "PASS",
+    "scope": "offline evidence compactor exact EOF and first TTL fixtures"
+  },
+  "preexisting_C27_student_guard_l0": {
+    "run_id": 44864257662,
+    "status": "PASS",
+    "scope": "offline source pin and gz exit markers, no real WSLg"
+  },
+  "first_owner_wsl2_failure": {
+    "raw_first_receipt_gap_ms": 316.032,
+    "safety_first_receipt_gap_ms": 357.472,
+    "navigation_service_timeout_sec": 40.000851,
+    "cm_exit_code": null,
+    "teardown": "FORCED",
+    "gazebo_native_exit0": "UNPROVEN",
+    "root_cause": "UNDETERMINED"
+  },
+  "full_l2_2cycles_status": "NOT_RUN",
+  "owner_wsl2_l3_status": "NOT_RUN",
+  "acceptance": "HOLD",
+  "note": "No CI PASS (even two cold runs) is Windows WSLg acceptance. Keep CM120 Guard150 moving E2E unverified."
+}
