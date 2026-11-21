@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: e9a5c4c01bb3d2c7c31761db9808946c0dbc87de
+          ref: 92fa6c137eb751792eb6f830f55e64c4803c195c
           path: student
           persist-credentials: false
       - name: Native clock >4096 callback retention and no repeated postGoal DDS graph
