@@ -1,0 +1,44 @@
+name: AXIA G07 G00 G10 G25 Scoped Full L0 Review HOLD
+on:
+  push:
+    branches: ['fix/g07-g50-first-boundary-ci-20261121']
+    paths:
+      - '.github/workflows/axia-g07-g00-g10-g25-final-review-l0.yml'
+permissions:
+  contents: read
+jobs:
+  scoped_review_no_native_goal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with: {persist-credentials: false}
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: 13455b232f24f94b4fb5dd2bbc4222b2b64360f0
+          path: student
+          persist-credentials: false
+      - name: All public Python contracts and exact restored G07 original motion
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 -m pytest -q -ra tests
+          python3 - <<'PY_CHECK'
+          from pathlib import Path
+          import subprocess
+          s=Path('student/block_B/day07/h01_runtime/tools/p2_g07_ci_moving_goal.py').read_text()
+          assert "SLOW_ENTRY_FORWARD" not in s
+          assert "from p2_g07_ci_slow_entry import" not in s
+          assert 'rows["slow"]=wait(phase("slow"),35,"SLOW")' in s
+          sha=subprocess.check_output(['git','-C','student','hash-object','block_B/day07/h01_runtime/tools/p2_g07_ci_moving_goal.py'],text=True).strip()
+          assert sha=='2ab4acf78240229f17ef119b4237981a913aea59',sha
+          wf=Path('.github/workflows/axia-g07-original-multi-first-scan-rmw-native-l2.yml').read_text()
+          assert 'workflow_dispatch:' in wf
+          assert 'if: ${{ false }}' in wf
+          assert '13455b232f24f94b4fb5dd2bbc4222b2b64360f0' in wf
+          assert "AXIA_G07_CI_EXECUTOR_WAIT_BOUNDED_AB: '0'" in wf
+          print("AXIA_G07_REJECTED_NATIVE_NO_AUTOMATIC_GOAL_RESTORED_STUDENT_EXACT_BLOB_PASS")
+          PY_CHECK
+          bash -n scripts/axia_g07_task04_owner_moving_l3_once.sh
+          echo 'AXIA_G07_G00_G10_G25_REVIEW_L0_PASS_NATIVE_L2_2OF2_FAIL_WSL2_L3_NOT_RUN_RELEASE_HOLD'
