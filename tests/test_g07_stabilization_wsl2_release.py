@@ -112,7 +112,10 @@ fi
         script=SCRIPT.read_text()
         # Actual new same Student Source native 2/2 passed before release.
         # No unverified headless 0/2 source may authorize Owner Goal.
-        self.assertIn("ref: "+STUDENT,flow)
+        # Candidate is not yet an authorized Owner release until actual native
+        # Gazebo 2/2 proves both Navigation+Localization shutdown ACK.
+        self.assertIn("ref: b56a1d12bdf32b25880cd9ddbe7bb1bb82265788",flow)
+        self.assertNotIn("ref: "+STUDENT,flow)
         self.assertIn("readonly STUDENT_SHA='"+STUDENT+"'",script)
         self.assertIn("readonly CI_L2_RUN="+str(RUN),script)
         self.assertIn("readonly CI_L2_HEAD='"+HEAD+"'",script)
