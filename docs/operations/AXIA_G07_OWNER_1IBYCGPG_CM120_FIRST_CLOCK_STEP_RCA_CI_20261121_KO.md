@@ -104,3 +104,33 @@ OBSERVER_SCHEDULING_ROOT=UNDETERMINED
 CERTIFIED_ESTOP=false
 MAIN_MERGED=false
 ```
+
+## 6. 신규 CM Observer 콜백/Executor 교차 검증 — 원본 및 2단계 A/B
+
+### WSL2 원본의 첫 실제 callback backlog
+원본 `actual_ros_events.jsonl`을 토픽별 **발행 sequence+1**로 재검토:
+- Cancel 시도 **이전** `pre_guard` Monotonic **111.912750ms** vs 동일 쌍 RMW Received **50.552019ms** (콜백 간격 벌어짐 **+61.360731ms**). `supervised`도 Monotonic111.857726ms vs RMW50.158554ms.
+- `task03_motion_window_end` `257.490634790`을 가로지르는 첫 엄격 CM 위반: `pre_guard` Monotonic124.069382ms vs RMW41.902093ms (추가 **+82.167289ms**). `supervised` 동시 Monotonic123.971581ms vs RMW49.806923ms (추가 **+74.164658ms**).
+- 같은 순간 `/cmd_vel` Observer126.885826ms, `guard`127.189781ms, `supervisor`124.013226ms. `/clock`와 `/odom`은 당시에도 관측되므로 시스템 전체 정지라는 단정은 금지.
+- 독립 rosbag 수신 gap은 동일 좁은 구간 `/cmd_vel_pre_guard` 최대66.794719ms, `/cmd_vel_supervised` 66.838248ms. 시스템시각/RMW received 절대 epoch와 Host Monotonic 절대 epoch는 서로 빼지 않음.
+- 따라서 실제 모니터의 입력 간격 증가/콜백 처리 대기 **후보**가 있으나, `cancel` 서비스 생성은 공백 이전 111ms 증거가 있으므로 **유일한 근본 원인으로 확정하지 않음**.
+
+정량 비교 read-only classifier:
+`d06/diagnostic/g07_cm_observer_first_gap.py` /
+`tests/test_g07_cm_observer_first_gap.py`.
+최초 콜백 지연 >120ms는 그대로 **HOLD**. 새 분석기가 RMW timestamp 2.815s 도약의 실제 발행 중단 판정으로부터 분리해서 표시할 뿐 타이밍 안전 한계를 완화하지 않음.
+
+### 기존 분기 확인 및 신규 Student opt-in
+- 기존 Student [PR #73](https://github.com/silverbjin/axia-robot-safety-student/pull/73) `fix/g07-rmw-receive-observer-executor-20261120`은 read-only Observer SingleThreadedExecutor A/B를 시도했으나 최신 WSL2 124ms 사례의 causal GREEN이 아님. 동일 수정 복제 회피.
+- 공식 ROS 2 `MutuallyExclusiveCallbackGroup`에서는 기본 그룹을 공유하는 여러 구독이 2-worker `MultiThreadedExecutor`에서도 병렬 실행되지 않음.
+- [Student Draft PR #79](https://github.com/silverbjin/axia-robot-safety-student/pull/79) / `fix/g07-owner-1ibycgpg-cm-observer-groups-20261121`: **기본 OFF**, `AXIA_G07_CM_OBSERVER_GROUPS=1` + Owner/CI parity에서만 기존 read-only `/cmd_vel_pre_guard`, `/cmd_vel_supervised` 각각 별도 MutuallyExclusive 그룹으로 배치. 같은 토픽 메시지 순서 보존, CM/Nav2/Guard/Goal/Scan/QoS 원본 불변.
+- 공개 Student 행동계약 RED [#44854175333](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44854175333) → GREEN [#44854270797](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44854270797): 신규 5/5 + 기존 Scan/Clock/Odom 12/12 PASS.
+
+### 실제 Jazzy L1 (진단 한정)
+- 독립 테스트 전용 fake Twist 2토픽과 강제로 240ms 지연시키는 default group 콜백. **실제 ROS2 Jazzy rclpy** 컨테이너에서 실행, 실제 Nav2/Gazebo/Goal/Guard 없음.
+- 초기 동일 프로세스 퍼블리셔 A/B [#44854412776](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44854412776): baseline 최대1334ms, 격리 최대2283ms → **FAIL**.
+- Publisher seq 모니터링 추가 [#44854690351](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44854690351): 테스트 발행 루프 자체 최대653.779/997.831ms 지연 → 해당 실험에서 그룹효과 판정 불가. Fail-closed.
+- `tools/g07_cm_observer_groups_ros_l1.py`를 **별도 OS 퍼블리셔** + 실제 DDS received MessageInfo + Host Monotonic 시퀀스 대조 A/B로 수정. [실제 L1 #44854990687](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44854990687) 결과에 따라서만 다음 단계로 진행.
+- **L1 GREEN ≠ WSL2 최초 장애 근본 원인 확정**. 안정적인 독립 퍼블리셔 주기, 차단 콜백 재현, 개선된 Observer<=120ms까지 세 조건 모두 충족 시에만 현장 가설을 유효 후보로 올림.
+- L1 실패 시 CI 환경 퍼블리셔/RMW/Executor 타임라인을 먼저 분리하고, 사용자 WSL2 Goal 재시도 및 새 Gazebo moving 테스트는 HOLD 유지.
+
