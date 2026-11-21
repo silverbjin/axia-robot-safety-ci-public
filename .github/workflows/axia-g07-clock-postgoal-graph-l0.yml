@@ -1,0 +1,26 @@
+name: AXIA G07 Native Clock Retention and PostGoal Graph L0
+on:
+  push:
+    branches: ['fix/g07-clock-retention-postgoal-graph-ci-20261121']
+    paths: ['.github/workflows/axia-g07-clock-postgoal-graph-l0.yml']
+permissions: {contents: read}
+jobs:
+  native-first-clock-and-dds-graph-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: e9a5c4c01bb3d2c7c31761db9808946c0dbc87de
+          path: student
+          persist-credentials: false
+      - name: Native clock >4096 callback retention and no repeated postGoal DDS graph
+        run: |
+          set -Eeuo pipefail
+          cd student/block_B/day07/h01_runtime
+          python3 -m unittest discover -s tools -p 'test_g07_clock_window_postgoal_graph.py' -v
+          python3 -m unittest discover -s tools -p 'test_g07_scan_wall_pregoal.py' -v
+          python3 -m unittest discover -s tools -p 'test_g07_observer_io_first_boundary.py' -v
+          python3 -m unittest discover -s tools -p 'test_g07_task04_mvp_minimal_fix.py' -v
+          echo 'AXIA_G07_CLOCK_WINDOW_POSTGOAL_GRAPH_L0_PASS_NO_GAZEBO_NO_GOAL'
