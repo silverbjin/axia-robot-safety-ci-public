@@ -19,7 +19,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 15bf27faa856df85aab31f1175c7127cb2411e3d
+          ref: 8bc6826eed88726c166118dfb2b8d7425bafc574
           path: student
           persist-credentials: false
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
@@ -38,6 +38,7 @@ jobs:
           python3 -m unittest discover -s tools -p 'test_g07_pregoal_stream_discovery.py' -v
           python3 -m unittest discover -s tools -p 'test_g07_events_executor_ci_ab.py' -v
           python3 -m unittest discover -s tools -p 'test_g07_health_first_boundary.py' -v
+          python3 -m unittest discover -s tools -p 'test_g07_scan_rmw_first_pair.py' -v
           python3 -m unittest discover -s tools -p 'test_g07_pregoal_stream_discovery.py' -v
           python3 -m unittest discover -s tools -p 'test_g07_observer_io_first_boundary.py' -v
           python3 -m unittest discover -s tools -p 'test_g07_task04_mvp_minimal_fix.py' -v
