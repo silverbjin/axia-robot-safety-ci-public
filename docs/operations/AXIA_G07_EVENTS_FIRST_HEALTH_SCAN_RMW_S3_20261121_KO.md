@@ -64,3 +64,11 @@ MAIN_MERGE=false
 ```
 
 다음 후보는 **기존 2-worker baseline**을 고정하고 Scan 첫 424.373ms 대 independent rosbag 동일 header 101.297ms를 근거로 **원 Observation 프로세스의 수신/take/Executor 경계**만 최소 분석하는 것. DDS Received 실제 시간차·독립 CM publication seq 및 ROS bag 동일 헤더 증거를 대조해 처음 실패를 결정. Python Callback / Writer / flush 자체 max <3ms 관측 이전 증거 보존. `EventsExecutor` 재선정, ROS2 내부 직접 패치, 안전 TTL 완화, 새로운 Planner/Supervisor/CM 및 과도한 C++ 노드 추가 금지. 기본 Multi2에서도 120/150/300ms 전체 safety gate 실제 Gazebo 2/2 GREEN과 현장 WSL2 단일 인수가 전까지 출고 HOLD.
+
+## 7. 최초 HEALTH 축약 증거 custody 회귀
+
+- #44864310689의 원본 `g07_ci_moving.log`는 FIRST HEALTH 46개 샘플, 최초/최종 상태, no Goal을 출력. 해당 workflow artifact의 `first_health_boundary.json`은 `NO_FIRST_HEALTH_TIMEOUT_EVIDENCE` fallback으로 수록됨. 파일 자체가 누락됐는지 또는 기존 **16KiB 입력 상한**에 의해 거부됐는지는 artifacts만으로 확정되지 않음.
+- 재현 가능한 크기 경계 unit: 실제 동일 schema 46개 샘플 fixture JSON은 **16KiB 초과·64KiB 미만**이며, 처음/마지막 상태 및 최초 전이만 allowlist하면 **4KiB 미만**. 원문 전체 또는 Goal UUID/개인 경로 업로드 불필요.
+- RED [#44865107443](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44865107443) → GREEN [#44865168284](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44865168284): 전체 공개 **311 PASS, 3 SKIP**. `tests/test_g07_first_health_compact_custody.py`.
+- 변경: `axia-g07-events-first-health-native-l2.yml` 및 `axia-g07-events-first-scan-rmw-native-l2.yml`에서 입력크기 상한만 16384→65536 byte로 확대, **업로드 필드는 동일한 first/last/state transition 숫자 allowlist**, 검증은 항상 `release=HOLD`로 유지. 런타임 Safety/TTL/Goal/STOP 변경 없음.
+- YAML 변경으로 추가 native diagnostic workflow run이 자동 트리거됐으나, 이는 **기존 EventsExecutor REJECT 판정을 변경하지 않으며 RELEASE 근거로 사용하지 않음**. 최종 WSL2 Owner 인수와 Gazebo strict 2/2는 여전히 미검증.
