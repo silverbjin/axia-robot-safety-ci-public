@@ -112,7 +112,7 @@ fi
         script=SCRIPT.read_text()
         # During RED→GREEN the active native Student candidate is NOT yet an
         # Owner release. The Owner remains pinned to previously verified 2/2.
-        self.assertIn("ref: b785bf4bbdde7fe80c0432cb02618696fac90119",flow)
+        self.assertIn("ref: d31d560012f467ae728485eaf9e0333877c734f4",flow)
         self.assertNotIn("ref: "+STUDENT,flow)
         self.assertIn("readonly STUDENT_SHA='"+STUDENT+"'",script)
         self.assertIn("readonly CI_L2_RUN="+str(RUN),script)
