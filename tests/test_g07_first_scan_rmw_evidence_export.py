@@ -53,6 +53,8 @@ class NativeFirstBoundaryAttribution(unittest.TestCase):
         self.assertFalse(r["exact_publication_cross_process_proven"])
         self.assertFalse(r["root_cause_proven"])
         self.assertEqual(r["release"],"HOLD")
+        self.assertFalse(r["pregoal_goal_sent"])
+        self.assertNotIn("actual_goal_sent",r) # report cannot infer post-pregoal actual Goal
 
     def test_latest_real_424ms_scan_with_synthetic_valid_rmw_intervals_is_candidate_only(self):
         d=first_run()
