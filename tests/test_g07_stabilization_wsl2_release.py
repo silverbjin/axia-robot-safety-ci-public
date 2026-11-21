@@ -110,7 +110,10 @@ fi
     def test_strict_native_run_and_owner_source_share_exact_committed_sha(self):
         flow=(ROOT/".github/workflows/axia-g07-original-multi-first-scan-rmw-native-l2.yml").read_text()
         script=SCRIPT.read_text()
-        self.assertIn("ref: "+STUDENT,flow)
+        # During RED→GREEN the active native Student candidate is NOT yet an
+        # Owner release. The Owner remains pinned to previously verified 2/2.
+        self.assertIn("ref: e3d88d6754a5ff9192214e3000f3248ff01da962",flow)
+        self.assertNotIn("ref: "+STUDENT,flow)
         self.assertIn("readonly STUDENT_SHA='"+STUDENT+"'",script)
         self.assertIn("readonly CI_L2_RUN="+str(RUN),script)
         self.assertIn("readonly CI_L2_HEAD='"+HEAD+"'",script)
