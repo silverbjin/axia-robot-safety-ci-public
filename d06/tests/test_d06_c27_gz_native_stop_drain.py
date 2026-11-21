@@ -6,8 +6,8 @@ import subprocess
 import tempfile
 import unittest
 
-STUDENT_SHA = "0565e580f5b7c80d719960a6046de3e45c8ea477"  # RED old source
-EXPECTED_SMOKE_BLOB = "81adb67b40b3c7ee937bc2c695c4906282391774"
+STUDENT_SHA = "6c79c09d91f13c81961492eb30e66d99d307831c"  # GREEN patched source
+EXPECTED_SMOKE_BLOB = "cc3c64f7ae769a11d9daad4acdbdb48141253f7c"
 EXPECTED_HELPER_BLOB = "72a117d9a1b22748ffd16171d213916c095a623e"
 ROOT = ("https://raw.githubusercontent.com/silverbjin/"
         "axia-robot-safety-student/")
