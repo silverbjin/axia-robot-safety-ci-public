@@ -41,6 +41,9 @@ jobs:
           grep -q 'FAIL: test_N_same_path_different_time' "$RUNNER_TEMP/d13_expected_red.log"
           echo D13_STUDENT_TODO_EXPECTED_RED_P_N_ONLY=PASS
   sealed-reference-green:
+    # Protected source is available only on the authorized historical P3 sealed lane.
+    # Other refs run the public TODO job; release proof is Run #44873492853.
+    if: github.ref == 'refs/heads/release/p2-g06-cm-ttl-20261110'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     environment: axia-instructor-sealed
