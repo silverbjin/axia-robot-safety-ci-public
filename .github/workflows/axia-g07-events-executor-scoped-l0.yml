@@ -12,13 +12,14 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 2b6b7eee4895ea66db119fc8f43894da38a1cdc4
+          ref: 26f4abecad2d714721ad27cebe6e5c36d7705b2c
           path: student
           persist-credentials: false
       - name: Scoped fail-closed EventsExecutor official Jazzy A/B
         run: |
           set -Eeuo pipefail
           cd student/block_B/day07/h01_runtime
+          python3 -m py_compile tools/p2_g07_scan_wall_pregoal.py tools/p2_g07_ci_moving_goal.py
           python3 -m unittest discover -s tools -p 'test_g07_events_executor_ci_ab.py' -v
           python3 -m unittest discover -s tools -p 'test_g07_pregoal_stream_discovery.py' -v
           python3 -m unittest discover -s tools -p 'test_g07_observer_io_first_boundary.py' -v
