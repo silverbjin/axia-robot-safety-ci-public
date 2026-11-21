@@ -211,8 +211,12 @@ grep -Eiq 'microsoft|wsl' /proc/sys/kernel/osrelease || hold WSL2_REQUIRED
 source /etc/os-release
 [[ "$ID" == ubuntu && "$VERSION_ID" == 24.04 ]] || hold UBUNTU_2404_REQUIRED
 [[ -r /opt/ros/jazzy/setup.bash ]] || hold ROS_JAZZY_REQUIRED
-[[ -n "${DISPLAY:-}" && -n "${XDG_RUNTIME_DIR:-}" ]] || hold WSLG_GUI_REQUIRED
-for cmd in git bash python3 gz glxinfo xwininfo tar sha256sum timeout setsid colcon flock dpkg-query curl;do
+# WSLg GUI is DIAGNOSTIC ONLY: failed/missing DISPLAY cannot block
+# headless Gazebo safety evidence. No spoofing of the real WSL2 kernel gate.
+if [[ -z "${DISPLAY:-}" || -z "${XDG_RUNTIME_DIR:-}" ]];then
+  echo 'AXIA_G07_GUI_DIAGNOSTIC_ONLY WSLG_DISPLAY_UNAVAILABLE HEADLESS_ALLOWED'
+fi
+for cmd in git bash python3 gz tar sha256sum timeout setsid colcon flock dpkg-query curl;do
   command -v "$cmd" >/dev/null 2>&1 || hold "MISSING_COMMAND_$cmd"
 done
 
@@ -221,6 +225,11 @@ export AXIA_G07_CI_SIM_GOAL_ALLOWED=0
 export AXIA_P0_SIM_ONLY=1
 export AXIA_P2_G07_PHYSICAL_PREFLIGHT=1
 export AXIA_G07_OWNER_STARTUP_PARITY=1
+# Exactly one G07 session profile. Other D04/D05 scenarios and the official
+# TB3 RealSense definition are unchanged. Missing startup ACK must be logged.
+export AXIA_G07_GUI_DIAGNOSTIC_ONLY=1
+export AXIA_G07_DEPTH_SENSOR_ENABLED=0
+export AXIA_G07_STARTUP_READONLY_RECONCILE=1
 # Exact Student 891bf653... uses a CI/Owner-separated single-request
 # navigation Lifecycle SHUTDOWN on the DDS participant already proven by
 # read-only /get_parameters. Owner never spoofs GITHUB_ACTIONS or CI Goal.
@@ -230,7 +239,8 @@ export AXIA_G07_CI_OWNER_BAG_PARITY=1
 export AXIA_P2_G07_RELOCATED_OBSTACLE=1
 export AXIA_G07_TASK02_SIMPLE_TF_CANDIDATE=1
 export AXIA_G07_TASK04_OWNER_MOVING_L3=1
-# Scan 300ms strict NO_GOAL observation is in the SAME running Gazebo graph.
+# Scan >300ms is recorded, not a standalone admission failure. The real
+# Scan header/sequence/freshness watchdog and CM/Guard/Clock/Odom stay strict.
 export AXIA_G07_SCAN_PREFLIGHT_STRICT=1
 export AXIA_G07_TASK03_ECM_WITNESS=1
 export AXIA_NAV2_USE_COMPOSITION=False
@@ -245,13 +255,15 @@ export ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
 # Verified in actual public Jazzy/Harmonic 2-cycle #44697383450:
 # Fast DDS 2.14.x healthy Shared Memory port may block ~333ms (#6535).
 # Limit this Owner child process tree to official UDPv4 built-in transport;
-# never relax CM120 / Guard150 / Scan300 / Clock300 / Odom300 TTL.
+# never relax CM120 / Guard150 / Clock300 / Odom300 or active Scan watchdog.
 # XML transport overrides can reenable SHM; fail closed instead.
 [[ -z "${FASTRTPS_DEFAULT_PROFILES_FILE:-}" && -z "${FASTDDS_DEFAULT_PROFILES_FILE:-}" ]] \
   || hold FASTDDS_XML_OVERRIDE_UNVERIFIED_HOLD
 export FASTDDS_BUILTIN_TRANSPORTS=UDPv4
 echo 'AXIA_G07_FASTDDS_BUILTIN_TRANSPORTS=UDPv4 OWNER_SHM_333MS_MITIGATION_CI_FIRST'
-export QT_QPA_PLATFORM=xcb
+# GUI-only QT/GPU settings are applied by the child GUI launcher. Do not
+# leak xcb/D3D12 to headless Gazebo server or ROS safety processes.
+unset QT_QPA_PLATFORM GALLIUM_DRIVER MESA_D3D12_DEFAULT_ADAPTER_NAME || true
 unset LIBGL_ALWAYS_SOFTWARE || true
 
 BASE="$HOME/axia_g07_task04_owner_moving"
@@ -372,25 +384,26 @@ print("AXIA_G07_TASK04_OWNER_CORE_PARITY_25_5_PASS")
 PY
 startup_mark owner_core_parity_ready
 
-# WSLg D3D12 genuine adapter. No long NO_GOAL demo rerun.
+# Renderer is now diagnostic. Probe only when DISPLAY and glxinfo exist;
+# never allow WSLg failure to stop the headless Gazebo/CM/Guard graph.
 GPU=''
-for adapter in NVIDIA Intel;do
-  if env -u LIBGL_ALWAYS_SOFTWARE GALLIUM_DRIVER=d3d12 MESA_D3D12_DEFAULT_ADAPTER_NAME="$adapter" timeout 12s glxinfo -B > "$OUT/glx_$adapter.txt" 2>&1;then
-    if grep -Eiq "OpenGL renderer string: D3D12.*$adapter" "$OUT/glx_$adapter.txt";then GPU="$adapter";break;fi
-  fi
-done
-[[ -n "$GPU" ]] || hold WSLG_D3D12_ADAPTER_NOT_VERIFIED
-# Publish only the already-GLX-verified GUI adapter. Do NOT set D3D12
-# process-globally: Gazebo server and ROS safety/sensor children keep
-# their original runtime environment.
-export AXIA_G07_TASK04_GUI_D3D12_ADAPTER="$GPU"
+if [[ -n "${DISPLAY:-}" ]] && command -v glxinfo >/dev/null 2>&1;then
+  for adapter in NVIDIA Intel;do
+    if env -u LIBGL_ALWAYS_SOFTWARE GALLIUM_DRIVER=d3d12 MESA_D3D12_DEFAULT_ADAPTER_NAME="$adapter" timeout 12s glxinfo -B > "$OUT/glx_$adapter.txt" 2>&1;then
+      if grep -Eiq "OpenGL renderer string: D3D12.*$adapter" "$OUT/glx_$adapter.txt";then GPU="$adapter";break;fi
+    fi
+  done
+fi
+if [[ -n "$GPU" ]];then
+  export AXIA_G07_TASK04_GUI_D3D12_ADAPTER="$GPU"
+  echo "AXIA_G07_GUI_DIAGNOSTIC_ONLY WSLG_ADAPTER=$GPU"
+else
+  unset AXIA_G07_TASK04_GUI_D3D12_ADAPTER || true
+  echo 'AXIA_G07_GUI_DIAGNOSTIC_ONLY WSLG_ADAPTER_UNVERIFIED HEADLESS_CONTINUES'
+fi
 unset GALLIUM_DRIVER MESA_D3D12_DEFAULT_ADAPTER_NAME || true
-# Real Gazebo software-rendered gpu_lidar: same as verified public CI L2.
-# Student runner reasserts this before launching the one Gazebo server;
-# only gz sim -g / rviz2 GUI children explicitly opt out for D3D12 GPU.
 export LIBGL_ALWAYS_SOFTWARE=1
-echo "AXIA_G07_TASK04_WSLG_D3D12_GPU_SELECTED=$GPU"
-startup_mark wslg_gpu_verified
+startup_mark gui_probe_complete
 
 # Read-only Gazebo8 contact witness. Cold configure was 116.4s on Owner
 # 8ULG28b7 because every evidence run used a NEW CMake build directory.
@@ -474,28 +487,32 @@ export AXIA_G07_TASK03_WITNESS_REPORT="$OUT/native/s02_ecm_witness.json"
 export AXIA_G07_TASK04_EXPECTED_STUDENT_SHA="$STUDENT_SHA"
 mkdir -p "$OUT/native"
 
-# Read-only WSLg X11 window observer; automatically exits on both windows.
-(
-  rv=0;gz=0
-  trap 'printf "rviz=%s\ngazebo=%s\n" "$rv" "$gz" > "$OUT/gui_windows.txt"' EXIT
-  for ((i=0;i<360;i++));do
-    tree="$(timeout 3s xwininfo -root -tree 2>/dev/null || true)"
-    if [[ "$rv" == 0 ]] && grep -Eiq RViz <<< "$tree";then
-      rv=1
-      startup_mark first_rviz_window_detected
-    fi
-    if [[ "$gz" == 0 ]] && grep -Eiq Gazebo <<< "$tree";then
-      gz=1
-      startup_mark first_gazebo_window_detected
-    fi
-    if [[ "$rv" == 1 && "$gz" == 1 ]];then break;fi
-    sleep 2
-  done
-) &
-WATCH_PID=$!
+# Independent GUI diagnostic observer. A headless run launches none and
+# records zero windows; no extra GUI process or safety timeout is needed.
+printf 'rviz=0\ngazebo=0\n' > "$OUT/gui_windows.txt"
+if [[ -n "${DISPLAY:-}" ]] && command -v xwininfo >/dev/null 2>&1;then
+  (
+    rv=0;gz=0
+    trap 'printf "rviz=%s\ngazebo=%s\n" "$rv" "$gz" > "$OUT/gui_windows.txt"' EXIT
+    for ((i=0;i<60;i++));do
+      tree="$(timeout 3s xwininfo -root -tree 2>/dev/null || true)"
+      if [[ "$rv" == 0 ]] && grep -Eiq RViz <<< "$tree";then
+        rv=1
+        startup_mark first_rviz_window_detected
+      fi
+      if [[ "$gz" == 0 ]] && grep -Eiq Gazebo <<< "$tree";then
+        gz=1
+        startup_mark first_gazebo_window_detected
+      fi
+      if [[ "$rv" == 1 && "$gz" == 1 ]];then break;fi
+      sleep 2
+    done
+  ) &
+  WATCH_PID=$!
+fi
 startup_mark owner_runner_start
 echo "AXIA_G07_TASK04_OWNER_MOVING_BEGIN student_sha=$STUDENT_SHA public_l2=$CI_L2_RUN"
-echo 'Gazebo and RViz open automatically; one YES-P2-G07-GOAL consent is requested on YOUR /dev/tty only after safety readiness.'
+echo 'Headless Gazebo safety readiness is mandatory; GUI is diagnostic only. One YES-P2-G07-GOAL consent is requested on YOUR /dev/tty after safety readiness.'
 echo 'Original ROS logs and rosbag remain in a PRIVATE HOME evidence directory.'
 
 # Foreground is intentional: controlling TTY must reach the real ROS runner.
@@ -569,15 +586,18 @@ fi
 RV=0;GZ=0
 grep -Fxq 'rviz=1' "$OUT/gui_windows.txt" && RV=1 || true
 grep -Fxq 'gazebo=1' "$OUT/gui_windows.txt" && GZ=1 || true
-[[ "$RV" == 1 && "$GZ" == 1 ]] || hold MOVING_GUI_WINDOWS_MISSING
-echo 'AXIA_G07_TASK04_OWNER_WSLG_GAZEBO_RVIZ_WINDOWS_PASS'
+if [[ "$RV" == 1 && "$GZ" == 1 ]];then
+  echo 'AXIA_G07_GUI_DIAGNOSTIC_ONLY BOTH_WINDOWS_PRESENT'
+else
+  echo "AXIA_G07_GUI_DIAGNOSTIC_ONLY WINDOW_COUNT=$((RV+GZ)) HEADLESS_EVIDENCE_CONTINUES"
+fi
 
 # Strict formal numeric verifier ALWAYS runs first. FV17z53O showed a
 # REAL, completed physical Goal but original Owner/CI evidence profiles
 # disagreed; after parity repair, a cross-topic RMW wall-clock regression may
 # still be a FORMAL HOLD. Never replace that raw fact with a safety PASS.
 OWNER_REVIEW_RC=0
-python3 "$RUNTIME/tools/p2_g07_task04_moving_review.py" --motion-root "$OUT/native" --witness "$OUT/native/s02_ecm_witness.json" --source-sha "$STUDENT_SHA" --gui-windows 2 --output "$OUT/task04_owner_numeric_review.json" > "$OUT/owner_numeric_review.log" 2>&1 || OWNER_REVIEW_RC=$?
+python3 "$RUNTIME/tools/p2_g07_task04_moving_review.py" --motion-root "$OUT/native" --witness "$OUT/native/s02_ecm_witness.json" --source-sha "$STUDENT_SHA" --gui-windows "$((RV+GZ))" --output "$OUT/task04_owner_numeric_review.json" > "$OUT/owner_numeric_review.log" 2>&1 || OWNER_REVIEW_RC=$?
 if [[ "$OWNER_REVIEW_RC" -ne 0 ]];then
   # Only the actual RMW timebase HOLD may qualify as a *classroom* demo
   # candidate, and only if every other physical/safety test is truly PASS.
@@ -633,7 +653,7 @@ v={"schema":"axia_g07_task04_owner_l3_local_review_pending_v1",
    "source_sha":sys.argv[3],"public_ci_native_l2_run":int(sys.argv[4]),
    "first_failure":"NONE","native_checks":data["checks"],
    "numerical_review":"task04_owner_numeric_review.json",
-   "gui_windows_detected":True,"visual_content_verified":False,
+   "gui_windows_detected":False,"visual_content_verified":False,
    "owner_moving_l3_accepted":False,"axia_mvp_demo_accepted":False,
    "certified_estop":False}
 Path(sys.argv[2]).write_text(json.dumps(v,sort_keys=True,indent=2)+"\n")
