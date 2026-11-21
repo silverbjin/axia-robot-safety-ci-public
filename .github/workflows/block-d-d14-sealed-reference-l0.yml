@@ -1,0 +1,102 @@
+name: AXIA D14 Student RED + Private Exact G09/G10 GREEN L0
+on:
+  push:
+    branches:
+      - feat/block-d-d14-risk-policy-20261121
+      - release/p2-g06-cm-ttl-20261110
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/block-d-d14-sealed-reference-l0.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  student-todo-public-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: d9a4bc67fdff1505d57fd660c8329656396289d1
+          path: student
+          persist-credentials: false
+      - name: Student exactly 11 intentional TODO RED and offline fixture packaging
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C student rev-parse HEAD)" = 'd9a4bc67fdff1505d57fd660c8329656396289d1'
+          set +e
+          python3 -m unittest discover -s student/block_D/day14/tests -p 'test_*.py' -v > "$RUNNER_TEMP/d14_student_red.log" 2>&1
+          rc=$?
+          set -e
+          cat "$RUNNER_TEMP/d14_student_red.log"
+          test "$rc" -eq 1
+          grep -q 'Ran 20 tests' "$RUNNER_TEMP/d14_student_red.log"
+          grep -q 'FAILED (failures=11)' "$RUNNER_TEMP/d14_student_red.log"
+          set +e
+          python3 student/block_D/day14/run_lab.py --out "$RUNNER_TEMP/d14_todo" > "$RUNNER_TEMP/d14_todo.log" 2>&1
+          rc=$?
+          set -e
+          test "$rc" -eq 2
+          grep -q 'D14_STUDENT_RESULT=RED_EXPECTED_TODO' "$RUNNER_TEMP/d14_todo.log"
+          test -f "$RUNNER_TEMP/d14_todo/d14_policy_timeline.html"
+          echo 'D14_PUBLIC_EXPECTED_11_TODO_RED_SCAFFOLD_GREEN=PASS'
+  sealed-instructor-reference-green:
+    # Strictly use pre-existing authorized P3 sealed release environment;
+    # feature/PR refs must not bypass its approval controls.
+    if: github.ref == 'refs/heads/release/p2-g06-cm-ttl-20261110'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    environment: axia-instructor-sealed
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: c86810cec4b8c39bcd18206a7a933f2b9cda5450
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+          path: instructor
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: d9a4bc67fdff1505d57fd660c8329656396289d1
+          persist-credentials: false
+          path: student
+      - name: Verify private exact original G09/G10 and student policy using ephemeral reference
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C instructor rev-parse HEAD)" = 'c86810cec4b8c39bcd18206a7a933f2b9cda5450'
+          test "$(git -C student rev-parse HEAD)" = 'd9a4bc67fdff1505d57fd660c8329656396289d1'
+          python3 -m unittest discover -s instructor/training/block_D/day14/tests -p 'test_*.py' -v
+          cp instructor/training/block_D/day14/solution/p3_g09_risk_policy.py student/block_D/day14/risk_policy_student.py
+          python3 -m unittest discover -s student/block_D/day14/tests -p 'test_*.py' -v
+          python3 student/block_D/day14/run_lab.py --out "$RUNNER_TEMP/d14_green"
+          python3 - "$RUNNER_TEMP/d14_green/d14_policy_results.json" <<'PY'
+          import json,sys
+          d=json.load(open(sys.argv[1]))
+          assert d["all_pass"] is True, "unmatched educational scenario"
+          assert len(d["cases"])==16, "incomplete synthetic policy corpus"
+          assert all(x["pass"] for x in d["cases"])
+          print("D14_POLICY_REFERENCE_GREEN_16_OF_16=1")
+          PY
+          PYTHONPATH="$PWD/instructor/training/block_D/day14/solution" python3 - <<'PY'
+          import json
+          from pathlib import Path
+          from p3_g10_compound import assess_g10_compound
+          e=json.loads(Path("student/block_D/day14/fixtures/g10_events.json").read_text())["events"]
+          out=assess_g10_compound(e)
+          assert len(e)==15
+          assert out["status"]=="L0_SYNTHETIC_SEQUENCE_CANDIDATE"
+          assert out["stop_latency_sec"]==0.45
+          assert out["formal_accepted"] is False and out["goal_sent"] is False
+          print("D14_G10_EXACT_ORACLE_SYNTHETIC_15_EVENT_CANDIDATE_NO_FORMAL_ACCEPTANCE")
+          PY
+          echo 'D14_SEALED_EXACT_G09_G10_STUDENT_GREEN_PASS_NO_ROS_GAZEBO_GOAL_ESTOP'
+      - name: Destroy ephemeral private source and temporary student reference
+        if: always()
+        shell: bash
+        run: rm -rf -- instructor student
