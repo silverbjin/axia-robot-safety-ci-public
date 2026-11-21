@@ -7,7 +7,7 @@ from pathlib import Path
 from d06.diagnostic.g07_first_scan_pair_attribution import assess
 
 ROOT=Path(__file__).resolve().parents[1]
-STUDENT="a95156156c0c60da6c2185a53e8ec4956ba35928"
+STUDENT="78483d12a664d2a92960ecf2721b32916baba231"
 WORKFLOW=ROOT/".github/workflows/axia-g07-original-multi-first-scan-rmw-native-l2.yml"
 
 def first_run():
@@ -117,6 +117,8 @@ class NativeFirstBoundaryAttribution(unittest.TestCase):
         self.assertIn("AXIA_G07_SCAN_PREFLIGHT_STRICT: '1'",s)
         self.assertIn("AXIA_G07_TASK03_FORMAL_CI: '1'",s)
         self.assertIn("compare_same_cm_pair",s)
+        self.assertIn('"first_executor_silence_snapshot"',s)
+        self.assertIn("FIRST_EXECUTOR_SILENCE_STACK",s)
         self.assertNotIn("scan_wall_limit_ms: 500",s)
         self.assertNotIn("certified_estop: true",s)
 
