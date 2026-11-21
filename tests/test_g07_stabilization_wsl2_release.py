@@ -114,7 +114,7 @@ fi
         # No unverified headless 0/2 source may authorize Owner Goal.
         # Candidate is not yet an authorized Owner release until actual native
         # Gazebo 2/2 proves both Navigation+Localization shutdown ACK.
-        self.assertIn("ref: b56a1d12bdf32b25880cd9ddbe7bb1bb82265788",flow)
+        self.assertIn("ref: fb1a2010616bc86126858de9322c7d3b44678372",flow)
         self.assertNotIn("ref: "+STUDENT,flow)
         self.assertIn("readonly STUDENT_SHA='"+STUDENT+"'",script)
         self.assertIn("readonly CI_L2_RUN="+str(RUN),script)
