@@ -36,11 +36,18 @@ jobs:
           sha=subprocess.check_output(['git','-C','student','hash-object','block_B/day07/h01_runtime/tools/p2_g07_ci_moving_goal.py'],text=True).strip()
           assert sha=='2ab4acf78240229f17ef119b4237981a913aea59',sha
           wf=Path('.github/workflows/axia-g07-original-multi-first-scan-rmw-native-l2.yml').read_text()
-          assert 'workflow_dispatch:' in wf
-          assert any(line.strip().startswith("if:") and "false" in line for line in wf.splitlines())
-          assert '13455b232f24f94b4fb5dd2bbc4222b2b64360f0' in wf
-          assert "AXIA_G07_CI_EXECUTOR_WAIT_BOUNDED_AB: '0'" in wf
-          print("AXIA_G07_REJECTED_NATIVE_NO_AUTOMATIC_GOAL_RESTORED_STUDENT_EXACT_BLOB_PASS")
+          # Preserve the prior historical CI A/B workflow byte-for-byte.
+          # Its push branch differs from this diagnostic branch, so it is NOT
+          # scheduled by the current source. Prior AB=1 was REJECTED in L2.
+          assert "'diag/g07-first-scan-rmw-exact-native-20261121'" in wf
+          assert "'fix/g07-g50-first-boundary-ci-20261121'" not in wf
+          assert 'cycle: [1, 2]' in wf
+          assert '6895f90815fe62a4358abe6b306854af5b8cb6a5' in wf
+          assert "AXIA_G07_CI_EXECUTOR_WAIT_BOUNDED_AB: '1'" in wf
+          original=subprocess.check_output(['git','hash-object','.github/workflows/axia-g07-original-multi-first-scan-rmw-native-l2.yml'],text=True).strip()
+          assert original=='5960bc0b6a563df4d3f9aaeb626c5d14541a7844', original
+          print("AXIA_G07_HISTORIC_NATIVE_WORKFLOW_RESTORED_EXACT_BLOB_NO_NEW_GOAL_PASS")
+          print("AXIA_G07_REJECTED_RUNTIME_NOT_SHIPPED_STUDENT_EXACT_BLOB_PASS")
           PY_CHECK
           bash -n scripts/axia_g07_task04_owner_moving_l3_once.sh
           echo 'AXIA_G07_G00_G10_G25_REVIEW_L0_PASS_NATIVE_L2_2OF2_FAIL_WSL2_L3_NOT_RUN_RELEASE_HOLD'
