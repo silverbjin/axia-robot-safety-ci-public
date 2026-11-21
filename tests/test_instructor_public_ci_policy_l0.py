@@ -6,7 +6,7 @@ ROOT = Path(__file__).resolve().parents[1]
 POLICY = ROOT / "docs/operations/AXIA_INSTRUCTOR_PUBLIC_CI_ONLY_POLICY_20261121_KO.md"
 WORKFLOW = ROOT / ".github/workflows/block-d-d13-instructor-public-sealed-l0.yml"
 STUDENT_SHA = "10f8895dfd0729fd41ac20acc7855e81001e0aec"
-INSTRUCTOR_SHA = "aa5cf9783c0ea0892b26d2ef2c54b272a3332808"
+INSTRUCTOR_SHA = "a668ab912842958bc09e463da21d86727e80bba7"
 
 class PublicOnlyInstructorCIContract(unittest.TestCase):
     def test_documented_trust_and_status_policy(self):
