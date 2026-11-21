@@ -1,0 +1,25 @@
+name: AXIA G07 NoGoal First RMW-Bag Pair L0 RED-GREEN
+on:
+  push:
+    branches: ['diag/g07-first-scan-rmw-exact-native-20261121']
+    paths:
+      - '.github/workflows/axia-g07-first-scan-rmw-pair-l0.yml'
+      - 'd06/diagnostic/g07_first_scan_pair_attribution.py'
+      - 'tests/test_g07_first_scan_rmw_evidence_export.py'
+      - '.github/workflows/axia-g07-original-multi-first-scan-rmw-native-l2.yml'
+permissions:
+  contents: read
+jobs:
+  first_scan_exact_pair_fail_closed:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Strict original first timing boundary numeric regression
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest discover -s tests -p 'test_g07_first_scan_rmw_evidence_export.py' -v
+          echo 'AXIA_G07_FIRST_SCAN_PAIR_L0_PASS_L2_NOT_RUN_WSL2_HOLD'
