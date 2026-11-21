@@ -36,6 +36,11 @@
       "source_gap_ms": 49.054477,
       "received_gap_ms": 49.806923,
       "pub_seq_delta": 1
+    },
+    "other_observed_topics": {
+      "final_observer_gap_ms": 126.885826,
+      "guard_observer_gap_ms": 127.189781,
+      "supervisor_observer_gap_ms": 124.013226
     }
   },
   "motion_window_end_monotonic": 257.49063479,
@@ -47,5 +52,29 @@
   "classification": "CLOCK_OR_RMW_FORWARD_TIMEBASE_STEP_CANDIDATE_PLUS_REAL_OBSERVER_GAP_HOLD",
   "root_cause_proven": false,
   "certified_estop": false,
-  "owner_wsl2_l3_accepted": false
+  "owner_wsl2_l3_accepted": false,
+  "first_pre_cancel_observer_backlog": {
+    "pre_guard": {
+      "previous_rx_host_monotonic": 257.339658534,
+      "current_rx_host_monotonic": 257.451571284,
+      "observer_gap_ms": 111.91275,
+      "rmw_received_gap_ms": 50.552019,
+      "rmw_source_gap_ms": 53.162591,
+      "pub_seq_delta": 1
+    },
+    "supervised": {
+      "previous_rx_host_monotonic": 257.339825869,
+      "current_rx_host_monotonic": 257.451683595,
+      "observer_gap_ms": 111.857726,
+      "rmw_received_gap_ms": 50.158554,
+      "rmw_source_gap_ms": 53.084577,
+      "pub_seq_delta": 1
+    }
+  },
+  "independent_bag_max_receive_gap_around_first_callback": {
+    "pre_guard": 66.794719,
+    "supervised": 66.838248,
+    "clock": 29.794173,
+    "odom": 80.519276
+  }
 }
