@@ -28,7 +28,7 @@ class FirstActualEventsWorkerAbort(unittest.TestCase):
         # Independent child publishes 300Hz /clock and 10Hz /scan;
         # main EventsExecutor dies inside spin_once().
         lines=[
-            "AXIA_G07_JAZZY_EVENTS_SCAN_2ARG_RMW_L1_SETUP",
+            'File "/tmp/axia_g07_events_scan_messageinfo_l1.py", line 59',
             "File /tmp/axia_g07_events_scan_messageinfo_l1.py, line 59",
             "ex.spin_once(timeout_sec=.04)",
             "SystemError: null argument to internal routine"]
