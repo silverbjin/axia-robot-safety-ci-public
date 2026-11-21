@@ -305,3 +305,100 @@ def main(argv=None):
 
 if __name__=="__main__":
     raise SystemExit(main())
+
+
+def first_postgoal_reception_boundary(delivery, independent, io):
+    """Join first same-process callback window with exact publisher CM pair.
+
+    All RMW and monotonic quantities are compared as *intervals*, never
+    absolute mixed-clock timestamps. Even valid RMW reception evidence does
+    not identify Fast DDS receive thread, DDS transport, OS or Executor root.
+    Session heartbeat maximum is intentionally NOT used at the first window.
+    """
+    out=_hold("FIRST_POSTGOAL_EXACT_WINDOW_UNVERIFIED_HOLD",
+              first_violation_channel=None,first_violation_ms=None,
+              original_rmw_received_gap_ms=None,
+              independent_rmw_received_gap_ms=None,
+              original_vs_independent_receive_interval_excess_ms=None,
+              first_observed_fsm_transition="NOT_PROVEN",
+              first_window_heartbeat_covered=False,
+              first_window_heartbeat_max_gap_ms=None,
+              original_subscriber_rmw_reception_boundary_observed=False,
+              actual_safety_delivery_pass=False,owner_l3_accepted=False)
+    if not all(isinstance(v,dict) for v in (delivery,independent,io)):
+        return out
+    first=delivery.get("first_violation")
+    cm=delivery.get("first_pairs",{}).get("pre_guard") if isinstance(
+        delivery.get("first_pairs"),dict) else None
+    probe=io.get("first_violation")
+    rmw=delivery.get("cm_rmw_first_pair")
+    if not all(isinstance(v,dict) for v in (first,cm,probe,rmw)):
+        return out
+    if (first.get("channel") not in LIMITS
+            or probe.get("kind")!=first.get("channel")
+            or not all(_finite(x) for x in (
+                first.get("current_rx_monotonic"),cm.get("current_rx_monotonic"),
+                probe.get("current_at"),first.get("gap_ms")))):
+        return out
+    end=first["current_rx_monotonic"]
+    if (abs(cm["current_rx_monotonic"]-end)>.05
+            or abs(probe["current_at"]-end)>.02
+            or first["gap_ms"]<=LIMITS[first["channel"]]*1000):
+        return out
+    out["first_violation_channel"]=first["channel"]
+    out["first_violation_ms"]=round(first["gap_ms"],6)
+    fsm=delivery.get("first_safety_observation")
+    if isinstance(fsm,dict):
+        transition=fsm.get("first_observed_transition")
+        if (isinstance(transition,dict)
+                and isinstance(transition.get("from_state"),str)
+                and isinstance(transition.get("to_state"),str)
+                and _finite(transition.get("at_host_monotonic"))
+                and transition["at_host_monotonic"]<=end):
+            out["first_observed_fsm_transition"]=(
+                transition["from_state"]+"->"+transition["to_state"])
+    if (io.get("first_violation_heartbeat_coverage") is True
+            and type(io.get("first_violation_heartbeat_count")) is int
+            and io["first_violation_heartbeat_count"]>=3
+            and _finite(io.get("first_violation_heartbeat_max_gap_ms"))
+            and 0<io["first_violation_heartbeat_max_gap_ms"]<1000):
+        out["first_window_heartbeat_covered"]=True
+        out["first_window_heartbeat_max_gap_ms"]=round(
+            io["first_violation_heartbeat_max_gap_ms"],6)
+    # Same exact CM publisher seq+1: source interval must match between both
+    # receiver reports; bad identities/invalid clock samples fail closed.
+    measurements=[
+        rmw.get("rmw_source_gap_ms"),rmw.get("rmw_received_gap_ms"),
+        rmw.get("callback_gap_ms"),independent.get("original_source_gap_ms"),
+        independent.get("independent_source_gap_ms"),
+        independent.get("original_receive_gap_ms"),
+        independent.get("independent_receive_gap_ms")]
+    if (rmw.get("same_publisher_consecutive_seq") is not True
+            or type(rmw.get("rmw_publication_seq_gap")) is not int
+            or rmw["rmw_publication_seq_gap"]!=1
+            or type(independent.get("matched_publication_seq_gap")) is not int
+            or independent["matched_publication_seq_gap"]!=1
+            or not all(_finite(v) and 0<v<10000 for v in measurements)
+            or max(measurements[0],measurements[3],measurements[4])
+               -min(measurements[0],measurements[3],measurements[4])>.5
+            or abs(measurements[1]-measurements[5])>.5
+            or abs(measurements[2]-cm.get("gap_ms",float("nan")))>.5
+            or independent.get("status")!=
+               "ORIGINAL_PROCESS_RECEIPT_GAP_CANDIDATE"):
+        out["status"]="FIRST_POSTGOAL_EXACT_CM_PAIR_UNVERIFIED_HOLD"
+        return out
+    source,original_rx,callback,_,_,_,independent_rx=measurements
+    if (source>=120 or independent_rx>=120 or original_rx<=120
+            or callback<=120):
+        out["status"]="FIRST_POSTGOAL_RMW_GAP_NOT_LOCALIZED_HOLD"
+        return out
+    out.update(status="ORIGINAL_SUBSCRIBER_RMW_RECEPTION_GAP_OBSERVED_HOLD",
+               original_rmw_received_gap_ms=round(original_rx,6),
+               independent_rmw_received_gap_ms=round(independent_rx,6),
+               original_vs_independent_receive_interval_excess_ms=round(
+                   original_rx-independent_rx,6),
+               original_subscriber_rmw_reception_boundary_observed=True)
+    # Neither post-reception callback lateness nor an exact causal thread is
+    # proven. A heartbeat thread making progress would not prove the native
+    # Fast DDS listener thread ran during that interval.
+    return out
