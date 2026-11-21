@@ -1,0 +1,30 @@
+name: D08 Owner first real Scan after D05 full-parity B WSL2 L0
+on:
+  pull_request:
+    paths:
+      - d08/tests/test_d08_owner_full_parity_b_wsl2_once.py
+      - d08/scripts/d08_owner_full_parity_b_wsl2_once.sh
+      - d08/scripts/d08_public_gazebo_l2.py
+      - .github/workflows/d08-main-no-goal-real-gazebo-l2.yml
+      - .github/workflows/d08-owner-full-parity-b-l0.yml
+  push:
+    branches:
+      - fix/d08-owner-full-parity-b-wsl2-once-20261121
+permissions:
+  contents: read
+jobs:
+  mandatory-first-owner-after-real-d05:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Contract first Owner cycle same Gazebo after real YOLO+D05
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest discover -s d08/tests \
+            -p test_d08_owner_full_parity_b_wsl2_once.py -v
+          python3 -m py_compile d08/scripts/d08_public_gazebo_l2.py
+          bash -n d08/scripts/d08_owner_full_parity_b_wsl2_once.sh
+          echo D08_OWNER_FIRST_CYCLE_AFTER_LIVE_D05_FULL_PARITY_B_L0_PASS_NOT_L2_L3

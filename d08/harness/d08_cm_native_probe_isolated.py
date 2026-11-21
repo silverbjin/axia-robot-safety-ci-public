@@ -158,7 +158,18 @@ def classify_nav2_lifecycle_first_boundary(nav2_log:str)->dict:
         for line in text.splitlines())
     status="D08_NAV2_CM_STARTUP_EVIDENCE_INCOMPLETE"
     boundary="NOT_RECORDED"
-    if requested:
+    # The earliest real public failure #44831417211 occurred BEFORE CM:
+    # map_server loaded the real 384x384 map but failed to send its
+    # change_state reply (Fast DDS RMW timeout). Localization manager
+    # could not advance, /map was absent, and only THEN planner TF stalled.
+    # Exact WARNING log is evidence; DDS root-cause attribution is not.
+    map_reply_timeout=(
+        "failed to send response to /map_server/change_state (timeout)"
+        in text)
+    if map_reply_timeout:
+        boundary="/map_server/change_state:response_timeout"
+        status="D08_NAV2_MAP_SERVER_CHANGE_STATE_RESPONSE_TIMEOUT_HOLD"
+    elif requested:
         boundary="lifecycle_manager_navigation:Configuring collision_monitor"
         if parameter_error:
             status="D08_NAV2_CM_CONFIGURATION_PARAMETER_ERROR_HOLD"
@@ -175,6 +186,8 @@ def classify_nav2_lifecycle_first_boundary(nav2_log:str)->dict:
         "cm_configure_callback_entry_observed":entered,
         "cm_navigation_activation_proven":manager_active,
         "planner_lifecycle_root_cause_confirmed":False,
+        "map_server_change_state_response_timeout_observed":map_reply_timeout,
+        "rmw_root_cause":"UNDETERMINED",
         "root_cause":"UNDETERMINED",
         "owner_wsl2_accepted":False,
         "cm_internal_120ms_verified":False,
