@@ -1,0 +1,24 @@
+name: AXIA G07 G20 Actual Nav2 Plan First Fixture L0
+on:
+  push:
+    branches: ['fix/g07-g50-first-boundary-ci-20261121']
+    paths: ['.github/workflows/axia-g07-g20-nav2-plan-first-fixture-l0.yml']
+permissions: {contents: read}
+jobs:
+  g20_nav2_plan_readonly_math:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: bccd2a65ef04ebb8877785e8e7a2afc5a1cc365c
+          path: student
+          persist-credentials: false
+      - name: Official Nav2 /plan first physical fixture boundary RED
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cd student/block_B/day07/h01_runtime
+          python3 -m unittest discover -s tools -p 'test_g07_g20_nav2_plan_witness.py' -v
+          echo 'AXIA_G07_G20_NAV2_GLOBAL_PLAN_FIRST_FIXTURE_L0_PASS_NATIVE_GOAL_NOT_RUN_HOLD'
