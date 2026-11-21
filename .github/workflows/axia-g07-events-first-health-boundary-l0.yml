@@ -1,0 +1,26 @@
+name: AXIA G07 Official EventsExecutor First HEALTH Boundary L0
+on:
+  push:
+    branches: ['fix/g07-events-first-health-boundary-ci-20261121']
+    paths:
+      - '.github/workflows/axia-g07-events-first-health-boundary-l0.yml'
+permissions: {contents: read}
+jobs:
+  health_first_state_transition_fail_closed:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: 4b7226fd4e0c807a1b0a3c5aa7937e86d5357921
+          path: student
+          persist-credentials: false
+      - name: Read-only first HEALTH boundary original no-Goal 12s timeout
+        run: |
+          set -Eeuo pipefail
+          cd student/block_B/day07/h01_runtime
+          python3 -m unittest discover -s tools -p 'test_g07_health_first_boundary.py' -v
+          python3 -m unittest discover -s tools -p 'test_g07_events_executor_ci_ab.py' -v
+          python3 -m unittest discover -s tools -p 'test_g07_pregoal_stream_discovery.py' -v
+          echo 'AXIA_G07_EVENTS_FIRST_HEALTH_BOUNDARY_L0_PASS_NATIVE_L2_HOLD'
