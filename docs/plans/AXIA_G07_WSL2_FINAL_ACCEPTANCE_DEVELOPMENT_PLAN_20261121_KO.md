@@ -26,6 +26,23 @@
 
 증거 인덱스: [직전 forensic 보고서](https://github.com/silverbjin/axia-robot-safety-ci-public/blob/210149c9e8d7280937031ab8652a38bd3651a3a8/docs/operations/AXIA_G07_MVP12_PRE_WSL2_FIRST_RMW_WAITSET_SLOW_HOLD_20261121_KO.md).
 
+## 0-A. GitHub 중복 감사에 따른 개발 항목 삭제·재사용 결정
+
+| 범위 | 실제 선행 근거 | 최종 조치 |
+|---|---|---|
+| 교육용 G07 baseline 및 SHA 증거 | Public #194 / Student #70, `block_d/release/RELEASE_MANIFEST.json` (main) | 재구현 금지. 인벤토리 복제 금지; 교육용 21/21과 최신 formal 2/2 구분 |
+| `MessageInfo` missing | Student #89, 실제 Jazzy L1 #44865731221의 Source/Received/Seq 각 35/35 | 이미 해결. 신규 계측 재개발 금지 |
+| S1 lock/JSON/write/flush | Public #211 / Student #83 | 완료. I/O root 입증 전 writer 재작성 금지 |
+| S3 /clock 12초 retention·postGoal graph 조회 | Public #212 / Student #84 | 코드 재사용, 실제 0/2 FAIL 보존 |
+| EventsExecutor·SingleExecutor·bounded 20ms wait | Public #210/#213/#214/#215, native #44870974857 0/2 | 실증 기각. 동일 A/B 재수행 금지 |
+| AMCL pose→fresh TF fallback | Student #69 / Public #196 | 범위 한정 해결, 기존 코드만 재사용 |
+| Ordered Nav/Loc shutdown과 ROS context 예외 | Student #69/#74, Public #196/#197, Instructor #197/#202 | 성공 경로 재사용. 26s launch 잔존은 별도 미해결 |
+| D08 같은-world YOLO/D05→NO_GOAL 첫 Scan | Public #204/#206/#208, #44834253238 및 #44850148710 | 기존 D08 500ms 범위 보존; G07 Moving Goal strict 300ms PASS로 승격 금지 |
+| D08 Gazebo native·독립 ROS·rcl take 분리 | Public #180/#181/#183/#187/#201/#202/#206 | G10에 관측 코드 재사용, 새 진단 노드 중복 금지 |
+| D06 NO_GOAL Gazebo server exit0 | Student #87 Draft WIP / Public issue #185 | NO_GOAL 진단만 참고. Moving 정상 종료로 일반화 금지 |
+
+**이 계획에서 삭제한 개발:** 새 Planner/Nav2/Collision Monitor 포크, 새 YOLO/Depth, 20ms wait/EventsExecutor/SingleExecutor 재실험, 증거 없이 I/O 리팩터링, 새 인벤토리, 임계값 완화, GPU 호스트 추가 필수 게이트.
+**계약 혼동 금지:** D08 NO_GOAL 500ms와 G07 Moving strict Scan/SafetyScan/Odom/Clock 300ms는 서로 다른 검증 범위이다.
 ## G00 — 기존 증거/브랜치 동결 및 최초 사건 경계 확정 (신규 Goal 0회)
 
 - **입력:** Public #210–#215, Student #89, D08 #206(동일/독립 ROS, `rcl take`, CM service A/B), #161/#167(과거 CM/TF 이력) 및 위 native artifact. 코드가 해결된 것인지, **수치와 해당 SHA**가 일치하는지 먼저 대조한다. 이전 A/B를 새로 구현하지 않는다.
@@ -57,7 +74,18 @@
 
 **Gate B:** L0 RED→GREEN 후 **실제 Gazebo 물리 SLOW→STOP** 1회 검증(트랙 단위)은 성공하고 heading/first Scan/정확한 ACK 증거가 보존되어야 한다. 이후 전체 2/2에서 반드시 다시 검증. 실패 시 `B=HOLD`.
 
-## G30 — 공개 CI 통합 검증 (트랙 A·B 모두 통과할 때만)
+## G25 — 트랙 T: Moving Goal 이후 26초 종료 실패의 최초 process 경계 및 최소 수정
+
+**실증:** Native #44865087050은 CLEAR→SLOW→STOP, 정확 UUID Cancel, odom-zero dwell 1.011초, Nav/Loc shutdown ACK 이후 `G07_CI_LAUNCH_LIVE_AFTER_MANAGED_EXIT_BUDGET` / rc3로 실패. #44865216748은 `CI_MOVING_GOAL_TIMEOUT_SLOW`가 먼저, Supervisor exit1이 후행이며 동종 사고로 결합 금지. Public #215의 첫 후행 실패 분류 RED #44865879368→GREEN #44865902530 3/3은 L0만 검증.
+
+1. **G25-0 기록 회수(새 Goal 0회):** `block_B/day07/h01_runtime/scripts/p2_no_goal_smoke_ci.sh::cleanup`, `tools/p2_g07_ordered_shutdown.py`, 기존 `teardown_processes.txt`, launch/Supervisor stderr를 읽어 26초 이후 남은 PID/PGID/프로세스 역할, 최초 SIGINT·ACK·상태·exit code를 분리. 공개에는 numeric allowlist와 SHA256만 게시. parent marker는 child clean exit0를 대체하지 못한다.
+2. **해결 이력 재사용:** Student #69의 후행 rclpy context-invalid 예외 처리, Public #196/#197의 Guard·Supervisor·CM child 검사, Instructor #197/#202의 GUI completion→SIGINT 순서, Student #87의 NO_GOAL GZ server exit0 코드를 그대로 검토. NO_GOAL이나 D07 단독 PASS를 Moving Goal PASS로 승격 금지.
+3. **RED 최소 회귀:** 실제 Nav/Loc ACK와 UUID Cancel이 있더라도 launch PID가 26초 뒤 살아 있으면 FAIL, CM/Guard/Supervisor exit!=0이면 FAIL, GUI watcher 조기 종료면 FAIL. 실제 후행 로그를 첫 안전/종료 실패로 거짓 승격하는 분류도 FAIL. 기존 `d06/diagnostic/g07_first_postgoal_boundary.py`와 기존 CI 계약만 확장.
+4. **GREEN 최소 수정:** 실제 남은 프로세스 역할과 최초 종료 순서가 증명될 때에만 기존 cleanup·watcher·wait 호출 하나를 최소 변경. 26초를 임의로 늘리거나 `|| true`로 exit1을 은폐하지 않는다. 원인 증거가 없으면 코드는 수정하지 않고 `T_HOLD`.
+5. **검증:** NO_GOAL 종료/종속 child L0→ROS Jazzy L1(해당 시)→원래 실제 Gazebo 종료 단계 L2→G30의 엄격한 Moving Goal cold-run 2/2. 안전 TTL 120/150/300ms는 별개 게이트로 유지.
+
+**Gate T:** 최초 PID/child shutdown 경계가 입증되고 이 변경의 RED→GREEN과 실제 native clean exit0이 확인될 때만 통과. T가 HOLD면 G30과 WSL2 출고 보류.
+## G30 — 공개 CI 통합 검증 (트랙 A·B·T 모두 통과할 때만)
 
 - **실행 순서:** Student 해당 코드·계약 고정 SHA 확정 → Public 리뷰어/계측 SHA 고정 → scoped L0 + 전체 Python contract + Runner Canary → ROS Jazzy L1 데이터 전달 주기 → 실제 Harmonic/Gazebo/공식 TB3/Nav2/Collision Monitor **서로 독립적인 cold run 2/2**, 동일 Public/Student 소스 SHA로 수행. 과거 다른 SHA의 성공을 합산 금지.
 - **네이티브 각 Cycle 합격조건:** GUI Gazebo/RViz 실제 표시, 12초 pre-Goal sensor/graph, 7채널 최초·최대 수신 주기(Scan/SafetyScan/Odom/Clock300, CM120, Guard/Supervisor150), Guard 내부 CM age/timeout, Superviser 첫 실제 safety transition, 14-topic raw bag custody, 실제 CLEAR→SLOW→STOP, 물리 장애물 set-pose ACK, 진짜 odom 변위와 ≥1초 zero dwell, 정확 UUID `CANCELED=5`, Nav+Localization shutdown ACK, CM/Guard/Supervisor children clean exit0, no Guard unsafe latch, cleanup. 어떠한 항목도 SKIP으로 합격 처리하지 않는다.
@@ -92,10 +120,11 @@
 ## 작업 순서 및 실패 시 의사결정
 
 ```text
-G00 기존 증거/브랜치 동결
+G00 기존 증거/브랜치 동결 + 0-A 해결 이력 감사
     ├── G10 A: 최초 Source→RMW→take→Executor 경계 분리 → 최소 수정 → L1 안전 TTL
-    └── G20 B: SLOW 실제 헤딩/장애물 전방 배치 → 최소 수정 → Gazebo 물리 SLOW/STOP
-                  ↓ A와 B 둘 다 GREEN
+    ├── G20 B: SLOW 실제 헤딩/장애물 전방 배치 → 최소 수정 → Gazebo 물리 SLOW/STOP
+    └── G25 T: 26초 launch/child 첫 종료 위반 → 최소 수정 → native clean exit0
+                  ↓ A·B·T 모두 GREEN
 G30 전체 공개 계약 + 같은 SHA 실제 독립 Gazebo Moving Goal 2/2
                   ↓ PASS 2/2 & 필수 Gate 누락 없음
 G40 Owner SHA pin/self-check/ci-check + 공개 CI 출고 검증
@@ -105,7 +134,7 @@ G50 WSL2 한 번 최종 인수(현장 TTY Goal 승인)
 G60 최종 보고 → 별도 main 병합 승인 요청
 ```
 
-**중단 조건:** A 인과 미확정, B SLOW 실제 양의 전진권한 미확보, C 실제 2/2 미달, D 출고 검증 오류 중 하나라도 존재하면 `RELEASE=HOLD`. WSL2 현장 실행/새 실행 명령은 없다.
+**중단 조건:** A 인과 미확정, B SLOW 실제 양의 전진권한 미확보, T 종료 clean child 미검증, C 실제 2/2 미달, D 출고 검증 오류 중 하나라도 존재하면 `RELEASE=HOLD`. WSL2 현장 실행/새 실행 명령은 없다.
 
 ## 실행·검증 명령의 역할 (현재 제공 가능 범위)
 
@@ -127,4 +156,4 @@ gh run download RUN_ID --repo silverbjin/axia-robot-safety-ci-public --dir ./g07
 
 `RUN_ID`는 **새 GitHub native 2-cycle이 실제 완료된 후**의 ID로 바꾼다. GitHub Actions 이력이 없는 결과는 발명하지 않는다. User WSL2의 새로운 Goal 명령은 Gate C/D 이후에만 출고한다.
 
-**현재 인계 상태:** `PLAN_APPROVED_NOT_IMPLEMENTED`는 사용자 승인 시에만 적용. 본 문서 자체는 `PLAN_CREATED`, `ROOT_UNDETERMINED`, `A_HOLD`, `B_HOLD`, `C_HOLD`, `OWNER_WSL2_L3_NOT_RUN`, `MAIN_NOT_MERGED`.
+**현재 인계 상태:** `PLAN_APPROVED_NOT_IMPLEMENTED`는 사용자 승인 시에만 적용. 본 문서 자체는 `PLAN_CREATED`, `ROOT_UNDETERMINED`, `A_HOLD`, `B_HOLD`, `T_HOLD`, `C_HOLD`, `OWNER_WSL2_L3_NOT_RUN`, `MAIN_NOT_MERGED`.
