@@ -63,7 +63,7 @@ rclpy._rclpy_pybind11.RCLError: Failed to publish: publisher's context is invali
 - 기존 `scripts/p2_no_goal_smoke_ci.sh`의 `AXIA_G07_SHUTDOWN_L2_ONLY=1` 분기를 재사용한 별도 실제 Jazzy/Harmonic native CI로 Moving Goal 단계와 종료 계층을 분리하려 했다. Run [#44882490734](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44882490734) 실패 최종 `G07_CI_LAUNCH_LIVE_AFTER_MANAGED_EXIT_BUDGET`, smoke rc3. 후행 종료 메시지만으로 root 확정하지 않음.
 - Public 최소 최초 단계 분류 `d06/diagnostic/g07_g25_nogoal_first_stage.py`, `tests/test_g07_g25_nogoal_first_stage.py`: 기록된 단계 우선 판정, 불충분한 로그는 HOLD, raw 경로/UUID/rosbag 비공개. Public Python 계약 RED [#44882719841](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44882719841) (모듈 부재) → GREEN [#44882756718](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44882756718). 
 - 추가 실제 noGoal Native [#44882850643](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44882850643) FAIL. 공개 Artifact `axia-g07-g25-no-goal-exit-44882850643`의 첫 사건 `P2_NO_GOAL_BLOCKED:` → `STARTUP_BLOCKED_BEFORE_TEARDOWN_HOLD`; 최종 launch alive, process group 총 **20** roles (ros2_launch1, gazebo1, guard1, supervisor1, collision_monitor1, navigation_stack12, etc), 원인 미확정. 이는 **시작 실패 뒤 종료 정체**이므로 10초/26초 종료 예산 수정의 직접 근거가 아님. `clean_child_exit_proven=false`; real moving scenario G25 L2 미검증.
-- 시험 자체에서 ROS2 정지 상태를 얻기 전에 막히므로 Guard에 실제 SIGINT를 보내는 **독립 ROS Jazzy L1** [#448... pending](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/workflows/axia-g07-g25-jazzy-guard-sigint-real-l1.yml) 별도 생성, Public SHA `8832ad5bf4236416393cc2eae865b939f84ed35a`. 기존 Guard _tick/TTL 불변, 실제 Jazzy 프로세스 exit0만 검증. 전체 Gazebo Nav2/CM 26s 종료 검증을 대체하지 않음.
+- 시험 자체에서 ROS2 정지 상태를 얻기 전에 막히므로 Guard에 실제 SIGINT를 보내는 **독립 ROS Jazzy L1** [#44883090731](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44883090731) **SUCCESS (actual Jazzy Guard process SIGINT exit0 only)** 별도 생성, Public SHA `8832ad5bf4236416393cc2eae865b939f84ed35a`. 기존 Guard _tick/TTL 불변, 실제 Jazzy 프로세스 exit0만 검증. 전체 Gazebo Nav2/CM 26s 종료 검증을 대체하지 않음.
 
 ## 8. 완료 조건·범위와 계류
 
@@ -77,3 +77,18 @@ rclpy._rclpy_pybind11.RCLError: Failed to publish: publisher's context is invali
 | G40 | 새 WSL2 One-shot 출고 금지 |
 | G50 | 실제 강사 WSL2 NOT_RUN |
 - 사용자의 main 승인 없음, 두 Draft PR을 유지. 실제 CLI/Gazebo 검증을 수행하지 않은 범위는 성공 보고하지 않음. SW STOP != 인증 E-Stop.
+
+## 9. G25 실제 Jazzy 단독 종료 PASS 및 남은 L2 정확한 경계
+
+- 실제 Guard SIGINT L1 [#44883090731](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44883090731) Public exact workflow SHA `8832ad5bf4236416393cc2eae865b939f84ed35a`, Student `c0a2b4d727383fd97c1541b22238ba67026d70e0`: 원본 Jazzy 컨테이너에서 `colcon build --base-paths ros2_ws/src --packages-select axia_safety_supervisor`, 원본 `P2BaseCommandGuard` 실제 ROS 프로세스 실행, `kill -INT "$child"`, process `exit0`, Traceback 없음. L0 `Ran 3 tests / OK`, marker `AXIA_G07_G25_ACTUAL_JAZZY_GUARD_PROCESS_SIGINT_EXIT0_L1_PASS_NO_GOAL_NO_GAZEBO_MOVING_UNVERIFIED`. 실 Gazebo·Nav2·CM는 L1에서 실행 안 함. 특히 L1이 타이밍 경쟁으로 invalid-publisher 예외를 직접 재현했다는 주장은 하지 않음. 그 예외의 정확한 분기는 실 L2 #44881017415 원본 로그와 L0 fake Exception 회귀에 의해 분리됨.
+- NO_GOAL native CI [#44882850643](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44882850643) 최초 `P2_NO_GOAL_BLOCKED:`이며 시작 단계가 정리보다 우선 실패. 이번 실행은 초기 상태 준비 실패로 인한 20개 process alive 때문에 **G25 관리 대상 종료 인수로 미적합**; `G07_CI_LAUNCH_LIVE_AFTER_MANAGED_EXIT_BUDGET`는 후행 증상으로 분류. raw private PIDs/files 공개 금지. 10s→26s로 무근거 확대하지 않음.
+- 실제 멀티노드 G25 필수 인수는 동일 SHA의 성공한 Gazebo Moving Goal→정확한 UUID Cancel→Nav/Loc ACK→Guard/Supervisor/Collision Monitor 정상 exit0·26s manager clean teardown이 포함되어야 함. 이 필수 범위는 현재 **NOT PASS**.
+- 공개 유효 계약: [#44882856888](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44882856888) Public Python contracts GREEN; [#44882415060](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44882415060) G20 numeric 3/3 GREEN; [#44881623133](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44881623133) Guard L0 7/7 GREEN. 이후 이 보고서 변경은 문서 전용이다.
+- **G00 evidence audited**, **G10 L1 instrument PASS / root HOLD**, **G20 first global route reorientation numeric PASS / physical SLOW unstable HOLD**, **G25 standalone Guard actual Jazzy exit0 PASS / Gazebo integrated HOLD**, **G30 strict independent actual Gazebo 2/2 NOT PASS**, **G40 owner WSL2 new script NOT RELEASED**, **G50 actual instructor WSL2 NOT RUN**, **main not merged**.
+
+## 10. 다음 유효 작업 단위 (실패 현장 재시도 반복 금지)
+
+- **G20**: native 최초 `PRE_FIXTURE→AFTER_FIXTURE_ACK` 전역 경로 1.35725rad 재지향과 Guard/Supervisor 실제 `vx` 반전을 공통 host-monotonic으로 정렬; 필요시 이미 보유한 native artifact와 Nav2 실제 ControllerServer 기존 로그에서 **local plan/tangent**가 확인되는지 먼저 감사. 실제 local plan 증명 없이 Goal 직선/전역 계획 접선=실행 속도 방향으로 단정하지 않음. 실제 Planner/CM/Guard 개발 확장 금지. 고정 fixture가 global route에서 .567~.711m 벗어남을 고려하되, 정량 증거 없는 임계값/장애물 좌표 변경·재시도 금지.
+- **G25**: 성공 Moving run 후에만 해당 프로세스 종료를 실제 검증. NO_GOAL 시작 실패는 별도 HOLD로 처리하고 원인 분리 전 시간 예산/종료 예외 범위 확대 금지.
+- **G10**: 기존 #44870974857 Scan600.503ms, Header~102ms, RMW receive~599.696ms 및 독립 bag~107.738ms exact-pair first boundary 증거 유지. Observer D08 take-complete L1 기능은 통과했으나 타이밍 위반 원인 미확정; 연결된 CM120/Guard150/Scan300 수신 간격을 같은 native run에서 검증해야 전체 Gate A PASS 가능.
+- **G30→G40→G50**: 전 항목 실제 Native strict cold-run 독립 2/2 PASS로 출고 허용된 동일 Student/Public Git SHA에 대해서만 CI PIN/syntax/self-check 후 GitHub one-shot WSL2 실행기 준비, 로컬 강사 WSLg GUI/TTY 실제 1회 인수. 수행하지 않았으면 `L3_NOT_RUN`. private instructor 코드/학생 TODO 분리, main 승인 전 병합 금지.
