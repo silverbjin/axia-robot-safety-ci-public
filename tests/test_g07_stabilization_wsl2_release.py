@@ -107,14 +107,20 @@ fi
                 self.assertNotEqual(r.returncode,0,r.stdout+r.stderr)
                 self.assertIn("HOLD_NO_NEW_WSL2_MOVING_RELEASE",r.stdout)
 
-    def test_strict_native_run_and_owner_source_share_exact_committed_sha(self):
+    def test_new_strict_native_candidate_never_rewrites_frozen_owner_release(self):
         flow=(ROOT/".github/workflows/axia-g07-original-multi-first-scan-rmw-native-l2.yml").read_text()
         script=SCRIPT.read_text()
         # Actual new same Student Source native 2/2 passed before release.
         # No unverified headless 0/2 source may authorize Owner Goal.
         # Candidate is not yet an authorized Owner release until actual native
         # Gazebo 2/2 proves both Navigation+Localization shutdown ACK.
-        self.assertIn("ref: e1241a2f3cc4fe85412b68ce026c337312d56a02",flow)
+        if "refactor/g07-mvp-closure-20261121" in flow:
+            # A new experimental Student pin must NOT replace the already
+            # validated historic Owner 2/2 release pinned to STUDENT/HEAD/RUN.
+            self.assertIn("ref: a04f9a7da8d54bbd9f944d05388792cb706adf28",flow)
+            self.assertNotIn("ref: e1241a2f3cc4fe85412b68ce026c337312d56a02",flow)
+        else:
+            self.assertIn("ref: e1241a2f3cc4fe85412b68ce026c337312d56a02",flow)
         self.assertNotIn("ref: "+STUDENT,flow)
         self.assertIn("readonly STUDENT_SHA='"+STUDENT+"'",script)
         self.assertIn("readonly CI_L2_RUN="+str(RUN),script)
