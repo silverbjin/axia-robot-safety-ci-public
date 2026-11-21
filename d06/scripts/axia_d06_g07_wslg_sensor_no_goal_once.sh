@@ -10,13 +10,14 @@ C27_CANDIDATE="${AXIA_D06_GAZEBO_C27_CANDIDATE:-0}"
 [[ "$C27_CANDIDATE" == 0 || "$C27_CANDIDATE" == 1 ]] || {
   echo 'G07_C27_CANDIDATE_SCOPE_INVALID_NO_GOAL' >&2; exit 2;
 }
-if [[ "$C27_CANDIDATE" == 1 ]];then
-  readonly STUDENT_SHA='6c79c09d91f13c81961492eb30e66d99d307831c'
-  readonly SMOKE_BLOB='cc3c64f7ae769a11d9daad4acdbdb48141253f7c'
-else
-  # Preserve previously shipped and analyzed successful evidence source.
+if [[ "$C27_CANDIDATE" == 0 ]];then
+  # Default must precede opt-in in source as well as at runtime; legacy
+  # public pinned-source audit reads the FIRST frozen SHA/blob declaration.
   readonly STUDENT_SHA='0565e580f5b7c80d719960a6046de3e45c8ea477'
   readonly SMOKE_BLOB='81adb67b40b3c7ee937bc2c695c4906282391774'
+else
+  readonly STUDENT_SHA='6c79c09d91f13c81961492eb30e66d99d307831c'
+  readonly SMOKE_BLOB='cc3c64f7ae769a11d9daad4acdbdb48141253f7c'
 fi
 readonly PROBE_BLOB='922516dd0bb8818bdf1ed057813168886d3b3b8e'
 readonly LAUNCH_BLOB='b2886cdf509d99ea62528cd013669258764b05e0'
