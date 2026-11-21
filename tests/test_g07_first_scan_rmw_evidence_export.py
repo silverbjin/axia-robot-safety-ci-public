@@ -228,5 +228,15 @@ class NativeFirstBoundaryAttribution(unittest.TestCase):
         self.assertIn("AXIA_G07_EVENTS_EXECUTOR_AB: '0'",s)
         self.assertNotIn("CERTIFIED_ESTOP=true",s)
 
+
+    def test_pre_goal_check_effective_fastdds_not_parity_hardcoded_label(self):
+        # Owner parity script echoes rmw_effective_class as a literal;
+        # actual installed library MUST be checked using rclpy before Goal.
+        s=WORKFLOW.read_text()
+        self.assertIn("rclpy.get_rmw_implementation_identifier()",s)
+        self.assertIn("AXIA_G07_NATIVE_RMW_EFFECTIVE_VERIFIED",s)
+        self.assertIn("rmw_fastrtps_cpp",s)
+        self.assertNotIn("RMW_IMPLEMENTATION: rmw_cyclonedds_cpp",s)
+
 if __name__=="__main__":
     unittest.main()
