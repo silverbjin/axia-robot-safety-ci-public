@@ -1,0 +1,105 @@
+name: AXIA G07 Jazzy EventsExecutor Real Two-Argument Scan MessageInfo L1
+on:
+  push:
+    branches: ['fix/g07-events-first-health-boundary-ci-20261121']
+    paths: ['.github/workflows/axia-g07-events-scan-messageinfo-real-l1.yml']
+permissions: {contents: read}
+jobs:
+  actual-rclpy-jazzy-scan-two-arg-callback:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+    env:
+      ROS_DOMAIN_ID: '97'
+      ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+      FASTDDS_BUILTIN_TRANSPORTS: UDPv4
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: 8bc6826eed88726c166118dfb2b8d7425bafc574
+          path: student
+          persist-credentials: false
+      - name: Live separate process 300Hz Clock 10Hz Scan with Jazzy EventsExecutor 2-argument callback NO GOAL
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          set +u;source /opt/ros/jazzy/setup.bash;set -u
+          export PYTHONPATH="$GITHUB_WORKSPACE/student/block_B/day07/h01_runtime/tools${PYTHONPATH:+:$PYTHONPATH}"
+          cat > /tmp/axia_g07_events_scan_messageinfo_l1.py <<'PY_L1'
+          import os
+          from multiprocessing import Process
+          from time import monotonic, sleep
+          from p2_g07_scan_rmw_first_pair import normalize_scan_message_info
+
+          def publisher():
+              import rclpy
+              from rclpy.node import Node
+              from sensor_msgs.msg import LaserScan
+              from rosgraph_msgs.msg import Clock
+              rclpy.init()
+              node=Node("axia_g07_l1_real_pub_no_goal")
+              scan=node.create_publisher(LaserScan,"/scan",10)
+              clk=node.create_publisher(Clock,"/clock",10)
+              def on_scan():
+                  m=LaserScan()
+                  m.header.stamp=node.get_clock().now().to_msg()
+                  m.header.frame_id="base_scan"
+                  m.angle_min=-3.14159265
+                  m.angle_max=3.14159265
+                  m.angle_increment=.01745329
+                  m.range_min=.12;m.range_max=3.5
+                  m.ranges=[1.7]*360
+                  scan.publish(m)
+              def on_clock():
+                  m=Clock()
+                  m.clock=node.get_clock().now().to_msg()
+                  clk.publish(m)
+              node.create_timer(.1,on_scan)
+              node.create_timer(1/300,on_clock)
+              try:rclpy.spin(node)
+              finally:
+                  node.destroy_node()
+                  rclpy.try_shutdown()
+
+          if __name__=="__main__":
+              p=Process(target=publisher,daemon=True)
+              p.start()
+              import rclpy
+              from rclpy.node import Node
+              from rclpy.experimental import EventsExecutor
+              from sensor_msgs.msg import LaserScan
+              from rosgraph_msgs.msg import Clock
+              from rclpy.qos import qos_profile_sensor_data
+              rclpy.init()
+              node=Node("axia_g07_l1_events_sub_no_goal")
+              received=[]
+              clocks=[]
+              def on_scan(msg, info):
+                  src,rx,seq=normalize_scan_message_info(info)
+                  received.append((monotonic(),src,rx,seq))
+              node.create_subscription(LaserScan,"/scan",on_scan,qos_profile_sensor_data)
+              node.create_subscription(Clock,"/clock",lambda m:clocks.append(monotonic()),qos_profile_sensor_data)
+              ex=EventsExecutor()
+              ex.add_node(node)
+              try:
+                  stop=monotonic()+8
+                  while monotonic()<stop and len(received)<35:
+                      ex.spin_once(timeout_sec=.04)
+                  assert len(received)>=20,("SCAN_REAL_DDS_L1_INSUFFICIENT",len(received))
+                  assert len(clocks)>=150,("CLOCK_300HZ_L1_INSUFFICIENT",len(clocks))
+                  assert all(a>0 and b>0 and c>0 for _,a,b,c in received),received[:3]
+                  mx=max((b[0]-a[0] for a,b in zip(received,received[1:])),default=0)*1000
+                  source_max=max((b[1]-a[1] for a,b in zip(received,received[1:])),default=0)/1e6
+                  print("AXIA_G07_JAZZY_EVENTS_SCAN_2ARG_RMW_L1_PASS "
+                        f"scan_samples={len(received)} clock_samples={len(clocks)} "
+                        f"max_scan_callback_ms={mx:.3f} max_rmw_source_gap_ms={source_max:.3f} "
+                        "NO_GAZEBO_NO_GOAL_L3_HOLD",flush=True)
+              finally:
+                  ex.shutdown(timeout_sec=2)
+                  node.destroy_node()
+                  rclpy.try_shutdown()
+                  p.terminate();p.join(timeout=5)
+          PY_L1
+          python3 /tmp/axia_g07_events_scan_messageinfo_l1.py

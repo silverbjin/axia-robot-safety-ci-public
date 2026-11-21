@@ -1,0 +1,566 @@
+# Task04 two independent real Moving Goals, each with 2 actual Xvfb windows.
+# PR #199 candidate: D06 per-manager shutdown + read-only missing-ACK probe.
+# Revert to accepted Baseline Student SHA for a release; this CI tests only candidate.
+# Baseline Task03 positive Contact calibration is frozen, not repeated.
+name: AXIA G07 Jazzy EventsExecutor First HEALTH Diagnostic Single Native L2
+on:
+  push:
+    branches:
+      - 'fix/g07-events-first-health-boundary-ci-20261121'
+    paths:
+      - '.github/workflows/axia-g07-events-first-health-native-l2.yml'
+permissions:
+  contents: read
+concurrency:
+  group: axia-g07-first-health-diagnostic-single-native-l2
+  cancel-in-progress: false
+jobs:
+  one-real-gazebo-moving-gui:
+    # Two physically independent native Gazebo runs. The earlier genuine
+    # Guard CM age 188.578ms latch was intermittent; one green L2 cannot
+    # prove the same safety boundary on another fresh runner.
+    strategy:
+      fail-fast: false
+      matrix:
+        cycle: [1]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+    env:
+      ROS_DOMAIN_ID: '88'
+      # Fast DDS issue #6535: 2.14.7 SHM healthy-port open may stall
+      # participant send mutex for ~333 ms. Scope this A/B to the whole
+      # same-run ROS graph, NEVER an individual Observer process only.
+      FASTDDS_BUILTIN_TRANSPORTS: UDPv4
+      # G07 #163 first lost SHUTDOWN request A/B: same already proven
+      # get_parameters ROS node, NO resend and no change to Nav2/CM/Guard.
+      AXIA_G07_NAV_WARM_PARTICIPANT_CI_AB: '1'
+      # Before any CI Goal, reuse the same runtime's 12s real Scan receipt gate.
+      AXIA_G07_SCAN_PREFLIGHT_STRICT: '1'
+      ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+      GZ_PARTITION: axia_p2_task04_moving
+      AXIA_P0_SIM_ONLY: '1'
+      AXIA_P2_G07_PHYSICAL_PREFLIGHT: '1'
+      AXIA_G07_CI_SIM_GOAL_ALLOWED: '1'
+      AXIA_G07_OWNER_STARTUP_PARITY: '1'
+      AXIA_G07_CI_OWNER_OBSERVER_PARITY: '1'
+      # Official rclpy Jazzy experimental backport PR #1435; CI only.
+      AXIA_G07_EVENTS_EXECUTOR_AB: '1'
+      # S1 only: read-only I/O callback timing and independent 20ms heartbeat.
+      AXIA_G07_OBSERVER_IO_PROBE: '1'
+      # Original 2-thread Observer plus read-only independent DDS witness.
+      AXIA_G07_CI_OWNER_BAG_PARITY: '1'
+      AXIA_P2_G07_OWNER_PARITY_CHECK: '1'
+      AXIA_G07_TASK02_SIMPLE_TF_CANDIDATE: '1'
+      AXIA_G07_TASK03_FORMAL_CI: '1'
+      AXIA_G07_TASK03_ECM_WITNESS: '1'
+      AXIA_G07_TASK04_CI_GUI_MOVING: '1'
+      # Reproduce missing late AMCL pose from vJpsc6Wy. This affects only
+      # the extra read-only CI Observer, never the actual AMCL/Nav2 or Owner.
+      # Use official AMCL primary path, as the actual FV17 Owner did.
+      AXIA_G07_CI_FORCE_MAP_TF_FALLBACK: '0'
+      QT_QPA_PLATFORM: xcb
+      QT_X11_NO_MITSHM: '1'
+      LIBGL_ALWAYS_SOFTWARE: '1'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          path: ci
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: 15bf27faa856df85aab31f1175c7127cb2411e3d
+          path: student
+          persist-credentials: false
+      # Keep the historic reviewer for older unrelated imports; the current
+      # tested strict G07 Owner/CI evidence gate is in THIS public CI tree.
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-ci-public
+          ref: d60beed5e18d8104b254f17476d47f1d1917a7eb
+          path: review
+          persist-credentials: false
+      - name: Exact public Student source and minimum L0 before physical run
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C student rev-parse HEAD)" = '15bf27faa856df85aab31f1175c7127cb2411e3d'
+          test "$(git -C ci rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$FASTDDS_BUILTIN_TRANSPORTS" = UDPv4
+          [[ -z "${FASTRTPS_DEFAULT_PROFILES_FILE:-}" && -z "${FASTDDS_DEFAULT_PROFILES_FILE:-}" ]] || {
+            echo 'G07_FASTDDS_UDP_ONLY_XML_OVERRIDE_UNVERIFIED_HOLD' >&2; exit 3;
+          }
+          echo 'AXIA_G07_FASTDDS_BUILTIN_TRANSPORTS=UDPv4 SHM_UNSELECTED_CI_AB_NO_ROOT_PROOF'
+          dpkg-query -W -f='${Package}=${Version}\n' 'libfastrtps*' 2>/dev/null || true
+
+          cd student/block_B/day07/h01_runtime
+          test "$(git -C "$GITHUB_WORKSPACE/review" rev-parse HEAD)" = 'd60beed5e18d8104b254f17476d47f1d1917a7eb'
+          export PYTHONPATH="$GITHUB_WORKSPACE/ci:$GITHUB_WORKSPACE/review${PYTHONPATH:+:$PYTHONPATH}"
+          bash -n scripts/p2_no_goal_smoke_ci.sh
+          python3 -m unittest discover -s tools -p 'test_g07_scan_wall_pregoal.py' -v
+          python3 -m unittest discover -s tools -p 'test_g07_observer_io_first_boundary.py' -v
+          python3 -m unittest discover -s tools -p 'test_g07_clock_window_postgoal_graph.py' -v
+          python3 -m unittest discover -s tools -p 'test_g07_pregoal_stream_discovery.py' -v
+          python3 -m unittest discover -s tools -p 'test_g07_events_executor_ci_ab.py' -v
+          python3 -m unittest discover -s tools -p 'test_g07_health_first_boundary.py' -v
+          test "$AXIA_G07_EVENTS_EXECUTOR_AB" = 1
+          python3 -m py_compile tools/p2_g07_scan_wall_pregoal.py
+          python3 -m py_compile tools/p2_g07_observer_io_probe.py tools/p2_l3_live_session.py
+          test "$AXIA_G07_OBSERVER_IO_PROBE" = 1
+          python3 -m unittest discover -s tools -p 'test_g07_nav_early_manage_client.py' -v
+          python3 -m unittest discover -s tools -p 'test_g07_navigation_warm_participant_shutdown_ab.py' -v
+          python3 -m py_compile tools/p2_g07_task04_moving_review.py tools/p2_g07_ci_moving_goal.py
+          python3 -m py_compile "$GITHUB_WORKSPACE/ci/scripts/axia_g07_mvp_visual_verdict.py"
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_owner_shell_contract.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_owner_moving_entry.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task02_simple_tf.py' -v
+          PYTHONPATH="$GITHUB_WORKSPACE/ci:$GITHUB_WORKSPACE/review${PYTHONPATH:+:$PYTHONPATH}" PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_moving_review_scope.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_mvp_stage_sequence.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_mvp_minimal_fix.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_pre_goal_odom_readiness.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_shutdown_gui_order.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_ecm_owner_scope.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_localization_shutdown_evidence.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_native_cm_param_one_client.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_owner_gui_d3d12_isolation.py' -v
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_g07_task04_owner_sensor_renderer_parity.py' -v
+          python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/tests" -p 'test_g07_cm_stop_pub_boundary.py' -v
+          python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/tests" -p 'test_g07_jazzy_info_dict_independent_cm.py' -v
+          python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/d06/tests" -p 'test_d06_g07_cm_stop_pub_guard_real_policy.py' -v
+          echo 'AXIA_G07_TASK04_PUBLIC_NATIVE_MOVING_L0_PASS=29_PLUS_MVP_STAGE'
+      # Check the pinned CI image before installing build-only Gazebo dev packages.
+      # OSRF apt currently upgrades libgz-transport13 13.6 -> 13.7 for headers.
+      - name: Verify exact CI image parity before Gazebo witness dev packages
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          set +u; source /opt/ros/jazzy/setup.bash; set -u
+          mkdir -p "$GITHUB_WORKSPACE/public_evidence"
+          cd "$GITHUB_WORKSPACE/student/block_B/day07/h01_runtime"
+          python3 tools/p2_g07_owner_env_parity.py --mode ci --output "$GITHUB_WORKSPACE/public_evidence/prebuild_parity.json"
+          echo 'AXIA_G07_CI_IMAGE_PREBUILD_CORE_PARITY_PASS'
+      - name: Prepare Xvfb GUI and same Gazebo8 native S02 contact witness
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          set +u;source /opt/ros/jazzy/setup.bash;set -u
+          if ! command -v Xvfb >/dev/null || ! command -v rviz2 >/dev/null || ! command -v xwininfo >/dev/null;then
+            apt-get update -qq
+            DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends --no-upgrade xvfb x11-utils ros-jazzy-rviz2
+          fi
+          if ! command -v c++ >/dev/null || ! test -f /usr/include/gz/sim8/gz/sim/System.hh;then
+            apt-get update -qq
+            DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends cmake g++ libgz-sim8-dev
+          fi
+          cmake -S student/block_B/day07/h01_runtime/tools/native_s02_public -B "$GITHUB_WORKSPACE/task04-native-build" -DCMAKE_BUILD_TYPE=Release
+          cmake --build "$GITHUB_WORKSPACE/task04-native-build" --parallel 2
+          test -s "$GITHUB_WORKSPACE/task04-native-build/libaxia_g07_s02_ecm_witness.so"
+          sha256sum "$GITHUB_WORKSPACE/task04-native-build/libaxia_g07_s02_ecm_witness.so" > "$GITHUB_WORKSPACE/task04_witness_SHA256SUMS.txt"
+          echo 'AXIA_G07_TASK04_NATIVE_GZ8_WITNESS_BUILT_NO_GOAL'
+      - name: Exactly one native Gazebo Moving Goal and RViz/Gazebo GUI Xvfb session
+        timeout-minutes: 25
+        shell: bash
+        # Prebuild 25+5 exact runtime parity was verified above; only the
+        # CI native-witness dev toolchain upgraded Gazebo transport afterward.
+        env:
+          AXIA_P2_G07_OWNER_PARITY_CHECK: '0'
+        run: |
+          set -Eeuo pipefail
+          set +u;source /opt/ros/jazzy/setup.bash;set -u
+          echo 'AXIA_G07_CI_WITNESS_BUILD_ONLY_LIBGZ_TRANSPORT13=' "$(dpkg-query -W -f='${Version}' libgz-transport13)"
+          export DISPLAY=:97 GALLIUM_DRIVER=llvmpipe
+          export PYTHONPATH="$GITHUB_WORKSPACE/ci:$GITHUB_WORKSPACE/review${PYTHONPATH:+:$PYTHONPATH}"
+          export GZ_PARTITION="axia_p2_task04_moving_$GITHUB_RUN_ID"
+          export GZ_SIM_SYSTEM_PLUGIN_PATH="$GITHUB_WORKSPACE/task04-native-build${GZ_SIM_SYSTEM_PLUGIN_PATH:+:$GZ_SIM_SYSTEM_PLUGIN_PATH}"
+          export AXIA_G07_TASK03_WITNESS_SHA256="$(sha256sum "$GITHUB_WORKSPACE/task04-native-build/libaxia_g07_s02_ecm_witness.so" | cut -d' ' -f1)"
+          export AXIA_P2_SMOKE_RESULTS="$GITHUB_WORKSPACE/native"
+          export AXIA_G07_TASK03_WITNESS_REPORT="$AXIA_P2_SMOKE_RESULTS/s02_ecm_witness.json"
+          mkdir -p "$GITHUB_WORKSPACE/public_evidence"
+          Xvfb :97 -screen 0 1600x900x24 -nolisten tcp > "$GITHUB_WORKSPACE/public_evidence/xvfb.log" 2>&1 &
+          xvfb_pid=$!
+          runner_pid=''
+          cleanup() {
+            trap - EXIT
+            set +e
+            if [[ -n "$runner_pid" ]];then
+              kill -INT -- "-$runner_pid" 2>/dev/null || true
+              sleep 2
+              kill -TERM -- "-$runner_pid" 2>/dev/null || true
+              wait "$runner_pid" 2>/dev/null || true
+            fi
+            if [[ -n "${isolated_cm_pid:-}" ]];then
+              kill -INT "$isolated_cm_pid" 2>/dev/null || true
+              sleep 1
+              kill -TERM "$isolated_cm_pid" 2>/dev/null || true
+              sleep 1
+              kill -KILL "$isolated_cm_pid" 2>/dev/null || true
+              wait "$isolated_cm_pid" 2>/dev/null || true
+            fi
+            kill -TERM "$xvfb_pid" 2>/dev/null || true
+            wait "$xvfb_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+          sleep 2
+          kill -0 "$xvfb_pid"
+          cd "$GITHUB_WORKSPACE/student/block_B/day07/h01_runtime"
+          # Independent read-only DDS participant, using D08 #202 pattern.
+          python3 "$GITHUB_WORKSPACE/ci/d06/diagnostic/g07_independent_cm_rmw_witness.py" \
+            --out "$GITHUB_WORKSPACE/public_evidence/independent_cm_rmw.jsonl" \
+            --max-samples 12000 > "$GITHUB_WORKSPACE/public_evidence/independent_cm_rmw.log" 2>&1 &
+          isolated_cm_pid=$!
+          for ((k=0;k<30;k++));do
+            grep -Fq 'AXIA_G07_INDEPENDENT_CM_RMW_PROCESS_READY' \
+              "$GITHUB_WORKSPACE/public_evidence/independent_cm_rmw.log" && break
+            kill -0 "$isolated_cm_pid" 2>/dev/null || break
+            sleep .1
+          done
+          grep -Fq 'AXIA_G07_INDEPENDENT_CM_RMW_PROCESS_READY' \
+            "$GITHUB_WORKSPACE/public_evidence/independent_cm_rmw.log" || {
+            echo 'G07_INDEPENDENT_CM_RMW_STARTUP_BLOCKED' >&2;exit 3;
+          }
+          echo 'AXIA_G07_INDEPENDENT_CM_RMW_READY_NO_NEW_GOAL'
+          setsid env -u LD_PRELOAD -u AXIA_G07_TASK01_TF_AVAIL_PROBE timeout --signal=TERM --kill-after=10s 1000s             bash scripts/p2_no_goal_smoke_ci.sh > "$GITHUB_WORKSPACE/public_evidence/moving_stdout.log" 2>&1 &
+          runner_pid=$!
+          rviz_seen=0;gazebo_seen=0
+          for ((i=0;i<780;i++));do
+            kill -0 "$runner_pid" 2>/dev/null || break
+            windows="$(timeout 4s xwininfo -root -tree 2>/dev/null || true)"
+            grep -Eiq 'RViz' <<< "$windows" && rviz_seen=1
+            grep -Eiq 'Gazebo' <<< "$windows" && gazebo_seen=1
+            sleep 1
+          done
+          set +e;wait "$runner_pid";runner_rc=$?;set -e
+          runner_pid=''
+          kill -INT "$isolated_cm_pid" 2>/dev/null || true
+          for ((k=0;k<30;k++));do
+            kill -0 "$isolated_cm_pid" 2>/dev/null || break
+            sleep .1
+          done
+          if kill -0 "$isolated_cm_pid" 2>/dev/null;then
+            kill -TERM "$isolated_cm_pid" 2>/dev/null || true
+            sleep .5
+          fi
+          if kill -0 "$isolated_cm_pid" 2>/dev/null;then
+            kill -KILL "$isolated_cm_pid" 2>/dev/null || true
+            echo 'G07_INDEPENDENT_CM_RMW_FORCED_EXIT_HOLD'
+          fi
+          wait "$isolated_cm_pid" 2>/dev/null || true
+          isolated_cm_pid=''
+          [[ -s "$GITHUB_WORKSPACE/public_evidence/independent_cm_rmw.jsonl" ]] \
+            || echo 'G07_INDEPENDENT_CM_RMW_NO_EXACT_PAIR_HOLD'
+          echo "AXIA_G07_TASK04_NATIVE_ONE_MOVING_RUNNER_RC=$runner_rc RVIZ_X11=$rviz_seen GAZEBO_X11=$gazebo_seen"
+          verify_real_goal_and_guard_evidence() {
+          # This pre-Goal check ran INSIDE this same Gazebo/Nav2 graph. Do
+          # not treat ROS/Gazebo startup or a two-window visual as sufficient.
+          python3 - "$GITHUB_WORKSPACE/native/g07_ci_scan_pregoal.json" <<'PY_SCAN_PREFLIGHT' || return 3
+          import json,sys
+          from pathlib import Path
+          p=Path(sys.argv[1])
+          assert p.is_file(),"missing in-session pregoal report"
+          d=json.loads(p.read_text())
+          assert d.get("status")=="PASS_SCOPED_RECEIVED_SCAN_ONLY",d
+          assert d.get("goal_sent") is False,d
+          for name in ("scan","safety_scan"):
+              row=d["topic_results"][name]
+              assert row["max_wall_gap_ms"]<=300 and row["max_header_sim_gap_ms"]<=150,row
+          print("AXIA_G07_NATIVE_STRICT_PREG0AL_12SEC_SCAN_WALL_PASS")
+          PY_SCAN_PREFLIGHT
+          # Field teardown vJpsc6Wy: the parent "GRACEFUL" marker coexisted
+          # with BOTH Guard and Supervisor child exit1 after rclpy SIGINT.
+          # Require genuine clean exit0 of both nodes in this same session.
+          for child in p2_base_guard_node p2_supervisor_node;do
+            if grep -Eq "\\[ERROR\\] \\[${child}-[0-9]+\\]: process has died" "$GITHUB_WORKSPACE/native/launch.log";then
+              echo "AXIA_G07_NATIVE_L2_CHILD_DIED_DURING_TEARDOWN=${child}" >&2
+              echo '=== FIRST ACTUAL CHILD EXCEPTION (bounded) ===' >&2
+              grep -F "[${child}-" "$GITHUB_WORKSPACE/native/launch.log" | tail -n 48 >&2 || true
+              return 3
+            fi
+            grep -Eq "\\[INFO\\] \\[${child}-[0-9]+\\]: process has finished cleanly" "$GITHUB_WORKSPACE/native/launch.log" || {
+              echo "AXIA_G07_NATIVE_L2_CHILD_CLEAN_EXIT_ABSENT=${child}" >&2
+              return 3
+            }
+          done
+          echo 'AXIA_G07_NATIVE_L2_GUARD_SUPERVISOR_ACTUAL_CHILD_EXIT0_PASS'
+          # This is a REAL-GAZEBO /tf fallback regression, not merely a
+          # successful run which happened to receive a late /amcl_pose.
+          grep -Fq 'G07_AMCL_ACTUAL_MAP_POSE_TRANSIENT_LOCAL_VERIFIED_BEFORE_GOAL' "$GITHUB_WORKSPACE/native/g07_ci_moving.log" || return 3
+          python3 - "$GITHUB_WORKSPACE/native/g07_ci_moving/ci_moving_goal_result.json" <<'PY_REAL_TF' || return 3
+          import json,sys
+          result=json.load(open(sys.argv[1]))
+          assert result.get("goal_sent") is True,result
+          assert result.get("source_sha")=="15bf27faa856df85aab31f1175c7127cb2411e3d",result
+          print('AXIA_G07_REAL_OWNER_AMCL_PRIMARY_PATH_PASS actual_goal_sent=true')
+          PY_REAL_TF
+          # Real Guard 20Hz timing facts must be present in the actual
+          # native L2 evidence; an unrelated CI-only stub cannot supply them.
+          export PYTHONPATH="$GITHUB_WORKSPACE/student/block_B/day07/h01_runtime/tools:$GITHUB_WORKSPACE/ci:$GITHUB_WORKSPACE/review${PYTHONPATH:+:$PYTHONPATH}"
+          python3 - "$GITHUB_WORKSPACE/native" <<'PY_GUARD_OWNER_CONTRACT' || return 3
+          import json,sys
+          from pathlib import Path
+          from d06.diagnostic.g07_task02_strict_gate import assess
+          from p2_g07_task03_contract import audit_guard_internal_cm_age
+          root=Path(sys.argv[1])
+          report=json.loads((root/"g07_ci_moving/ci_moving_goal_result.json").read_text())
+          rows=[json.loads(v) for v in (root/"g07_ci_moving/actual_ros_events.jsonl").read_text().splitlines()]
+          goal=next(x["t"] for x in rows if x.get("kind")=="owner_goal_published")
+          end=next(x["t"] for x in rows if x.get("kind")=="task03_motion_window_end")
+          ticks=[x for x in rows if x.get("kind")=="guard" and goal<=x.get("t",-1)<=end]
+          assert len(ticks)>=10,len(ticks)
+          assert all("guard_ever_moved" in x.get("data",{}) and "cm_age_sec" in x["data"]
+                     and "supervisor_age_sec" in x["data"] for x in ticks)
+          internal=audit_guard_internal_cm_age(rows,goal_start=goal,window_end=end)
+          assert internal["status"]=="GUARD_NATIVE_CM_AGE_TTL150_PASS",internal
+          ci=assess(report,rows)
+          assert ci["status"] in ("TASK02_PUBLIC_L2_NUMERICAL_CANDIDATE",
+                                  "TASK02_RMW_TIMEBASE_DISCONTINUITY_HOLD"),ci
+          # OFFLINE schema projection using this REAL CI bag: not an Owner
+          # session, not an Owner authority grant, not a WSL2 acceptance.
+          projected=dict(report,status="NUMERICAL_CANDIDATE",
+             shared_execution_mode="owner",ci_specific=False,
+             owner_authority_verified=True,
+             common_g07_ci_oracle_status="CI_GAZEBO_MOVING_GOAL_CANDIDATE")
+          owner=assess(projected,rows)
+          assert owner["status"]==ci["status"],owner
+          if ci["status"]!="TASK02_PUBLIC_L2_NUMERICAL_CANDIDATE":
+              print("AXIA_G07_FV17_FORMAL_RMW_TIMEBASE=HOLD_MOVING_DEMO_CANDIDATE_ONLY")
+          print("AXIA_G07_FV17_REAL_GAZEBO_GUARD_INTERNAL_TTL_PASS "
+                f"samples={internal['samples']} max_cm_age_ms={internal['max_cm_age_ms']}")
+          print("AXIA_G07_FV17_OWNER_CI_PROFILE_NUMERICAL_PARITY_PASS_OWNER_L3_NOT_RUN")
+          PY_GUARD_OWNER_CONTRACT
+          return 0
+          }
+          if [[ "$runner_rc" -ne 0 ]];then
+            # Educational MVP: actual CLEAR/SLOW/STOP, odom dwell and exact
+            # Goal cancellation PASSED. A known *post-demo* localization
+            # shutdown timeout is a separate FORMAL HOLD, not a demo failure.
+            # Validate the real native JSON and both windows; never relabel
+            # full lifecycle/CM-clean acceptance as PASS.
+            if [[ "$rviz_seen" -eq 1 && "$gazebo_seen" -eq 1 ]] \
+                && python3 "$GITHUB_WORKSPACE/ci/scripts/axia_g07_mvp_visual_verdict.py" \
+                  --motion "$GITHUB_WORKSPACE/native/g07_ci_moving/ci_moving_goal_result.json" \
+                  --shutdown "$GITHUB_WORKSPACE/native/g07_ordered_shutdown.json" \
+                  --gui-windows 2 \
+                  --source-sha '15bf27faa856df85aab31f1175c7127cb2411e3d' \
+                  --output "$GITHUB_WORKSPACE/public_evidence/task04_mvp_visual_l2_verdict.json"; then
+              sha256sum "$GITHUB_WORKSPACE/public_evidence/task04_mvp_visual_l2_verdict.json" \
+                > "$GITHUB_WORKSPACE/public_evidence/task04_mvp_visual_l2_verdict.sha256"
+              # Parent visual verdict alone cannot pass; use actual ROS
+              # Guard internal TTL and child zero-exit evidence first.
+              verify_real_goal_and_guard_evidence || exit 3
+              echo 'AXIA_G07_TASK04_MVP_VISUAL_L2_PASS_FORMAL_LOCALIZATION_SHUTDOWN_HOLD'
+              echo 'AXIA_G07_FORMAL_L2=HOLD AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false'
+              # Educational visual verdict cannot satisfy strict public L2
+              # or authorize a new WSL2 moving acceptance release.
+              exit 3
+            fi
+            for f in "$GITHUB_WORKSPACE/native/staged_startup.log"                      "$GITHUB_WORKSPACE/native/g07_ci_moving.log"                      "$GITHUB_WORKSPACE/native/g07_ordered_shutdown.log"                      "$GITHUB_WORKSPACE/native/launch.log"                      "$GITHUB_WORKSPACE/public_evidence/moving_stdout.log";do
+              [[ -f "$f" ]] || continue
+              echo "=== FIRST NATIVE MOVING EVIDENCE === ${f##*/}"
+              tail -n 90 "$f"
+            done
+            exit 3
+          fi
+          verify_real_goal_and_guard_evidence || exit 3
+          windows_count=$((rviz_seen+gazebo_seen))
+          python3 tools/p2_g07_task04_moving_review.py             --motion-root "$GITHUB_WORKSPACE/native"             --witness "$GITHUB_WORKSPACE/native/s02_ecm_witness.json"             --source-sha '15bf27faa856df85aab31f1175c7127cb2411e3d'             --gui-windows "$windows_count"             --output "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"
+          sha256sum "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"             > "$GITHUB_WORKSPACE/public_evidence/task04_moving_verdict.sha256"
+          echo 'AXIA_G07_TASK04_NATIVE_MOVING_GUI_XVFB_L2_PASS_OWNER_WSL2_NOT_RUN'
+          echo 'AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false'
+      - name: Read-only CM ZERO timeout timing vs first Guard latch (HOLD if unproven)
+        if: always()
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/public_evidence"
+          python3 "$GITHUB_WORKSPACE/ci/d06/diagnostic/g07_cm_stop_pub_boundary.py" \
+            --events "$GITHUB_WORKSPACE/native/g07_ci_moving/actual_ros_events.jsonl" \
+            --report "$GITHUB_WORKSPACE/native/g07_ci_moving/ci_moving_goal_result.json" \
+            --readback-log "$GITHUB_WORKSPACE/public_evidence/moving_stdout.log" \
+            --output "$GITHUB_WORKSPACE/public_evidence/cm_stop_pub_first_latch.json"
+          # This is solely an evidence classifier. Any missing source-pair
+          # or non-reproduced latch remains UNVERIFIED, never a timing PASS.
+      - name: Summarize first actual native ROS inter-node delivery gap (no root claim)
+        if: always()
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/public_evidence"
+          python3 "$GITHUB_WORKSPACE/ci/d06/diagnostic/g07_first_actual_delivery_gap.py" \
+            --events "$GITHUB_WORKSPACE/native/g07_ci_moving/actual_ros_events.jsonl" \
+            --report "$GITHUB_WORKSPACE/native/g07_ci_moving/ci_moving_goal_result.json" \
+            --output "$GITHUB_WORKSPACE/public_evidence/first_delivery_actual_pairs.json"
+          # Report is derived timing metadata only; no raw bag, UUID or
+          # client/source packet contents leave the native job workspace.
+      - name: Compare original/independent exact CM DDS sample pair (read-only)
+        if: always()
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          PYTHONPATH="$GITHUB_WORKSPACE/ci" python3 - \
+            "$GITHUB_WORKSPACE/native/g07_ci_moving/actual_ros_events.jsonl" \
+            "$GITHUB_WORKSPACE/public_evidence/first_delivery_actual_pairs.json" \
+            "$GITHUB_WORKSPACE/public_evidence/independent_cm_rmw.jsonl" \
+            "$GITHUB_WORKSPACE/public_evidence/independent_cm_pair_verdict.json" <<'PY_G07_INDEP'
+          import json,sys
+          from pathlib import Path
+          from d06.diagnostic.g07_independent_cm_rmw_witness import compare_same_cm_pair
+          o,f,i,out=map(Path,sys.argv[1:])
+          rows=lambda p:[json.loads(x) for x in p.read_text().splitlines()]
+          if all(p.is_file() for p in (o,f,i)):
+              pair=json.loads(f.read_text()).get("first_pairs",{}).get("pre_guard")
+              v=(compare_same_cm_pair(rows(o),rows(i),
+                 pair["previous_rx_monotonic"],pair["current_rx_monotonic"])
+                 if pair else compare_same_cm_pair([],[],0,1))
+          else:
+              v=compare_same_cm_pair([],[],0,1)
+          out.write_text(json.dumps(v,sort_keys=True,indent=2)+"\n")
+          print("AXIA_G07_INDEPENDENT_CM_RMW_PAIR "+json.dumps(v,sort_keys=True))
+          PY_G07_INDEP
+          # This report never turns the strict 2-cycle TTL failure into PASS.
+      - name: Preserve FIRST failed pregoal Scan Wall/Sim/Clock RTF and Nav server log classification
+        if: always()
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/public_evidence"
+          python3 - "$GITHUB_WORKSPACE/native/g07_ci_scan_pregoal.json" "$GITHUB_WORKSPACE/public_evidence/first_scan_pregoal_boundary.json" <<'PY_FIRST_SCAN'
+          import json,sys
+          from pathlib import Path
+          source,dest=map(Path,sys.argv[1:])
+          raw={}
+          try:
+              if source.is_file() and not source.is_symlink() and source.stat().st_size<=65536:
+                  raw=json.loads(source.read_text())
+          except (OSError,ValueError):
+              pass
+          if not isinstance(raw,dict):raw={}
+          allowed=("first_failure","first_scan_timing_boundary","first_delivery_violation","topic_results",
+                   "local_window_rtf_estimate","clock_max_wall_gap_ms","clock_sample_count",
+                   "odom_max_wall_gap_ms","scan_generation_vs_bridge_root_cause",
+                   "goal_sent","certified_estop")
+          d={"schema":"axia.g07.native_pregoal_first_scan_boundary_v1",
+             "status":raw.get("status","NOT_MEASURED"),
+             "release":"HOLD","root_cause":"UNDETERMINED",
+             "owner_wsl2_l3":False}
+          for key in allowed:
+              if key in raw:d[key]=raw[key]
+          serialized=json.dumps(d,sort_keys=True,allow_nan=False,indent=2)+"\n"
+          assert len(serialized.encode())<16384
+          dest.write_text(serialized)
+          print("AXIA_G07_SCAN_PREFLIGHT_FIRST_BOUNDARY_RECORDED "+
+                json.dumps({k:d.get(k) for k in ("status","first_failure",
+                "first_scan_timing_boundary","first_delivery_violation","local_window_rtf_estimate")},
+                sort_keys=True))
+          PY_FIRST_SCAN
+          sha256sum "$GITHUB_WORKSPACE/public_evidence/first_scan_pregoal_boundary.json" > "$GITHUB_WORKSPACE/public_evidence/first_scan_pregoal_boundary.sha256"
+          python3 "$GITHUB_WORKSPACE/ci/d06/diagnostic/g07_nav_shutdown_first_server_boundary.py" \
+            --shutdown "$GITHUB_WORKSPACE/native/g07_ordered_shutdown.json" \
+            --launch-log "$GITHUB_WORKSPACE/native/launch.log" \
+            --output "$GITHUB_WORKSPACE/public_evidence/first_nav_server_boundary.json"
+          sha256sum "$GITHUB_WORKSPACE/public_evidence/first_nav_server_boundary.json" > "$GITHUB_WORKSPACE/public_evidence/first_nav_server_boundary.sha256"
+      - name: Independent first Scan header pair in existing ROS bag (numbers only)
+        if: always()
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          set +u; source /opt/ros/jazzy/setup.bash; set -u
+          mkdir -p "$GITHUB_WORKSPACE/public_evidence"
+          # FIRST Scan callback pair was saved before any attempted Goal.
+          # Independent rosbag2 receives on its own system clock. Never
+          # subtract a rosbag receive epoch from host monotonic.
+          python3 "$GITHUB_WORKSPACE/ci/d06/diagnostic/g07_scan_rosbag_first_boundary.py" \
+            --bag-root "$GITHUB_WORKSPACE/native/rosbag2" \
+            --first-report "$GITHUB_WORKSPACE/native/g07_ci_scan_pregoal.json" \
+            --output "$GITHUB_WORKSPACE/public_evidence/first_scan_rosbag_exact_pair.json"
+          sha256sum "$GITHUB_WORKSPACE/public_evidence/first_scan_rosbag_exact_pair.json" \
+            > "$GITHUB_WORKSPACE/public_evidence/first_scan_rosbag_exact_pair.sha256"
+          echo 'AXIA_G07_FIRST_SCAN_ROSBAG_EXACT_PAIR_NUMERIC_REPORT_SAVED_CAUSE_HOLD'
+      - name: Preserve bounded first callback lock / write / flush numeric timing
+        if: always()
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/public_evidence"
+          source="$GITHUB_WORKSPACE/native/g07_ci_moving/g07_observer_io_probe_summary.json"
+          dest="$GITHUB_WORKSPACE/public_evidence/observer_io_first_boundary.json"
+          if [[ -f "$source" && ! -L "$source" && "$(stat -c %s "$source")" -lt 131072 ]];then
+            python3 - "$source" "$dest" <<'PY_OBSERVER_PROBE'
+          import json,sys
+          from pathlib import Path
+          source,target=map(Path,sys.argv[1:])
+          d=json.loads(source.read_text())
+          assert d.get("schema")=="axia.g07.observer_callback_io_probe.v1",d
+          assert d.get("release")=="HOLD" and not d.get("root_cause_proven")
+          assert d.get("certified_estop") is False and d.get("owner_l3_accepted") is False
+          assert d.get("captured",0)>=1
+          target.write_text(json.dumps(d,sort_keys=True,indent=2)+"\n")
+          print("AXIA_G07_REAL_NATIVE_OBSERVER_IO_BOUNDARY "+
+              json.dumps({k:d.get(k) for k in ("status","first_violation",
+              "correlated_channels","max_lock_wait_ms","max_json_ms","max_write_ms",
+              "max_flush_ms","heartbeat_max_gap_ms","release")},sort_keys=True))
+          PY_OBSERVER_PROBE
+          else
+            printf '%s\n' '{"schema":"axia.g07.observer_callback_io_probe.v1","status":"NATIVE_IO_PROBE_MISSING_HOLD","release":"HOLD","root_cause_proven":false,"certified_estop":false}' > "$dest"
+            echo 'AXIA_G07_NATIVE_IO_PROBE_NOT_CAPTURED_CAUSE_HOLD'
+          fi
+          sha256sum "$dest" > "$dest.sha256"
+      - name: Preserve actual first HEALTH readiness boundary numeric-only
+        if: always()
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/public_evidence"
+          src="$GITHUB_WORKSPACE/native/g07_ci_moving/first_health_boundary.json"
+          dst="$GITHUB_WORKSPACE/public_evidence/first_health_boundary.json"
+          if [[ -f "$src" && ! -L "$src" && "$(stat -c %s "$src")" -lt 65536 ]];then
+            python3 - "$src" "$dst" <<'PY_HEALTH_EVIDENCE'
+          import json,sys
+          from pathlib import Path
+          src,dst=map(Path,sys.argv[1:])
+          data=json.loads(src.read_text())
+          assert data.get("schema")=="axia.g07.events_executor_first_health_boundary.v1",data
+          assert data.get("release")=="HOLD" and data.get("goal_sent") is False
+          assert data.get("certified_estop") is False and not data.get("root_cause_proven")
+          assert data.get("samples",0)>=1
+          safe={k:data.get(k) for k in ("schema","status","release","goal_sent",
+              "first_readiness_blockers","first_sample","last_sample",
+              "first_state_transition","samples","dropped_middle_samples",
+              "root_cause_proven","certified_estop","safety_ttl_changed")}
+          dst.write_text(json.dumps(safe,sort_keys=True,indent=2)+"\n")
+          print("AXIA_G07_NATIVE_FIRST_HEALTH_BOUNDARY_HOLD "+
+                json.dumps(safe,sort_keys=True),flush=True)
+          PY_HEALTH_EVIDENCE
+          else
+            echo '{"schema":"axia.g07.events_executor_first_health_boundary.v1","status":"NO_FIRST_HEALTH_TIMEOUT_EVIDENCE","release":"HOLD","goal_sent":false,"root_cause_proven":false,"certified_estop":false}' > "$dst"
+            echo 'AXIA_G07_FIRST_HEALTH_NOT_CAPTURED_OR_HEALTH_PASSED_UNVERIFIED_HOLD'
+          fi
+          sha256sum "$dst" > "$dst.sha256"
+      - name: Upload allowlisted numeric verdict only no original raw bag
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: axia-task04-moving-native-numeric-${{ github.run_id }}-cycle-${{ matrix.cycle }}-cycle-${{ matrix.cycle }}
+          path: |
+            public_evidence/task04_mvp_visual_l2_verdict.json
+            public_evidence/task04_mvp_visual_l2_verdict.sha256
+            public_evidence/cm_stop_pub_first_latch.json
+            public_evidence/first_delivery_actual_pairs.json
+            public_evidence/first_health_boundary.json
+            public_evidence/first_health_boundary.json.sha256
+            public_evidence/observer_io_first_boundary.json
+            public_evidence/observer_io_first_boundary.json.sha256
+            public_evidence/first_scan_pregoal_boundary.json
+            public_evidence/first_scan_rosbag_exact_pair.json
+            public_evidence/first_scan_rosbag_exact_pair.sha256
+            public_evidence/first_scan_pregoal_boundary.sha256
+            public_evidence/first_nav_server_boundary.json
+            public_evidence/first_nav_server_boundary.sha256
+            public_evidence/independent_cm_pair_verdict.json
+            public_evidence/independent_cm_rmw.jsonl
+            public_evidence/task04_moving_l2_verdict.json
+            public_evidence/task04_moving_verdict.sha256
+            task04_witness_SHA256SUMS.txt
+          retention-days: 14
+          if-no-files-found: warn
