@@ -45,6 +45,8 @@ on:
       - 'd06/tests/test_d06_c27_owner_candidate_pin.py'
       - 'd06/tests/test_d06_c27_owner_compact_once.py'
       - 'd06/tests/test_d06_c28_actual_wsl2_compact_eof_and_safety.py'
+      - 'd06/tests/test_d06_c29_ci_first_release_manifest.py'
+      - 'd06/ci/c29_source_manifest.json'
       - 'd06/scripts/axia_d06_c27_owner_wsl2_nogoal_once.sh'
       - 'd06/scripts/axia_d06_g07_wslg_sensor_no_goal_once.sh'
       - 'd06/tools/d06_c23_core_index_readonly_doctor.py'
@@ -160,6 +162,7 @@ jobs:
           python3 -m unittest discover -s d06/tests -p 'test_d06_c27_owner_candidate_pin.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_c27_owner_compact_once.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_c28_actual_wsl2_compact_eof_and_safety.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_c29_ci_first_release_manifest.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_l2_apt_https_bootstrap.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_ci_only_gui_nice.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_g07_no_goal_manager_discovery.py' -v
