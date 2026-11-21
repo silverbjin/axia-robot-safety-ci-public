@@ -40,7 +40,7 @@ Goal 이전 Clock first gap 337.093495ms, Scan Observer gap424.373456ms vs Heade
 - RED #44864544851 / Public SHA 166ef1fa5209614be93bd53d23a1ec7a98a240ce: 3개 수치 테스트 성공, 신규 native workflow 부재로 예상한 실패.
 - GREEN #44864568449 / Public SHA 48727efed93a564e8acccae1cecb8783d1a6072e: Ran 4 tests / OK.
 - 전체 Public 계약 #44864572718 / 같은 SHA: 313 passed, 3 skipped.
-- 실제 native 단일 계측 #44864568561 / 같은 SHA: 결과 조회 전이므로 잠정 HOLD. 이 진단이 PASS해도 FULL L2 2/2나 Owner L3 PASS가 아닙니다.
+- 실제 native 단일 계측 #44864568561 / 같은 SHA: **실제 scoped 1/1 PASS**, 최초 300ms 위반 재현 없음, 원인 미확정; FULL L2 2/2 미검증. 상세 결과는 5장 참조.
 
 테스트 명령 (GitHub Actions 실제 수행):
     python3 -m unittest discover -s tests -p 'test_g07_first_scan_rmw_evidence_export.py' -v
@@ -54,7 +54,7 @@ Review 기준 diff: Public 4afc6f0... → 48727efe..., 신규 진단 Python·테
 
 미검증: 이번 native 첫 위반의 유효한 RMW publication sequence, Gazebo native publish → bridge → RMW exact pair, 실제 Moving Goal 독립 cold-run 2/2, NVIDIA WSL2/WSLg 현장 L3, 실제 첫 CLEAR→SLOW→STOP/정상 종료. 어느 하나라도 미확인이면 전체 시연 안정성 RELEASE=HOLD입니다.
 
-**다음 판정**: Native #44864568561의 최초 PREGOAL / first_scan_rmw_pair / exact rosbag pair / 첫 HEALTH 전이를 우선 검토. RMW seq 미지원이면 exact pair를 강제 생성하지 말고 HOLD. 최종 근본 원인이 확인된 최소 수정만 새로운 RED→GREEN→REFACTOR→REVIEW→COMMIT으로 수행. 새로운 source SHA로 실제 L2 2/2 성공 전 WSL2 실행기 출고 및 main 병합 금지.
+**후속 판정**: #44864568561은 scoped PASS였으며, 이후 #44865087050과 #44865216748의 서로 다른 최초 실패 및 실제 Jazzy RMW 수집 결함은 5–8장에서 분리하였습니다. RMW seq 미지원이면 exact pair를 강제 생성하지 말고 HOLD. 최종 근본 원인이 확인된 최소 수정만 새로운 RED→GREEN→REFACTOR→REVIEW→COMMIT으로 수행. 새로운 source SHA로 실제 L2 2/2 성공 전 WSL2 실행기 출고 및 main 병합 금지.
 
 ## 5. 후속 실증 결과 확정 — 이전 Pending 항목을 실제 verdict로 대체
 
