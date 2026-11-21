@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 1edd816039381719b4b3a4b0725dd18320ea6ae9
+          ref: a0562266e426bdd8c40823c48c75ca669a48f739
           path: student
           persist-credentials: false
       - name: Original read-only Scan RMW capability RED
