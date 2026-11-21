@@ -13,7 +13,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 4b7226fd4e0c807a1b0a3c5aa7937e86d5357921
+          ref: 7e105be19d14056007048b42cc43f7bf8d7abac9
           path: student
           persist-credentials: false
       - name: Read-only first HEALTH boundary original no-Goal 12s timeout
