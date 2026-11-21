@@ -18,7 +18,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 47ee68e2ad44114c096029c3645c4d3629fce530
+          ref: f540ad794491c2be759be248f7219212c01bab3a
           path: student
           persist-credentials: false
       - name: No actual robot, real rclpy two-worker forced stall A/B
