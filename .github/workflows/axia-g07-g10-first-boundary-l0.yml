@@ -1,0 +1,24 @@
+name: AXIA G07 G10 First Multi-Channel Boundary L0
+on:
+  push:
+    branches: ['fix/g07-g50-first-boundary-ci-20261121']
+    paths:
+      - '.github/workflows/axia-g07-g10-first-boundary-l0.yml'
+      - 'tests/test_g07_g10_first_multichannel_causal_stage.py'
+      - 'd06/diagnostic/g07_g10_multichannel_causal_stage.py'
+permissions:
+  contents: read
+jobs:
+  g10_original_first_boundary:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Exact G07 first 600ms RMW/Scan and 388ms CM source pairs
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest discover -s tests -p 'test_g07_g10_first_multichannel_causal_stage.py' -v
+          echo 'AXIA_G07_G10_FIRST_BOUNDARY_L0_GREEN_GAZEBO_L2_NOT_RUN_ROOT_UNDETERMINED_HOLD'
