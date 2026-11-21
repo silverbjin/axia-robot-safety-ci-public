@@ -14,7 +14,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 986e58aeff9d7b87bd04bb16d7a4472e1257edac
+          ref: 2218584a907d3b7082588dc40625c8156cc88486
           path: student
           persist-credentials: false
       - name: Existing tested PR73 observer selector regression and existing Stop/Scan contract
