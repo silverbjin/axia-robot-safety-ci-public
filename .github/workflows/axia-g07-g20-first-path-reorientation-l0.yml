@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 14613b02f1e7e271b59bb5ace774a1aa8a8e7247
+          ref: a78be7e2a29c9bb022cbe601607b945c4c191e5e
           path: student
           persist-credentials: false
       - shell: bash
