@@ -1,4 +1,4 @@
-# G07 differentiated S3 read-only first RMW diagnostic: ONE independent native trial only; not formal 2/2 acceptance.
+# G07 native strict two independent cold cycles; a failed cycle blocks Owner WSL2 release.
 # Reuses previously tested full native Goal/Cancel/Guard/Nav2 contractual checks unmodified.
 # Student exact diagnostic candidate SHA; NEVER use this workflow as Owner WSL2 release evidence.
 # Baseline Task03 positive Contact calibration is frozen, not repeated.
@@ -12,7 +12,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: axia-g07-first-health-diagnostic-single-native-l2
+  group: axia-g07-multi-first-boundary-strict-two-cycle-l2
   cancel-in-progress: false
 jobs:
   one-real-gazebo-moving-gui:
@@ -22,7 +22,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        cycle: [1]
+        cycle: [1, 2]
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     container:
@@ -173,7 +173,7 @@ jobs:
           echo 'AXIA_G07_CI_WITNESS_BUILD_ONLY_LIBGZ_TRANSPORT13=' "$(dpkg-query -W -f='${Version}' libgz-transport13)"
           export DISPLAY=:97 GALLIUM_DRIVER=llvmpipe
           export PYTHONPATH="$GITHUB_WORKSPACE/ci:$GITHUB_WORKSPACE/review${PYTHONPATH:+:$PYTHONPATH}"
-          export GZ_PARTITION="axia_p2_task04_moving_$GITHUB_RUN_ID"
+          export GZ_PARTITION="axia_p2_task04_moving_${GITHUB_RUN_ID}_${{ matrix.cycle }}"
           export GZ_SIM_SYSTEM_PLUGIN_PATH="$GITHUB_WORKSPACE/task04-native-build${GZ_SIM_SYSTEM_PLUGIN_PATH:+:$GZ_SIM_SYSTEM_PLUGIN_PATH}"
           export AXIA_G07_TASK03_WITNESS_SHA256="$(sha256sum "$GITHUB_WORKSPACE/task04-native-build/libaxia_g07_s02_ecm_witness.so" | cut -d' ' -f1)"
           export AXIA_P2_SMOKE_RESULTS="$GITHUB_WORKSPACE/native"
