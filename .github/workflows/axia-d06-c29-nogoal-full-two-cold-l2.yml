@@ -1,7 +1,6 @@
 name: AXIA D06 C29 full same-world NO_GOAL two independent cold L2
 on:
-  push:
-    branches: ['fix/d06-wslg-lidar-vs-rtf-ci-20261118']
+  pull_request:
     paths:
       - '.github/workflows/axia-d06-c29-nogoal-full-two-cold-l2.yml'
       - 'd06/tests/test_d06_g07_nogoal_ordered_cm_shutdown.py'
