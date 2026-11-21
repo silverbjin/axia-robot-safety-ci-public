@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 92fa6c137eb751792eb6f830f55e64c4803c195c
+          ref: 3e54d49db91b79de8c9dce134b6576b81722bbf9
           path: student
           persist-credentials: false
       - name: Native clock >4096 callback retention and no repeated postGoal DDS graph
@@ -21,6 +21,7 @@ jobs:
           cd student/block_B/day07/h01_runtime
           python3 -m unittest discover -s tools -p 'test_g07_clock_window_postgoal_graph.py' -v
           python3 -m unittest discover -s tools -p 'test_g07_scan_wall_pregoal.py' -v
+          python3 -m unittest discover -s tools -p 'test_g07_pregoal_stream_discovery.py' -v
           python3 -m unittest discover -s tools -p 'test_g07_observer_io_first_boundary.py' -v
           python3 -m unittest discover -s tools -p 'test_g07_task04_mvp_minimal_fix.py' -v
           echo 'AXIA_G07_CLOCK_WINDOW_POSTGOAL_GRAPH_L0_PASS_NO_GAZEBO_NO_GOAL'
