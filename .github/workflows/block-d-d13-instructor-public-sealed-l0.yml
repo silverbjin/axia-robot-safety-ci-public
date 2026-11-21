@@ -111,13 +111,13 @@ jobs:
           (cd instructor && python3 -m unittest discover -s training/block_D/tests -p test_d13_story_24_slides_contract.py -v) > "$RUNNER_TEMP/private_d13_story.log" 2>&1
           rc_story=$?
           set -e
-          if [ "$rc_story" -ne 0 ] ||
-             ! grep -q 'Ran 3 tests' "$RUNNER_TEMP/private_d13_story.log" ||
-             ! grep -qE '^OK
+          if [ "$rc_ref" -ne 0 ] || [ "$rc_docs" -ne 0 ] || [ "$rc_story" -ne 0 ] ||
              ! grep -q 'Ran 8 tests' "$RUNNER_TEMP/private_d13_ref.log" ||
              ! grep -q 'Ran 3 tests' "$RUNNER_TEMP/private_d13_docs.log" ||
+             ! grep -q 'Ran 3 tests' "$RUNNER_TEMP/private_d13_story.log" ||
              ! grep -qE '^OK$' "$RUNNER_TEMP/private_d13_ref.log" ||
-             ! grep -qE '^OK$' "$RUNNER_TEMP/private_d13_docs.log"; then
+             ! grep -qE '^OK$' "$RUNNER_TEMP/private_d13_docs.log" ||
+             ! grep -qE '^OK$' "$RUNNER_TEMP/private_d13_story.log"; then
             echo 'PRIVATE_D13_L0_HOLD (private diagnostics not published)'
             exit 1
           fi
@@ -130,23 +130,3 @@ jobs:
         run: |
           rm -rf -- instructor
           rm -f -- "$RUNNER_TEMP/private_d13_ref.log" "$RUNNER_TEMP/private_d13_docs.log" "$RUNNER_TEMP/private_d13_story.log"
- "$RUNNER_TEMP/private_d13_story.log"; then
-            echo 'PRIVATE_D13_STORY_L0_HOLD (private diagnostics not published)'
-            exit 1
-          fi
-          if [ "$rc_ref" -ne 0 ] || [ "$rc_docs" -ne 0 ] ||
-             ! grep -q 'Ran 8 tests' "$RUNNER_TEMP/private_d13_ref.log" ||
-             ! grep -q 'Ran 3 tests' "$RUNNER_TEMP/private_d13_docs.log" ||
-             ! grep -qE '^OK$' "$RUNNER_TEMP/private_d13_ref.log" ||
-             ! grep -qE '^OK$' "$RUNNER_TEMP/private_d13_docs.log"; then
-            echo 'PRIVATE_D13_L0_HOLD (private diagnostics not published)'
-            exit 1
-          fi
-          echo 'PRIVATE_D13_L0_PASS instructor_sha=aa5cf9783c0ea0892b26d2ef2c54b272a3332808 reference=8 docs=3'
-          echo 'NO_ROS_GAZEBO_GOAL_NO_PRIVATE_ANSWER_EXPORT'
-      - name: Destroy all private source and logs
-        if: always()
-        shell: bash
-        run: |
-          rm -rf -- instructor
-          rm -f -- "$RUNNER_TEMP/private_d13_ref.log" "$RUNNER_TEMP/private_d13_docs.log"
