@@ -120,5 +120,20 @@ class NativeFirstBoundaryAttribution(unittest.TestCase):
         self.assertNotIn("scan_wall_limit_ms: 500",s)
         self.assertNotIn("certified_estop: true",s)
 
+
+    def test_native_artifact_must_include_first_scan_rmw_bag_attribution_and_checksum(self):
+        # Regression for actual run #44864568561 artifact #14690808653.
+        # Its workflow CREATED the bounded attribution JSON + SHA256,
+        # but upload-artifact omitted both. A future first-gap failure
+        # would therefore lose its most useful diagnosis.
+        workflow=WORKFLOW.read_text()
+        self.assertIn('first_scan_rmw_bag_attribution.json',workflow)
+        artifact=workflow.split('uses: actions/upload-artifact@',1)[-1]
+        self.assertNotEqual(artifact,workflow, 'native upload step missing')
+        self.assertIn('public_evidence/first_scan_rmw_bag_attribution.json',artifact)
+        self.assertIn('public_evidence/first_scan_rmw_bag_attribution.sha256',artifact)
+        self.assertNotIn('native/rosbag2/',artifact)
+        self.assertIn("AXIA_G07_EVENTS_EXECUTOR_AB: '0'",workflow)
+
 if __name__=="__main__":
     unittest.main()
