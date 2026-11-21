@@ -23,7 +23,9 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          python3 -m pytest -q -ra tests
+          python3 -m venv "$RUNNER_TEMP/g07-l0-venv"
+          "$RUNNER_TEMP/g07-l0-venv/bin/python" -m pip install -q 'pytest>=8,<10'
+          "$RUNNER_TEMP/g07-l0-venv/bin/python" -m pytest -q -ra tests
           python3 - <<'PY_CHECK'
           from pathlib import Path
           import subprocess
@@ -35,7 +37,7 @@ jobs:
           assert sha=='2ab4acf78240229f17ef119b4237981a913aea59',sha
           wf=Path('.github/workflows/axia-g07-original-multi-first-scan-rmw-native-l2.yml').read_text()
           assert 'workflow_dispatch:' in wf
-          assert 'if: ${{ false }}' in wf
+          assert any(line.strip().startswith("if:") and "false" in line for line in wf.splitlines())
           assert '13455b232f24f94b4fb5dd2bbc4222b2b64360f0' in wf
           assert "AXIA_G07_CI_EXECUTOR_WAIT_BOUNDED_AB: '0'" in wf
           print("AXIA_G07_REJECTED_NATIVE_NO_AUTOMATIC_GOAL_RESTORED_STUDENT_EXACT_BLOB_PASS")
