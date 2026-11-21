@@ -8,9 +8,9 @@ import unittest
 
 ROOT=Path(__file__).resolve().parents[1]
 SCRIPT=ROOT/"scripts/axia_g07_stabilization_wsl2_final_once.sh"
-STUDENT="fb1aae6cbde54ff0ed4e78317f403aa5cef4d550"
-HEAD="0711e583f3c0c546a64c687edd8e280c2ae8e776"
-RUN=44878063103
+STUDENT="5667575aac777c374735b1c351445bcc8f83140e"
+HEAD="09ea6cbc8b9079532ef13c0962d193966e99a03b"
+RUN=44902396373
 NAME="AXIA G07 Original Multi First Scan RMW Exact Pair Diagnostic Native L2"
 
 
@@ -110,10 +110,9 @@ fi
     def test_strict_native_run_and_owner_source_share_exact_committed_sha(self):
         flow=(ROOT/".github/workflows/axia-g07-original-multi-first-scan-rmw-native-l2.yml").read_text()
         script=SCRIPT.read_text()
-        # During RED→GREEN the active native Student candidate is NOT yet an
-        # Owner release. The Owner remains pinned to previously verified 2/2.
-        self.assertIn("ref: 5667575aac777c374735b1c351445bcc8f83140e",flow)
-        self.assertNotIn("ref: "+STUDENT,flow)
+        # Actual new same Student Source native 2/2 passed before release.
+        # No unverified headless 0/2 source may authorize Owner Goal.
+        self.assertIn("ref: "+STUDENT,flow)
         self.assertIn("readonly STUDENT_SHA='"+STUDENT+"'",script)
         self.assertIn("readonly CI_L2_RUN="+str(RUN),script)
         self.assertIn("readonly CI_L2_HEAD='"+HEAD+"'",script)
