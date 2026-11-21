@@ -14,7 +14,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: b4851238cf1416b09f44223c7420167b2b8c79fa
+          ref: ad5c25fc61c5186c1b56a18266f0f4da85e5a24f
           path: student
           persist-credentials: false
       - name: Existing safety/Goal no-runtime and isolated Observer behavioral test
