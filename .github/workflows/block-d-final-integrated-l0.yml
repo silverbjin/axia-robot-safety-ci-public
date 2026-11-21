@@ -43,14 +43,14 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: f70d421276cf152ad2e00f7e3fa9e1d2a64e9e7c
+          ref: 2c1e7786d21e5f9385290e4bcedb9c4367c006fb
           path: student
           persist-credentials: false
       - name: Verify public Student main-ready D13/D14 intentional RED, D15 GREEN
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C student rev-parse HEAD)" = 'f70d421276cf152ad2e00f7e3fa9e1d2a64e9e7c'
+          test "$(git -C student rev-parse HEAD)" = '2c1e7786d21e5f9385290e4bcedb9c4367c006fb'
           cd student
           python3 -m unittest discover -s block_D/tests -p 'test_*.py' -v
           python3 block_D/tools/verify_student_release.py --out "$RUNNER_TEMP/block_d_final"
@@ -82,7 +82,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 435451f45792494a3252e4bb41ed0ed975b66a80
+          ref: 33d7647e927dc0f3b948d25dd0561377fb455a08
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -90,7 +90,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor rev-parse HEAD)" = '435451f45792494a3252e4bb41ed0ed975b66a80'
+          test "$(git -C instructor rev-parse HEAD)" = '33d7647e927dc0f3b948d25dd0561377fb455a08'
           cd instructor
           python3 -m unittest discover -s training/block_D/tests -p 'test_*.py' -v
           python3 training/block_D/tools/verify_instructor_release.py --out "$RUNNER_TEMP/block_d_teacher"
