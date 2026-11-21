@@ -7,7 +7,7 @@ from pathlib import Path
 from d06.diagnostic.g07_first_scan_pair_attribution import assess
 
 ROOT=Path(__file__).resolve().parents[1]
-STUDENT="e3d88d6754a5ff9192214e3000f3248ff01da962"
+STUDENT="5b378f3d95918b9f0de42b386f4ff00d03f8a973"
 WORKFLOW=ROOT/".github/workflows/axia-g07-original-multi-first-scan-rmw-native-l2.yml"
 
 def first_run():
