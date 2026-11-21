@@ -1,0 +1,71 @@
+name: AXIA G07 G25 Actual Jazzy Guard SIGINT Exit L1 NO GOAL
+on:
+  push:
+    branches: ['fix/g07-g50-first-boundary-ci-20261121']
+    paths: ['.github/workflows/axia-g07-g25-jazzy-guard-sigint-real-l1.yml']
+permissions: {contents: read}
+jobs:
+  actual_jazzy_guard_process_only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+    env:
+      ROS_DOMAIN_ID: '91'
+      ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+      FASTDDS_BUILTIN_TRANSPORTS: UDPv4
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: c0a2b4d727383fd97c1541b22238ba67026d70e0
+          path: student
+          persist-credentials: false
+      - name: Real ROS2 Jazzy P2 Guard SIGINT clean exit, NO Goal/CM/Gazebo claim
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          set +u; source /opt/ros/jazzy/setup.bash; set -u
+          cd student/block_B/day07/h01_runtime
+          python3 -m unittest discover -s tools -p 'test_g07_g25_guard_shutdown_publish_race.py' -v
+          colcon build --base-paths ros2_ws/src --packages-select axia_safety_supervisor \
+             --event-handlers console_direct+ > "$RUNNER_TEMP/g25_guard_build.log" 2>&1 || {
+             tail -n 60 "$RUNNER_TEMP/g25_guard_build.log";exit 3;
+          }
+          set +u; source install/setup.bash; set -u
+          set +e
+          python3 -m axia_safety_supervisor.p2_base_guard_node \
+              --ros-args -p use_sim_time:=false > "$RUNNER_TEMP/g25_guard_real.log" 2>&1 &
+          child=$!
+          set -e
+          trap 'kill -TERM "$child" 2>/dev/null || true' EXIT
+          for i in $(seq 1 30);do
+            if grep -Fq 'P2 simulation-only TTL guard active' "$RUNNER_TEMP/g25_guard_real.log";then break;fi
+            kill -0 "$child" 2>/dev/null || { cat "$RUNNER_TEMP/g25_guard_real.log"; exit 3; }
+            sleep .2
+          done
+          grep -Fq 'P2 simulation-only TTL guard active' "$RUNNER_TEMP/g25_guard_real.log"
+          kill -INT "$child"
+          for i in $(seq 1 60);do
+            kill -0 "$child" 2>/dev/null || break
+            sleep .1
+          done
+          if kill -0 "$child" 2>/dev/null;then
+            echo 'G07_G25_JAZZY_GUARD_SIGINT_PROCESS_LIVE_AFTER_6SEC_HOLD'
+            exit 3
+          fi
+          set +e
+          wait "$child"; rc=$?
+          set -e
+          trap - EXIT
+          if [[ "$rc" != 0 ]];then
+            grep -E 'Traceback|RCLError|Error|ExternalShutdownException' \
+              "$RUNNER_TEMP/g25_guard_real.log" | tail -n 20 || true
+            echo "G07_G25_GUARD_SIGINT_EXIT_NONZERO_HOLD"
+            exit 3
+          fi
+          if grep -Eq 'Traceback|RCLError' "$RUNNER_TEMP/g25_guard_real.log";then
+            echo 'G07_G25_GUARD_TRACEBACK_ON_CLEAN_EXIT_HOLD'
+            exit 3
+          fi
+          echo 'AXIA_G07_G25_ACTUAL_JAZZY_GUARD_PROCESS_SIGINT_EXIT0_L1_PASS_NO_GOAL_NO_GAZEBO_MOVING_UNVERIFIED'
