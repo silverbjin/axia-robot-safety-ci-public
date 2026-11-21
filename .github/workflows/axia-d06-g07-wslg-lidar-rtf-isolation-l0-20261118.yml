@@ -40,6 +40,7 @@ on:
       - 'd06/tests/test_d06_c22_wsl2_core_pipeline_preflight.py'
       - 'd06/tests/test_d06_c23_core_index_readonly_doctor.py'
       - 'd06/tests/test_d06_c24_wsl2_wslg_layer_parity.py'
+      - 'd06/tests/test_d06_c26_wslg_gpu_identity_evidence.py'
       - 'd06/tools/d06_c23_core_index_readonly_doctor.py'
       - 'd06/scripts/axia_d06_c22_wsl2_core_pipeline_probe_once.sh'
       - 'd06/scripts/axia_d06_c20_coredumpctl_existing_only_repair.sh'
@@ -148,6 +149,7 @@ jobs:
           python3 -m unittest discover -s d06/tests -p 'test_d06_c22_wsl2_core_pipeline_preflight.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_c23_core_index_readonly_doctor.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_c24_wsl2_wslg_layer_parity.py' -v
+          python3 -m unittest discover -s d06/tests -p 'test_d06_c26_wslg_gpu_identity_evidence.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_l2_apt_https_bootstrap.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_ci_only_gui_nice.py' -v
           python3 -m unittest discover -s d06/tests -p 'test_d06_g07_no_goal_manager_discovery.py' -v
