@@ -1,0 +1,351 @@
+{
+  "schema": "axia.block_d.baseline_inventory.v1",
+  "created_date_kst": "2026-11-21",
+  "stage": "STAGE1_METADATA_ONLY",
+  "verification": "METADATA_L0_NOT_ROS_OR_GAZEBO",
+  "runtime_modified": false,
+  "purpose": "Pin already accepted G07 classroom feature/numeric baseline and reviewed P3 private staging inputs for D13-D15 curriculum development. Does not copy private solutions, change G07 main files, or promote formal safety acceptance.",
+  "demo_baseline": {
+    "id": "AXIA-G07-T04-DEMO-BASELINE-20261120-jrCIgoGl",
+    "previous_id": "AXIA-G07-T04-DEMO-BASELINE-20261119-CZObXAdP",
+    "student_runtime_sha": "5c7983598fa3bcd7148433a06f37a4e78b091273",
+    "public_ci_reviewer_sha": "362da68e31dd163a8d321601e191069c0d0a438b",
+    "owner_run_id": "jrCIgoGl",
+    "owner_archive_sha256": {
+      "tar": "2d454845183704d8f53b50dcdbaa48446d1103bfa9f750cc3ce662d9af7684db",
+      "diagnostics_zip": "92c31af277bc7a64742540a2b9e5c99f13ded4cac51ae1bd1b76f3c16a4dd331"
+    },
+    "owner_numeric_checks": "21/21",
+    "owner_original_manifest_hashes": "141/141",
+    "owner_rosbag_sqlite_quick_check": "ok",
+    "owner_bag_topics": 14,
+    "owner_goal_status": "EXECUTING_THEN_SAME_UUID_CANCELED_5",
+    "owner_odom_zero_dwell_sec": 1.029446,
+    "owner_max_scan_gap_ms": 253.822,
+    "owner_max_guard_internal_cm_age_ms": 47.653,
+    "classroom_numeric_accepted": true,
+    "original_raw_machine_status": "HOLD_RAW_REVIEW_AND_VISUAL_PENDING",
+    "original_raw_machine_l3_accepted": false,
+    "visual_content_verified": false,
+    "formal_safety_timing_accepted": false,
+    "certified_estop": false,
+    "owner_raw_reexamined_in_this_stage": false,
+    "notes": "Published original SHA256 and field numeric evidence are quoted from accepted public derived report; Stage1 does not reopen private owner TAR/ZIP."
+  },
+  "repository_pins": {
+    "student_main_before": {
+      "repository": "silverbjin/axia-robot-safety-student",
+      "sha": "2ab0ac62c4cc359d398747dd065ff8b7f6692e00",
+      "g07_release_branch": "release/g07-task04-demo-baseline-20261119",
+      "g07_release_branch_sha": "322ba8cde60954d3de7c87c5331ce526c89e5416",
+      "approved_demo_prs_merged_to_main": [
+        64,
+        70
+      ]
+    },
+    "public_ci_main_before": {
+      "repository": "silverbjin/axia-robot-safety-ci-public",
+      "sha": "1f307691482b583b339218e43f9aacdb1ed06d9b",
+      "g07_release_branch": "release/g07-task04-demo-baseline-20261119",
+      "g07_release_branch_sha": "8b5467295d259378f7b5117a0a00d906c9acc41a",
+      "approved_demo_prs_merged_to_main": [
+        190,
+        194
+      ]
+    },
+    "instructor_main_before": {
+      "repository": "silverbjin/axia-robot-safety-instructor",
+      "sha": "5f682eb2c26c6d649e80d78839dfa312625ddde4"
+    },
+    "instructor_p3_staging": {
+      "repository": "silverbjin/axia-robot-safety-instructor",
+      "branch": "integration/axia-mvp-p0-p3-reviewed-20261113",
+      "sha": "fe92baf2c06834300a51c82de60b0ab2897b57d5",
+      "related_merged_staging_prs": [
+        131,
+        132,
+        145,
+        146
+      ],
+      "main_integration_pr": 127,
+      "main_integration_pr_state": "OPEN_UNMERGED"
+    }
+  },
+  "source_inventory": [
+    {
+      "id": "student_demo_doc",
+      "repository": "silverbjin/axia-robot-safety-student",
+      "path": "block_B/day07/h01_runtime/docs/AXIA_G07_TASK04_DEMO_BASELINE_20261119_KO.md",
+      "ref_commit_sha": "2ab0ac62c4cc359d398747dd065ff8b7f6692e00",
+      "git_blob_sha1": "4d255be8eca57ca9447474e62063d43892f9bfb8",
+      "visibility": "public",
+      "course_scope": "G07_DEMO",
+      "hash_kind": "git_blob_sha1",
+      "content_copied": false
+    },
+    {
+      "id": "student_guard",
+      "repository": "silverbjin/axia-robot-safety-student",
+      "path": "block_B/day07/h01_runtime/ros2_ws/src/axia_safety_supervisor/axia_safety_supervisor/p2_base_guard_node.py",
+      "ref_commit_sha": "2ab0ac62c4cc359d398747dd065ff8b7f6692e00",
+      "git_blob_sha1": "cfcc7d53d0e7d2fbd0450f80332f6ddc3e4c2f9f",
+      "visibility": "public",
+      "course_scope": "G07_DEMO",
+      "hash_kind": "git_blob_sha1",
+      "content_copied": false
+    },
+    {
+      "id": "student_supervisor",
+      "repository": "silverbjin/axia-robot-safety-student",
+      "path": "block_B/day07/h01_runtime/ros2_ws/src/axia_safety_supervisor/axia_safety_supervisor/p2_supervisor_node.py",
+      "ref_commit_sha": "2ab0ac62c4cc359d398747dd065ff8b7f6692e00",
+      "git_blob_sha1": "920f36c966c7b72a858e73e120bc36598948f5d2",
+      "visibility": "public",
+      "course_scope": "G07_DEMO",
+      "hash_kind": "git_blob_sha1",
+      "content_copied": false
+    },
+    {
+      "id": "student_g07_runner",
+      "repository": "silverbjin/axia-robot-safety-student",
+      "path": "block_B/day07/h01_runtime/tools/p2_g07_ci_moving_goal.py",
+      "ref_commit_sha": "2ab0ac62c4cc359d398747dd065ff8b7f6692e00",
+      "git_blob_sha1": "8bf6c00209f106a5c68f2fc5c57542654932bce4",
+      "visibility": "public",
+      "course_scope": "G07_DEMO",
+      "hash_kind": "git_blob_sha1",
+      "content_copied": false
+    },
+    {
+      "id": "public_demo_report",
+      "repository": "silverbjin/axia-robot-safety-ci-public",
+      "path": "docs/operations/AXIA_G07_TASK04_JRCIGOL_OWNER_MVP_ACCEPTANCE_20261120_KO.md",
+      "ref_commit_sha": "1f307691482b583b339218e43f9aacdb1ed06d9b",
+      "git_blob_sha1": "58dd49845e57fe4a47ea2c1d8407e41cb734c654",
+      "visibility": "public",
+      "course_scope": "G07_DEMO",
+      "hash_kind": "git_blob_sha1",
+      "content_copied": false
+    },
+    {
+      "id": "public_demo_derived",
+      "repository": "silverbjin/axia-robot-safety-ci-public",
+      "path": "tests/fixtures/g07_task04_jrcigogl_20261120_public_derived.json",
+      "ref_commit_sha": "1f307691482b583b339218e43f9aacdb1ed06d9b",
+      "git_blob_sha1": "ae7d594b5452d96cc8802bc53bc8ad578fe99fb7",
+      "visibility": "public",
+      "course_scope": "G07_DEMO",
+      "hash_kind": "git_blob_sha1",
+      "content_copied": false
+    },
+    {
+      "id": "public_demo_script",
+      "repository": "silverbjin/axia-robot-safety-ci-public",
+      "path": "scripts/axia_g07_task04_owner_moving_l3_once.sh",
+      "ref_commit_sha": "1f307691482b583b339218e43f9aacdb1ed06d9b",
+      "git_blob_sha1": "26570de6762db8ade5c92b9d821fad0ebe368374",
+      "visibility": "public",
+      "course_scope": "G07_DEMO",
+      "hash_kind": "git_blob_sha1",
+      "content_copied": false
+    },
+    {
+      "id": "p3_oracle",
+      "repository": "silverbjin/axia-robot-safety-instructor",
+      "path": "ros2_ws/src/axia_scenario_verifier/axia_scenario_verifier/p3_oracles.py",
+      "ref_commit_sha": "fe92baf2c06834300a51c82de60b0ab2897b57d5",
+      "git_blob_sha1": "85dd0fa35b2e7982b0c86020fdd4f4952e6a039f",
+      "visibility": "private",
+      "course_scope": "D13",
+      "hash_kind": "git_blob_sha1",
+      "content_copied": false
+    },
+    {
+      "id": "p3_ros_bridge",
+      "repository": "silverbjin/axia-robot-safety-instructor",
+      "path": "ros2_ws/src/axia_scenario_verifier/axia_scenario_verifier/p3_g09_ros_bridge.py",
+      "ref_commit_sha": "fe92baf2c06834300a51c82de60b0ab2897b57d5",
+      "git_blob_sha1": "66ebe8e0120a0c5cdf76e3afff6257ec4d6df49f",
+      "visibility": "private",
+      "course_scope": "D13",
+      "hash_kind": "git_blob_sha1",
+      "content_copied": false
+    },
+    {
+      "id": "p3_risk_policy",
+      "repository": "silverbjin/axia-robot-safety-instructor",
+      "path": "ros2_ws/src/axia_safety_supervisor/axia_safety_supervisor/p3_g09_risk_policy.py",
+      "ref_commit_sha": "fe92baf2c06834300a51c82de60b0ab2897b57d5",
+      "git_blob_sha1": "818a89077e95682c15906fba603b6eb8fe599d2c",
+      "visibility": "private",
+      "course_scope": "D14",
+      "hash_kind": "git_blob_sha1",
+      "content_copied": false
+    },
+    {
+      "id": "p3_g10_compound",
+      "repository": "silverbjin/axia-robot-safety-instructor",
+      "path": "ros2_ws/src/axia_scenario_verifier/axia_scenario_verifier/p3_g10_compound.py",
+      "ref_commit_sha": "fe92baf2c06834300a51c82de60b0ab2897b57d5",
+      "git_blob_sha1": "8ce0123e299e95fe5f49f2703ce55fa2250e220a",
+      "visibility": "private",
+      "course_scope": "D14",
+      "hash_kind": "git_blob_sha1",
+      "content_copied": false
+    },
+    {
+      "id": "p3_pnu_fixture",
+      "repository": "silverbjin/axia-robot-safety-instructor",
+      "path": "fixtures/p3/s04_pnu.json",
+      "ref_commit_sha": "fe92baf2c06834300a51c82de60b0ab2897b57d5",
+      "git_blob_sha1": "4e86a997f840283d5fbddfa2b0e3da87cca343c1",
+      "visibility": "private",
+      "course_scope": "D13",
+      "hash_kind": "git_blob_sha1",
+      "content_copied": false
+    },
+    {
+      "id": "p3_g10_fixture",
+      "repository": "silverbjin/axia-robot-safety-instructor",
+      "path": "fixtures/p3/g10_compound_fault_l0.json",
+      "ref_commit_sha": "fe92baf2c06834300a51c82de60b0ab2897b57d5",
+      "git_blob_sha1": "620f769f812e32f2c3d1fa193629668090fa756f",
+      "visibility": "private",
+      "course_scope": "D14",
+      "hash_kind": "git_blob_sha1",
+      "content_copied": false
+    },
+    {
+      "id": "p3_g09_test",
+      "repository": "silverbjin/axia-robot-safety-instructor",
+      "path": "tests/unit/test_p3_g09_time_indexed.py",
+      "ref_commit_sha": "fe92baf2c06834300a51c82de60b0ab2897b57d5",
+      "git_blob_sha1": "3f79d3daaa80487579276fee752a04c91ae17cc4",
+      "visibility": "private",
+      "course_scope": "D13",
+      "hash_kind": "git_blob_sha1",
+      "content_copied": false
+    },
+    {
+      "id": "p3_g10_test",
+      "repository": "silverbjin/axia-robot-safety-instructor",
+      "path": "tests/unit/test_p3_g10_compound.py",
+      "ref_commit_sha": "fe92baf2c06834300a51c82de60b0ab2897b57d5",
+      "git_blob_sha1": "34c2e34285926aeb65bd8c5b1ab74f0fef1d741d",
+      "visibility": "private",
+      "course_scope": "D14",
+      "hash_kind": "git_blob_sha1",
+      "content_copied": false
+    },
+    {
+      "id": "p3_ros_test",
+      "repository": "silverbjin/axia-robot-safety-instructor",
+      "path": "tests/ros_integration/test_p3_g09_ros_l1.py",
+      "ref_commit_sha": "fe92baf2c06834300a51c82de60b0ab2897b57d5",
+      "git_blob_sha1": "bac0b95e10a22c3fbca6b002582d6bfe303517b3",
+      "visibility": "private",
+      "course_scope": "D13",
+      "hash_kind": "git_blob_sha1",
+      "content_copied": false
+    }
+  ],
+  "prior_public_ci": [
+    {
+      "repository": "silverbjin/axia-robot-safety-ci-public",
+      "run_id": 44653465671,
+      "level": "L2",
+      "scope": "G07 latest accepted educational baseline: two real Jazzy/Harmonic/Nav2/GUI moving cycles; distinct from Owner L3",
+      "workflow_head_sha": "85a530babfdd55e0b0afb7b4aae8273aa1e0fae5",
+      "conclusion": "success",
+      "url": "https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44653465671",
+      "observed_from": "GITHUB_RUN_METADATA",
+      "rerun_in_stage1": false
+    },
+    {
+      "repository": "silverbjin/axia-robot-safety-ci-public",
+      "run_id": 44478344652,
+      "level": "L2",
+      "scope": "G07 earlier classroom demo single native Gazebo/RViz scoped pass; previous 339ms Scan gap separately preserved",
+      "workflow_head_sha": "c362738794ccbd40b21a90b4e6e3409fa9f90892",
+      "conclusion": "success",
+      "url": "https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44478344652",
+      "observed_from": "GITHUB_RUN_METADATA",
+      "rerun_in_stage1": false
+    },
+    {
+      "repository": "silverbjin/axia-robot-safety-ci-public",
+      "run_id": 43383912097,
+      "level": "L0",
+      "scope": "G09 time-indexed synthetic P/N/U unit and fixture contract; no motion or Gazebo",
+      "workflow_head_sha": "06e97b86aa5cbea309cf92b35f1a8bfec1ffa635",
+      "conclusion": "success",
+      "url": "https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43383912097",
+      "observed_from": "GITHUB_RUN_METADATA",
+      "rerun_in_stage1": false
+    },
+    {
+      "repository": "silverbjin/axia-robot-safety-ci-public",
+      "run_id": 43387460089,
+      "level": "L1",
+      "scope": "G09 real ROS 2 Jazzy transport of synthetic P/N/U 15/15; no motion or Gazebo",
+      "workflow_head_sha": "8ae55a956bb109f9fdd37be8dc6d0b77071df285",
+      "conclusion": "success",
+      "url": "https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43387460089",
+      "observed_from": "GITHUB_RUN_METADATA",
+      "rerun_in_stage1": false
+    },
+    {
+      "repository": "silverbjin/axia-robot-safety-ci-public",
+      "run_id": 43388169083,
+      "level": "L0",
+      "scope": "G10 compound Scan+CM synthetic event oracle 7/7; no actual fault injection",
+      "workflow_head_sha": "cb7c0ce6a02867dd75ac9bb2afbb09ae8aefd50f",
+      "conclusion": "success",
+      "url": "https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43388169083",
+      "observed_from": "GITHUB_RUN_METADATA",
+      "rerun_in_stage1": false
+    },
+    {
+      "repository": "silverbjin/axia-robot-safety-ci-public",
+      "run_id": 43455456960,
+      "level": "L2",
+      "scope": "S04 original synthetic G09 P/N/U through actual Supervisor LIMITED/CM/Guard and same-Goal cancel/odom; no real human detector",
+      "workflow_head_sha": "0e04709686e7ddbeb56281c39c1c98ed570c5b28",
+      "conclusion": "success",
+      "url": "https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/43455456960",
+      "observed_from": "GITHUB_RUN_METADATA",
+      "rerun_in_stage1": false
+    }
+  ],
+  "integration": {
+    "demo_student_public_main_merged": true,
+    "p3_instructor_main_merged": false,
+    "block_d_curriculum_implemented": false,
+    "g07_stabilization": "SEPARATE_HOLD",
+    "latest_g07_stability_run_not_claimed_as_pass": true,
+    "instructor_main_merge_in_scope": false,
+    "main_merge_scope": "NEW_BLOCK_D_METADATA_ONLY"
+  },
+  "safety_boundaries": {
+    "scan_ttl_ms": 300,
+    "cm_guard_ttl_ms": 150,
+    "unchanged": true,
+    "g09_person_input": "SYNTHETIC_NOT_REAL_CAMERA",
+    "stop_kind": "SIMULATION_SOFTWARE_STOP_NOT_CERTIFIED_ESTOP",
+    "g11_formal": "NOT_ACCEPTED",
+    "expiry_policy_not_reinterpreted": true
+  },
+  "privacy": {
+    "private_source_content_included": false,
+    "owner_raw_included": false,
+    "private_source_pointers_only": true,
+    "instructor_solution_release_to_student": false
+  },
+  "evidence_limitations": [
+    "Stage1 validates manifest metadata using documented GitHub file blob IDs and historical CI run status; it does not execute ROS or Gazebo.",
+    "Git blob SHA1 is Git object identity, NOT a SHA256 digest of raw file; recorded owner archive hashes are SHA256 from previously reviewed evidence.",
+    "G09 L0/L1 and S04 L2 tested different exact sources and sessions: no integrated D13-D15 live run is claimed.",
+    "Source files are not copied from Instructor staging to public GitHub; D13-D15 student TODO and teaching materials still need development.",
+    "Formal G11 5x3, certified E-Stop, all-TTL stability, fresh Owner visual verification are not claimed."
+  ]
+}
