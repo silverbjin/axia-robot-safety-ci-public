@@ -1,0 +1,139 @@
+name: AXIA G07 G25 Actual Gazebo NO_GOAL Ordered Shutdown Native L2
+on:
+  push:
+    branches: ['fix/g07-g50-first-boundary-ci-20261121']
+    paths: ['.github/workflows/axia-g07-g25-no-goal-ordered-shutdown-native-l2.yml']
+permissions: {contents: read}
+jobs:
+  g25_nogoal_gazebo_first_exit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 23
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+    env:
+      ROS_DOMAIN_ID: '89'
+      ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+      FASTDDS_BUILTIN_TRANSPORTS: UDPv4
+      GZ_PARTITION: axia_g25_no_goal_20261121
+      AXIA_P0_SIM_ONLY: '1'
+      AXIA_P2_G07_PHYSICAL_PREFLIGHT: '1'
+      AXIA_G07_SHUTDOWN_L2_ONLY: '1'
+      AXIA_G07_CI_SIM_GOAL_ALLOWED: '0'
+      AXIA_G07_TASK04_CI_GUI_MOVING: '0'
+      AXIA_G07_OWNER_STARTUP_PARITY: '0'
+      AXIA_G07_CI_OWNER_BAG_PARITY: '0'
+      AXIA_G07_TASK03_ECM_WITNESS: '0'
+      QT_QPA_PLATFORM: offscreen
+      LIBGL_ALWAYS_SOFTWARE: '1'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          path: ci
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: c0a2b4d727383fd97c1541b22238ba67026d70e0
+          path: student
+          persist-credentials: false
+      - name: Safety authority NO_GOAL and Guard exact shutdown L0 regression
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          set +u;source /opt/ros/jazzy/setup.bash;set -u
+          cd student/block_B/day07/h01_runtime
+          test "${AXIA_G07_CI_SIM_GOAL_ALLOWED}" = 0
+          test "${AXIA_G07_SHUTDOWN_L2_ONLY}" = 1
+          python3 -m unittest discover -s tools -p 'test_g07_g25_guard_shutdown_publish_race.py' -v
+          python3 -m unittest discover -s tools -p 'test_g07_context_publish_shutdown.py' -v
+          PYTHONPATH="$GITHUB_WORKSPACE/ci${PYTHONPATH:+:$PYTHONPATH}" python3 -m unittest discover -s "$GITHUB_WORKSPACE/ci/tests" -p 'test_g07_g25_nogoal_first_stage.py' -v
+          python3 -m py_compile ros2_ws/src/axia_safety_supervisor/axia_safety_supervisor/p2_base_guard_node.py
+          bash -n scripts/p2_no_goal_smoke_ci.sh
+          echo 'AXIA_G07_G25_NATIVE_NO_GOAL_L0_NO_UNAUTHORIZED_GOAL_PASS'
+      - name: Real Gazebo Harmonic Nav2 lifecycle shutdown, Guard+Supervisor exit0
+        shell: bash
+        timeout-minutes: 18
+        run: |
+          set -Eeuo pipefail
+          set +u;source /opt/ros/jazzy/setup.bash;set -u
+          cd student/block_B/day07/h01_runtime
+          export AXIA_P2_SMOKE_RESULTS="$GITHUB_WORKSPACE/native"
+          mkdir -p "$GITHUB_WORKSPACE/native" "$GITHUB_WORKSPACE/public_evidence"
+          set +e
+          timeout --signal=TERM --kill-after=10s 940s bash scripts/p2_no_goal_smoke_ci.sh \
+             > "$GITHUB_WORKSPACE/native/smoke_stdout.log" 2>&1
+          rc=$?
+          set -e
+          echo "AXIA_G07_G25_NATIVE_SHUTDOWN_SMOKE_RC=$rc"
+          grep -E 'G07_SHUTDOWN_L2_NO_GOAL|G07_REAL_NAV2_ORDERED_SHUTDOWN|P2_L2_SMOKE_RC=|G07_REAL_SHUTDOWN_L2_CM|G07_CI_LAUNCH_LIVE_AFTER_MANAGED_EXIT_BUDGET' \
+              "$GITHUB_WORKSPACE/native/smoke_stdout.log" || true
+          # No synthetic Goal success, no allowance for a child crash or forced timeout.
+          python3 - "$GITHUB_WORKSPACE/native" "$rc" <<'PY_VERIFY'
+          import json,sys,re
+          from pathlib import Path
+          root=Path(sys.argv[1]);rc=int(sys.argv[2])
+          source=(root/'startup_verdict.json')
+          shutdown=(root/'g07_ordered_shutdown.json')
+          launch=(root/'launch.log').read_text(errors='replace') if (root/'launch.log').is_file() else ''
+          tail=(root/'teardown.txt').read_text().strip() if (root/'teardown.txt').is_file() else None
+          if source.is_file():
+              d=json.loads(source.read_text())
+              assert d.get('goal_sent') is False and d.get('fault_injected') is False,d
+          else:raise AssertionError("NATIVE_NO_GOAL_STARTUP_MISSING")
+          assert rc==0,("NATIVE_SHUTDOWN_PROCESS_EXIT_NOT_ZERO",rc)
+          assert shutdown.is_file(),"NAV2_LIFECYCLE_SHUTDOWN_ACK_MISSING"
+          state=json.loads(shutdown.read_text())
+          assert state.get('navigation_ack') is True,state
+          assert state.get('localization_ack') is True,state
+          assert tail=="P2_L2_GRACEFUL_TEARDOWN",tail
+          for child in ("p2_base_guard_node","p2_supervisor_node","collision_monitor"):
+              assert not re.search(r"\[ERROR\] \["+child+r"-\d+\]: process has died",launch),child
+              assert re.search(r"\[INFO\] \["+child+r"-\d+\]: process has finished cleanly",launch),child
+          print("AXIA_G07_G25_REAL_GAZEBO_NO_GOAL_NAV_LOC_ACK_GUARD_SUPERVISOR_CM_EXIT0_PASS")
+          print("AXIA_G07_G25_ACTUAL_NO_GOAL_SCOPE_ONLY_MOVING_L2_G30_G50_HOLD")
+          PY_VERIFY
+      - name: Preserve bounded first exit / G25 only, no raw rosbag or paths
+        if: always()
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/public_evidence"
+          python3 "$GITHUB_WORKSPACE/ci/d06/diagnostic/g07_g25_teardown_process_boundary.py" \
+              --processes "$GITHUB_WORKSPACE/native/teardown_processes.txt" \
+              --teardown "$GITHUB_WORKSPACE/native/teardown.txt" \
+              --stdout "$GITHUB_WORKSPACE/native/smoke_stdout.log" \
+              --output "$GITHUB_WORKSPACE/public_evidence/g25_launch_survivor_roles.json"
+          python3 "$GITHUB_WORKSPACE/ci/d06/diagnostic/g07_g25_nogoal_first_stage.py" \
+              --stdout "$GITHUB_WORKSPACE/native/smoke_stdout.log" \
+              --roles "$GITHUB_WORKSPACE/public_evidence/g25_launch_survivor_roles.json" \
+              --output "$GITHUB_WORKSPACE/public_evidence/g25_first_no_goal_stage.json"
+          python3 - <<'PY'
+          import json,re,os
+          from pathlib import Path
+          root=Path(os.environ['GITHUB_WORKSPACE'])/'native'
+          lines=(root/'smoke_stdout.log').read_text(errors='replace').splitlines() if (root/'smoke_stdout.log').exists() else []
+          keys=["G07_SHUTDOWN_L2_NO_GOAL","G07_REAL_NAV2_ORDERED_SHUTDOWN",
+                "G07_CI_LAUNCH_LIVE_AFTER_MANAGED_EXIT_BUDGET","P2_L2_SMOKE_RC="]
+          matches=[line[:300] for line in lines if any(k in line for k in keys)]
+          clean=[]
+          for line in matches[-15:]:
+              if any(x in line for x in ("/home/","/__w/","/tmp/")):
+                  continue
+              clean.append(re.sub(r"(?<!\d)\d{4,}(?!\d)","[NUMBER]",line))
+          out=dict(schema="axia.g07.g25.no_goal_actual_native.v1",
+                   no_goal=True,release="HOLD",owner_l3_accepted=False,
+                   certified_estop=False,strict_moving_2of2_verified=False,
+                   first_exit_signals=clean)
+          dest=Path(os.environ['GITHUB_WORKSPACE'])/'public_evidence'/'g25_first_shutdown_signals.json'
+          dest.write_text(json.dumps(out,indent=2,sort_keys=True)+"\n")
+          print("AXIA_G07_G25_NO_GOAL_NATIVE_NUMERIC_EVIDENCE_CAPTURED_HOLD")
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: axia-g07-g25-no-goal-exit-${{ github.run_id }}
+          path: |
+            public_evidence/g25_first_shutdown_signals.json
+            public_evidence/g25_first_no_goal_stage.json
+            public_evidence/g25_launch_survivor_roles.json
+          retention-days: 14

@@ -1,0 +1,23 @@
+name: AXIA G07 G25 Teardown First Process L0
+on:
+  push:
+    branches: ['fix/g07-g50-first-boundary-ci-20261121']
+    paths:
+      - '.github/workflows/axia-g07-g25-teardown-first-process-l0.yml'
+      - 'tests/test_g07_g25_teardown_process_boundary.py'
+      - 'd06/diagnostic/g07_g25_teardown_process_boundary.py'
+permissions:
+  contents: read
+jobs:
+  g25_first_survivor_roles:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with: {persist-credentials: false}
+      - name: Original first post ACK teardown survivor classification
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest discover -s tests -p 'test_g07_g25_teardown_process_boundary.py' -v
+          echo 'AXIA_G07_G25_FIRST_TEARDOWN_ROLE_L0_PASS_GAZEBO_NATIVE_NOT_RUN_HOLD'
