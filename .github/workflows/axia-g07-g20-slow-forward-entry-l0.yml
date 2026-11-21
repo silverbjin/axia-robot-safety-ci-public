@@ -1,4 +1,4 @@
-name: AXIA G07 G20 Physical SLOW Forward Entry L0
+name: AXIA G07 G20 Rejected Candidate Rollback L0
 on:
   push:
     branches: ['fix/g07-g50-first-boundary-ci-20261121']
@@ -14,7 +14,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 00243cbe1a8e72d74109a3299c59c629236124ca
+          ref: c66a1f0317cbea2eca2a67bbe1a8a94178a56f7f
           path: student
           persist-credentials: false
       - name: Native cycle2 reversed/rotating real-state regression
@@ -23,4 +23,4 @@ jobs:
           set -Eeuo pipefail
           cd student/block_B/day07/h01_runtime
           python3 -m unittest discover -s tools -p 'test_g07_ci_slow_forward_entry.py' -v
-          echo 'AXIA_G07_G20_FORWARD_ENTRY_L0_PASS_NATIVE_L2_NOT_RUN_HOLD'
+          echo 'AXIA_G07_G20_REJECTED_GOAL_HEADING_RESTORED_ORIGINAL_RUNTIME_L0_PASS_L2_UNVERIFIED'
