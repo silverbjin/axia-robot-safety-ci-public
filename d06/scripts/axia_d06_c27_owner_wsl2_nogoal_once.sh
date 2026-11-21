@@ -33,6 +33,8 @@ source,dest=map(Path,sys.argv[1:])
 # Only small bounded text files. Exclude full bag, core, credentials and raw sensor data.
 wanted = {
   "launch.log":("launch_tail.log",100000),
+  "owner_no_goal.log":("owner_log_tail.log",16000),
+  "g07_ordered_shutdown.log":("ordered_shutdown_log_tail.log",16000),
   "g07_ordered_shutdown.json":("ordered_shutdown.json",18000),
   "g07_shutdown_audit.json":("cm_shutdown_audit.json",18000),
   "g07_gz_server_stop.log":("gz_server_stop.log",8000),
@@ -45,26 +47,70 @@ wanted = {
 selected={}
 with tarfile.open(source,"r:gz") as src:
   for m in src:
-    if not m.isfile() or m.size>5000000 or m.size<0:continue
+    if not m.isfile() or m.size<0:continue
     parts=Path(m.name).parts
     if len(parts)<2:continue
     key=parts[-1]
     if key not in wanted:continue
+    # Only launch.log may be larger than the small-text limit. Read the
+    # ENTIRE bounded native log before selecting EOF. Prior C27 selected
+    # the tail of its FIRST 100KB, truncating the actual process exit.
+    if m.size>(32000000 if key=="launch.log" else 5000000):continue
     # Do not follow symbolic links, no extraction to filesystem.
     fh=src.extractfile(m)
     if fh is None:continue
-    data=fh.read(min(m.size,wanted[key][1]+1))
     if key=="launch.log":
-      text=data.decode("utf-8","replace")
-      data="\n".join(text.splitlines()[-400:]).encode("utf-8")[-wanted[key][1]:]
-    else:data=data[:wanted[key][1]]
+      text=fh.read(m.size).decode("utf-8","replace")
+      lines=text.splitlines()
+      data="\n".join(lines[-400:]).encode("utf-8")[-wanted[key][1]:]
+      # Include bounded child-exit proof even if more log lines follow.
+      exits=[l for l in lines if re.search(
+          r"^\[(?:INFO|ERROR)\]\s+\[gz-\d+\]: process has "
+          r"(?:died|finished cleanly)",l)]
+      selected["native_gazebo_exit_events.log"]=(
+          "\n".join(exits[-12:])+"\n").encode("utf-8")[-6000:]
+    elif key in ("owner_no_goal.log","g07_ordered_shutdown.log"):
+      data=fh.read(m.size)[-wanted[key][1]:]
+    else:data=fh.read(min(m.size,wanted[key][1]))
     selected[wanted[key][0]]=data
 if "launch_tail.log" not in selected:
-  raise SystemExit("D06_C27_COMPACT_LAUNCH_NOT_FOUND")
-has_clean=bool(re.search(rb"(?m)^\[INFO\]\s+\[gz-\d+\]: process has finished cleanly",selected["launch_tail.log"]))
-has_died=bool(re.search(rb"(?m)^\[ERROR\]\s+\[gz-\d+\]: process has died",selected["launch_tail.log"]))
+  raise SystemExit("D06_C28_COMPACT_LAUNCH_EOF_NOT_RECOVERABLE_HOLD")
+exit_evidence=selected.get("native_gazebo_exit_events.log",b"")
+has_clean=bool(re.search(rb"(?m)^\[INFO\]\s+\[gz-\d+\]: process has finished cleanly",exit_evidence))
+has_died=bool(re.search(rb"(?m)^\[ERROR\]\s+\[gz-\d+\]: process has died",exit_evidence))
+def data_obj(name):
+  try:return json.loads(selected.get(name,b"{}").decode("utf-8"))
+  except (ValueError,UnicodeError):return {}
+sensor=data_obj("sensor_truth.json")
+nav=data_obj("ordered_shutdown.json")
+cm=data_obj("cm_shutdown_audit.json")
+# Cross-topic indices cannot be compared; use SAME host-monotonic clock.
+first_candidates=[]
+unknown_scan=False
+for topic in ("raw","safety"):
+  metrics=sensor.get("metrics",{}).get(topic,{})
+  if metrics.get("first_receipt_ttl_breach_at_index") is None:
+    continue
+  witness=sensor.get("scan_receipts_compact",{}).get(topic,{})
+  start=witness.get("before",{}).get("host_monotonic_sec")
+  if type(start) in (int,float):
+    first_candidates.append((start,topic))
+  else: unknown_scan=True
+first_failure=(
+  min(first_candidates)[1].upper()+"_SCAN_RECEIPT_TTL_300MS"
+  if first_candidates and not unknown_scan else
+  "SCAN_RECEIPT_TTL_300MS_UNORDERED" if first_candidates or unknown_scan
+  else "NOT_OBSERVED_IN_COMPACT")
+forced_teardown=b"P2_L2_FORCED_TEARDOWN" in selected.get("teardown.txt",b"")
 status={"scope":"NO_GOAL_OWNER_NATIVE_EXIT_DIAGNOSTIC",
         "native_gz_exit0_marker":has_clean,"native_gz_died_marker":has_died,
+        "first_failure":first_failure,
+        "navigation_service_status":nav.get("navigation_service_status","NOT_OBSERVED"),
+        "navigation_ack":nav.get("navigation_ack"),
+        "localization_ack":nav.get("localization_ack"),
+        "cm_exit_code":cm.get("cm_exit_code"),
+        "forced_teardown":forced_teardown,
+        "release_authorized":False,
         "gazebo_crash_root_cause":"UNCONFIRMED",
         "core_not_archived":True,"raw_archive_retained_locally":True,
         "axia_mvp_demo_accepted":"HOLD","certified_estop":False}
@@ -75,6 +121,10 @@ with tarfile.open(dest,"w:gz") as out:
     out.addfile(entry,io.BytesIO(data))
 print("D06_C27_COMPACT_GZ_EXIT0_MARKER="+str(has_clean).lower())
 print("D06_C27_COMPACT_GZ_DIED_MARKER="+str(has_died).lower())
+print("D06_C28_FIRST_FAILURE="+first_failure)
+print("D06_C28_EOF_BOUNDARY_PRESERVED_NO_SIM")
+if forced_teardown and "SCAN_RECEIPT_TTL_300MS" in first_failure:
+  print("D06_C28_FORCED_TEARDOWN_AND_SCAN_TTL_HOLD")
 PY
   sha256sum "$DEST" > "$DEST.sha256"
   echo "D06_C27_COMPACT_ARCHIVE=$DEST"
