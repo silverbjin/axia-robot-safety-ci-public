@@ -207,6 +207,62 @@ def summarize_rmw_readiness(events):
     return result
 
 
+
+def first_observed_safety_transition(events, first_gap):
+    """First *observed* Supervisor FSM change and Guard latch, not true root.
+
+    Only same-process host-monotonic intervals are compared. Earlier
+    undelivered FSM messages cannot be invented. Never grants safety PASS.
+    """
+    import re
+    out={"schema":"axia.g07.first_observed_safety_transition.v1",
+         "status":"FIRST_SAFETY_TRANSITION_NOT_OBSERVED_HOLD",
+         "release":"HOLD","root_cause_proven":False,
+         "certified_estop":False,"first_observed_state":None,
+         "first_observed_transition":None,
+         "first_observed_guard_latch_at":None,
+         "relative_to_first_gap":"GAP_NOT_VERIFIED"}
+    if not isinstance(events,list) or len(events)>120000:
+        return out
+    observations=[]
+    latches=[]
+    for row in events:
+        if not isinstance(row,dict) or not _finite(row.get("t")):
+            continue
+        data=row.get("data")
+        if not isinstance(data,dict):
+            continue
+        if row.get("kind")=="supervisor":
+            state=data.get("state")
+            if (isinstance(state,str)
+                and re.fullmatch(r"[A-Z][A-Z0-9_]{0,39}",state)):
+                observations.append((row["t"],state))
+        elif row.get("kind")=="guard" and data.get("latched") is True:
+            latches.append(row["t"])
+    if latches:
+        out["first_observed_guard_latch_at"]=round(min(latches),9)
+    if not observations:
+        return out
+    observations.sort()
+    out["first_observed_state"]=observations[0][1]
+    for previous,current in zip(observations,observations[1:]):
+        if previous[1]==current[1]:
+            continue
+        t=current[0]
+        out["first_observed_transition"]={
+            "at_host_monotonic":round(t,9),
+            "from_state":previous[1],"to_state":current[1]}
+        out["status"]="FIRST_SUPERVISOR_OBSERVED_TRANSITION_CAPTURED_HOLD"
+        if isinstance(first_gap,dict) and _finite(
+                first_gap.get("current_rx_monotonic")):
+            boundary=first_gap["current_rx_monotonic"]
+            out["relative_to_first_gap"]=(
+                "BEFORE_OR_AT_FIRST_CALLBACK_BREACH" if t<=boundary
+                else "AFTER_FIRST_CALLBACK_BREACH")
+        break
+    return out
+
+
 def main(argv=None):
     p=argparse.ArgumentParser()
     p.add_argument("--events",type=Path,required=True)
@@ -235,6 +291,8 @@ def main(argv=None):
             v["cm_rmw_first_pair"]=classify_rmw_first_pair(events,cm_pair)
 
         v["rmw_readiness"]=summarize_rmw_readiness(events)
+        v["first_safety_observation"]=first_observed_safety_transition(
+            events,v.get("first_violation"))
         v["actual_same_session_event_pairs_read"]=True
     except (OSError,ValueError,TypeError,KeyError):
         v=_hold("FIRST_DELIVERY_BOUNDARY_NOT_VERIFIED_HOLD",
