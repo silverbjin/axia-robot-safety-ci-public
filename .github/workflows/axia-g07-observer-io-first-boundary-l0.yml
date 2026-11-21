@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 821f80cfc4a45148bb0e2d3d56684594db0f5826
+          ref: 885f2cdd78f36393ef850987fb6be344accd2412
           path: student
           persist-credentials: false
       - name: Regress original seven-channel 360-378ms and Observer flush timing
