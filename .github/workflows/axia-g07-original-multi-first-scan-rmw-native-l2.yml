@@ -96,6 +96,17 @@ jobs:
           }
           echo 'AXIA_G07_FASTDDS_BUILTIN_TRANSPORTS=UDPv4 SHM_UNSELECTED_CI_AB_NO_ROOT_PROOF'
           dpkg-query -W -f='${Package}=${Version}\n' 'libfastrtps*' 2>/dev/null || true
+          # Owner parity helper only reports an expected literal RMW class.
+          # Verify the actually loaded native ROS middleware before any Goal.
+          set +u; source /opt/ros/jazzy/setup.bash; set -u
+          python3 - <<'PY_EFFECTIVE_RMW'
+          import rclpy
+          actual=rclpy.get_rmw_implementation_identifier()
+          if actual!="rmw_fastrtps_cpp":
+              raise SystemExit("AXIA_G07_NATIVE_RMW_EFFECTIVE_MISMATCH_HOLD")
+          print("AXIA_G07_NATIVE_RMW_EFFECTIVE_VERIFIED rmw_fastrtps_cpp "
+                "CI_ONLY_NO_GOAL_REACHED_YET ROOT_CAUSE_UNPROVEN",flush=True)
+          PY_EFFECTIVE_RMW
 
           cd student/block_B/day07/h01_runtime
           test "$(git -C "$GITHUB_WORKSPACE/review" rev-parse HEAD)" = 'd60beed5e18d8104b254f17476d47f1d1917a7eb'
