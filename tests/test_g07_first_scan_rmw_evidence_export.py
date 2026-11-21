@@ -7,7 +7,7 @@ from pathlib import Path
 from d06.diagnostic.g07_first_scan_pair_attribution import assess
 
 ROOT=Path(__file__).resolve().parents[1]
-STUDENT="78483d12a664d2a92960ecf2721b32916baba231"
+STUDENT="ba20f93a8cfc839342df9b543d29a0ae3a4e51c9"
 WORKFLOW=ROOT/".github/workflows/axia-g07-original-multi-first-scan-rmw-native-l2.yml"
 
 def first_run():
@@ -195,6 +195,19 @@ class NativeFirstBoundaryAttribution(unittest.TestCase):
         self.assertIn("first_scan_rmw_bag_attribution.json",s)
         self.assertIn("public_evidence/first_nav_server_boundary.json",s)
         self.assertNotIn("scan_wall_limit_ms: 500",s)
+        self.assertNotIn("CERTIFIED_ESTOP=true",s)
+
+
+    def test_strict_native_bounded_multi2_waitset_is_only_opt_in_under_ci(self):
+        s=WORKFLOW.read_text()
+        self.assertIn("AXIA_G07_CI_EXECUTOR_WAIT_BOUNDED_AB: '1'",s)
+        self.assertIn("AXIA_G07_OWNER_STARTUP_PARITY: '1'",s)
+        self.assertIn("AXIA_G07_CI_OWNER_OBSERVER_PARITY: '1'",s)
+        self.assertIn("AXIA_G07_OBSERVER_IO_PROBE: '1'",s)
+        self.assertIn("AXIA_G07_EVENTS_EXECUTOR_AB: '0'",s)
+        self.assertIn("cycle: [1, 2]",s)
+        self.assertIn("ref: "+STUDENT,s)
+        self.assertIn("AXIA_G07_SCAN_PREFLIGHT_STRICT: '1'",s)
         self.assertNotIn("CERTIFIED_ESTOP=true",s)
 
 if __name__=="__main__":
