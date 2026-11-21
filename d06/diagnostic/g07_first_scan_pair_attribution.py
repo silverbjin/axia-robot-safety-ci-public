@@ -44,6 +44,9 @@ def assess(pregoal,bag):
         "exact_publication_cross_process_proven":False,
         "same_first_clock_rosbag_pair_proven":False,
         "same_first_odom_rosbag_pair_proven":False,
+        "independent_first_clock_rosbag_gap_ms":None,
+        "independent_first_odom_rosbag_gap_ms":None,
+        "clock_odom_exact_first_class":"FIRST_CLOCK_ODOM_PAIR_NOT_APPLICABLE_HOLD",
         "owner_l3_accepted":False,"certified_estop":False,
         "safety_ttl_changed":False,
         "first_violation_topic":None,"first_violation_ms":None,
@@ -71,6 +74,29 @@ def assess(pregoal,bag):
             result["first_violation_topic"]=first["channel"]
             result["first_violation_ms"]=round(float(gap),6)
 
+    # Exact first /clock or /odom header pair, matched against independent
+    # rosbag receive intervals. A session maximum is NOT sufficient.
+    # No cross-domain subtraction or safety PASS is inferred.
+    if isinstance(first,dict) and first.get("channel") in ("clock","odom"):
+        channel=first["channel"]
+        validated=(bag.get("matched_exact_first_"+channel+"_pair") is True
+                   and _bounded_ms(first.get("gap_ms"))
+                   and _bounded_ms(bag.get("independent_first_"+channel+"_rx_gap_ms"))
+                   and _bounded_ms(bag.get("observer_first_"+channel+"_gap_ms"))
+                   and abs(float(first["gap_ms"])-
+                           float(bag["observer_first_"+channel+"_gap_ms"]))<.02
+                   and _finite_pos(first.get("previous_header_sim"))
+                   and _finite_pos(first.get("current_header_sim"))
+                   and first["current_header_sim"]>first["previous_header_sim"])
+        if validated:
+            result["same_first_"+channel+"_rosbag_pair_proven"]=True
+            result["independent_first_"+channel+"_rosbag_gap_ms"]=round(
+                float(bag["independent_first_"+channel+"_rx_gap_ms"]),6)
+            classification=bag.get("clock_odom_exact_first_class")
+            if (isinstance(classification,str)
+                    and classification.startswith("FIRST_"+channel.upper()+"_")
+                    and classification.endswith("_HOLD")):
+                result["clock_odom_exact_first_class"]=classification
     scan=pregoal.get("first_scan_timing_boundary")
     if not isinstance(scan,dict) or scan.get("topic") not in ("scan","safety_scan"):
         return result
