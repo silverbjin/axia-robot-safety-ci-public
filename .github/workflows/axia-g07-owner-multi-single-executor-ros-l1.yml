@@ -1,0 +1,32 @@
+name: AXIA G07 Jazzy Multi vs Single Observer Executor L1
+on:
+  push:
+    branches: ['fix/g07-owner-1ibycgpg-cm120-firstclock-20261121']
+    paths: ['.github/workflows/axia-g07-owner-multi-single-executor-ros-l1.yml']
+permissions: {contents: read}
+jobs:
+  real-ros-jazzy-independent-witness-no-goal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    container:
+      image: ghcr.io/silverbjin/axia-g07-runtime@sha256:861ae1df0560f991698d8967193380b1619589ba7770b5e2ca91ea4ef31f0c8e
+    env:
+      ROS_DOMAIN_ID: '92'
+      ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+      FASTDDS_BUILTIN_TRANSPORTS: UDPv4
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: c8448dfb5c2f20e5f3fc07d20a304be4c1a3db3f
+          path: student
+          persist-credentials: false
+      - name: Real ROS callback delivery with independent DDS publisher and witness
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          set +u; source /opt/ros/jazzy/setup.bash; set -u
+          cd student/block_B/day07/h01_runtime
+          python3 -m py_compile tools/g07_cm_observer_groups_ros_l1.py
+          timeout 90s python3 tools/g07_cm_observer_groups_ros_l1.py --multi-v-single
+          echo 'AXIA_G07_OBSERVER_SINGLE_EXECUTOR_CANDIDATE_L1_PASS_NO_GAZEBO_NO_GOAL'
