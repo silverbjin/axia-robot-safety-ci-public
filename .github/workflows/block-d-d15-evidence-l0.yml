@@ -1,0 +1,92 @@
+name: AXIA Block D D15 G07 baseline + evidence analysis L0
+on:
+  push:
+    branches:
+      - feat/block-d-d15-evidence-replay-20261121
+      - release/p2-g06-cm-ttl-20261110
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/block-d-d15-evidence-l0.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  d15-public-baseline-and-student:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: 29a8c86f1fbfed51172353fd6c2df66af6867c0a
+          path: public
+      - name: Original G07 derived fixture and Owner script immutable contract
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cd public
+          test "$(git hash-object tests/fixtures/g07_task04_jrcigogl_20261120_public_derived.json)" = 'ae7d594b5452d96cc8802bc53bc8ad578fe99fb7'
+          test "$(git hash-object scripts/axia_g07_task04_owner_moving_l3_once.sh)" = '26570de6762db8ade5c92b9d821fad0ebe368374'
+          test "$(git hash-object docs/operations/AXIA_G07_TASK04_JRCIGOL_OWNER_MVP_ACCEPTANCE_20261120_KO.md)" = '58dd49845e57fe4a47ea2c1d8407e41cb734c654'
+          bash -n scripts/axia_g07_task04_owner_moving_l3_once.sh
+          python3 -m unittest discover -s tests -p 'test_g07_task04_jrcigogl_baseline_contract.py' -v
+          echo 'D15_G07_EXISTING_BASELINE_CONTRACT_PASS_NO_NEW_GAZEBO=1'
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: 63248d4f0f292939e784087623c81dddf71e52ca
+          persist-credentials: false
+          path: student
+      - name: D15 read-only student synthetic replay and tampering tests
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C student rev-parse HEAD)" = '63248d4f0f292939e784087623c81dddf71e52ca'
+          test "$(git -C student hash-object block_D/day15/fixtures/jrcigogl_public_derived.json)" = 'ae7d594b5452d96cc8802bc53bc8ad578fe99fb7'
+          python3 -m unittest discover -s student/block_D/day15/tests -p 'test_*.py' -v
+          python3 student/block_D/day15/run_lab.py --out "$RUNNER_TEMP/d15"
+          python3 - "$RUNNER_TEMP/d15/d15_evidence_review.json" <<'PY'
+          import json,sys
+          x=json.load(open(sys.argv[1]))
+          assert x["baseline"]["numeric_gate"]=="EDUCATION_NUMERIC_ACCEPTED"
+          assert x["baseline"]["raw_machine_status"]=="HOLD_RAW_REVIEW_AND_VISUAL_PENDING"
+          assert x["baseline"]["formal_accepted"] is False
+          assert x["baseline"]["certified_estop"] is False
+          assert x["baseline"]["visual_verified"] is False
+          assert x["baseline"]["first_violation_timestamp"] is None
+          assert x["new_gazebo_or_wsl2_executed"] is False
+          assert len(x["snapshots"])==7
+          assert len(x["counterexamples"])==5
+          assert all(v["detected"] and v["not_accepted"] for v in x["counterexamples"])
+          assert x["pnu_separation"]["g09_source"]=="D13_SYNTHETIC_FIXTURE_NOT_G07_REAL_CAMERA"
+          print("D15_EXISTING_BASELINE_AND_DERIVED_EVIDENCE_L0_GREEN=1")
+          PY
+          test -s "$RUNNER_TEMP/d15/d15_offline_replay.html"
+          echo 'D15_PUBLIC_OLD_G07_BASELINE_AND_NEW_EVIDENCE_L0_PASS=1 NO_ROS_GAZEBO_GOAL_ESTOP=1'
+      - name: Destroy ephemeral Student checkout
+        if: always()
+        run: rm -rf -- student
+  d15-private-teacher-guide:
+    # Protected Instructor checkout is allowed only on the pre-existing sealed release branch.
+    if: github.ref == 'refs/heads/release/p2-g06-cm-ttl-20261110'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    environment: axia-instructor-sealed
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 9bd1cda711b7a3950a2e29a810472a1f6cdcc83f
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          persist-credentials: false
+          path: instructor
+      - name: Exact private SHA and instructor documentation rubric tests
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C instructor rev-parse HEAD)" = '9bd1cda711b7a3950a2e29a810472a1f6cdcc83f'
+          python3 -m unittest discover -s instructor/training/block_D/day15/tests -p 'test_*.py' -v
+          echo 'D15_PRIVATE_GUIDE_L0_GREEN_NO_GAZEBO=1'
+      - name: Erase protected Instructor checkout
+        if: always()
+        run: rm -rf -- instructor
