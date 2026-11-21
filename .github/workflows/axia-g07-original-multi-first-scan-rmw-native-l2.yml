@@ -569,6 +569,25 @@ jobs:
             echo 'AXIA_G07_FIRST_HEALTH_NOT_CAPTURED_OR_HEALTH_PASSED_UNVERIFIED_HOLD'
           fi
           sha256sum "$dst" > "$dst.sha256"
+      - name: Preserve first G25 26s managed-launch surviving roles only
+        if: always()
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/public_evidence"
+          args=()
+          if [[ -f "$GITHUB_WORKSPACE/public_evidence/moving_stdout.log" ]] \
+             && grep -Fq 'G07_CI_LAUNCH_LIVE_AFTER_MANAGED_EXIT_BUDGET' \
+               "$GITHUB_WORKSPACE/public_evidence/moving_stdout.log";then
+            args+=(--managed-timeout)
+          fi
+          python3 "$GITHUB_WORKSPACE/ci/d06/diagnostic/g07_managed_launch_first_roles.py" \
+            --input "$GITHUB_WORKSPACE/native/teardown_processes.txt" \
+            --output "$GITHUB_WORKSPACE/public_evidence/managed_launch_first_roles.json" \
+            "${args[@]}"
+          sha256sum "$GITHUB_WORKSPACE/public_evidence/managed_launch_first_roles.json" \
+            > "$GITHUB_WORKSPACE/public_evidence/managed_launch_first_roles.json.sha256"
+          echo 'AXIA_G07_G25_ROLE_CUSTODY_HOLD_NUMERIC_ONLY_NO_PID_NO_CMDLINE'
       - name: Upload allowlisted numeric verdict only no original raw bag
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -591,6 +610,8 @@ jobs:
             public_evidence/first_scan_pregoal_boundary.sha256
             public_evidence/first_nav_server_boundary.json
             public_evidence/first_nav_server_boundary.sha256
+            public_evidence/managed_launch_first_roles.json
+            public_evidence/managed_launch_first_roles.json.sha256
             public_evidence/independent_cm_pair_verdict.json
             public_evidence/independent_cm_rmw.jsonl
             public_evidence/task04_moving_l2_verdict.json
