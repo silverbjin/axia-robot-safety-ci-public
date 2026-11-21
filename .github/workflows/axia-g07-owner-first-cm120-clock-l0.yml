@@ -6,6 +6,8 @@ on:
       - '.github/workflows/axia-g07-owner-first-cm120-clock-l0.yml'
       - 'tests/fixtures/g07_owner_1ibycgpg_cm_first_timing_numeric_20261121.json'
       - 'tests/test_g07_owner_first_forward_clock_cm120.py'
+      - 'tests/test_g07_cm_observer_first_gap.py'
+      - 'd06/diagnostic/g07_cm_observer_first_gap.py'
       - 'd06/diagnostic/g07_task02_strict_gate.py'
 permissions:
   contents: read
@@ -24,6 +26,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           python3 -m unittest discover -s tests -p 'test_g07_owner_first_forward_clock_cm120.py' -v
+          python3 -m unittest discover -s tests -p 'test_g07_cm_observer_first_gap.py' -v
           python3 -m unittest discover -s tests -p 'test_g07_task02_exact_clear_ack_contract.py' -v
           python -m pytest -q -ra tests
           echo 'AXIA_G07_OWNER_1IBYCGPG_FIRST_CM_CLOCK_STEP_L0_PASS_L3_HOLD'
