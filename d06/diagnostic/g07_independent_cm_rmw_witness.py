@@ -38,7 +38,11 @@ def normalize_witness_metadata(info):
     """
     def one(name):
         try:
-            value=getattr(info,name)
+            # Jazzy 2-argument subscription MessageInfo is a dict in
+            # the actual original Observer. Keep object fallback for unit
+            # adapters; never coerce missing fields into valid measurements.
+            value=(info.get(name) if isinstance(info,dict)
+                   else getattr(info,name))
             if type(value) is bool:
                 return -1
             v=int(value)
