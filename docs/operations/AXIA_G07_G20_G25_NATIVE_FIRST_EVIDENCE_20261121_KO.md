@@ -49,3 +49,31 @@ rclpy._rclpy_pybind11.RCLError: Failed to publish: publisher's context is invali
 - Public L0: `python3 -m unittest discover -s tools -p 'test_g07_g20_nav2_plan_witness.py' -v`; `python3 -m unittest discover -s tools -p 'test_g07_g25_guard_shutdown_publish_race.py' -v`; `python3 -m unittest discover -s tools -p 'test_g07_context_publish_shutdown.py' -v` (각각 Student `block_B/day07/h01_runtime`에서).
 - Public workflow files `.github/workflows/axia-g07-g20-nav2-plan-first-fixture-l0.yml`, `...-wire-l1.yml`, `...-first-fixture-native-l2.yml`, `axia-g07-g25-guard-publish-shutdown-l0.yml`. 최근 Native는 상기 기존 first-fixture-native-l2를 G25 trial로 갱신.
 - Native 1회 성공으로 G30 독립 cold-run 2/2 PASS 판정 금지. G10 이전 Native 첫 600ms failure, G20 로봇 실제 path tracking, G25 최종 Guard/Supervisor clean exit 및 이전 26초 launch root 모두 별도 HOLD. 신규 SHA-pinned WSL2 G40 실행기 미출고, 강사 G50 실제 WSL2 NOT_RUN, main 미병합, 인증 E-Stop 아님.
+
+## 6. 재개 후의 두 실제 Native 실패 비교와 최초 글로벌 경로 변화
+
+- 현재 G20 수정 후보가 아니라 **실제 경로 관측 진단**이다. 원래 Planner/Controller·Goal·CM/Guard·Scan300/CM120/Guard150ms는 변경하지 않는다.
+- #44881017415 (실제 주행 단계 rc0, 전체 CI Guard SIGINT exit1): `PRE_FIXTURE` plan 42pts, tangent1.201353rad, robot yaw .143972rad. `AFTER_FIXTURE_ACK` plan 42pts, tangent1.201353rad 유지, cylinder center↔global plan .567462m, supervised 0.044m/s. `SLOW_OBSERVED` front .679519m, supervised .045303m/s. 물리 SLOW 관측은 PASS이나 **G25 Guard 종료 실패 때문에 전체 FAIL**.
+- #44881683566 (Student `c0a2b4d727383fd97c1541b22238ba67026d70e0` Guard 수정 적용): 원래 CLEAR/Goal EXECUTING/odom0.12032m 후 물리 SLOW fixture ACK. **최초 실패** `CI_MOVING_GOAL_TIMEOUT_SLOW`, `front` 0.6674m 때 `vin=-0.0142206m/s`, 96 샘플 SLOW zone 최대 vin **0.00058916m/s** (< .005 요구), Guard reason `FORWARDING_MONITORED_CM`. 이후 yaw 2.0221rad, front1.248m, vin.175m/s — SLOW 유효 창에서는 양의 전진이 없음. 전체 L2 **FAIL**, 따라서 Guard 수정이 실제 clean exit를 입증하지 못함.
+- 그 실행 Artifact #14697869457의 **실제 global /plan 변화**: `PRE_FIXTURE` 41pts, plan tangent **1.168522rad**, robot yaw .148064rad → `AFTER_FIXTURE_ACK` 66pts, tangent **2.525772rad**, yaw .154047rad, fixture center↔plan **.711331m**, vin.000498 → `SLOW_OBSERVATION_FAILED` 43pts, tangent2.185558rad, robot yaw2.109304rad, fixture center↔plan .6691m. Global plan의 1.35725rad 방향 변경은 실제 관측이며, 이것이 Nav2 Controller **국소 궤적의 원인이라는 인과관계는 미검증**.
+- 같은 두 쌍의 최초 글로벌 경로 변화 제한 분류 회귀: Student `tools/test_g07_g20_first_plan_reorientation_native.py` / `tools/p2_g07_g20_nav2_plan_witness.py::assess_first_plan_change`. Public RED #448823... (정확한 ID 확정 시 명시), GREEN [#44882415060](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44882415060) **3/3**, Student SHA `a78be7e2a29c9bb022cbe601607b945c4c191e5e`, Public SHA `2ed2d043deee9e8279ad6dbf133899e200d9c73d`. 이름 `AFTER_FIXTURE_GLOBAL_PLAN_REORIENTATION_CANDIDATE_HOLD`, release HOLD/root false.
+
+## 7. G25 NO_GOAL 종료 전용 재검의 최초 실패가 '종료'보다 앞섬
+
+- 기존 `scripts/p2_no_goal_smoke_ci.sh`의 `AXIA_G07_SHUTDOWN_L2_ONLY=1` 분기를 재사용한 별도 실제 Jazzy/Harmonic native CI로 Moving Goal 단계와 종료 계층을 분리하려 했다. Run [#44882490734](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44882490734) 실패 최종 `G07_CI_LAUNCH_LIVE_AFTER_MANAGED_EXIT_BUDGET`, smoke rc3. 후행 종료 메시지만으로 root 확정하지 않음.
+- Public 최소 최초 단계 분류 `d06/diagnostic/g07_g25_nogoal_first_stage.py`, `tests/test_g07_g25_nogoal_first_stage.py`: 기록된 단계 우선 판정, 불충분한 로그는 HOLD, raw 경로/UUID/rosbag 비공개. Public Python 계약 RED [#44882719841](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44882719841) (모듈 부재) → GREEN [#44882756718](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44882756718). 
+- 추가 실제 noGoal Native [#44882850643](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44882850643) FAIL. 공개 Artifact `axia-g07-g25-no-goal-exit-44882850643`의 첫 사건 `P2_NO_GOAL_BLOCKED:` → `STARTUP_BLOCKED_BEFORE_TEARDOWN_HOLD`; 최종 launch alive, process group 총 **20** roles (ros2_launch1, gazebo1, guard1, supervisor1, collision_monitor1, navigation_stack12, etc), 원인 미확정. 이는 **시작 실패 뒤 종료 정체**이므로 10초/26초 종료 예산 수정의 직접 근거가 아님. `clean_child_exit_proven=false`; real moving scenario G25 L2 미검증.
+- 시험 자체에서 ROS2 정지 상태를 얻기 전에 막히므로 Guard에 실제 SIGINT를 보내는 **독립 ROS Jazzy L1** [#448... pending](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/workflows/axia-g07-g25-jazzy-guard-sigint-real-l1.yml) 별도 생성, Public SHA `8832ad5bf4236416393cc2eae865b939f84ed35a`. 기존 Guard _tick/TTL 불변, 실제 Jazzy 프로세스 exit0만 검증. 전체 Gazebo Nav2/CM 26s 종료 검증을 대체하지 않음.
+
+## 8. 완료 조건·범위와 계류
+
+| Gate | 검증 상태 |
+| --- | --- |
+| G00 | 기존 first-safety-transition / first gap audit 완료 |
+| G10 | Real Jazzy L1 기존 D08 take hook PASS, 600ms original RMW root UNPROVEN |
+| G20 | 실제 physical SLOW 1회 관측, 다른 실제 session은 96-sample timeout. Root는 global planner reorientation 후보, 국소 controller 미검증. **HOLD** |
+| G25 | Guard exact post-SIGINT classification L0 7/7 PASS; 실제 native #448810 Guard exit1, Guard 수정 native #448816 first G20 timeout; noGoal first STARTUP_BLOCKED. **HOLD** |
+| G30 | same SHA actual independent cold-run 2/2 PASS 없음 |
+| G40 | 새 WSL2 One-shot 출고 금지 |
+| G50 | 실제 강사 WSL2 NOT_RUN |
+- 사용자의 main 승인 없음, 두 Draft PR을 유지. 실제 CLI/Gazebo 검증을 수행하지 않은 범위는 성공 보고하지 않음. SW STOP != 인증 E-Stop.
