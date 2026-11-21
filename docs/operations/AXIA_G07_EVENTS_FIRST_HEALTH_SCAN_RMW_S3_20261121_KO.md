@@ -30,3 +30,37 @@
 - 다음은 #44864310689의 실제 `first_scan_rmw_pair`에서 출처 간격, subscriber-received 간격, Observer callback 간격을 대조. 최초 상태 전이/최초 TTL 위반 먼저 분석 후에만 minimal candidate 선택. 이미 실패한 EventsExecutor나 SingleThreadedExecutor를 GREEN으로 승격 금지.
 - 새로운 실제 runtime 수정은 공개 CI 회귀 RED→GREEN 후 independent Gazebo 2/2를 완료해야 함. 어느 채널에서든 CM120/Guard150/Scan/Clock/Odom300 위반 또는 Guard internal age 미측정 → **전체 L2 HOLD**. WSL2 최종 한 번의 Owner L3 전까지 SHA-pinned release 금지.
 - 강사용 정답 private, 학생 TODO 독립 repo. `main` 병합하지 않음.
+
+## 6. 최종 추가 실증 — 공식 EventsExecutor 후보 REJECT/HOLD
+
+### 실제 Jazzy + Gazebo #44864310689 (단일 진단, L2 FAIL)
+- 같은 정확 Student SHA `8bc6826eed88726c166118dfb2b8d7425bafc574`. Scan 12초 사전검사는 PASS였으나 Goal **발행 전** 기존 `p2_g07_ci_moving_goal.py` Observer의 worker `Thread-1 (spin)`이 `SystemError: null argument to internal routine`로 종료.
+- **최초 사건은 Worker SystemError**. 이후 HEALTH12s 만료는 파생 증상이지 원인 아님.
+- 첫 HEALTH 표본: Supervisor state NULL, Clock 미진행, Scan 없음, `cm_lifecycle_ok=NULL`. 마지막 표본도 Supervisor state NULL, Scan 없음, CM lifecycle NULL, 마지막 Clock/Odom 콜백 age 약11773ms. 별도 Python heartbeat는 지속. `goal_sent=false`, `release=HOLD`.
+- 기존 2/2 real native Multi 성공 SHA와 **다른** 실험용 Executor 설정이며, S3 로그만으로 rclpy C++ 내부 함수의 causal root는 규명되지 않음. 단, 현 환경에서 candidate rejection의 충분한 실증.
+
+### 실제 Jazzy 2-process native L1 #44864606500 (NO_GAZEBO / NO_GOAL, FAIL)
+- 동일 공개 고정 Jazzy 이미지에서 별도 DDS publisher process의 300Hz `/clock`, 10Hz `/scan`을 동시에 수신하는 `rclpy.experimental.EventsExecutor`의 `ex.spin_once(timeout_sec=.04)`가 **동일 `SystemError: null argument to internal routine`** 발생.
+- 따라서 본 오류는 Gazebo Goal/Stop/Cancel/Nav2 lifecycle, 장애물 물리 이동과 무관한 최소 별도 ROS DDS 이벤트 환경에서도 재현됨.
+- 해당 실증은 특정 버전의 `EventsExecutor` 조합 실패를 입증하지만 upstream C++/RMW 직접 원인을 인증하지 않음. 관련 upstream [rclpy#1644](https://github.com/ros2/rclpy/issues/1644)는 pub/sub destruction SIGSEGV로 증상이 다르므로 인과 근거로 오용하지 않음.
+- **결정**: 실제 G07 L3 Owner/CI release에서 EventsExecutor candidate 사용 금지. 기본 2-worker MultiThreadedExecutor는 보존. EventsExecutor 기반 신규 2/2 실행으로 인수 승격 금지.
+
+### CI 회귀 편입 (원인 미확정이어도 첫 Worker 예외는 판별)
+- 기존 코드 `d06/diagnostic/g07_events_first_abort.py`와 `tests/test_g07_events_first_worker_abort.py`를 **재사용/최소 확장**, 새 진단 모듈 중복 개발 없음.
+- 새 실증 L1 #44864606500의 정확한 `ex.spin_once` + `SystemError` 원본 오류를 이전 native worker 추적과 별도 구분해 `JAZZY_EVENTS_EXECUTOR_L1_SYSTEMERROR_HOLD`로 fail-closed.
+- RED [#44864803377](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44864803377) expected missing classifier, GREEN [#44864874167](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44864874167) **310 passed, 3 skipped** + Student 필수 안전 테스트. `root_cause_proven=false`, `certified_estop=false`, `owner_l3_accepted=false`.
+
+### 검증 한계와 다음 최소 개발 단위
+```text
+LATEST_PUBLIC_FULL_L0=310_PASS_3_SKIP
+LATEST_REAL_GAZEBO_EXPERIMENTAL_EVENTS_L2=FAIL
+EVENTS_EXECUTOR_WORKER_SYSTEMERROR_CAUSING_HEALTH_TIMEOUT=CONFIRMED
+EVENTS_EXECUTOR_SECOND_ROS_PROCESS_L1_SYSTEMERROR=CONFIRMED
+EXPERIMENTAL_EVENTS_EXECUTOR_RELEASE=REJECTED
+PREG0AL_SCAN_300_MS_ROOT=UNPROVEN
+ORIGINAL_MULTI_2_WORKER_NATIVE_2_OF_2=HISTORIC_DIFFERENT_SHA
+OWNER_WSL2_FINAL_L3=NOT_RUN_HOLD
+MAIN_MERGE=false
+```
+
+다음 후보는 **기존 2-worker baseline**을 고정하고 Scan 첫 424.373ms 대 independent rosbag 동일 header 101.297ms를 근거로 **원 Observation 프로세스의 수신/take/Executor 경계**만 최소 분석하는 것. DDS Received 실제 시간차·독립 CM publication seq 및 ROS bag 동일 헤더 증거를 대조해 처음 실패를 결정. Python Callback / Writer / flush 자체 max <3ms 관측 이전 증거 보존. `EventsExecutor` 재선정, ROS2 내부 직접 패치, 안전 TTL 완화, 새로운 Planner/Supervisor/CM 및 과도한 C++ 노드 추가 금지. 기본 Multi2에서도 120/150/300ms 전체 safety gate 실제 Gazebo 2/2 GREEN과 현장 WSL2 단일 인수가 전까지 출고 HOLD.
