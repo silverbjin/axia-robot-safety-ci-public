@@ -1,0 +1,24 @@
+name: AXIA G07 RMW MessageInfo Capability Student L0
+on:
+  push:
+    branches: ['diag/g07-first-scan-rmw-exact-native-20261121']
+    paths: ['.github/workflows/axia-g07-scan-rmw-capability-l0.yml']
+permissions: {contents: read}
+jobs:
+  student_rmw_capability_contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: b85102030abe1b8565558e4dc2c2c9d7147ce4fa
+          path: student
+          persist-credentials: false
+      - name: Original read-only Scan RMW capability RED
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cd student/block_B/day07/h01_runtime
+          python3 -m unittest discover -s tools -p 'test_g07_scan_rmw_first_pair.py' -v
+          echo 'AXIA_G07_RMW_METADATA_CAPABILITY_L0_PASS_L2_NOT_RUN_HOLD'
