@@ -7,7 +7,7 @@ from pathlib import Path
 from d06.diagnostic.g07_first_scan_pair_attribution import assess
 
 ROOT=Path(__file__).resolve().parents[1]
-STUDENT="d8ec1a50bdd5a9097530b0924709a6ee63ce4eb5"
+STUDENT="087563829dd2110c863c287abf44bbe28e3a8167"
 WORKFLOW=ROOT/".github/workflows/axia-g07-original-multi-first-scan-rmw-native-l2.yml"
 
 def first_run():
@@ -237,6 +237,20 @@ class NativeFirstBoundaryAttribution(unittest.TestCase):
         self.assertIn("AXIA_G07_NATIVE_RMW_EFFECTIVE_VERIFIED",s)
         self.assertIn("rmw_fastrtps_cpp",s)
         self.assertNotIn("RMW_IMPLEMENTATION: rmw_cyclonedds_cpp",s)
+
+
+    def test_original_multi_guard_wake_ab_is_only_ci_optin_not_owner_override(self):
+        s=WORKFLOW.read_text()
+        self.assertIn("AXIA_G07_CI_EXECUTOR_GUARD_WAKE_AB: '1'",s)
+        self.assertIn("AXIA_G07_CI_EXECUTOR_WAIT_BOUNDED_AB: '0'",s)
+        self.assertIn("AXIA_G07_OBSERVER_IO_PROBE: '1'",s)
+        self.assertIn("AXIA_G07_EVENTS_EXECUTOR_AB: '0'",s)
+        self.assertIn("FASTDDS_BUILTIN_TRANSPORTS: UDPv4",s)
+        self.assertIn("AXIA_G07_TASK03_FORMAL_CI: '1'",s)
+        self.assertIn("cycle: [1, 2]",s)
+        self.assertIn("ref: "+STUDENT,s)
+        self.assertNotIn("certified_estop: true",s)
+        self.assertIn("AXIA_G07_CI_EXECUTOR_GUARD_WAKE_AB=CI_ONLY",s)
 
 if __name__=="__main__":
     unittest.main()
