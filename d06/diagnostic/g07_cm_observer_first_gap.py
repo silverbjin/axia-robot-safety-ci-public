@@ -35,7 +35,7 @@ def classify(fixture):
     for item in (cm,sup):
         if (not all(_number(item.get(k)) for k in
                     ("observer_gap_ms","received_gap_ms","source_gap_ms",
-                     "previous_rx_host_monotonic","current_rx_host_monotonic"))
+                     "observer_prev_monotonic","observer_curr_monotonic"))
                 or item.get("pub_seq_delta")!=1
                 or item["observer_gap_ms"]<=0 or item["received_gap_ms"]<=0):
             return _base("FIRST_CM_OBSERVER_PAIR_UNVERIFIED_HOLD")
@@ -43,7 +43,7 @@ def classify(fixture):
     delta_sup=sup["observer_gap_ms"]-sup["received_gap_ms"]
     marker=fixture.get("motion_window_end_monotonic")
     spans=(_number(marker)
-           and cm["previous_rx_host_monotonic"]<=marker<cm["current_rx_host_monotonic"])
+           and cm["observer_prev_monotonic"]<=marker<cm["observer_curr_monotonic"])
     previous=fixture.get("first_pre_cancel_observer_backlog",{})
     p=previous.get("pre_guard",{}) if isinstance(previous,dict) else {}
     predelta=None
@@ -62,8 +62,8 @@ def classify(fixture):
                  if isinstance(peers,dict) else 0)
     backlog=(cm["observer_gap_ms"]>120 and delta_cm>40
              and sup["observer_gap_ms"]>120 and delta_sup>40
-             and abs(cm["current_rx_host_monotonic"]-
-                     sup["current_rx_host_monotonic"])<.15
+             and abs(cm["observer_curr_monotonic"]-
+                     sup["observer_curr_monotonic"])<.15
              and cm["received_gap_ms"]<=120 and sup["received_gap_ms"]<=120)
     if backlog:
         status="POST_RMW_OBSERVER_DELIVERY_SPACING_HOLD"
