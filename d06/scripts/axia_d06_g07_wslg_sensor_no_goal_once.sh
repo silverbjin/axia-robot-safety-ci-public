@@ -6,9 +6,19 @@ MODE="${1:---run}"
 [[ $# -le 1 && ( "$MODE" == --run || "$MODE" == --self-check ) ]] || {
   echo 'D06_WSLG_SENSOR_USAGE=--self-check|--run' >&2;exit 2;
 }
-readonly STUDENT_SHA='0565e580f5b7c80d719960a6046de3e45c8ea477'
+C27_CANDIDATE="${AXIA_D06_GAZEBO_C27_CANDIDATE:-0}"
+[[ "$C27_CANDIDATE" == 0 || "$C27_CANDIDATE" == 1 ]] || {
+  echo 'G07_C27_CANDIDATE_SCOPE_INVALID_NO_GOAL' >&2; exit 2;
+}
+if [[ "$C27_CANDIDATE" == 1 ]];then
+  readonly STUDENT_SHA='6c79c09d91f13c81961492eb30e66d99d307831c'
+  readonly SMOKE_BLOB='cc3c64f7ae769a11d9daad4acdbdb48141253f7c'
+else
+  # Preserve previously shipped and analyzed successful evidence source.
+  readonly STUDENT_SHA='0565e580f5b7c80d719960a6046de3e45c8ea477'
+  readonly SMOKE_BLOB='81adb67b40b3c7ee937bc2c695c4906282391774'
+fi
 readonly PROBE_BLOB='922516dd0bb8818bdf1ed057813168886d3b3b8e'
-readonly SMOKE_BLOB='81adb67b40b3c7ee937bc2c695c4906282391774'
 readonly LAUNCH_BLOB='b2886cdf509d99ea62528cd013669258764b05e0'
 readonly REPO='https://github.com/silverbjin/axia-robot-safety-student.git'
 readonly REL='block_B/day07/h01_runtime'
@@ -79,6 +89,17 @@ trap cleanup EXIT
 } > "$RUN_DIR/renderer.txt" 2>&1 || {
   echo 'D06_WSLG_RENDERER_DIAG_BLOCKED_NO_GOAL' >&2;exit 3;
 }
+if [[ "$C27_CANDIDATE" == 1 ]];then
+  # Match the exact NVIDIA WSLg adapter of the prior failing native Owner.
+  # GLX is a preflight only; actual Gazebo renderer and exit0 still required.
+  if [[ "${MESA_D3D12_DEFAULT_ADAPTER_NAME:-}" != NVIDIA ]];then
+    echo 'G07_C27_CANDIDATE_REQUIRES_EXPLICIT_NVIDIA_GPU' >&2;exit 3
+  fi
+  if ! grep -Eiq 'OpenGL renderer string:.*D3D12.*NVIDIA' "$RUN_DIR/renderer.txt";then
+    echo 'G07_C27_CANDIDATE_ACTUAL_GLX_NVIDIA_D3D12_REQUIRED' >&2;exit 3
+  fi
+  echo 'G07_C27_CANDIDATE_GPU_NVIDIA_PREFLIGHT_PASS_NOT_GAZEBO_PROOF'
+fi
 git clone --quiet --no-checkout --filter=blob:none "$REPO" "$GIT_ROOT/student"
 git -C "$GIT_ROOT/student" fetch --quiet --depth=1 origin "$STUDENT_SHA"
 git -C "$GIT_ROOT/student" checkout --quiet --detach "$STUDENT_SHA"
