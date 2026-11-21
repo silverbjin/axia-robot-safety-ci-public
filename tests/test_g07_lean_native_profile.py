@@ -40,7 +40,7 @@ class LeanProfileContract(unittest.TestCase):
         self.assertIn("AXIA_G07_CI_SIM_GOAL_ALLOWED: '1'",w)
         self.assertIn("AXIA_G07_NATIVE_L2_GUARD_SUPERVISOR_ACTUAL_CHILD_EXIT0_PASS",w)
         self.assertIn("G07_REAL_DEPTH_ABSENT_SCAN_PRESENT_PASS",w)
-        self.assertIn("AXIA_G07_NATIVE_MOVING_HEADLESS_SAFETY_L2_PASS",w)
+        self.assertIn("AXIA_G07_TASK04_NATIVE_MOVING_HEADLESS_SAFETY_L2_PASS_GUI_DIAGNOSTIC_ONLY_OWNER_WSL2_NOT_RUN",w)
 
     def test_no_changes_to_student_or_safety_node_runtime(self):
         w=self.workflow
