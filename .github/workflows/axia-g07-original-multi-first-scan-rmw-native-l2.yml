@@ -49,8 +49,8 @@ jobs:
       AXIA_G07_EVENTS_EXECUTOR_AB: '0'
       # S1 only: read-only I/O callback timing and independent 20ms heartbeat.
       AXIA_G07_OBSERVER_IO_PROBE: '1'
-      # Only THIS independent public A/B: original Multi2, finite 20ms wait.
-      AXIA_G07_CI_EXECUTOR_WAIT_BOUNDED_AB: '1'
+      # Rejected 20ms wait-set A/B #44870974857 0/2; original Multi2 spin maintained.
+      AXIA_G07_CI_EXECUTOR_WAIT_BOUNDED_AB: '0'
       # Original 2-thread Observer plus read-only independent DDS witness.
       AXIA_G07_CI_OWNER_BAG_PARITY: '1'
       AXIA_P2_G07_OWNER_PARITY_CHECK: '1'
@@ -73,7 +73,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 6895f90815fe62a4358abe6b306854af5b8cb6a5
+          ref: d8ec1a50bdd5a9097530b0924709a6ee63ce4eb5
           path: student
           persist-credentials: false
       # Keep the historic reviewer for older unrelated imports; the current
@@ -88,7 +88,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C student rev-parse HEAD)" = '6895f90815fe62a4358abe6b306854af5b8cb6a5'
+          test "$(git -C student rev-parse HEAD)" = 'd8ec1a50bdd5a9097530b0924709a6ee63ce4eb5'
           test "$(git -C ci rev-parse HEAD)" = "$GITHUB_SHA"
           test "$FASTDDS_BUILTIN_TRANSPORTS" = UDPv4
           [[ -z "${FASTRTPS_DEFAULT_PROFILES_FILE:-}" && -z "${FASTDDS_DEFAULT_PROFILES_FILE:-}" ]] || {
@@ -293,7 +293,7 @@ jobs:
           import json,sys
           result=json.load(open(sys.argv[1]))
           assert result.get("goal_sent") is True,result
-          assert result.get("source_sha")=="6895f90815fe62a4358abe6b306854af5b8cb6a5",result
+          assert result.get("source_sha")=="d8ec1a50bdd5a9097530b0924709a6ee63ce4eb5",result
           print('AXIA_G07_REAL_OWNER_AMCL_PRIMARY_PATH_PASS actual_goal_sent=true')
           PY_REAL_TF
           # Real Guard 20Hz timing facts must be present in the actual
@@ -345,7 +345,7 @@ jobs:
                   --motion "$GITHUB_WORKSPACE/native/g07_ci_moving/ci_moving_goal_result.json" \
                   --shutdown "$GITHUB_WORKSPACE/native/g07_ordered_shutdown.json" \
                   --gui-windows 2 \
-                  --source-sha '6895f90815fe62a4358abe6b306854af5b8cb6a5' \
+                  --source-sha 'd8ec1a50bdd5a9097530b0924709a6ee63ce4eb5' \
                   --output "$GITHUB_WORKSPACE/public_evidence/task04_mvp_visual_l2_verdict.json"; then
               sha256sum "$GITHUB_WORKSPACE/public_evidence/task04_mvp_visual_l2_verdict.json" \
                 > "$GITHUB_WORKSPACE/public_evidence/task04_mvp_visual_l2_verdict.sha256"
@@ -367,7 +367,7 @@ jobs:
           fi
           verify_real_goal_and_guard_evidence || exit 3
           windows_count=$((rviz_seen+gazebo_seen))
-          python3 tools/p2_g07_task04_moving_review.py             --motion-root "$GITHUB_WORKSPACE/native"             --witness "$GITHUB_WORKSPACE/native/s02_ecm_witness.json"             --source-sha '6895f90815fe62a4358abe6b306854af5b8cb6a5'             --gui-windows "$windows_count"             --output "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"
+          python3 tools/p2_g07_task04_moving_review.py             --motion-root "$GITHUB_WORKSPACE/native"             --witness "$GITHUB_WORKSPACE/native/s02_ecm_witness.json"             --source-sha 'd8ec1a50bdd5a9097530b0924709a6ee63ce4eb5'             --gui-windows "$windows_count"             --output "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"
           sha256sum "$GITHUB_WORKSPACE/public_evidence/task04_moving_l2_verdict.json"             > "$GITHUB_WORKSPACE/public_evidence/task04_moving_verdict.sha256"
           echo 'AXIA_G07_TASK04_NATIVE_MOVING_GUI_XVFB_L2_PASS_OWNER_WSL2_NOT_RUN'
           echo 'AXIA_MVP_DEMO_ACCEPTED=HOLD CERTIFIED_ESTOP=false'
