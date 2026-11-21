@@ -1,0 +1,79 @@
+name: AXIA D13 Cross-Repo Student TODO vs Sealed Instructor G09 L0
+on:
+  push:
+    branches:
+      - feat/block-d-d13-reachability-lab-20261121
+      - release/block-d-d13-verified-20261121
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/block-d-d13-crossrepo-l0.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  student-expected-red:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: e3fafbfa72da46d201a0e9185ed8c6465939f15e
+          path: student
+          persist-credentials: false
+      - name: Verify 2 intentional student RED cases, not runtime failures
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cd student
+          test "$(git rev-parse HEAD)" = 'e3fafbfa72da46d201a0e9185ed8c6465939f15e'
+          python3 -m py_compile block_D/day13/reachability_student.py block_D/day13/run_lab.py
+          set +e
+          python3 -m unittest discover -s block_D/day13/tests -p 'test_*.py' -v > "$RUNNER_TEMP/d13_expected_red.log" 2>&1
+          rc=$?
+          set -e
+          cat "$RUNNER_TEMP/d13_expected_red.log"
+          test "$rc" -ne 0
+          grep -q 'FAILED (failures=2)' "$RUNNER_TEMP/d13_expected_red.log"
+          grep -q 'FAIL: test_P_same_time_overlap' "$RUNNER_TEMP/d13_expected_red.log"
+          grep -q 'FAIL: test_N_same_path_different_time' "$RUNNER_TEMP/d13_expected_red.log"
+          echo D13_STUDENT_TODO_EXPECTED_RED_P_N_ONLY=PASS
+  sealed-reference-green:
+    # Protected source is available only on the authorized historical P3 sealed lane.
+    # Other refs run the public TODO job; release proof is Run #44873492853.
+    if: github.ref == 'refs/heads/release/p2-g06-cm-ttl-20261110'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: axia-instructor-sealed
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-instructor
+          ref: 4b90dbb45be7b472f2dc16bf777d1b5acb93e2c1
+          token: ${{ secrets.AXIA_CLOUD_CI }}
+          path: instructor
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: e3fafbfa72da46d201a0e9185ed8c6465939f15e
+          path: student
+          persist-credentials: false
+      - name: Verify sealed G09 source and student tests with ephemeral reference
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C instructor rev-parse HEAD)" = '4b90dbb45be7b472f2dc16bf777d1b5acb93e2c1'
+          test "$(git -C student rev-parse HEAD)" = 'e3fafbfa72da46d201a0e9185ed8c6465939f15e'
+          python3 -m unittest discover -s instructor/training/block_D/day13/tests -p 'test_*.py' -v
+          cp instructor/training/block_D/day13/solution/p3_oracles.py student/block_D/day13/reachability_student.py
+          python3 -m unittest discover -s student/block_D/day13/tests -p 'test_*.py' -v
+          python3 student/block_D/day13/run_lab.py --out "$RUNNER_TEMP/d13_reference"
+          python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); assert d["all_pass"] and len(d["cases"])==8' "$RUNNER_TEMP/d13_reference/d13_results.json"
+          echo D13_SEALED_EXACT_G09_STUDENT_GREEN_PASS_NO_ROS_NO_GAZEBO_NO_GOAL
+      - name: Destroy temporary private source and replaced student reference
+        if: always()
+        shell: bash
+        run: rm -rf -- instructor student
