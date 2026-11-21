@@ -4,6 +4,9 @@ on:
     branches:
       - feat/block-d-d13-reachability-lab-20261121
       - release/block-d-d13-verified-20261121
+      - release/block-d-d13-main-entrypoint-20261121
+      - release/p2-g06-cm-ttl-20261110
+      - main
   pull_request:
     branches:
       - main
@@ -20,7 +23,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: e3fafbfa72da46d201a0e9185ed8c6465939f15e
+          ref: 2e25b4b40a852a9ed7377e08577d4def7b5f6dbb
           path: student
           persist-credentials: false
       - name: Verify 2 intentional student RED cases, not runtime failures
@@ -28,7 +31,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           cd student
-          test "$(git rev-parse HEAD)" = 'e3fafbfa72da46d201a0e9185ed8c6465939f15e'
+          test "$(git rev-parse HEAD)" = '2e25b4b40a852a9ed7377e08577d4def7b5f6dbb'
           python3 -m py_compile block_D/day13/reachability_student.py block_D/day13/run_lab.py
           set +e
           python3 -m unittest discover -s block_D/day13/tests -p 'test_*.py' -v > "$RUNNER_TEMP/d13_expected_red.log" 2>&1
@@ -42,7 +45,7 @@ jobs:
           echo D13_STUDENT_TODO_EXPECTED_RED_P_N_ONLY=PASS
   sealed-reference-green:
     # Protected source is available only on the authorized historical P3 sealed lane.
-    # Other refs run the public TODO job; release proof is Run #44873492853.
+    # Other refs run the public TODO job; previous release proof is Run #44873492853; use this revision's authorized sealed run for latest merged main SHAs.
     if: github.ref == 'refs/heads/release/p2-g06-cm-ttl-20261110'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -51,22 +54,22 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: 4b90dbb45be7b472f2dc16bf777d1b5acb93e2c1
+          ref: 9ae09cd98d4c2b359fe3f655ebfdedfa0f34535e
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: e3fafbfa72da46d201a0e9185ed8c6465939f15e
+          ref: 2e25b4b40a852a9ed7377e08577d4def7b5f6dbb
           path: student
           persist-credentials: false
       - name: Verify sealed G09 source and student tests with ephemeral reference
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor rev-parse HEAD)" = '4b90dbb45be7b472f2dc16bf777d1b5acb93e2c1'
-          test "$(git -C student rev-parse HEAD)" = 'e3fafbfa72da46d201a0e9185ed8c6465939f15e'
+          test "$(git -C instructor rev-parse HEAD)" = '9ae09cd98d4c2b359fe3f655ebfdedfa0f34535e'
+          test "$(git -C student rev-parse HEAD)" = '2e25b4b40a852a9ed7377e08577d4def7b5f6dbb'
           python3 -m unittest discover -s instructor/training/block_D/day13/tests -p 'test_*.py' -v
           cp instructor/training/block_D/day13/solution/p3_oracles.py student/block_D/day13/reachability_student.py
           python3 -m unittest discover -s student/block_D/day13/tests -p 'test_*.py' -v
