@@ -17,6 +17,9 @@ def classify(lines):
     worker=False
     events_spin_at=None
     health_at=None
+    actual_jazzy_l1_script_at=None
+    l1_spin_once_at=None
+    l1_systemerror_at=None
     for i,row in enumerate(lines):
         if not isinstance(row,str):
             return result
@@ -27,11 +30,29 @@ def classify(lines):
             events_spin_at=i
         if "CI_MOVING_GOAL_TIMEOUT_HEALTH" in row and health_at is None:
             health_at=i
+        if ("axia_g07_events_scan_messageinfo_l1.py" in row
+                and actual_jazzy_l1_script_at is None):
+            actual_jazzy_l1_script_at=i
+        if "ex.spin_once(timeout_sec=.04)" in row and l1_spin_once_at is None:
+            l1_spin_once_at=i
+        if ("SystemError: null argument to internal routine" in row
+                and l1_systemerror_at is None):
+            l1_systemerror_at=i
     if events_spin_at is not None and (health_at is None or events_spin_at<health_at):
         result["first_failure"]="EVENTS_EXECUTOR_SPIN_WORKER_EXCEPTION_HOLD"
         if health_at is not None:
             result["secondary_failure"]="CI_MOVING_GOAL_TIMEOUT_HEALTH"
         result["native_l2_first_worker_exception_observed"]=True
+    elif (actual_jazzy_l1_script_at is not None
+          and l1_spin_once_at is not None
+          and l1_systemerror_at is not None
+          and actual_jazzy_l1_script_at<=l1_spin_once_at<l1_systemerror_at):
+        # Same SystemError independently reproduced with genuine ROS Jazzy
+        # 300Hz Clock + 10Hz Scan and no Gazebo/Goal. It proves this pinned
+        # EventsExecutor candidate is unusable here, NOT the C++ root cause.
+        result["first_failure"]="JAZZY_EVENTS_EXECUTOR_L1_SYSTEMERROR_HOLD"
+        result["native_l1_no_goal_reproduction"]=True
+        result["experimental_executor_release_allowed"]=False
     elif health_at is not None:
         result["first_failure"]="HEALTH_TIMEOUT_ORIGIN_UNVERIFIED_HOLD"
         result["native_l2_first_worker_exception_observed"]=False
