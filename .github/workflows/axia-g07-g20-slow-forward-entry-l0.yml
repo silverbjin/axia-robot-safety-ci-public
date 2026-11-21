@@ -1,0 +1,26 @@
+name: AXIA G07 G20 Physical SLOW Forward Entry L0
+on:
+  push:
+    branches: ['fix/g07-g50-first-boundary-ci-20261121']
+    paths:
+      - '.github/workflows/axia-g07-g20-slow-forward-entry-l0.yml'
+permissions:
+  contents: read
+jobs:
+  student_slow_forward_fixture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: 5b9287d56c2888e7c70a37e7421186f39b450e52
+          path: student
+          persist-credentials: false
+      - name: Native cycle2 reversed/rotating real-state regression
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cd student/block_B/day07/h01_runtime
+          python3 -m unittest discover -s tools -p 'test_g07_ci_slow_forward_entry.py' -v
+          echo 'AXIA_G07_G20_FORWARD_ENTRY_L0_PASS_NATIVE_L2_NOT_RUN_HOLD'
