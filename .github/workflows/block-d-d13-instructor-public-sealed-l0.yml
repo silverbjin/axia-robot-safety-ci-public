@@ -37,15 +37,16 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: f1e69d72201bcb81478a9aac615cdb9d169821f7
+          ref: 10f8895dfd0729fd41ac20acc7855e81001e0aec
           path: student
           persist-credentials: false
       - name: D13 Student release doc contract and exactly two intentional TODO REDs
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C student rev-parse HEAD)" = 'f1e69d72201bcb81478a9aac615cdb9d169821f7'
+          test "$(git -C student rev-parse HEAD)" = '10f8895dfd0729fd41ac20acc7855e81001e0aec'
           python3 -m unittest discover -s student/block_D/tests -p test_d13_guide_contract.py -v
+          python3 -m unittest discover -s student/block_D/tests -p test_d13_beginner_guide_contract.py -v
           set +e
           (cd student && python3 -m unittest discover -s block_D/day13/tests -p 'test_*.py' -v) > "$RUNNER_TEMP/d13_expected_red.log" 2>&1
           test_rc=$?
@@ -68,7 +69,7 @@ jobs:
               "P_same_time_overlap","N_same_route_different_time"}
           assert x["scope"]=="OFFLINE_SYNTHETIC_L0_NOT_ROS"
           PY
-          echo 'PUBLIC_D13_STUDENT_3_DOC_TESTS_10_CASE_TESTS_8_FIXTURES_PASS_INTENTIONAL_RED_2'
+          echo 'PUBLIC_D13_STUDENT_6_DOC_TESTS_10_CASE_TESTS_8_FIXTURES_PASS_INTENTIONAL_RED_2'
           echo 'PUBLIC_ONLY_NO_ROS_GAZEBO_GOAL'
       - name: Remove Student checkout and temporary logs
         if: always()
@@ -89,7 +90,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: c833d001804aa8522ee8d6e5a45d002d7e9c92df
+          ref: aa5cf9783c0ea0892b26d2ef2c54b272a3332808
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -97,7 +98,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor rev-parse HEAD)" = 'c833d001804aa8522ee8d6e5a45d002d7e9c92df'
+          test "$(git -C instructor rev-parse HEAD)" = 'aa5cf9783c0ea0892b26d2ef2c54b272a3332808'
           test "$(git -C instructor hash-object training/block_D/day13/solution/p3_oracles.py)" = '85dd0fa35b2e7982b0c86020fdd4f4952e6a039f'
           if [ -d instructor/.github/workflows ]; then
             test -z "$(find instructor/.github/workflows -maxdepth 1 -type f -name '*.yml' -print)"
@@ -107,7 +108,32 @@ jobs:
           rc_ref=$?
           (cd instructor && python3 -m unittest discover -s training/block_D/tests -p test_d13_guide_contract.py -v) > "$RUNNER_TEMP/private_d13_docs.log" 2>&1
           rc_docs=$?
+          (cd instructor && python3 -m unittest discover -s training/block_D/tests -p test_d13_story_24_slides_contract.py -v) > "$RUNNER_TEMP/private_d13_story.log" 2>&1
+          rc_story=$?
           set -e
+          if [ "$rc_story" -ne 0 ] ||
+             ! grep -q 'Ran 3 tests' "$RUNNER_TEMP/private_d13_story.log" ||
+             ! grep -qE '^OK
+             ! grep -q 'Ran 8 tests' "$RUNNER_TEMP/private_d13_ref.log" ||
+             ! grep -q 'Ran 3 tests' "$RUNNER_TEMP/private_d13_docs.log" ||
+             ! grep -qE '^OK$' "$RUNNER_TEMP/private_d13_ref.log" ||
+             ! grep -qE '^OK$' "$RUNNER_TEMP/private_d13_docs.log"; then
+            echo 'PRIVATE_D13_L0_HOLD (private diagnostics not published)'
+            exit 1
+          fi
+          echo 'PRIVATE_D13_L0_PASS instructor_sha=aa5cf9783c0ea0892b26d2ef2c54b272a3332808 reference=8 docs=3'
+          echo 'PRIVATE_D13_STORY_24_SLIDES_PASS main=24 appendix=4 script_tests=3'
+          echo 'NO_ROS_GAZEBO_GOAL_NO_PRIVATE_ANSWER_EXPORT'
+      - name: Destroy all private source and logs
+        if: always()
+        shell: bash
+        run: |
+          rm -rf -- instructor
+          rm -f -- "$RUNNER_TEMP/private_d13_ref.log" "$RUNNER_TEMP/private_d13_docs.log" "$RUNNER_TEMP/private_d13_story.log"
+ "$RUNNER_TEMP/private_d13_story.log"; then
+            echo 'PRIVATE_D13_STORY_L0_HOLD (private diagnostics not published)'
+            exit 1
+          fi
           if [ "$rc_ref" -ne 0 ] || [ "$rc_docs" -ne 0 ] ||
              ! grep -q 'Ran 8 tests' "$RUNNER_TEMP/private_d13_ref.log" ||
              ! grep -q 'Ran 3 tests' "$RUNNER_TEMP/private_d13_docs.log" ||
@@ -116,7 +142,7 @@ jobs:
             echo 'PRIVATE_D13_L0_HOLD (private diagnostics not published)'
             exit 1
           fi
-          echo 'PRIVATE_D13_L0_PASS instructor_sha=c833d001804aa8522ee8d6e5a45d002d7e9c92df reference=8 docs=3'
+          echo 'PRIVATE_D13_L0_PASS instructor_sha=aa5cf9783c0ea0892b26d2ef2c54b272a3332808 reference=8 docs=3'
           echo 'NO_ROS_GAZEBO_GOAL_NO_PRIVATE_ANSWER_EXPORT'
       - name: Destroy all private source and logs
         if: always()
