@@ -6,6 +6,8 @@ on:
       - '.github/workflows/axia-g07-events-executor-full-public-l0.yml'
       - 'tests/test_g07_jazzy_info_dict_independent_cm.py'
       - 'd06/diagnostic/g07_independent_cm_rmw_witness.py'
+      - 'tests/test_g07_events_first_worker_abort.py'
+      - 'd06/diagnostic/g07_events_first_abort.py'
 permissions: {contents: read}
 jobs:
   full-public-and-minimum-student-safety-contract:
@@ -28,6 +30,7 @@ jobs:
           python -m pip install pytest==8.3.5 Pillow==11.3.0
           cd public
           python3 -m unittest discover -s tests -p 'test_g07_jazzy_info_dict_independent_cm.py' -v
+          python3 -m unittest discover -s tests -p 'test_g07_events_first_worker_abort.py' -v
           python3 -m pytest -q -ra tests
           cd ../student/block_B/day07/h01_runtime
           python3 -m unittest discover -s tools -p 'test_g07_clock_window_postgoal_graph.py' -v
