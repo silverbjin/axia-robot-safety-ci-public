@@ -24,7 +24,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           python3 -m venv "$RUNNER_TEMP/g07-l0-venv"
-          "$RUNNER_TEMP/g07-l0-venv/bin/python" -m pip install -q 'pytest>=8,<10'
+          "$RUNNER_TEMP/g07-l0-venv/bin/python" -m pip install -q 'pytest>=8,<10' 'Pillow>=10,<13'
           "$RUNNER_TEMP/g07-l0-venv/bin/python" -m pytest -q -ra tests
           python3 - <<'PY_CHECK'
           from pathlib import Path
