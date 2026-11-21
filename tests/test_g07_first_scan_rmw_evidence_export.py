@@ -7,7 +7,7 @@ from pathlib import Path
 from d06.diagnostic.g07_first_scan_pair_attribution import assess
 
 ROOT=Path(__file__).resolve().parents[1]
-STUDENT="6895f90815fe62a4358abe6b306854af5b8cb6a5"
+STUDENT="d8ec1a50bdd5a9097530b0924709a6ee63ce4eb5"
 WORKFLOW=ROOT/".github/workflows/axia-g07-original-multi-first-scan-rmw-native-l2.yml"
 
 def first_run():
@@ -209,6 +209,23 @@ class NativeFirstBoundaryAttribution(unittest.TestCase):
         self.assertIn("cycle: [1, 2]",s)
         self.assertIn("ref: "+STUDENT,s)
         self.assertIn("AXIA_G07_SCAN_PREFLIGHT_STRICT: '1'",s)
+        self.assertNotIn("CERTIFIED_ESTOP=true",s)
+
+
+    def test_original_multi_cyclone_candidate_reuses_d08_public_transport_on_native_2cycle(self):
+        # Existing D08 #208 scoped real Gazebo Cyclone validation is a
+        # *hypothesis*, not proof of G07 Moving Goal 120/150/300ms PASS.
+        s=WORKFLOW.read_text()
+        self.assertIn("RMW_IMPLEMENTATION: rmw_cyclonedds_cpp",s)
+        self.assertIn("ros-jazzy-rmw-cyclonedds-cpp",s)
+        self.assertIn("rclpy.get_rmw_implementation_identifier()",s)
+        self.assertIn("AXIA_G07_CI_EXECUTOR_WAIT_BOUNDED_AB: '0'",s)
+        self.assertNotIn("AXIA_G07_CI_EXECUTOR_WAIT_BOUNDED_AB: '1'",s)
+        self.assertIn("cycle: [1, 2]",s)
+        self.assertIn("AXIA_G07_TASK03_FORMAL_CI: '1'",s)
+        self.assertIn("AXIA_G07_SCAN_PREFLIGHT_STRICT: '1'",s)
+        self.assertIn("AXIA_G07_EVENTS_EXECUTOR_AB: '0'",s)
+        self.assertIn("ref: "+STUDENT,s)
         self.assertNotIn("CERTIFIED_ESTOP=true",s)
 
 if __name__=="__main__":
