@@ -14,7 +14,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 8f995fe3d600c3f0c1df78700981178d39f5aa46
+          ref: 00243cbe1a8e72d74109a3299c59c629236124ca
           path: student
           persist-credentials: false
       - name: Native cycle2 reversed/rotating real-state regression
