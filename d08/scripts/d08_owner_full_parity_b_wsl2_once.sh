@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # AXIA D08 public WSL2 no-Goal single session, exact tested source and <=8MiB ZIP.
 # This is one bounded Owner first-cycle acceptance TRIAL, not E-Stop certification.
-# RELEASE_READY stays 0 until SAME-world YOLO D05 -> Owner B live L2 GREEN.
-FIELD_RELEASE_READY=0
+# Mandatory SAME-world YOLO D05 -> first Owner CM B L2 #44834253238 SUCCESS.
+# Instructor NVIDIA WSLg L3 is NOT_RUN; this is a SINGLE acceptance trial.
+FIELD_RELEASE_READY=1
 set -Eeuo pipefail
 if [[ $# -gt 0 ]]; then MODE="$1"; else MODE="--run"; fi
 case "$MODE" in --self-check|--doctor|--run) ;; *) echo 'D08_OWNER_USAGE=--self-check|--doctor|--run' >&2;exit 2;; esac
-RUNTIME_SHA="ff74d054211e8fbacea7f0518760d3f9b18efcaf"
+RUNTIME_SHA="af841aa09fa780683c191ab3e7b4188883daa5f5"
 OWNER_BLOB="1a17ddaab0eac123188e29cf031c819187c4f82d"
 EXTRACT_SHA="2b3080510dfee6c9da80cf515da29663f19d27a3"
 EXTRACT_BLOB="142c4dcc820a04accdf869b4cc903f62c7977b2c"
@@ -24,6 +25,8 @@ if [[ "$FIELD_RELEASE_READY" != "1" ]]; then
   exit 2
 fi
 echo "D08_OWNER_PUBLIC_L2_SCOPE=REAL_GAZEBO_WAFFLE_NAV2_UPSTREAM_YOLO_RGBD_D05_THEN_ONE_OWNER_CM_B"
+echo "D08_OWNER_PUBLIC_L2_RUN=https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/44834253238"
+echo D08_OWNER_WSL2_L3_NOT_PREVERIFIED
 ROOT="$HOME/axia_d08_owner_runs"
 mkdir -p "$ROOT"
 BASH_SRC="$(mktemp --suffix=.sh)"
@@ -97,6 +100,32 @@ bash -n "$BASH_SRC"
 python3 -m py_compile "$PY_SRC"
 bash "$BASH_SRC" --self-check
 export AXIA_D08_PUBLIC_SHA="$RUNTIME_SHA"
+# The successful real L2 #44834253238 ran CycloneDDS after actual
+# FastDDS map_server/change_state response timeout #44831417211.
+# Only the selected Owner child process tree uses Cyclone. Do not change
+# official Nav2/CM/Guard QoS, timeouts or safety boundaries.
+if [[ ! -r /opt/ros/jazzy/setup.bash ]]; then
+  echo D08_OWNER_ROS_JAZZY_REQUIRED >&2
+  exit 2
+fi
+if [[ "$MODE" == --run ]] && ! dpkg-query -W -f='${Status}' \
+        ros-jazzy-rmw-cyclonedds-cpp 2>/dev/null | \
+        grep -Fq 'install ok installed'; then
+  echo D08_OWNER_CYCLONE_RMW_INSTALL_OFFICIAL_MISSING
+  sudo -v
+  sudo apt-get update -qq -o APT::Update::Error-Mode=any -o Acquire::Retries=1
+  sudo apt-get install -y -qq --no-install-recommends \
+    ros-jazzy-rmw-cyclonedds-cpp
+fi
+export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+set +u
+source /opt/ros/jazzy/setup.bash
+set -u
+if ! /usr/bin/python3 -c 'import rclpy; x=rclpy.get_rmw_implementation_identifier(); assert x=="rmw_cyclonedds_cpp",x'; then
+  echo D08_OWNER_CYCLONE_RMW_NOT_PROVEN_HOLD >&2
+  exit 2
+fi
+echo D08_OWNER_SELECTED_RMW=rmw_cyclonedds_cpp
 export AXIA_D08_TAKE_DISPATCH_PROBE=1
 export AXIA_D08_CM_SERVICE_PROBE_MODE=isolated_process
 export AXIA_D08_OWNER_FIRST_CYCLE_ONLY=1
@@ -114,7 +143,7 @@ SESSION="$ROOT/once_$(date -u +%Y%m%dT%H%M%SZ)_$$"
 mkdir -p "$SESSION"
 export AXIA_D08_OWNER_EVIDENCE_ROOT="$SESSION"
 echo "D08_OWNER_SINGLE_SESSION=$SESSION"
-echo D08_OWNER_NO_GOAL_GUI_RUN_BEGIN_PRESS_CTRL_C_AFTER_VISUAL_REVIEW
+echo D08_OWNER_NO_GOAL_GUI_RUN_BEGIN_AUTO_STOP_AFTER_FIRST_REAL_OWNER_CYCLE
 bash "$BASH_SRC" --doctor
 set +e
 bash "$BASH_SRC" --run 2>&1 | tee "$SESSION/owner_console.log"
