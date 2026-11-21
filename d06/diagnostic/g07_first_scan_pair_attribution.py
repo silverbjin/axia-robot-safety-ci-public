@@ -56,12 +56,12 @@ def assess(pregoal,bag):
         "rmw_interval_class":"RMW_INTERVAL_UNAVAILABLE_HOLD",
         "scan_rosbag_pair_class":"EXACT_SCAN_HEADER_PAIR_UNAVAILABLE_HOLD",
         "first_safety_state_transition":"UNVERIFIED",
-        "actual_goal_sent":"UNVERIFIED"
+        "pregoal_goal_sent":"UNVERIFIED"
     }
     if not isinstance(pregoal,dict) or not isinstance(bag,dict):
         return result
     if pregoal.get("goal_sent") is False and bag.get("goal_sent") is False:
-        result["actual_goal_sent"]=False
+        result["pregoal_goal_sent"]=False
         result["first_safety_state_transition"]="NOT_CAPTURED_BEFORE_GOAL"
     first=pregoal.get("first_delivery_violation")
     if isinstance(first,dict) and first.get("channel") in (
