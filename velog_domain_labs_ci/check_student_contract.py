@@ -17,6 +17,8 @@ def inspect(root):
         assert (base/"README_KO.md").is_file(), "lesson guide missing"
         assert "```mermaid" in (base/"README_KO.md").read_text(), "diagram missing"
         assert (base/"setup.py").is_file(), "ament_python setup absent"
+        cfg=(base/"setup.cfg").read_text()
+        assert "script_dir=$base/lib/"+p in cfg and "install_scripts=$base/lib/"+p in cfg, "ros2 run entrypoint install path missing"
         assert (base/"resource"/p).is_file(), "ament marker absent"
     assert not list(root.rglob("INSTRUCTOR_GUIDE_PRIVATE_KO.md")), "private guide leak"
     assert not list(root.rglob("test_hidden_instructor.py")), "private hidden test leak"

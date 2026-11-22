@@ -1,7 +1,7 @@
 name: AXIA Velog Domain Knowledge Labs Public+Sealed L0
 on:
   push:
-    branches: [feat/velog-domain-knowledge-labs-20261123, release/velog-domain-knowledge-labs-20261123]
+    branches: [feat/velog-domain-knowledge-labs-20261123, release/velog-domain-knowledge-labs-20261123, release/p2-g06-cm-ttl-20261110]
     paths:
       - '.github/workflows/velog-domain-knowledge-labs-l0.yml'
       - 'velog_domain_labs_ci/**'
@@ -24,14 +24,14 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 414518d407dfe10551dcbc73f856e0b944a43f9b
+          ref: 89277c433a1b6485b8926712b54b6c0b133f11ec
           path: student
           persist-credentials: false
       - name: Check student SHA, five packages and no instructor answers
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C student rev-parse HEAD)" = '414518d407dfe10551dcbc73f856e0b944a43f9b'
+          test "$(git -C student rev-parse HEAD)" = '89277c433a1b6485b8926712b54b6c0b133f11ec'
           python3 -m compileall -q student/velog_domain_labs/ros2_ws/src
           python3 velog_domain_labs_ci/check_student_contract.py student/velog_domain_labs
       - name: Assert student exercises are RED for the right reason (24 TODO errors)
@@ -57,7 +57,7 @@ jobs:
         run: rm -rf -- student "$RUNNER_TEMP/student_red.log"
 
   instructor-private-green-sealed:
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/feat/velog-domain-knowledge-labs-20261123' || github.ref == 'refs/heads/release/velog-domain-knowledge-labs-20261123')
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/feat/velog-domain-knowledge-labs-20261123' || github.ref == 'refs/heads/release/velog-domain-knowledge-labs-20261123' || github.ref == 'refs/heads/release/p2-g06-cm-ttl-20261110')
     runs-on: ubuntu-24.04
     timeout-minutes: 7
     environment: axia-instructor-sealed
@@ -66,7 +66,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-instructor
-          ref: d9cba3ee80066e067c6739503ab9eeec5f25ea68
+          ref: e049cd85ea52ba4d55c0b79dbb96aa8476a6b10e
           token: ${{ secrets.AXIA_CLOUD_CI }}
           path: instructor
           persist-credentials: false
@@ -74,13 +74,13 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C instructor rev-parse HEAD)" = 'd9cba3ee80066e067c6739503ab9eeec5f25ea68'
+          test "$(git -C instructor rev-parse HEAD)" = 'e049cd85ea52ba4d55c0b79dbb96aa8476a6b10e'
           python3 -m compileall -q instructor/training/velog_domain_labs/ros2_ws/src
           export PYTHONPATH="$(find instructor/training/velog_domain_labs/ros2_ws/src -mindepth 1 -maxdepth 1 -type d | paste -sd: -)"
           if python3 -m unittest discover -s instructor/training/velog_domain_labs/tests -p 'test_*.py' > "$RUNNER_TEMP/teacher_tests.log" 2>&1; then
             if grep -q 'Ran 29 tests' "$RUNNER_TEMP/teacher_tests.log"; then
               echo 'AXIA_VELOG_INSTRUCTOR_PRIVATE_29_OF_29_GREEN_L0'
-              echo 'PRIVATE_SOURCE_SHA=d9cba3ee80066e067c6739503ab9eeec5f25ea68'
+              echo 'PRIVATE_SOURCE_SHA=e049cd85ea52ba4d55c0b79dbb96aa8476a6b10e'
             else
               echo 'AXIA_VELOG_INSTRUCTOR_SEALED_HOLD_BAD_TEST_COUNT'
               exit 1
