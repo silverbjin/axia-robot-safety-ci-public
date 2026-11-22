@@ -8,9 +8,9 @@ import unittest
 
 ROOT=Path(__file__).resolve().parents[1]
 SCRIPT=ROOT/"scripts/axia_g07_stabilization_wsl2_final_once.sh"
-STUDENT="fb1aae6cbde54ff0ed4e78317f403aa5cef4d550"
-HEAD="0711e583f3c0c546a64c687edd8e280c2ae8e776"
-RUN=44878063103
+STUDENT="f7edb2d126502eeeed58ae014adadc7a2096d41b"
+HEAD="64ba0161e66126b4743b4b12a859f4a5349ae58a"
+RUN=44965035965
 NAME="AXIA G07 Original Multi First Scan RMW Exact Pair Diagnostic Native L2"
 
 
@@ -112,11 +112,8 @@ fi
         script=SCRIPT.read_text()
         # During RED→GREEN the active native Student candidate is NOT yet an
         # Owner release. The Owner remains pinned to previously verified 2/2.
-        if "fix/g07-reuse-native2of2-shutdown-native-20261122" in flow:
-            self.assertIn("ref: f7edb2d126502eeeed58ae014adadc7a2096d41b",flow)
-            self.assertNotIn("ref: "+STUDENT,flow)
-        else:
-            self.assertIn("ref: d31d560012f467ae728485eaf9e0333877c734f4",flow)
+        self.assertIn("ref: "+STUDENT,flow)
+        self.assertIn("readonly REVIEW_SHA='"+HEAD+"'",script)
         self.assertNotIn("ref: "+STUDENT,flow)
         self.assertIn("readonly STUDENT_SHA='"+STUDENT+"'",script)
         self.assertIn("readonly CI_L2_RUN="+str(RUN),script)
