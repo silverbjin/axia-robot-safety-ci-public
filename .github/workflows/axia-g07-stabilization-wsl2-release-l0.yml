@@ -1,7 +1,7 @@
 name: AXIA G07 strict WSL2 final one-shot offline release L0
 on:
   push:
-    branches: ['docs/g07-185-163-157-186-stabilization-recheck-20261120']
+    branches: ['docs/g07-185-163-157-186-stabilization-recheck-20261120', 'fix/g07-reuse-native2of2-shutdown-native-20261122']
     paths:
       - '.github/workflows/axia-g07-stabilization-wsl2-release-l0.yml'
       - 'scripts/axia_g07_stabilization_wsl2_final_once.sh'
