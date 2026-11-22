@@ -1,7 +1,7 @@
 name: AXIA Velog Domain Knowledge Labs Public+Sealed L0
 on:
   push:
-    branches: [feat/velog-domain-knowledge-labs-20261123]
+    branches: [feat/velog-domain-knowledge-labs-20261123, release/velog-domain-knowledge-labs-20261123]
     paths:
       - '.github/workflows/velog-domain-knowledge-labs-l0.yml'
       - 'velog_domain_labs_ci/**'
@@ -57,7 +57,7 @@ jobs:
         run: rm -rf -- student "$RUNNER_TEMP/student_red.log"
 
   instructor-private-green-sealed:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/feat/velog-domain-knowledge-labs-20261123'
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/feat/velog-domain-knowledge-labs-20261123' || github.ref == 'refs/heads/release/velog-domain-knowledge-labs-20261123')
     runs-on: ubuntu-24.04
     timeout-minutes: 7
     environment: axia-instructor-sealed
