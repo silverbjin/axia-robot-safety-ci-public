@@ -148,6 +148,9 @@ names=[
     'native/g07_ci_moving/ci_moving_goal_result.json',
     'native/g07_ordered_shutdown.json','native/g07_shutdown_audit.json',
     'native/staged_startup.log','native/g07_ordered_shutdown.log',
+    'native/startup_verdict.json',
+    'native/startup_verdict.localization_start.native.json',
+    'native/startup_verdict.navigation_start.native.json',
     'native/g07_ci_scan_pregoal.json','native/g07_ci_scan_pregoal.log',
     'first_scan_timing_boundary.json','scan_wall_sim_rtf_summary.json',
     'scan_pipeline_first_failure.json','guard_supervisor_first_state_transition.json',
@@ -561,10 +564,36 @@ PY_MVP
     exit 3
   fi
   FIRST_FAILURE='NATIVE_RUNNER_FAILED_REVIEW_RAW'
+  # Startup precedes the pregoal observer. Retain the first service timeout;
+  # a later incomplete-bag assertion must not hide this NO_GOAL boundary.
+  STARTUP_FIRST_FAILURE="$(python3 - "$OUT/native/startup_verdict.json" <<'PY_STARTUP_FIRST'
+import json,sys
+try:
+    with open(sys.argv[1],encoding="utf-8") as f:
+        record=json.load(f)
+    if record.get("status")=="BLOCKED" and record.get("goal_sent") is False:
+        for stage in record.get("stages",[]):
+            if stage.get("status")!="BLOCKED":
+                continue
+            gate=stage.get("gate")
+            detail=stage.get("detail")
+            if (gate in {"LOCALIZATION_START","NAVIGATION_START"} and
+                detail=="G07_NATIVE_LIFECYCLE_STARTUP_SERVICE_TIMEOUT:request_sent=True" and
+                record.get("failed_gate")==gate+": "+detail):
+                print("OWNER_STARTUP_"+gate.removesuffix("_START")+"_SERVICE_TIMEOUT")
+            break
+except (OSError,ValueError,TypeError,AttributeError):
+    pass
+PY_STARTUP_FIRST
+)" || STARTUP_FIRST_FAILURE=''
+  if [[ "$STARTUP_FIRST_FAILURE" =~ ^OWNER_STARTUP_(LOCALIZATION|NAVIGATION)_SERVICE_TIMEOUT$ ]];then
+    FIRST_FAILURE="$STARTUP_FIRST_FAILURE"
+    echo "AXIA_G07_TASK04_UPSTREAM_FIRST_FAILURE=$FIRST_FAILURE"
+  fi
   # Preserve the FIRST upstream safety failure instead of masking it with
   # the outer shell exception. The source wrote this file before raise.
   ORIGINAL_FIRST_FAILURE=''
-  if [[ -s "$OUT/native/g07_ci_pregoal/pregoal_baseline.json" ]];then
+  if [[ "$FIRST_FAILURE" == NATIVE_RUNNER_FAILED_REVIEW_RAW && -s "$OUT/native/g07_ci_pregoal/pregoal_baseline.json" ]];then
     ORIGINAL_FIRST_FAILURE="$(python3 - "$OUT/native/g07_ci_pregoal/pregoal_baseline.json" <<'PY_FIRST'
 import json,sys
 try:
