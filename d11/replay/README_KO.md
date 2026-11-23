@@ -21,6 +21,21 @@ D10의 기존 오프라인 Replay **원본·Window·품질 검증기**를 두 �
 
 공개 CI에는 강사용 score CSV/가중치/비공개 HTML을 올리지 않습니다. 빌더는 두 점수 CSV에 대해 D10 엄격 검증기를 각각 적용하고, 동등한 window_id, timestamp_ns, truth_label, status, 품질 사유만 조인합니다. 누락, 충돌, 잘못된 prediction, 품질 실패의 거짓 NORMAL을 거부합니다.
 
+## 2026-11-23 W4 look-ahead 교정 — 교육용 디버깅 기록
+
+**현장 제보:** TST_A_01 / W4 재생 위치 4.3초에 아직 4/10 Sample만 관측됐는데 W4 전체 특징으로 계산한 AE WARNING을 공개할 수 있었습니다. 모델 오류가 아니라 **오프라인 UI의 미래 Window 결과 조기 공개**입니다.
+
+- **RED:** PR #233의 최초 테스트 전용 commit `62fc37a0ada1612d1d7b0675ff9ccb8de949a173`, 공개 Actions run [#45140250945](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/45140250945): `AssertionError: ('PREMATURE_REVEAL', '#showIF')`. 기존 L0 8개는 통과했습니다.
+- **GREEN:** UI 모델/정답 공개를 `windowComplete()`로 제한하고, 미완성에는 `PENDING n/10`을 표시합니다. W4 4.3초는 PENDING, W4 마지막 샘플 4.9초에만 해당 Window 공개 가능. 5.3초 W5도 PENDING이며, W5 종료 5.9초에 공개 가능합니다.
+- **품질 Trace:** 전체 Trace 유효성을 기록한 상태는 마지막 샘플 전까지 미공개입니다. 완료 후만 `INSUFFICIENT_DATA`와 점수 없음 상태를 공개합니다.
+- **미래 데이터 차단:** Raw 그래프의 자동 스케일을 이미 관측한 Sample로만 계산하며, 공개한 점수 그래프의 스케일도 현재 완료된 Window까지만 계산합니다.
+- **CI:** 수정 소스 `6429a3e221c139a8010689272a0cc763c700e780`의 공개 Actions [#45140521934](https://github.com/silverbjin/axia-robot-safety-ci-public/actions/runs/45140521934): 기존 L0 + 신규 Playwright 브라우저 L1 PASS. 공개 fake IF/AE 점수만 사용합니다.
+- **교육 핵심:** Window는 10Hz 10 Sample의 비중첩 구간입니다. W4는 4.0~4.9초 관측되며, **실시간 추론이라면** 4.9초 마지막 샘플 수신 및 검증과 처리 지연을 더한 뒤에야 판정 가능합니다. Replay는 기존 저장 점수를 재생할 뿐 실제 처리 지연을 측정하지 않습니다.
+
+**재현 명령(공개 CI):** `AXIA_D11_PUBLIC_FIXTURE_DIR=student/block_C/fixtures PYTHONPATH=public/d11/replay python3 -m unittest discover -s public/d11/replay -p test_replay.py -v`, 이어서 `python3 public/d11/replay/test_browser.py --output evidence`. 브라우저는 Playwright 1.58.0/Chromium을 사용합니다. 생성된 강사 개인 HTML/Checkpoint/IF/AE 참조 점수는 공개 저장소나 공개 CI artifact에 포함하지 않습니다.
+
+**검증 경계:** L0 fake-score join 및 L1 Linux Chromium DOM/화면·타이밍 검증까지입니다. 강사 Windows Edge 파일 열기, 실시간 모델 추론, ROS 2 Jazzy/Gazebo Harmonic, 안전 TTL·SW Stop·인증 E-Stop은 미검증입니다.
+
 ## 강사 WSL2 원샷과 예상 결과
 
 클론부터 시연까지는 **강사 비공개** D11_LIVE_REPLAY_INSTRUCTOR_GUIDE_KO.md를 이용하십시오. 공개 스크립트는 정확한 40자리 CI GREEN PIN에서 다운로드합니다. 별도 비공개 repo가 없으면 기존 GitHub 인증을 이용해 clone하고, 있으면 지우거나 초기화하지 않습니다.

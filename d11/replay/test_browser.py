@@ -38,6 +38,27 @@ def main()->int:
             assert not page.locator("#metricsArea").is_visible(), "confusion must not leak before truth reveal"
             assert page.locator("#windowStrip .win").count()==10
             page.select_option("#traceSelect",label="TST_A_00 · 신호 관찰")
+            # REGRESSION: W4 sample 43 (4.3 s) cannot expose the 4.9 s window verdict.
+            page.evaluate("""() => {
+                const seek=document.querySelector('#seek');
+                seek.value=43;seek.dispatchEvent(new Event('input',{bubbles:true}));
+            }""")
+            assert page.locator("#timeReadout").inner_text()=="4.3s"
+            assert page.locator("#stepWindow").inner_text()=="W4"
+            for ctl in ("#showIF","#showAE","#showTruth"):
+                assert page.locator(ctl).is_disabled(),("PREMATURE_REVEAL",ctl)
+            assert "PENDING" in page.locator("#aeResult").inner_text()
+            assert "PENDING" in page.locator("#ifResult").inner_text()
+            assert not page.locator("#metricsArea").is_visible()
+            # At last sample W4 may be revealed; navigation keeps locked initial state.
+            page.evaluate("""() => {
+                const seek=document.querySelector('#seek');
+                seek.value=49;seek.dispatchEvent(new Event('input',{bubbles:true}));
+            }""")
+            assert page.locator("#timeReadout").inner_text()=="4.9s"
+            assert page.locator("#showAE").is_enabled()
+            # Existing W4 complete navigation check starts at W0 again.
+            page.click("#restart")
             for _ in range(4):page.click("#next")
             assert page.locator("#stepWindow").inner_text()=="W4"
             assert page.locator("#truthArea").inner_text().find("숨겨져")>=0
@@ -59,6 +80,15 @@ def main()->int:
             page.click("#next")
             assert page.locator("#stepWindow").inner_text()=="W5"
             assert "숨김" in page.locator("#ifResult").inner_text()
+            # W5 is unfinished at 5.3 s even after W4 was previously disclosed.
+            page.evaluate("""() => {
+                const seek=document.querySelector('#seek');
+                seek.value=53;seek.dispatchEvent(new Event('input',{bubbles:true}));
+            }""")
+            assert page.locator("#showAE").is_disabled()
+            assert "PENDING" in page.locator("#aeResult").inner_text()
+            page.click("#next")  # W6 end; return to W5 end for the existing demo.
+            page.click("#prev")
             assert "숨김" in page.locator("#aeResult").inner_text()
             assert "숨겨져" in page.locator("#truthArea").inner_text()
             page.click("#showIF");page.click("#showAE")
@@ -69,6 +99,11 @@ def main()->int:
             assert not page.locator("#metricsArea").is_visible(), "reset must re-hide confusion"
             # Four quality traces are not scored in either model.
             page.select_option("#traceSelect",label="TST_Q_01 · 품질 조사")
+            assert page.locator("#showAE").is_disabled(), "QUALITY_TRACE_FUTURE_LEAK"
+            page.evaluate("""() => {
+                const seek=document.querySelector('#seek');
+                seek.value=seek.max;seek.dispatchEvent(new Event('input',{bubbles:true}));
+            }""")
             page.click("#showIF");page.click("#showAE");page.click("#showTruth")
             assert "INSUFFICIENT_DATA"==page.locator("#ifResult").inner_text()
             assert "INSUFFICIENT_DATA"==page.locator("#aeResult").inner_text()
