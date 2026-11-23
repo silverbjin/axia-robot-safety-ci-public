@@ -132,7 +132,7 @@ function modelView(which,reveal){
  $(prefix+"Score").textContent=ready?(exposed?fmt(v.score):"비공개"):"PENDING";
  $(prefix+"Limit").textContent=exposed?(v.threshold===null?"cutoff 미적용":"cutoff "+fmt(v.threshold)):"";
  const div=$(prefix+"Result");div.className="result "+(exposed?(v.prediction==="WARNING"?"warning":v.prediction==="NORMAL"?"normal":"insufficient"):"locked");
- div.textContent=!ready?"PENDING "+windowProgress()+" · Window 완료 후 공개":exposed?v.prediction:"학생이 먼저 예측 · 판정 숨김";
+ div.textContent=!ready?"PENDING "+windowProgress()+" · 학생 예측 · 판정 숨김 (Window 완료 후 공개)":exposed?v.prediction:"학생이 먼저 예측 · 판정 숨김";
  drawScore(prefix+"Chart",prefix,exposed);
 }
 function truthView(){
