@@ -14,7 +14,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 292099e2da6c3c8a6b0d97a05a164219b0a7b078
+          ref: 71ba9871697926268fd8039bf5d729d1a1e6683a
           fetch-depth: 20
           path: student
           persist-credentials: false
@@ -28,7 +28,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C student rev-parse HEAD)" = 292099e2da6c3c8a6b0d97a05a164219b0a7b078
+          test "$(git -C student rev-parse HEAD)" = 71ba9871697926268fd8039bf5d729d1a1e6683a
           test "$(git -C student rev-parse HEAD:block_B/day07/h01_runtime)" = "$(git -C student rev-parse f7edb2d126502eeeed58ae014adadc7a2096d41b:block_B/day07/h01_runtime)"
           echo AXIA_DAY02_G07_SCENARIO_SUCCESS_RUNTIME_TREE_UNCHANGED_PASS
       - name: RED evidence that tests preceded scenario implementation
