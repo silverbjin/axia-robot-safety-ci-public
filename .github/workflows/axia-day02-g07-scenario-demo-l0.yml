@@ -1,0 +1,91 @@
+name: AXIA DAY02 G07 Scenario Evidence Replay L0
+on:
+  push:
+    branches: [ci/day02-g07-scenario-replay-20261126]
+    paths: [.github/workflows/axia-day02-g07-scenario-demo-l0.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  read-only-scenarios:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: f43df3132c8c1dac29f7c980274cd85bcdda02fc
+          fetch-depth: 20
+          path: student
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: b8ae7418e2bae7cdff297004aef469f3cf8d2bac
+          path: red
+          persist-credentials: false
+      - name: Exact successful G07 runtime subtree remains unchanged
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C student rev-parse HEAD)" = f43df3132c8c1dac29f7c980274cd85bcdda02fc
+          test "$(git -C student rev-parse HEAD:block_B/day07/h01_runtime)" = "$(git -C student rev-parse f7edb2d126502eeeed58ae014adadc7a2096d41b:block_B/day07/h01_runtime)"
+          echo AXIA_DAY02_G07_SCENARIO_SUCCESS_RUNTIME_TREE_UNCHANGED_PASS
+      - name: RED evidence that tests preceded scenario implementation
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          set +e
+          (cd red && python3 -m unittest discover -s special_lecture/day02/tests -p test_g07_scenario_demo.py -v) >/tmp/scenario_red.log 2>&1
+          rc=$?
+          set -e
+          test "$rc" -ne 0 || { echo SCENARIO_RED_WAS_NOT_RED; exit 3; }
+          grep -F 'RED: historic scenario snapshot missing' /tmp/scenario_red.log
+          echo AXIA_DAY02_G07_SCENARIO_PREIMPLEMENTATION_RED_CONFIRMED
+      - name: Existing student immutable release plus scenario GREEN public tests
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 student/special_lecture/day02/scripts/verify_release.py --out /tmp/existing_release.json
+          (cd student && python3 -m unittest discover -s special_lecture/day02/tests -p test_*.py -v)
+          echo AXIA_DAY02_G07_SCENARIO_GREEN_L0
+      - name: Execute all classroom scenario cards and scoped evidence JSON
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 student/special_lecture/day02/scripts/g07_scenario_replay.py --case success >/tmp/scenario_success.txt
+          python3 student/special_lecture/day02/scripts/g07_scenario_replay.py --case failed >/tmp/scenario_failed.txt
+          python3 student/special_lecture/day02/scripts/g07_scenario_replay.py --case compare --json-out /tmp/scenario_compare.json >/tmp/scenario_compare.txt
+          grep -F 'HISTORICAL_EVIDENCE_REPLAY_NO_ROS_NO_GOAL' /tmp/scenario_success.txt
+          grep -F 'NEW_L2_L3_NOT_RUN' /tmp/scenario_failed.txt
+          grep -F 'S05 CANCEL/ODOM' /tmp/scenario_success.txt
+          grep -F 'F01 Cycle1 PRE_GOAL' /tmp/scenario_failed.txt
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          c=json.loads(Path('/tmp/scenario_compare.json').read_text())
+          assert c['verification_level']=='HISTORIC_EVIDENCE_REPLAY_L0_ONLY',c
+          assert not c['new_ros_gazebo_run'] and not c['new_l2_l3_acceptance']
+          assert c['accepted_owner_scope']=='PASS_SCOPED'
+          assert c['failed_case_status']=='0_OF_2_FAIL'
+          assert c['certified_estop'] is False
+          print('AXIA_DAY02_G07_SCENARIO_REPLAY_EVIDENCE_QA_PASS')
+          PY
+      - name: Reject leaked private runtime bags, unverifiable claims and missing guide
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test -s student/special_lecture/day02/scenarios/SCENARIO_OPERATION_GUIDE_KO.md
+          test -s student/special_lecture/day02/evidence_templates/SCENARIO_STUDENT_OBSERVATION_KO.md
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('student/special_lecture/day02')
+          src=(p/'scripts/g07_scenario_replay.py').read_text()
+          forbidden=['ros2 launch','gz sim','create_publisher(','ActionClient(','CancelGoal.Request(']
+          assert all(tok not in src for tok in forbidden)
+          leaks=[str(x) for x in p.rglob('*') if x.is_file() and x.suffix.lower() in ('.db3','.pt','.onnx','.tar','.gz','.zip')]
+          assert not leaks,leaks
+          g=(p/'scenarios/SCENARIO_OPERATION_GUIDE_KO.md').read_text()
+          assert all(s in g for s in ['S01','S02','S03','S04','S05','S06','--self-check','--ci-check','PASS_SCOPED','0/2'])
+          print('AXIA_DAY02_SCENARIO_PUBLIC_DISTRIBUTION_SCOPE_QA_PASS')
+          PY
