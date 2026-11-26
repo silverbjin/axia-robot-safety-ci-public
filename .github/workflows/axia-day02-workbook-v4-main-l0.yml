@@ -1,0 +1,90 @@
+name: AXIA DAY02 v4 Workbook Main Documentation L0
+on:
+  push:
+    branches: [ci/day02-v4-workbook-main-integration-20261126]
+    paths:
+      - .github/workflows/axia-day02-workbook-v4-main-l0.yml
+      - docs/operations/AXIA_DAY02_WORKBOOK_V4_MAIN_RELEASE_QA_20261126_KO.md
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify-student-main-bound-edu-workbook:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: 65d4df3e96878b578c95161e3eb024c9660ec489
+          fetch-depth: 3
+          persist-credentials: false
+          path: student
+      - name: Exact student candidate SHA and preserve G07 runtime off-limits
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C student rev-parse HEAD)" = 65d4df3e96878b578c95161e3eb024c9660ec489
+          changed="$(git -C student diff --name-only HEAD~1 HEAD)"
+          ! grep -E '^(block_B|block_C|block_D)/' <<< "$changed"
+          test "$(echo "$changed" | grep -c '^special_lecture/day02_workbook_v4/')" -eq 4
+          echo "AXIA_DAY02_V4_MAIN_DOCS_NO_RUNTIME_CHANGE_PASS"
+      - name: Read-only educational workbook v4 contract
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 -m compileall -q student/special_lecture/day02_workbook_v4
+          python3 student/special_lecture/day02_workbook_v4/verify_workbook_manifest.py
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          d=Path('student/special_lecture/day02_workbook_v4')
+          m=json.loads((d/'WORKBOOK_RELEASE_MANIFEST.json').read_text())
+          assert m['verified_pptx']['sha256']=='3dba11b1f18cde17c3cd8d63caea7f8dc79b1a91598d9d09992d42a15af709bf'
+          assert m['verified_pdf']['sha256']=='ee6ca81ff804be3ca26f03d10159598d3a660a6bf57ff5e77d6da0accc2cd731'
+          assert m['slides']==40 and m['units']==20
+          assert m['successful_mvp']['native_l2']=='2_OF_2_PASS'
+          assert m['failed_mvp']['native_l2']=='0_OF_2_FAIL'
+          assert m['successful_mvp']['original_auto_verdict']=='HOLD_RAW_REVIEW_AND_VISUAL_PENDING'
+          assert m['verification_scope']['new_ros_gazebo_l2']=='NOT_RUN'
+          assert m['verification_scope']['new_owner_l3']=='NOT_RUN'
+          assert m['verification_scope']['certified_estop'] is False
+          assert m['verified_pptx']['availability'].endswith('NOT_YET_IN_GITHUB_BINARY')
+          assert not m['verification_scope']['student_repo_main_runtime_changed']
+          print("AXIA_DAY02_V4_MAIN_SCOPE_AND_SHA_PROVENANCE_PASS")
+          PY
+      - name: RED mutate exact source pin then GREEN restore original
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          f=student/special_lecture/day02_workbook_v4/WORKBOOK_RELEASE_MANIFEST.json
+          cp "$f" "$RUNNER_TEMP/manifest_original.json"
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("student/special_lecture/day02_workbook_v4/WORKBOOK_RELEASE_MANIFEST.json")
+          d=json.loads(p.read_text())
+          d['failed_mvp']['native_l2']="2_OF_2_PASS"
+          p.write_text(json.dumps(d))
+          PY
+          if python3 student/special_lecture/day02_workbook_v4/verify_workbook_manifest.py >"$RUNNER_TEMP/red.log" 2>&1; then
+            echo "AXIA_DAY02_V4_RED_NEGATIVE_NOT_DETECTED";exit 3
+          fi
+          grep 'OVERCLAIM_FAILURE' "$RUNNER_TEMP/red.log"
+          cp "$RUNNER_TEMP/manifest_original.json" "$f"
+          python3 student/special_lecture/day02_workbook_v4/verify_workbook_manifest.py
+          echo "AXIA_DAY02_V4_MANIFEST_RED_GREEN_SCOPE_PASS"
+      - name: Public student release and private-answer boundary
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          d=Path("student/special_lecture/day02_workbook_v4")
+          leak=[str(x) for x in d.rglob('*') if x.is_file() and (x.name.lower().startswith(("instructor_solution","hidden_test","secret_answer"))
+              or x.suffix.lower() in (".db3",".zip",".tar",".gz",".pt",".onnx"))]
+          assert not leak,leak
+          readme=(d/"README_KO.md").read_text()
+          assert "PPTX 바이너리가 포함되지" in readme
+          print("AXIA_DAY02_V4_PUBLIC_DOCS_PRIVACY_AND_BINARY_SCOPE_PASS")
+          PY
