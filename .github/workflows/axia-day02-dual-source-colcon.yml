@@ -102,7 +102,7 @@ jobs:
           apt-get update -qq -o APT::Update::Error-Mode=any
           apt-get install -y -qq --no-install-recommends \
             python3-colcon-common-extensions python3-setuptools python3-ament-package python3-pytest
-      - name: Doctor: Ubuntu 24.04 and real ROS 2 Jazzy colcon
+      - name: Doctor - Ubuntu 24.04 and real ROS 2 Jazzy colcon
         shell: bash
         run: |
           set -Eeuo pipefail
