@@ -1,0 +1,85 @@
+name: AXIA DAY02 Dual MVP Success And Failed Snapshot L0
+on:
+  push:
+    branches:
+      - ci/day02-g07-accepted-release-20261126
+    paths:
+      - .github/workflows/axia-day02-dual-g07-mvp-l0.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  dual-student-snapshot-custody:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: 045afa5658045ce150effc242443f6fb8fa5c53f
+          fetch-depth: 10
+          persist-credentials: false
+          path: accepted
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: d9ba3f78ae701697a5986a2bc856e4d856a73dd9
+          fetch-depth: 8
+          persist-credentials: false
+          path: failed
+      - name: Entire accepted and failed G07 runtime trees match actual source SHAs
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C accepted rev-parse HEAD)" = 045afa5658045ce150effc242443f6fb8fa5c53f
+          test "$(git -C failed rev-parse HEAD)" = d9ba3f78ae701697a5986a2bc856e4d856a73dd9
+          git -C accepted cat-file -e f7edb2d126502eeeed58ae014adadc7a2096d41b^{commit}
+          git -C failed cat-file -e a04f9a7da8d54bbd9f944d05388792cb706adf28^{commit}
+          test "$(git -C accepted rev-parse HEAD:block_B/day07/h01_runtime)" =                "$(git -C accepted rev-parse f7edb2d126502eeeed58ae014adadc7a2096d41b:block_B/day07/h01_runtime)"
+          test "$(git -C failed rev-parse HEAD:block_B/day07/h01_runtime)" =                "$(git -C failed rev-parse a04f9a7da8d54bbd9f944d05388792cb706adf28:block_B/day07/h01_runtime)"
+          echo "AXIA_DAY02_SUCCESS_AND_FAILURE_ORIGINAL_RUNTIME_TREES_UNCHANGED_PASS"
+      - name: Verify both source manifests and historic evidence without touching ROS
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 accepted/special_lecture/day02/scripts/verify_release.py --out /tmp/g07_accepted.json
+          python3 failed/special_lecture/day02/scripts/verify_failed_case.py --out /tmp/g07_failed.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          good=json.loads(Path('/tmp/g07_accepted.json').read_text())
+          bad=json.loads(Path('/tmp/g07_failed.json').read_text())
+          dual=json.loads(Path('accepted/special_lecture/day02/DUAL_RELEASE_INDEX.json').read_text())
+          assert good['status']=='L0_RELEASE_CONTRACT_PASS' and good['checked_runtime_blobs']==8,good
+          assert bad['status']=='L0_FAILED_CASE_SOURCE_AND_EVIDENCE_PASS' and bad['checked_runtime_blobs']==8,bad
+          assert bad['historic_actual_moving_l2']=='FAIL_0_OF_2_NOT_RERUN'
+          assert good['public_ci_native_l2']=='REUSED_2_OF_2_NOT_RERUN'
+          assert not bad['goals_sent'] and not good['goal_sent']
+          assert dual['advanced_failed']['release_commit_sha']=='d9ba3f78ae701697a5986a2bc856e4d856a73dd9'
+          assert dual['accepted']['source_sha']=='f7edb2d126502eeeed58ae014adadc7a2096d41b'
+          print('AXIA_DAY02_DUAL_SOURCE_AND_HISTORIC_EVIDENCE_L0_PASS')
+          PY
+      - name: Contract regressions including tamper, SHA mismatch and safety scope
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 -m compileall -q accepted/special_lecture/day02 failed/special_lecture/day02
+          (cd accepted && python3 -m unittest discover -s special_lecture/day02/tests -p 'test_*.py' -v)
+          (cd failed && python3 -m unittest discover -s special_lecture/day02/tests -p 'test_*.py' -v)
+          echo "AXIA_DAY02_DUAL_RELEASE_TESTS_GREEN NO_NEW_GAZEBO_NO_GOAL"
+      - name: Enforce neither snapshot is an E-Stop certified release or merged main
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          g=json.loads(Path('accepted/special_lecture/day02/COURSE_RELEASE_MANIFEST.json').read_text())
+          f=json.loads(Path('failed/special_lecture/day02/FAILED_MVP_MANIFEST.json').read_text())
+          assert g['scope_limits']['certified_estop'] is False
+          assert g['scope_limits']['student_git_main_merged'] is False
+          assert f['certified_estop'] is False and f['owner_l3']=='NOT_RUN'
+          assert f['authorized_for_owner_release'] is False and f['root_cause']=='UNDETERMINED'
+          assert f['first_failure_policy']=='FIRST_SAFETY_TRANSITION_AND_TIMING_BOUNDARY'
+          print('AXIA_DAY02_TWO_VERSIONS_SCOPED_DISTRIBUTION_GATE_PASS')
+          PY
