@@ -1,0 +1,141 @@
+name: AXIA DAY02 Dual Full G07 Source - Real Jazzy Colcon
+on:
+  push:
+    branches:
+      - ci/day02-dual-full-source-colcon-20261126
+    paths:
+      - .github/workflows/axia-day02-dual-source-colcon.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  dual-source-l0-identity-and-red-green:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: 5b13ba7470a240750a1aafec409e7d7190139e07
+          fetch-depth: 0
+          persist-credentials: false
+          path: student
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: 17c0619be1601981a8d24a39d9f4f23cbc936f1d
+          fetch-depth: 1
+          persist-credentials: false
+          path: red
+      - name: Actual RED before both complete source snapshots existed
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          set +e
+          (cd red && python3 -m unittest discover -s special_lecture/day02_mvp_sources/tests -p 'test_*.py' -v) > "$RUNNER_TEMP/dual_sources_red.txt" 2>&1
+          rc=$?
+          set -e
+          test "$rc" -ne 0
+          grep -E 'RED: dual source manifest missing|RED: full runtime snapshot missing' "$RUNNER_TEMP/dual_sources_red.txt"
+          echo AXIA_DAY02_DUAL_SOURCE_PREIMPLEMENTATION_RED_CONFIRMED
+      - name: Exact Git trees, both 4-package sources and L0 GREEN
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C student rev-parse HEAD)" = 5b13ba7470a240750a1aafec409e7d7190139e07
+          test "$(git -C student rev-parse HEAD:special_lecture/day02_mvp_sources/accepted/runtime)" = 1ad1d424358345420b8bfc67a6a7ca44d634a974
+          test "$(git -C student rev-parse HEAD:special_lecture/day02_mvp_sources/failed/runtime)" = 0d44f39c8f5927d21411c33e7a793ca1a3f6f368
+          test "$(git -C student rev-parse HEAD:special_lecture/day02_mvp_sources/accepted/runtime/ros2_ws/src)" = 767c3d10187280303f5226a90ede205eb0059033
+          test "$(git -C student rev-parse HEAD:special_lecture/day02_mvp_sources/failed/runtime/ros2_ws/src)" = 767c3d10187280303f5226a90ede205eb0059033
+          (cd student && python3 -m unittest discover -s special_lecture/day02_mvp_sources/tests -p 'test_*.py' -v)
+          bash student/special_lecture/day02_mvp_sources/scripts/build_dual_mvp.sh --verify
+          bash -n student/special_lecture/day02_mvp_sources/scripts/build_dual_mvp.sh
+          echo AXIA_DAY02_DUAL_SOURCE_L0_GREEN_EXACT_TREES_FOUR_PACKAGES
+      - name: Alter a failed runtime source file - verify fail-closed - restore
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          file=student/special_lecture/day02_mvp_sources/failed/runtime/tools/p2_g07_ordered_shutdown.py
+          test -f "$file"
+          printf '\n# TAMPERED_IN_EPHEMERAL_CI\n' >> "$file"
+          if bash student/special_lecture/day02_mvp_sources/scripts/build_dual_mvp.sh --verify > "$RUNNER_TEMP/tamper.txt" 2>&1;then
+            echo AXIA_DAY02_TAMPER_FALSE_PASS;exit 3
+          fi
+          grep WORKTREE_MODIFIED "$RUNNER_TEMP/tamper.txt"
+          git -C student restore -- special_lecture/day02_mvp_sources/failed/runtime/tools/p2_g07_ordered_shutdown.py
+          bash student/special_lecture/day02_mvp_sources/scripts/build_dual_mvp.sh --verify >/dev/null
+          echo AXIA_DAY02_DUAL_SOURCE_TAMPER_REGRESSION_PASS
+      - name: Verify student solutions stay private
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          d=Path("student/special_lecture/day02_mvp_sources")
+          bad=[str(p) for p in d.rglob("*") if p.is_file()
+              and (p.name.lower().startswith(("solution","hidden_test","private_key"))
+               or p.suffix.lower() in (".db3",".tar",".gz",".zip",".pt",".onnx"))]
+          assert not bad,bad
+          print("AXIA_DAY02_STUDENT_PUBLIC_SOURCE_PRIVACY_PASS")
+          PY
+
+  dual-source-l1-real-jazzy-colcon:
+    needs: dual-source-l0-identity-and-red-green
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    container:
+      image: ros:jazzy-ros-base-noble
+    env:
+      DEBIAN_FRONTEND: noninteractive
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: 5b13ba7470a240750a1aafec409e7d7190139e07
+          fetch-depth: 1
+          persist-credentials: false
+          path: student
+      - name: Install actual Jazzy ament_python/colcon build toolchain
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          apt-get update -qq -o APT::Update::Error-Mode=any
+          apt-get install -y -qq --no-install-recommends \
+            python3-colcon-common-extensions python3-setuptools python3-ament-package python3-pytest
+      - name: Doctor: Ubuntu 24.04 and real ROS 2 Jazzy colcon
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          bash student/special_lecture/day02_mvp_sources/scripts/build_dual_mvp.sh --doctor
+      - name: Actually colcon-build BOTH 4-package isolated G07 workspaces
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          bash student/special_lecture/day02_mvp_sources/scripts/build_dual_mvp.sh --both \
+            --out "$GITHUB_WORKSPACE/build-evidence"
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          out=Path("build-evidence")
+          for label in ("accepted","failed"):
+              p=out/label/"BUILD_RESULT.json"
+              assert p.is_file(),str(p)
+              r=json.loads(p.read_text())
+              assert r["colcon_build"]=="PASS" and r["ament_python_packages"]==4,r
+              assert r["new_gazebo_run"] is False and r["new_goal_sent"] is False,r
+              assert r["new_native_moving_l2"]=="NOT_RUN",r
+              assert (out/label/"install").exists()
+              print("AXIA_DAY02_REAL_JAZZY_COLCON_PASS",label,"4_PACKAGES_ONLY")
+          print("AXIA_DAY02_REAL_DUAL_ROS_BUILD_L1_PASS_NO_GAZEBO_NO_GOAL")
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: axia-day02-full-source-jazzy-colcon-build-logs
+          path: |
+            build-evidence/accepted/logs/colcon_build.log
+            build-evidence/accepted/BUILD_RESULT.json
+            build-evidence/failed/logs/colcon_build.log
+            build-evidence/failed/BUILD_RESULT.json
+          retention-days: 14
+          if-no-files-found: warn
