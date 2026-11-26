@@ -67,6 +67,13 @@ jobs:
           (cd accepted && python3 -m unittest discover -s special_lecture/day02/tests -p 'test_*.py' -v)
           (cd failed && python3 -m unittest discover -s special_lecture/day02/tests -p 'test_*.py' -v)
           echo "AXIA_DAY02_DUAL_RELEASE_TESTS_GREEN NO_NEW_GAZEBO_NO_GOAL"
+      - name: Execute student's pinned two-version worktree setup offline
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          bash accepted/special_lecture/day02/scripts/prepare_dual_mvp.sh "$RUNNER_TEMP/axia-day02-failed-student"
+          test "$(git -C "$RUNNER_TEMP/axia-day02-failed-student" rev-parse HEAD)" = d9ba3f78ae701697a5986a2bc856e4d856a73dd9
+          echo "AXIA_DAY02_SINGLE_COMMAND_DUAL_WORKTREE_GREEN"
       - name: Enforce neither snapshot is an E-Stop certified release or merged main
         shell: bash
         run: |
