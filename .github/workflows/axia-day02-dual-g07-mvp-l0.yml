@@ -59,6 +59,32 @@ jobs:
           assert dual['accepted']['source_sha']=='f7edb2d126502eeeed58ae014adadc7a2096d41b'
           print('AXIA_DAY02_DUAL_SOURCE_AND_HISTORIC_EVIDENCE_L0_PASS')
           PY
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: ce9f944baf6b6dffd926843ca9947736ab4ae581
+          persist-credentials: false
+          path: accepted_red
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: c6b439a006f831c98d7e7793dbc9da25c132ed2b
+          persist-credentials: false
+          path: failed_red
+      - name: Verify contracts really had RED before their manifests/verifiers
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          set +e
+          (cd accepted_red && python3 -m unittest discover -s special_lecture/day02/tests -p test_release_contract.py -v) > /tmp/accepted_red.log 2>&1
+          rc_good=$?
+          (cd failed_red && python3 -m unittest discover -s special_lecture/day02/tests -p test_failed_release_contract.py -v) > /tmp/failed_red.log 2>&1
+          rc_bad=$?
+          set -e
+          test "$rc_good" -ne 0 && test "$rc_bad" -ne 0 || { echo "UNEXPECTED_RED_GREEN_BEFORE_IMPL"; exit 3; }
+          grep -F "DAY02_MANIFEST_MISSING_RED" /tmp/accepted_red.log >/dev/null
+          grep -F "RED: failed snapshot manifest missing" /tmp/failed_red.log >/dev/null
+          echo "AXIA_DAY02_BOTH_PREIMPLEMENTATION_RED_CONTRACTS_CONFIRMED"
       - name: Contract regressions including tamper, SHA mismatch and safety scope
         shell: bash
         run: |
