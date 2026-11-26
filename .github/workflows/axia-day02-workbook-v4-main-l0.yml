@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: 8ef90f2b9c4afc5ad375a224f0d987e7c0c3457b
+          ref: 0f7a07420890628f3b4e7b2b10a75be50b8516ea
           fetch-depth: 3
           persist-credentials: false
           path: student
@@ -24,7 +24,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C student rev-parse HEAD)" = 8ef90f2b9c4afc5ad375a224f0d987e7c0c3457b
+          test "$(git -C student rev-parse HEAD)" = 0f7a07420890628f3b4e7b2b10a75be50b8516ea
           changed="$(git -C student diff --name-only 93fd3e4838470f3ac836cc626e05ddb6d18e40e7 HEAD)"
           ! grep -E '^(block_B|block_C|block_D)/' <<< "$changed"
           test "$(echo "$changed" | grep -c '^special_lecture/day02_workbook_v4/')" -eq 4
