@@ -17,7 +17,7 @@ jobs:
         with:
           repository: silverbjin/axia-robot-safety-student
           ref: 0f7a07420890628f3b4e7b2b10a75be50b8516ea
-          fetch-depth: 3
+          fetch-depth: 0
           persist-credentials: false
           path: student
       - name: Exact student candidate SHA and preserve G07 runtime off-limits
