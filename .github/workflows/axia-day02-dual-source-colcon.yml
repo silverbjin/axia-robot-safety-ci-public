@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: f6be41628e19a6e5dcb4fa5336ea2a3743956457
+          ref: 96be43164fab3f15025edd59279bcfd50b6232cd
           fetch-depth: 0
           persist-credentials: false
           path: student
@@ -42,7 +42,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C student rev-parse HEAD)" = f6be41628e19a6e5dcb4fa5336ea2a3743956457
+          test "$(git -C student rev-parse HEAD)" = 96be43164fab3f15025edd59279bcfd50b6232cd
           test "$(git -C student rev-parse HEAD:special_lecture/day02_mvp_sources/accepted/runtime)" = 1ad1d424358345420b8bfc67a6a7ca44d634a974
           test "$(git -C student rev-parse HEAD:special_lecture/day02_mvp_sources/failed/runtime)" = 0d44f39c8f5927d21411c33e7a793ca1a3f6f368
           test "$(git -C student rev-parse HEAD:special_lecture/day02_mvp_sources/accepted/runtime/ros2_ws/src)" = 767c3d10187280303f5226a90ede205eb0059033
@@ -91,7 +91,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: f6be41628e19a6e5dcb4fa5336ea2a3743956457
+          ref: 96be43164fab3f15025edd59279bcfd50b6232cd
           fetch-depth: 1
           persist-credentials: false
           path: student
