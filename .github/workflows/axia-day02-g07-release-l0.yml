@@ -1,0 +1,67 @@
+name: AXIA DAY02 Proven G07 Student Release L0
+on:
+  push:
+    branches:
+      - ci/day02-g07-accepted-release-20261126
+    paths:
+      - .github/workflows/axia-day02-g07-release-l0.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  immutable-student-release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: silverbjin/axia-robot-safety-student
+          ref: a628df141d148fe7cfbc1a8cd7cba120bdb91568
+          fetch-depth: 5
+          persist-credentials: false
+          path: student
+      - name: Pin exactly the successful G07 student source and release commit
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C student rev-parse HEAD)" = a628df141d148fe7cfbc1a8cd7cba120bdb91568
+          git -C student cat-file -e f7edb2d126502eeeed58ae014adadc7a2096d41b^{commit}
+          test "$(git -C student rev-parse HEAD:block_B/day07/h01_runtime)" = "$(git -C student rev-parse f7edb2d126502eeeed58ae014adadc7a2096d41b:block_B/day07/h01_runtime)"
+          echo "AXIA_DAY02_EXACT_G07_RUNTIME_TREE_UNCHANGED_PASS"
+      - name: Read-only 8-blob release check - no ROS or Gazebo
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 student/special_lecture/day02/scripts/verify_release.py --out /tmp/axia-day02-release.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('/tmp/axia-day02-release.json').read_text())
+          assert r['status']=='L0_RELEASE_CONTRACT_PASS',r
+          assert r['checked_runtime_blobs']==8,r
+          assert not r['ros_gazebo_run'] and not r['goal_sent']
+          print('AXIA_DAY02_STUDENT_RELEASE_L0_PASS')
+          PY
+      - name: Regression, missing-manifest fail-closed, runtime tamper detection
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 -m compileall -q student/special_lecture/day02
+          (cd student && python3 -m unittest discover -s special_lecture/day02/tests -p 'test_*.py' -v)
+      - name: Verify prior proven report lineage without pretending new L2/L3
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path('student/special_lecture/day02/COURSE_RELEASE_MANIFEST.json').read_text())
+          assert d['proven_ci']['workflow_sha']=='64ba0161e66126b4743b4b12a859f4a5349ae58a'
+          assert d['proven_ci']['run_id']==44965035965
+          assert d['owner_raw_review']['report_commit_sha']=='c2c4f66c532be2a41855239860b9a9f5d60c4586'
+          assert d['owner_raw_review']['original_auto_verdict']=='HOLD_RAW_REVIEW_AND_VISUAL_PENDING'
+          assert d['scope_limits']['certified_estop'] is False
+          assert d['scope_limits']['ros_gazebo_in_this_release_verifier']=='NOT_RUN'
+          assert d['publication_gates']['main_merge']=='REQUIRES_SEPARATE_USER_APPROVAL'
+          print('AXIA_DAY02_RELEASE_PROVENANCE_SCOPED_PASS NO_NEW_GAZEBO_NO_GOAL')
+          PY
