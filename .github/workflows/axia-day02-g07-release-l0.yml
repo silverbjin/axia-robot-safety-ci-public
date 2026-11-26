@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: silverbjin/axia-robot-safety-student
-          ref: a628df141d148fe7cfbc1a8cd7cba120bdb91568
+          ref: 0a8c43d0334474608ed3825abe79c7efad37ec17
           fetch-depth: 5
           persist-credentials: false
           path: student
@@ -24,7 +24,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(git -C student rev-parse HEAD)" = a628df141d148fe7cfbc1a8cd7cba120bdb91568
+          test "$(git -C student rev-parse HEAD)" = 0a8c43d0334474608ed3825abe79c7efad37ec17
           git -C student cat-file -e f7edb2d126502eeeed58ae014adadc7a2096d41b^{commit}
           test "$(git -C student rev-parse HEAD:block_B/day07/h01_runtime)" = "$(git -C student rev-parse f7edb2d126502eeeed58ae014adadc7a2096d41b:block_B/day07/h01_runtime)"
           echo "AXIA_DAY02_EXACT_G07_RUNTIME_TREE_UNCHANGED_PASS"
